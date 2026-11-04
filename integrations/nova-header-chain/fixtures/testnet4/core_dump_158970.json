@@ -1,0 +1,9 @@
+{
+ "chain": "testnet4",
+ "core_version": "/Satoshi:31.1.0/",
+ "tip_height": 158970,
+ "tip_hash": "00000000037eaf09696c4d3deddcdc2a2bbb6c15c241afb31de3545d6849b6d1",
+ "tip_chainwork": "000000000000000000000000000000000000000000000f0ec105bc6803722073",
+ "headers_bin_sha256": "d204a3397192fe3444d7613390656df28f010757caabbeec258b043a7b8d26d2",
+ "core_ref_tsv_sha256": "390c56360dd6381cbeb8424170a93a4d2e52c95112c166c105eb8e379da779ac"
+}

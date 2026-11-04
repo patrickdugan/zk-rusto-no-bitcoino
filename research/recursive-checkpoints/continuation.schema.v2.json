@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Nova live-continuation manifest v2 (written by nova-chain)",
+  "description": "Structural schema only; nova-chain's load_generation is the authority. Before decoding the payload it checks schema, backend, network, k, completed_steps*k = end_height - initial_height, the circuit identity and public-parameter digest of a fresh setup, canonical decoding and digests of both states, state heights, and the anchor policy (genesis-anchored chains must start at the consensus genesis state). It then checks the payload size cap and SHA-256, decodes the RecursiveSNARK, requires its step count to equal completed_steps, verifies it against initial_state, and requires its output to equal end_state. v2 differs from the v1 proposal: any network; initial_height may be 0 (genesis); public_params_digest is Nova's own digest of the parameters; the verifier key is pinned per (network, k) as expected_verifier_key_sha256 and checked at export; input_chain_sha256 chains SHA-256 over each step's headers; generation and end are added.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "backend", "network", "source_commit", "binary_sha256", "circuit_identity_sha256",
+    "public_params_digest", "expected_verifier_key_sha256", "anchor_policy", "anchor_policy_sha256", "k",
+    "completed_steps", "initial_height", "end_height", "initial_state_hex", "end_state_hex",
+    "initial_state_sha256", "end_state_sha256", "end", "input_chain_sha256", "parent_manifest_sha256",
+    "generation", "payload"],
+  "properties": {
+    "schema": {"const": "nova-ivc-continuation/v2"},
+    "backend": {"const": "nova-pallas-vesta-ipa-spartan"},
+    "network": {"enum": ["mainnet", "testnet4"]},
+    "source_commit": {"type": "string"},
+    "binary_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "circuit_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 of network, k and the primary/secondary constraint and variable counts."},
+    "public_params_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "expected_verifier_key_sha256": {"oneOf": [{"type": "string", "pattern": "^[0-9a-f]{64}$"}, {"type": "null"}]},
+    "anchor_policy": {"type": "string",
+      "description": "genesis/<network>/<genesis hash>, or native-from-genesis/<network>/<height>/<state sha256>/unproven-checkpoint."},
+    "anchor_policy_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "k": {"type": "integer", "minimum": 1, "maximum": 64},
+    "completed_steps": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "initial_height": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+    "end_height": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "initial_state_hex": {"type": "string", "pattern": "^[0-9a-f]{1088}$"},
+    "end_state_hex": {"type": "string", "pattern": "^[0-9a-f]{1088}$"},
+    "initial_state_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "end_state_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "end": {"type": "object"},
+    "input_chain_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "parent_manifest_sha256": {"oneOf": [{"type": "string", "pattern": "^[0-9a-f]{64}$"}, {"type": "null"}]},
+    "generation": {"type": "integer", "minimum": 1},
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "size_bytes", "sha256"],
+      "properties": {
+        "file": {"const": "accumulator.bin"},
+        "size_bytes": {"type": "integer", "minimum": 1, "maximum": 134217728},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

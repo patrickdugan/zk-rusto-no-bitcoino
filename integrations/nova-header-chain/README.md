@@ -286,3 +286,102 @@ k=10 `2495da9bf5965030e45fa2cef1a43ade78e099ca844b5d3a9abf56400447eabe`.
 Not done: an authenticated testnet4 checkpoint (it needs a node for
 chainwork), and testnet4 in `pack-spv` and the statement-verifier broker,
 which pin the mainnet key.
+
+## `nova-chain`: genesis-anchored, resumable testnet4 recursion under 1.5 GiB (2026-11-04)
+
+`nova-chain` is a separate binary; `btc-header-fold`, the NHC1/NSP1 formats,
+the mainnet circuit and its pinned keys are unchanged. Commands are listed in
+`src/bin/nova-chain.rs`. They cover:
+
+- **anchor:** the genesis anchor;
+- **native-check:** differential check against Core;
+- **run, resume:** stream headers into a durable continuation;
+- **verify-continuation:** cold verification;
+- **export:** the Spartan-compressed NHT4 bundle, which `btc-header-fold verify-bundle` verifies.
+
+### Trust anchor
+
+`State::genesis(net)` derives the starting state from the consensus genesis
+header alone (`native::genesis_header`, checked against both genesis hashes).
+Its chainwork is the genesis block's work. Every later unit of chainwork is
+added inside the proof, so a chain that starts at genesis needs no external
+checkpoint.
+
+Core computes median-time-past over the n < 11 blocks that exist as
+`sorted[n/2]`. The genesis state reproduces this by padding the 11-slot
+window with alternating 0 and `u32::MAX` slots. A unit test checks the
+padding against Core's definition for every fill level.
+
+The testnet4 genesis anchor's state SHA-256 is
+`9c82dffe8b6005378775c8f2028b7644039defadb0fcc1d77820b7aaced6de9c`. It
+appears as `checkpoint_state_sha256` in the receipt of every
+genesis-anchored proof.
+
+### Differential check against Bitcoin Core
+
+`scripts/dump-core-headers.py` dumps every header from a Core node. Each
+header must hash to Core's block id and link to its predecessor. For every
+height it records Core's own hash, chainwork, bits, time and median time.
+
+Against Core 31.1 on testnet4, the native rules starting from genesis agree
+with Core on all five fields at **every height 0–158,970**. That range
+includes 78 retargets, 107,083 min-difficulty blocks, and a boundary block
+exactly 600 s before its predecessor. Committed fixtures cover heights
+0–4,100, two retargets; see `tests/continuation_cli.rs`.
+
+The native rules are a differential reference, not independent evidence of
+soundness. The circuit has its own constraint tests (`src/tests.rs`).
+
+### Durable continuations
+
+A continuation directory holds immutable `generations/gen-NNNNNN/` directories
+and a `LATEST` pointer. Publication works like this:
+
+1. Verify the accumulator against z0. Its output must equal the native state.
+2. Write and fsync `accumulator.bin` and `manifest.json` (schema
+   `research/recursive-checkpoints/continuation.schema.v2.json`) in a `.tmp`
+   directory.
+3. Rename the directory, then fsync the parent.
+4. Write `LATEST` through a temporary file and rename it.
+5. Prune, keeping the previous generation.
+
+**Resume.** `resume` re-verifies the newest generation before folding:
+identities, payload hash, step count, z0 against the anchor policy, and the
+accumulator against its end state. If that generation fails, it falls back to
+the previous one.
+
+**k and network are fixed.** Neither can change across a continuation.
+
+**Nova's first step.** Nova 0.76 executes step 0 in `RecursiveSNARK::new`;
+the first `prove_step` after it ignores its circuit. A continuation is
+therefore never saved at `i = 0`. `nova_semantics` in `src/tests.rs` pins
+this behaviour, together with the restore-and-continue and omitted-block
+cases.
+
+**Not zero knowledge.** The accumulator holds witness material.
+
+### Verifier fix
+
+`verify-bundle --vk` now refuses a key that is pinned to a different
+(network, k) than the bundle's magic, and a non-pinned key for a pinned
+(network, k).
+
+Before this fix, a testnet4 bundle relabelled `NHC1` and verified with the
+testnet4 key produced a mainnet `btc_header_chain_v1` receipt. Pins are in
+`native::PINNED_VERIFIER_KEYS`; mainnet receipts are unchanged.
+
+### Testnet4 payments without SP1 (NST4)
+
+`pack-spv` emits `NST4` when given NHT4 proofs; mainnet `NSP1` is unchanged.
+`scripts/verify-nst4.py` is an offline verifier. It checks:
+
+1. both proofs with the pinned verifier executable and key;
+2. that the first proof starts at the genesis anchor;
+3. that the second proof starts at the first proof's end state;
+4. the Merkle branch and the 64-byte guard;
+5. the output;
+6. optionally, Core's active chain, chainwork and `gettxout`.
+
+The gateway is not changed.
+
+Results, commands and raw logs are in `research/recursive-checkpoints/testnet4/`.

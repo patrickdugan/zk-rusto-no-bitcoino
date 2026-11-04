@@ -86,6 +86,47 @@ pub mod native {
     }
   }
 
+  /// The network's genesis header, from Core's chainparams (CreateGenesisBlock).
+  pub fn genesis_header(net: Network) -> Header {
+    let (merkle_display, time, nonce) = match net {
+      Network::Mainnet => ("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b", 1_231_006_505u32, 2_083_236_893u32),
+      Network::Testnet4 => ("7aa0a7ae1e223414cb807e40cd57e667b718e42aaf9306db9102fe28912b7b4e", 1_714_777_860, 393_743_547),
+    };
+    let mut h = [0u8; 80];
+    h[..4].copy_from_slice(&1u32.to_le_bytes());
+    let mut merkle = hex::decode(merkle_display).unwrap();
+    merkle.reverse();
+    h[36..68].copy_from_slice(&merkle);
+    h[68..72].copy_from_slice(&time.to_le_bytes());
+    h[72..76].copy_from_slice(&POW_LIMIT_BITS.to_le_bytes());
+    h[76..80].copy_from_slice(&nonce.to_le_bytes());
+    h
+  }
+
+  /// Genesis block hash in display (RPC) order.
+  pub fn genesis_hash_display(net: Network) -> &'static str {
+    match net {
+      Network::Mainnet => "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+      Network::Testnet4 => "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+    }
+  }
+
+  /// SHA-256 of the bincode verifier key for each pinned (network, k). Keys
+  /// are deterministic in the circuit shape; these were rebuilt on Windows
+  /// (MSVC, asm) and Linux (no-asm) with identical results.
+  pub const PINNED_VERIFIER_KEYS: [(Network, usize, &str); 3] = [
+    (Network::Mainnet, 10, "e46bb06929d701f1986d320e004e8ed744b0e5f74eb9f5e9c9bd0e2fe6ad1698"),
+    (Network::Testnet4, 5, "1ae88a7bcfdc5f14d030d0baafa06ec17fe904a5ebed42f9bd6fa6105fdc8c24"),
+    (Network::Testnet4, 10, "2495da9bf5965030e45fa2cef1a43ade78e099ca844b5d3a9abf56400447eabe"),
+  ];
+  pub fn pinned_verifier_key(net: Network, k: usize) -> Option<&'static str> {
+    PINNED_VERIFIER_KEYS.iter().find(|(n, kk, _)| *n == net && *kk == k).map(|p| p.2)
+  }
+  /// The pinned (network, k) a key belongs to, if any.
+  pub fn pinned_key_owner(vk_sha256: &str) -> Option<(Network, usize)> {
+    PINNED_VERIFIER_KEYS.iter().find(|p| p.2 == vk_sha256).map(|p| (p.0, p.1))
+  }
+
   pub fn pow_limit() -> BigUint {
     (BigUint::one() << 224u32) - BigUint::one()
   }
@@ -199,6 +240,56 @@ pub mod native {
       // block itself may be a min-difficulty block. On mainnet they are equal.
       let first = &hs[&(height - height % INTERVAL)];
       State { height, prev: hash(&hs[&height]), chainwork, epoch_bits: bits(first), epoch_start: time(first), ts }
+    }
+    /// The state after the genesis block, derived from the consensus genesis
+    /// header alone: a proof starting here needs no external checkpoint.
+    ///
+    /// Core's median-time-past over n < 11 known blocks is sorted[n / 2]. The
+    /// 11-slot window is padded so that its median (sorted[5]) equals that:
+    /// 5 - n/2 slots of 0 and the rest u32::MAX. Slots leave oldest first, so
+    /// they alternate 0, MAX, 0, ... and the split stays right as n grows to 11.
+    pub fn genesis(net: Network) -> State {
+      let g = genesis_header(net);
+      let mut ts = [0u32; 11];
+      for (i, t) in ts.iter_mut().enumerate().take(10) {
+        *t = if i % 2 == 0 { 0 } else { u32::MAX };
+      }
+      ts[10] = time(&g);
+      State {
+        height: 0,
+        prev: hash(&g),
+        chainwork: work(&decode_compact(bits(&g)).expect("genesis bits")),
+        epoch_bits: bits(&g),
+        epoch_start: time(&g),
+        ts,
+      }
+    }
+    /// Inverse of `to_z` for canonical states (None if any element is out of range).
+    pub fn from_z<F: ff::PrimeField>(z: &[F]) -> Option<State> {
+      if z.len() != ARITY {
+        return None;
+      }
+      let big = |f: &F| BigUint::from_bytes_le(f.to_repr().as_ref());
+      let u32_of = |f: &F| big(f).to_u32();
+      let half = |f: &F| {
+        let b = big(f);
+        (b.bits() <= 128).then(|| {
+          let mut out = [0u8; 16];
+          let le = b.to_bytes_le();
+          out[..le.len()].copy_from_slice(&le);
+          out
+        })
+      };
+      let mut prev = [0u8; 32];
+      prev[..16].copy_from_slice(&half(&z[1])?);
+      prev[16..].copy_from_slice(&half(&z[2])?);
+      let mut ts = [0u32; 11];
+      for (i, t) in ts.iter_mut().enumerate() {
+        *t = u32_of(&z[6 + i])?;
+      }
+      let chainwork = big(&z[3]);
+      (chainwork.bits() <= 200).then_some(())?;
+      Some(State { height: u32_of(&z[0])?, prev, chainwork, epoch_bits: u32_of(&z[4])?, epoch_start: u32_of(&z[5])?, ts })
     }
     pub fn mtp(&self) -> u32 {
       let mut s = self.ts;

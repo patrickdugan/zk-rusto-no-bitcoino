@@ -331,3 +331,110 @@ fn testnet4_version_4_required_from_height_1() {
   let o = synth_on(Network::Testnet4, &s, &[h]);
   assert!(!o.ok && o.first_fail.contains("version"), "{}", o.first_fail);
 }
+
+// ---- genesis anchor, state encoding, Nova first-step semantics ----
+
+#[test]
+fn genesis_headers_hash_to_the_consensus_genesis_blocks() {
+  for net in [Network::Mainnet, Network::Testnet4] {
+    let mut h = hash(&genesis_header(net));
+    h.reverse();
+    assert_eq!(hex::encode(h), genesis_hash_display(net), "{}", net.name());
+  }
+  // The mainnet constant equals height 0 of the committed mainnet data.
+  assert_eq!(hs()[&0], genesis_header(Network::Mainnet));
+  let g = State::genesis(Network::Testnet4);
+  assert_eq!(g.chainwork, num_bigint::BigUint::from(0x1_0001_0001u64));
+  assert_eq!(g.mtp(), time(&genesis_header(Network::Testnet4)));
+}
+
+/// Core: median of the last min(n, 11) block times = sorted[len / 2].
+fn core_mtp(times: &[u32]) -> u32 {
+  let mut v: Vec<u32> = times[times.len().saturating_sub(11)..].to_vec();
+  v.sort_unstable();
+  v[v.len() / 2]
+}
+
+#[test]
+fn genesis_padding_reproduces_core_median_time_past_for_short_histories() {
+  // Times are arbitrary (not monotone) to exercise every ordering.
+  let mut seed = 0x1234_5678u64;
+  for _ in 0..200 {
+    let mut s = State::genesis(Network::Testnet4);
+    let mut times = vec![s.ts[10]];
+    for _ in 0..14 {
+      assert_eq!(s.mtp(), core_mtp(&times), "after {} blocks", times.len());
+      seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+      let t = s.ts[10].wrapping_add((seed >> 33) as u32 % 7200).wrapping_sub(3600);
+      s.ts.rotate_left(1);
+      s.ts[10] = t;
+      times.push(t);
+    }
+  }
+}
+
+#[test]
+fn state_round_trips_through_its_17_elements() {
+  let hs = t4();
+  for s in [State::genesis(Network::Testnet4), State::genesis(Network::Mainnet), t4_cp(100_700, &hs)] {
+    assert_eq!(State::from_z::<F>(&s.to_z::<F>()), Some(s));
+  }
+  let mut z = State::genesis(Network::Testnet4).to_z::<F>();
+  z[6] = -F::from(1u64);
+  assert_eq!(State::from_z::<F>(&z), None, "out-of-range timestamp must not decode");
+}
+
+mod nova_semantics {
+  use super::*;
+  use nova_snark::{
+    nova::{PublicParams, RecursiveSNARK},
+    provider::{ipa_pc, VestaEngine},
+    spartan::snark::RelaxedR1CSSNARK,
+    traits::snark::RelaxedR1CSSNARKTrait,
+  };
+  type E1 = PallasEngine;
+  type E2 = VestaEngine;
+  type S1 = RelaxedR1CSSNARK<E1, ipa_pc::EvaluationEngine<E1>>;
+  type S2 = RelaxedR1CSSNARK<E2, ipa_pc::EvaluationEngine<E2>>;
+  type Rs = RecursiveSNARK<E1, E2, HeaderStep>;
+
+  /// Nova 0.76: `new(c0)` executes step 0 and the first `prove_step` after
+  /// it is a no-op that ignores its circuit. A continuation saved at i = 0
+  /// would therefore skip a transition on resume; nova-chain never saves one.
+  /// Also: a serialized accumulator resumes to the same states, and verify
+  /// rejects a wrong step count or a wrong z0.
+  #[test]
+  fn first_step_is_taken_by_new_and_restore_continues_exactly() {
+    let hs = t4();
+    let net = Network::Testnet4;
+    let s0 = t4_cp(100_700, &hs);
+    let step = |h: u32| HeaderStep::on(net, vec![hs[&h]]);
+    let pp = PublicParams::<E1, E2, HeaderStep>::setup(&step(100_701), &*S1::ck_floor(), &*S2::ck_floor()).unwrap();
+    let z0 = s0.to_z::<F>();
+    let after = |n: u32| t4_after(&s0, &(100_701..100_701 + n).map(|h| hs[&h]).collect::<Vec<_>>()).to_z::<F>();
+
+    let mut rs = Rs::new(&pp, &step(100_701), &z0).unwrap();
+    assert_eq!(rs.num_steps(), 0);
+    // The circuit passed here is ignored: the step it completes is 100,701.
+    rs.prove_step(&pp, &step(100_799)).unwrap();
+    assert_eq!(rs.num_steps(), 1);
+    assert_eq!(rs.verify(&pp, 1, &z0).unwrap(), after(1));
+    rs.prove_step(&pp, &step(100_702)).unwrap();
+    assert_eq!(rs.verify(&pp, 2, &z0).unwrap(), after(2));
+
+    let bytes = bincode::serialize(&rs).unwrap();
+    let mut restored: Rs = bincode::deserialize(&bytes).unwrap();
+    assert_eq!(restored.verify(&pp, 2, &z0).unwrap(), after(2));
+    assert!(restored.verify(&pp, 3, &z0).is_err(), "wrong step count");
+    let mut wrong = z0.clone();
+    wrong[3] += F::from(1u64);
+    assert!(restored.verify(&pp, 2, &wrong).is_err(), "wrong z0");
+    restored.prove_step(&pp, &step(100_703)).unwrap();
+    assert_eq!(restored.verify(&pp, 3, &z0).unwrap(), after(3));
+
+    // Folding a header that does not continue the state breaks verification.
+    let mut skipped: Rs = bincode::deserialize(&bytes).unwrap();
+    skipped.prove_step(&pp, &step(100_704)).unwrap();
+    assert!(skipped.verify(&pp, 3, &z0).is_err(), "an omitted block must not verify");
+  }
+}
