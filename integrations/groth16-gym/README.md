@@ -51,6 +51,10 @@ Linux or WSL:
 
 `cargo test --release` runs the tamper tests (about 2 minutes). Each statement field and each witness part (tx, Merkle sibling or direction, header) is altered, and the circuit must reject it.
 
+## Resumable checkpoint proving
+
+The [checkpointed header prover](CHECKPOINTS.md) creates and independently verifies a bounded-size Groth16 proof for each consecutive batch, saving atomic manifests for crash recovery. This is a verified proof bundle for the pinned fixture and its within-epoch header rules. A future recursive verifier can aggregate the batch proofs into a single succinct statement.
+
 ## Limits
 
 **Trusted setup.** `circuit_specific_setup` runs with a seeded RNG, so the
