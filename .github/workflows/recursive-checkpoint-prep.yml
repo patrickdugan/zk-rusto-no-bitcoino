@@ -1,0 +1,33 @@
+name: Recursive checkpoint prep (offline only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-evidence-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Synthetic evidence-contract tests
+        run: python3 -m unittest discover -s tools/research -p 'test_recursive_checkpoint_gate.py' -v
+      - name: All-pending evidence must keep the hold
+        shell: bash
+        run: |
+          set +e
+          python3 tools/research/recursive_checkpoint_gate.py review \
+            research/recursive-checkpoints/evidence.pending.json \
+            --root research/recursive-checkpoints > review.json
+          status=$?
+          set -e
+          cat review.json
+          test "$status" -eq 2
+          python3 - <<'PY'
+          import json
+          with open('review.json', encoding='utf-8') as stream:
+              result = json.load(stream)
+          assert result['status'] == 'BLOCKED'
+          assert result['deploy_authorized'] is False
+          assert result['prune_authorized'] is False
+          assert result['proofs_cryptographically_verified_by_this_tool'] == 0
+          PY

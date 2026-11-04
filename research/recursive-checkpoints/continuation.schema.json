@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Proposed Nova live-continuation manifest (implementation pending)",
+  "description": "Structural schema only. Rust must verify the recursive accumulator, original z0, all hashes, canonical scalars, parameter identity, checked completed_steps*k=end_height-initial_height, and anchor policy. Filesystem publication must be crash-safe. Payload bound is an unmeasured initial engineering cap.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "backend",
+    "network",
+    "source_commit",
+    "binary_sha256",
+    "circuit_identity_sha256",
+    "public_params_sha256",
+    "verifier_key_sha256",
+    "anchor_policy_sha256",
+    "k",
+    "completed_steps",
+    "initial_height",
+    "end_height",
+    "initial_state_hex",
+    "end_state_hex",
+    "initial_state_sha256",
+    "end_state_sha256",
+    "input_prefix_sha256",
+    "parent_manifest_sha256",
+    "payload"
+  ],
+  "properties": {
+    "schema": {
+      "const": "nova-ivc-continuation/v1"
+    },
+    "backend": {
+      "const": "nova-pallas-vesta-ipa-spartan"
+    },
+    "network": {
+      "const": "mainnet"
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "binary_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "circuit_identity_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "public_params_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "verifier_key_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "anchor_policy_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "k": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64
+    },
+    "completed_steps": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4294967295
+    },
+    "initial_height": {
+      "type": "integer",
+      "minimum": 11,
+      "maximum": 4294967295
+    },
+    "end_height": {
+      "type": "integer",
+      "minimum": 12,
+      "maximum": 4294967295
+    },
+    "initial_state_hex": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{1088}$",
+      "description": "17 canonical 32-byte scalar representations, hex; verify canonical field decoding in Rust."
+    },
+    "end_state_hex": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{1088}$",
+      "description": "17 canonical 32-byte scalar representations, hex; verify canonical field decoding in Rust."
+    },
+    "initial_state_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "end_state_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "input_prefix_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "parent_manifest_sha256": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "size_bytes",
+        "sha256"
+      ],
+      "properties": {
+        "file": {
+          "const": "accumulator.bin"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 134217728
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}
