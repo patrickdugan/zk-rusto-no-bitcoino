@@ -742,4 +742,19 @@ async fn mainnet_policy_refuses_a_testnet4_payment() {
     assert!(refused["result"].is_null(), "{refused}");
     let message = refused["error"]["message"].as_str().unwrap_or("");
     assert!(message.contains("does not bind"), "{refused}");
+
+    // Relabelling both proofs NHT4 -> NHC1 would make the verifier emit
+    // mainnet receipts; it refuses the testnet4-pinned key for them instead.
+    let mut raw = hex::decode(&bundle).unwrap();
+    let len = |b: &[u8], at: usize| u32::from_le_bytes(b[at..at + 4].try_into().unwrap()) as usize;
+    let second = 12 + len(&raw, 8);
+    for at in [12, second + 4] {
+        assert_eq!(&raw[at..at + 4], b"NHT4");
+        raw[at..at + 4].copy_from_slice(b"NHC1");
+    }
+    let relabelled = hex::encode(raw);
+    let refused = call(&url, CONTROL, json!(["nova_spv_payment_v1", relabelled])).await;
+    assert!(refused["result"].is_null(), "{refused}");
+    let message = refused["error"]["message"].as_str().unwrap_or("");
+    assert!(message.contains("pinned to testnet4"), "{refused}");
 }

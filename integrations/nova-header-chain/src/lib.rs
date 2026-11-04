@@ -86,6 +86,21 @@ pub mod native {
     }
   }
 
+  /// Verifier keys (SHA-256 of the bincode VerifierKey) pinned per
+  /// (network, fold width). `verify` refuses a key pinned to another circuit.
+  pub const PINNED_VERIFIER_KEYS: [(Network, usize, &str); 3] = [
+    (Network::Mainnet, 10, "e46bb06929d701f1986d320e004e8ed744b0e5f74eb9f5e9c9bd0e2fe6ad1698"),
+    (Network::Testnet4, 5, "1ae88a7bcfdc5f14d030d0baafa06ec17fe904a5ebed42f9bd6fa6105fdc8c24"),
+    (Network::Testnet4, 10, "2495da9bf5965030e45fa2cef1a43ade78e099ca844b5d3a9abf56400447eabe"),
+  ];
+  pub fn pinned_verifier_key(net: Network, k: usize) -> Option<&'static str> {
+    PINNED_VERIFIER_KEYS.iter().find(|(n, kk, _)| *n == net && *kk == k).map(|p| p.2)
+  }
+  /// The pinned (network, k) a key belongs to, if any.
+  pub fn pinned_key_owner(vk_sha256: &str) -> Option<(Network, usize)> {
+    PINNED_VERIFIER_KEYS.iter().find(|p| p.2 == vk_sha256).map(|p| (p.0, p.1))
+  }
+
   pub fn pow_limit() -> BigUint {
     (BigUint::one() << 224u32) - BigUint::one()
   }

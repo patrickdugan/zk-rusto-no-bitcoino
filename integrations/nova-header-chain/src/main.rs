@@ -222,10 +222,24 @@ fn verify(
     Network::Mainnet => String::new(),
     Network::Testnet4 => ",\"network\":\"testnet4\"".to_string(),
   };
+  let sha = |b: &[u8]| hex::encode(Sha256::digest(b));
+  // The bundle's magic names the network; a supplied key must not belong to
+  // another pinned circuit (a relabelled testnet4 bundle verified with the
+  // testnet4 key would otherwise yield a mainnet receipt).
+  let vk_sha = sha(&vk_b);
+  if let Some((owner, owner_k)) = nova_header_chain::native::pinned_key_owner(&vk_sha) {
+    if owner != net || owner_k != k {
+      return reject(net, &format!("verifier key is pinned to {} k={owner_k}, not this bundle's {} k={k}", owner.name(), net.name()));
+    }
+  }
+  if let Some(pin) = nova_header_chain::native::pinned_verifier_key(net, k) {
+    if pin != vk_sha {
+      return reject(net, &format!("verifier key differs from the pinned {} k={k} key", net.name()));
+    }
+  }
   let t = Instant::now();
   let res = snark.verify(&vk, steps, &z0);
   let secs = t.elapsed().as_secs_f64();
-  let sha = |b: &[u8]| hex::encode(Sha256::digest(b));
   match res {
     Ok(zn) => {
       println!(
