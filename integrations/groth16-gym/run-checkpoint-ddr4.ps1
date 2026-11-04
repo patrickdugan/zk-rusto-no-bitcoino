@@ -21,7 +21,7 @@ if (-not $env:RUSTUP_TOOLCHAIN) {
 }
 if ($CapMB -lt 1024) { throw 'CapMB must be >= 1024' }
 if ($StartHeight -gt $EndHeight) { throw 'start height exceeds end height' }
-if (([int]($StartHeight / 2016)) -ne ([int]($EndHeight / 2016))) {
+if (([math]::Floor($StartHeight / 2016)) -ne ([math]::Floor($EndHeight / 2016))) {
     throw 'The selected range must fit in one difficulty epoch'
 }
 if (-not $OutputDir) { $OutputDir = Join-Path $PSScriptRoot '.proofs\ddr4-64' }
@@ -95,11 +95,13 @@ function Run-Guarded([string]$phase, [string[]]$arguments) {
     }
     if (Test-Path $stdout) { Get-Content $stdout -Tail 5 | Write-Host }
 }
+# Start-Process joins ArgumentList; preserve any spaces in the repository path.
+$quotedOutputDir = '"' + $OutputDir + '"'
 $standard = @('--start', "$StartHeight", '--end', "$EndHeight", '--chunk-size', "$ChunkSize")
 # The initial invocation intentionally seals a single batch.
-Run-Guarded 'first-batch' (@('prove', $OutputDir) + $standard + @('--max-new-chunks','1'))
+Run-Guarded 'first-batch' (@('prove', $quotedOutputDir) + $standard + @('--max-new-chunks','1'))
 # Resume after the first sealed proof and produce remaining batches.
 Run-Guarded 'resume' (@('prove', $OutputDir) + $standard)
 # Verify only: must accept the recovered proof bundle without producing more proofs.
-Run-Guarded 'verify' (@('verify', $OutputDir) + $standard)
+Run-Guarded 'verify' (@('verify', $quotedOutputDir) + $standard)
 Write-Host "DDR4 benchmark receipt: $log"
