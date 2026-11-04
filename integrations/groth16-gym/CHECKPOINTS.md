@@ -29,9 +29,23 @@ integrations/groth16-gym/target/release/checkpoint_headers verify .proofs/groth1
   --start 959617 --end 959632 --chunk-size 2
 ```
 
+## 15 GB DDR4 Windows benchmark: 64 + 64 headers
+
+The prior native arkworks header gym completed a 64-header proof on this class of machine. The two-batch checkpoint experiment targets mainnet heights **959617–959744**, staying inside one difficulty epoch. It will generate two independent 64-header proofs, simulate an interruption after the first checkpoint, resume the second, and then verify the full bundle.
+
+From the repository root on the Windows laptop with Rust/MSVC installed:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File integrations/groth16-gym/run-checkpoint-ddr4.ps1 -CapMB 13000
+```
+
+The driver builds the standalone gym, guards the checkpoint process at 13,000 MiB peak working set (sampled at 250 ms), and appends host memory, per-phase wall time, peak working set, exit status, and over-cap flags to `integrations/groth16-gym/.proofs/ddr4-64/ddr4-benchmark.jsonl`. If the first attempt exceeds the guard or causes memory pressure, run a **fresh output directory** with `-ChunkSize 32`, e.g. `-OutputDir C:\temp\groth16-32`. A sampled user-space guard is not an OS-enforced memory limit. Close heavy applications before the trial.
+
+The 15 GB machine benchmark is a pending physical-device trial. GitHub CI exercises two one-header batches and does not establish RAM or runtime for 64-header batches on DDR4.
+
 ## Proof and memory constraints
 
-- Each batch performs setup, proving, and verification in its **own invocation** with at most `--chunk-size` headers. RAM scales with the batch circuit, independently of total header count. Use the existing `RESULTS.md` measurement to choose a feasible chunk size.
+- Each batch performs setup, proving, and verification with at most `--chunk-size` headers. The peak allocated prover data should scale with each batch circuit, although Rust's allocator may retain freed memory across batches inside the same process. The Windows trial measures this behavior. Use the existing `RESULTS.md` measurement to choose a feasible chunk size.
 - The current cap is **64 headers per batch**. A larger cap needs fresh memory benchmarking.
 - Setup uses the gym's fixed-seed RNG, which exposes toxic waste. These proofs are **benchmark-only** and never suitable for securing money.
 - Proofs are compressed BN254 and are verified using arkworks. The separate verifying key for each circuit is saved beside the proof.
