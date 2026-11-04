@@ -1,0 +1,6 @@
+Running as unit: resume-publish-2.service; invocation ID: bee0b1e834e8487991ce0e7f4649cdde
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 56.715s
+             CPU time consumed: 2min 27.768s
+                   Memory peak: 1G (swap: 0B)

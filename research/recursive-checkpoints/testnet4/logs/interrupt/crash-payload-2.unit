@@ -1,0 +1,6 @@
+Running as unit: crash-payload-2.service; invocation ID: 84b0065563e14e31955afbe0b891d66d
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=134/n/a
+               Service runtime: 30.638s
+             CPU time consumed: 1min 43.344s
+                   Memory peak: 748.9M (swap: 0B)

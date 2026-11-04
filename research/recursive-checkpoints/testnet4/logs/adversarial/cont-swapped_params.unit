@@ -1,0 +1,6 @@
+Running as unit: cont-swapped_params.service; invocation ID: 7a005ce98e474a8cba270c8670dc667a
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 28.775s
+             CPU time consumed: 1min 13.475s
+                   Memory peak: 602.5M (swap: 0B)

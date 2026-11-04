@@ -1,0 +1,6 @@
+Running as unit: tn4-gentip-verify.service; invocation ID: e617f28fc6404b1f9907173c1120a8ba
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 23.833s
+             CPU time consumed: 27.818s
+                   Memory peak: 469.9M (swap: 0B)

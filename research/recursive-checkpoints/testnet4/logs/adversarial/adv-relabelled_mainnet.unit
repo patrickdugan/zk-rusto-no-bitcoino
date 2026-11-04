@@ -1,0 +1,6 @@
+Running as unit: adv-relabelled_mainnet.service
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 23.079s
+             CPU time consumed: 25.859s
+                   Memory peak: 469.6M (swap: 0B)

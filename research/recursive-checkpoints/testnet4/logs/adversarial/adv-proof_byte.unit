@@ -1,0 +1,6 @@
+Running as unit: adv-proof_byte.service
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 19.025s
+             CPU time consumed: 19.004s
+                   Memory peak: 280.7M (swap: 0B)

@@ -1,0 +1,6 @@
+Running as unit: crash-publish-2.service
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=134/n/a
+               Service runtime: 41.896s
+             CPU time consumed: 1min 44.395s
+                   Memory peak: 826.3M (swap: 0B)

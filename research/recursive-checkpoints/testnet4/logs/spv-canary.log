@@ -1,0 +1,27 @@
+block 158965 00000000007c191137a59ad36327f8caf0cf4da0cf4b7b58acee8bd58a6449fb tx 6ce83076f3228b1e177817af3d522c1e8f3a98f8c7d88fd7c16a01462515dde5
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+                   Memory peak: 1G (swap: 0B)
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+                   Memory peak: 1.3G (swap: 0B)
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+                   Memory peak: 623.1M (swap: 0B)
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+                   Memory peak: 1.3G (swap: 0B)
+nsp1_bytes=26819
+accept rc=0
+{"statement": "btc_nova_spv_payment_testnet4_v1", "network": "testnet4", "verified": true, "anchor": "genesis/testnet4", "vk_sha256": "1ae88a7bcfdc5f14d030d0baafa06ec17fe904a5ebed42f9bd6fa6105fdc8c24", "block": {"height": 158965, "tip_hash": "00000000007c191137a59ad36327f8caf0cf4da0cf4b7b58acee8bd58a6449fb", "chainwork": "0xf0e833e5ac44daad71f"}, "tip": {"height": 158970, "tip_hash": "00000000037eaf09696c4d3deddcdc2a2bbb6c15c241afb31de3545d6849b6d1", "chainwork": "0xf0ec105bc6803722073"}, "confirmations": 6, "txid": "6ce83076f3228b1e177817af3d522c1e8f3a98f8c7d88fd7c16a01462515dde5", "vout": 0, "value_sats": 4900000000, "script_sha256": "d2e04904f966a9a39849f6c25ecdd3d777a11719ae078db7e79bfaa69e12e840", "proof_sha256": ["191a2c626ec056e0b36733de7b4875ab8f6c1dce51b26012c9153515c1ee5b4b", "6d89cb00fc8b1b86bb68f9c518dc40cb0e8e0f1b1b4f3a8a790b79b4d490c7cc"], "active_chain_at_lookup": true, "unspent_at_lookup": true, "unspent_source": "bitcoin_core_gettxout_including_mempool"}
+accept rc=0
+case	refused	detail
+wrong_vout	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "expected vout differs"}
+wrong_txid	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "expected txid differs"}
+wrong_value	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "expected value differs"}
+tampered_merkle	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "Merkle branch does not reach the header's root"}
+tampered_tx	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "Merkle branch does not bind exactly this transaction"}
+tampered_second_proof	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "to_tip: proof rejected: ProofVerifyError { reason: \"Invalid 
+join_mismatch	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "second proof does not continue the first proof's end state"}
+not_genesis_anchored	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "first proof does not start at the testnet4 genesis anchor"}
+SPV-CANARY-DONE

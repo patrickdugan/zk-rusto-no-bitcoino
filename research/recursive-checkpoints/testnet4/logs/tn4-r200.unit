@@ -1,0 +1,6 @@
+Running as unit: tn4-r200.service; invocation ID: d7a222d13ebd4a17ad6b19ae9b9cb78a
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 40.123s
+             CPU time consumed: 3min 17.759s
+                   Memory peak: 905.3M (swap: 0B)

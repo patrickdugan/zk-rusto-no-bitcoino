@@ -1,0 +1,6 @@
+Running as unit: resume-payload-4.service; invocation ID: 5bc120aa3b95458d9850777363ac2ad2
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 29.927s
+             CPU time consumed: 1min 52.465s
+                   Memory peak: 966.6M (swap: 0B)

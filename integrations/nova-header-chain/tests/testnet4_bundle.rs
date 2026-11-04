@@ -49,6 +49,19 @@ fn real_testnet4_bundles_verify_and_relabelling_is_refused() {
     assert!(r.contains(want), "missing {want} in {r}");
   }
 
+  // The whole testnet4 header chain, genesis to 158,970 (31,794 folds),
+  // ending at Bitcoin Core's tip hash and chainwork.
+  let whole = std::fs::read(fixture("genesis_0_158970_k5.nht4")).unwrap();
+  let (ok, r) = verify(&whole, &vk, "whole");
+  assert!(ok, "{r}");
+  for want in [
+    &format!("\"checkpoint_state_sha256\":\"{GENESIS_ANCHOR}\""),
+    "\"end\":{\"height\":158970,\"tip_hash\":\"00000000037eaf09696c4d3deddcdc2a2bbb6c15c241afb31de3545d6849b6d1\",\"chainwork\":\"0xf0ec105bc6803722073\"}",
+    "\"headers\":158970",
+  ] {
+    assert!(r.contains(want), "missing {want} in {r}");
+  }
+
   let auth = std::fs::read(fixture("auth_100700_100900_k5.nht4")).unwrap();
   let (ok, r) = verify(&auth, &vk, "auth");
   assert!(ok && r.contains("\"chainwork\":\"0x54596fd7758cafd453c\""), "{r}");

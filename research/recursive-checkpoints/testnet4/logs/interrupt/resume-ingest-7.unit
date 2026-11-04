@@ -1,0 +1,6 @@
+Running as unit: resume-ingest-7.service; invocation ID: e1537245e8404e298915c7dec7bc9f03
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 45.129s
+             CPU time consumed: 2min 26.749s
+                   Memory peak: 1.1G (swap: 0B)

@@ -1,0 +1,6 @@
+Running as unit: cont-relabelled_network.service
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 24.573s
+             CPU time consumed: 1min 12.999s
+                   Memory peak: 598.1M (swap: 0B)

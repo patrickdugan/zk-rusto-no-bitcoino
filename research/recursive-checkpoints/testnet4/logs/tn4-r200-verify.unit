@@ -1,0 +1,6 @@
+Running as unit: tn4-r200-verify.service; invocation ID: d6590acb91364ca0bb139fbf3ebc8572
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 22.483s
+             CPU time consumed: 26.427s
+                   Memory peak: 470.8M (swap: 0B)

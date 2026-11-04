@@ -1,0 +1,6 @@
+Running as unit: cont-wrong_z0.service
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 25.842s
+             CPU time consumed: 1min 12.616s
+                   Memory peak: 599M (swap: 0B)

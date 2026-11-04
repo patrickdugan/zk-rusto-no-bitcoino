@@ -1,0 +1,6 @@
+Running as unit: cont-payload_byte.service; invocation ID: f85c4539162746778407cd136364eea6
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 28.176s
+             CPU time consumed: 1min 19.072s
+                   Memory peak: 749.2M (swap: 0B)

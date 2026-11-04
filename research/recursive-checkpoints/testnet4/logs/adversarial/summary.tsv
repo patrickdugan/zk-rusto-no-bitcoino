@@ -1,0 +1,20 @@
+case	accepted	detail
+proof_byte	0	{"statement":"btc_header_chain_testnet4_v1","verified":false,"error":"ProofVerifyError { reason: \"Invalid output hash in R1CS instances\" }"}
+forged_chainwork	0	{"statement":"btc_header_chain_testnet4_v1","verified":false,"error":"ProofVerifyError { reason: \"Invalid output hash in R1CS instances\" }"}
+altered_start_height	0	{"statement":"btc_header_chain_testnet4_v1","verified":false,"error":"ProofVerifyError { reason: \"Invalid output hash in R1CS instances\" }"}
+altered_start_hash	0	{"statement":"btc_header_chain_testnet4_v1","verified":false,"error":"ProofVerifyError { reason: \"Invalid output hash in R1CS instances\" }"}
+altered_mtp_window	0	{"statement":"btc_header_chain_testnet4_v1","verified":false,"error":"ProofVerifyError { reason: \"Invalid output hash in R1CS instances\" }"}
+wrong_retarget_base_epoch_bits	0	{"statement":"btc_header_chain_testnet4_v1","verified":false,"error":"ProofVerifyError { reason: \"Invalid output hash in R1CS instances\" }"}
+omitted_or_extra_steps	0	{"statement":"btc_header_chain_testnet4_v1","verified":false,"error":"ProofVerifyError { reason: \"Invalid output hash in R1CS instances\" }"}
+relabelled_mainnet	1	{"statement":"btc_header_chain_v1","verifier":"nova-snark 0.76.0 pallas/vesta ipa, spartan compressed","vk_sha256":"1ae88a7bcfdc5f14d030d0baafa06ec17fe904a5ebed
+mainnet_key	0	{"statement":"btc_header_chain_v1","verified":false,"error":"ProofVerifyError { reason: \"Invalid output hash in R1CS instances\" }"}
+continuation_payload_byte	0	{"error":"no generation verifies: [{\"error\":\"accumulator rejected: UnSat { reason: \\\"Relaxed R1CS is unsatisfiable\\\" }\",\"generation\":\"gen-000002\"}]"
+continuation_forged_steps	0	{"error":"no generation verifies: [{\"error\":\"state heights disagree with the manifest\",\"generation\":\"gen-000002\"}]","ok":false}
+continuation_wrong_z0	0	{"error":"no generation verifies: [{\"error\":\"anchor policy does not name this initial state\",\"generation\":\"gen-000002\"}]","ok":false}
+continuation_wrong_end_state	0	{"error":"no generation verifies: [{\"error\":\"accumulator output differs from the manifest end state\",\"generation\":\"gen-000002\"}]","ok":false}
+continuation_changed_k	0	{"error":"no generation verifies: [{\"error\":\"circuit or public-parameter identity differs from this build\",\"generation\":\"gen-000002\"}]","ok":false}
+continuation_relabelled_network	0	{"error":"no generation verifies: [{\"error\":\"circuit or public-parameter identity differs from this build\",\"generation\":\"gen-000002\"}]","ok":false}
+continuation_swapped_params	0	{"error":"no generation verifies: [{\"error\":\"circuit or public-parameter identity differs from this build\",\"generation\":\"gen-000002\"}]","ok":false}
+resume_changed_k	0	{"error":"k is fixed for a continuation chain (5 != 1)","ok":false}
+resume_input_forked	0	{"error":"height 100850: native rule pow","ok":false}
+resume_input_omitted	0	{"error":"height 100830: native rule prev_link","ok":false}

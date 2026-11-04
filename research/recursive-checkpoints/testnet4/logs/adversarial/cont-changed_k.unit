@@ -1,0 +1,6 @@
+Running as unit: cont-changed_k.service
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 7.652s
+             CPU time consumed: 20.708s
+                   Memory peak: 163.5M (swap: 0B)

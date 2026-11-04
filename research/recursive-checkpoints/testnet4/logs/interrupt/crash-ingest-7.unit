@@ -1,0 +1,6 @@
+Running as unit: crash-ingest-7.service
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=134/n/a
+               Service runtime: 27.432s
+             CPU time consumed: 1min 32.282s
+                   Memory peak: 681.9M (swap: 0B)

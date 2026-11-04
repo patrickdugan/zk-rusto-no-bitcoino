@@ -1,0 +1,6 @@
+Running as unit: adv-altered_mtp_window.service
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 19.175s
+             CPU time consumed: 19.077s
+                   Memory peak: 280.7M (swap: 0B)

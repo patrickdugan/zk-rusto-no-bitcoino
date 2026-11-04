@@ -1,0 +1,6 @@
+Running as unit: cont-forged_steps.service
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 24.563s
+             CPU time consumed: 1min 13.158s
+                   Memory peak: 605.4M (swap: 0B)

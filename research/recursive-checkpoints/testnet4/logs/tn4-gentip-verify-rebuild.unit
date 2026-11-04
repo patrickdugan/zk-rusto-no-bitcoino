@@ -1,0 +1,6 @@
+Running as unit: tn4-gentip-verify-rebuild.service; invocation ID: c6f39191ed4e44ea8ba21e0f52322e36
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 38.315s
+             CPU time consumed: 1min 43.055s
+                   Memory peak: 712.9M (swap: 0B)

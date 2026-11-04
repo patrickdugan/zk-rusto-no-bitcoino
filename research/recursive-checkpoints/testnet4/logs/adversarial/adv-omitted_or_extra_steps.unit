@@ -1,0 +1,6 @@
+Running as unit: adv-omitted_or_extra_steps.service
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 19.081s
+             CPU time consumed: 19.007s
+                   Memory peak: 280.6M (swap: 0B)

@@ -1,0 +1,9 @@
+case	crash_exit	resumed_from	end_state_sha256	steps	matches_reference
+reference	-	-	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	-
+ingest:7	status=134	gen-000001	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	yes
+fold:7	status=134	gen-000001	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	yes
+payload:2	status=134	gen-000001	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	yes
+manifest:2	status=134	gen-000001	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	yes
+publish:2	status=134	gen-000001	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	yes
+payload:4	status=134	gen-000003	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	yes
+torn-latest-payload	-	gen-000004	d9bdb147c383f4af7cc090618321f88fd3e8a60ee44ab9e996c87864f8b2a73b	16	fell back

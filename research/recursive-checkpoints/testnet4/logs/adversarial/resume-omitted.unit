@@ -1,0 +1,6 @@
+Running as unit: resume-omitted.service; invocation ID: bd35c16a4f9e44a7b116be0762a6dfed
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 34.836s
+             CPU time consumed: 1min 33.236s
+                   Memory peak: 866.6M (swap: 0B)

@@ -1,0 +1,6 @@
+Running as unit: resume-k1.service; invocation ID: 3b7b781918924971ac8609232711680c
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 28.043s
+             CPU time consumed: 1min 18.721s
+                   Memory peak: 753M (swap: 0B)

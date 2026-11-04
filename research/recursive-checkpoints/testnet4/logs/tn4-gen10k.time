@@ -1,0 +1,23 @@
+	Command being timed: "/home/ubuntu/tn4-build/nova-header-chain/target/release/nova-chain resume --dir /home/ubuntu/tn4-runs/gen --headers /home/ubuntu/tn4-data/headers.bin --to 10000 --every 200"
+	User time (seconds): 4584.27
+	System time (seconds): 111.11
+	Percent of CPU this job got: 369%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 21:11.72
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1077508
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 16013513
+	Voluntary context switches: 426072
+	Involuntary context switches: 3693229
+	Swaps: 0
+	File system inputs: 24
+	File system outputs: 445456
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

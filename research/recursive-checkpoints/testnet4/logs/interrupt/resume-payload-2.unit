@@ -1,0 +1,6 @@
+Running as unit: resume-payload-2.service
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 54.194s
+             CPU time consumed: 2min 27.318s
+                   Memory peak: 1G (swap: 0B)

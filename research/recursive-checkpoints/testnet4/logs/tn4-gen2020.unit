@@ -1,0 +1,6 @@
+Running as unit: tn4-gen2020.service; invocation ID: 107c823d26dd4abf9ae02c1e69876c7a
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 4min 28.796s
+             CPU time consumed: 21min 9.759s
+                   Memory peak: 935.6M (swap: 0B)

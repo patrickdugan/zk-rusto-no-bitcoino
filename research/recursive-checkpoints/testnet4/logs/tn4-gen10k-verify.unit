@@ -1,0 +1,6 @@
+Running as unit: tn4-gen10k-verify.service; invocation ID: 8003a687964a46da9e625b28967c1d76
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 23.559s
+             CPU time consumed: 27.541s
+                   Memory peak: 471.3M (swap: 0B)

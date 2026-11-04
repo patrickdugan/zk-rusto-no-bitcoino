@@ -1,0 +1,6 @@
+Running as unit: adv-relabel-fixed.service; invocation ID: 55c75cbb91d14381976e58f9d6754844
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 20.185s
+             CPU time consumed: 20.160s
+                   Memory peak: 280.6M (swap: 0B)

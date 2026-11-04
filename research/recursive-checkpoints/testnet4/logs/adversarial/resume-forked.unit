@@ -1,0 +1,6 @@
+Running as unit: resume-forked.service; invocation ID: 3d2a95d17a7b46d6a52d91f2fc3e3c2a
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 37.958s
+             CPU time consumed: 1min 44.880s
+                   Memory peak: 908.3M (swap: 0B)

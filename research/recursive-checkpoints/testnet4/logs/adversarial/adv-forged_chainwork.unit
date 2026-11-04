@@ -1,0 +1,6 @@
+Running as unit: adv-forged_chainwork.service; invocation ID: 1405649841ea4f338d0754c1a334f65d
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 19.194s
+             CPU time consumed: 19.109s
+                   Memory peak: 281.3M (swap: 0B)

@@ -1,0 +1,6 @@
+Running as unit: crash-fold-7.service; invocation ID: eb4b8d11108e433e9624118f78c6305c
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=134/n/a
+               Service runtime: 28.018s
+             CPU time consumed: 1min 35.038s
+                   Memory peak: 682.3M (swap: 0B)

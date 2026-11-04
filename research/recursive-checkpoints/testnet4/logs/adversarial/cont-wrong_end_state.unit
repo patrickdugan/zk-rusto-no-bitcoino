@@ -1,0 +1,6 @@
+Running as unit: cont-wrong_end_state.service; invocation ID: 0a218024e9ae46cebb6715fd18795a9a
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 29.087s
+             CPU time consumed: 1min 18.686s
+                   Memory peak: 760.7M (swap: 0B)

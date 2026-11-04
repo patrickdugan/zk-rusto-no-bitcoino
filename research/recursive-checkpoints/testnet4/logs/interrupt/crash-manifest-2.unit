@@ -1,0 +1,6 @@
+Running as unit: crash-manifest-2.service; invocation ID: 8b35e3874d6040aea05fe683d494d738
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=134/n/a
+               Service runtime: 38.373s
+             CPU time consumed: 1min 43.355s
+                   Memory peak: 799.3M (swap: 0B)

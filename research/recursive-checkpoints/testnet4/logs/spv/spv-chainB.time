@@ -1,0 +1,23 @@
+	Command being timed: "/home/ubuntu/tn4-build/nova-header-chain/target/release/nova-chain run --network testnet4 --k 5 --headers /home/ubuntu/tn4-data/headers.bin --start 158965 --to 158970 --out /home/ubuntu/tn4-runs/spv/chainB"
+	User time (seconds): 74.42
+	System time (seconds): 1.35
+	Percent of CPU this job got: 537%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:14.09
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 637952
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 243419
+	Voluntary context switches: 280
+	Involuntary context switches: 1069
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 55688
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

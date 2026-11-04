@@ -1,0 +1,52 @@
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+                   Memory peak: 990.7M (swap: 0B)
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=134/n/a
+                   Memory peak: 681.9M (swap: 0B)
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+                   Memory peak: 1.1G (swap: 0B)
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=134/n/a
+                   Memory peak: 682.3M (swap: 0B)
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+                   Memory peak: 1G (swap: 0B)
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=134/n/a
+                   Memory peak: 748.9M (swap: 0B)
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+                   Memory peak: 1G (swap: 0B)
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=134/n/a
+                   Memory peak: 799.3M (swap: 0B)
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+                   Memory peak: 1.1G (swap: 0B)
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=134/n/a
+                   Memory peak: 826.3M (swap: 0B)
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+                   Memory peak: 1G (swap: 0B)
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=134/n/a
+                   Memory peak: 939.8M (swap: 0B)
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+                   Memory peak: 966.6M (swap: 0B)
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+                   Memory peak: 792.3M (swap: 0B)
+case	crash_exit	resumed_from	end_state_sha256	steps	matches_reference
+reference	-	-	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	-
+ingest:7	status=134	gen-000001	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	yes
+fold:7	status=134	gen-000001	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	yes
+payload:2	status=134	gen-000001	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	yes
+manifest:2	status=134	gen-000001	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	yes
+publish:2	status=134	gen-000001	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	yes
+payload:4	status=134	gen-000003	bad079be619a4633012938a7c22d99f767128d2bf57282ea8afe53dae1a9bdfc	20	yes
+torn-latest-payload	-	gen-000004	d9bdb147c383f4af7cc090618321f88fd3e8a60ee44ab9e996c87864f8b2a73b	16	fell back
+INTERRUPT-DONE

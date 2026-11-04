@@ -1,0 +1,6 @@
+Running as unit: adv-altered_start_height.service; invocation ID: 97b3a7e8bae746fa9d5efde78f215ec6
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 19.149s
+             CPU time consumed: 19.071s
+                   Memory peak: 280.6M (swap: 0B)

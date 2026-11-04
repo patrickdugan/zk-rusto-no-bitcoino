@@ -1,0 +1,6 @@
+Running as unit: resume-fold-7.service; invocation ID: bd6d55a425cf4aad85e9e6a33898b51b
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 56.729s
+             CPU time consumed: 2min 27.012s
+                   Memory peak: 1G (swap: 0B)

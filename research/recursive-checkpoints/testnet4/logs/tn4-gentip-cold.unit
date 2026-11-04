@@ -1,0 +1,6 @@
+Running as unit: tn4-gentip-cold.service
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 14.211s
+             CPU time consumed: 1min 19.328s
+                   Memory peak: 758.4M (swap: 0B)

@@ -1,0 +1,6 @@
+Running as unit: spv-chainB.service; invocation ID: 5d403cd2d29143f79006fedafdc5f682
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 14.123s
+             CPU time consumed: 1min 15.789s
+                   Memory peak: 623.1M (swap: 0B)

@@ -1,0 +1,6 @@
+Running as unit: tn4-gen10k-export.service; invocation ID: e40ac9eaa65a408385cd2038642f3576
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 57.243s
+             CPU time consumed: 6min 31.652s
+                   Memory peak: 1.3G (swap: 0B)

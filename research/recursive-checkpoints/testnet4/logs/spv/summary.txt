@@ -1,0 +1,10 @@
+accept rc=0
+case	refused	detail
+wrong_vout	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "expected vout differs"}
+wrong_txid	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "expected txid differs"}
+wrong_value	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "expected value differs"}
+tampered_merkle	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "Merkle branch does not reach the header's root"}
+tampered_tx	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "Merkle branch does not bind exactly this transaction"}
+tampered_second_proof	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "to_tip: proof rejected: ProofVerifyError { reason: \"Invalid 
+join_mismatch	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "second proof does not continue the first proof's end state"}
+not_genesis_anchored	yes	{"statement": "btc_nova_spv_payment_testnet4_v1", "verified": false, "error": "first proof does not start at the testnet4 genesis anchor"}

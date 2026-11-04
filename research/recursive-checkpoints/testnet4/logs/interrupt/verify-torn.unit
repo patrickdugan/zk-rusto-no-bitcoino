@@ -1,0 +1,6 @@
+Running as unit: verify-torn.service
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 37.330s
+             CPU time consumed: 2min 30.988s
+                   Memory peak: 792.3M (swap: 0B)

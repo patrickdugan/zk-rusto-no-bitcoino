@@ -1,0 +1,6 @@
+Running as unit: adv-mainnet_key.service; invocation ID: e199aa7dc468407c9180a628bd222466
+          Finished with result: exit-code
+Main processes terminated with: code=exited, status=1/FAILURE
+               Service runtime: 1min 30.674s
+             CPU time consumed: 3min 3.320s
+                   Memory peak: 1.2G (swap: 0B)

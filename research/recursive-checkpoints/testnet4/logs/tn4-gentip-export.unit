@@ -1,0 +1,6 @@
+Running as unit: tn4-gentip-export.service; invocation ID: bd83281766c9412fa3aa7196c69c55e6
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 56.957s
+             CPU time consumed: 6min 30.520s
+                   Memory peak: 1.4G (swap: 0B)

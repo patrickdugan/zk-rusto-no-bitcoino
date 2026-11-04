@@ -1,0 +1,6 @@
+Running as unit: tn4-r200-verify-rebuild.service; invocation ID: 43b132cb6afc4317a750659082c22326
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 36.712s
+             CPU time consumed: 1min 40.556s
+                   Memory peak: 702M (swap: 0B)

@@ -1,0 +1,6 @@
+Running as unit: spv-chainB-export.service
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 56.618s
+             CPU time consumed: 6min 27.865s
+                   Memory peak: 1.3G (swap: 0B)
