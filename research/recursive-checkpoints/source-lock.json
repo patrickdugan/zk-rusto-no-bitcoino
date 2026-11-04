@@ -1,0 +1,43 @@
+{
+  "schema": "recursive-checkpoint-source-lock/v1",
+  "prepared_date": "2026-11-04",
+  "conditional_operator_date": "2026-11-05",
+  "timezone": "Asia/Manila",
+  "mode": "stage-only",
+  "repository": "patrickdugan/zk-rusto-no-bitcoino",
+  "baseline_branch": "feat/statement-expected-output",
+  "baseline_commit": "eb1bc5438cc9ad2830d19ef3e438e30e85ba3377",
+  "observed_main_commit": "daf9a06153788de7b0e45bb324905632dcf83982",
+  "proposed_branch": "prep/recursive-pruned-checkpoints-20261105",
+  "remote_published_by_this_package": false,
+  "inspected_blobs": {
+    "AGENTS.md": "17a8320bb2da325a72ff6325103456b2f6c6b606",
+    "integrations/nova-header-chain/README.md": "ee41375444564e658a923fc8e0b90ee6c29d8cc2",
+    "integrations/nova-header-chain/src/main.rs": "ef83e22775294952712839c06a9ac37f9f2568bd",
+    "docs/BITCOIN_STATEMENTS.md": "a5b3c033c9a7d35a31b33eb0da35fad971ee2fd9"
+  },
+  "related_refs": [
+    {
+      "pr": 12,
+      "branch": "groth16-gym-bitvm-inputs-and-memory",
+      "head": "e43f0b5b2be8f2f2be049e4a007849fb4b9c65d0"
+    },
+    {
+      "pr": 13,
+      "branch": "feat/groth16-resumable-header-checkpoints",
+      "head": "7dfb4a99b0cbff85be83afeab3b1a2553fb878f0"
+    },
+    {
+      "pr": 14,
+      "branch": "feat/nova-testnet4",
+      "head": "9ba7770b3cdba2ee501f616fb08368b10c392086"
+    }
+  ],
+  "baseline_gateway_k10_vk_sha256": "e46bb06929d701f1986d320e004e8ed744b0e5f74eb9f5e9c9bd0e2fe6ad1698",
+  "candidate_k5_mainnet_vk_sha256": null,
+  "required_dependency_status": {
+    "recursive_sharding_benches": "pending",
+    "spv_prototypes": "pending"
+  },
+  "scope": "header-checkpoint pilot; full UTXO consensus and pruning authorization excluded"
+}
