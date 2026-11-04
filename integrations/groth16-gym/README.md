@@ -60,7 +60,7 @@ The gym is its own Cargo workspace, and no CI workflow builds or tests it. Run `
 **Hard limit (Windows).** `run-capped.ps1` runs one proof in a job object whose limit on committed memory the OS enforces, and it records the peak committed memory:
 
 ```
-powershell -ExecutionPolicy Bypass -File run-capped.ps1 -LimitGB 13 headers 40
+powershell -ExecutionPolicy Bypass -File run-capped.ps1 -LimitGB 13 headers 36
 ```
 
 Build first with `run-gym.ps1` or `cargo build --release`. Each run appends a line to `results/<host>-capped.jsonl`. If the proof needs more than the limit, an allocation fails and the line has `"completed":false`.

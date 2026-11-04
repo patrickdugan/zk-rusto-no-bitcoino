@@ -59,17 +59,26 @@ is `results/subhanallah-capped.jsonl`.
 | --- | --- | --- | --- | --- | --- | --- |
 | Header chain, 16 headers | 1,945,062 | 37 s | 29 s | 5.1 GiB | 4.9 GiB | 4.7 GiB |
 | Header chain, 32 headers | 3,889,894 | 83 s | 144 s | 10.3 GiB | 9.9 GiB | 7.8 GiB |
+| Header chain, 40 headers | 4,862,310 | 118 s | 244 s | 13.3 GiB | 12.6 GiB | — |
+| Header chain, 44 headers | 5,348,518 | 252 s | 260 s | 14.5 GiB | 13.8 GiB | — |
 | Header chain, 64 headers | 7,779,558 | — | — | stopped at the 14 GiB limit | — | 10.2 GiB |
 
-Both completed runs verified their proof and rejected a wrong public input.
+The 40- and 44-header runs used a 15 GiB limit; the others used 14 GiB.
+Every completed run verified its proof and rejected a wrong public input.
 The 64-header run failed an allocation about 105 s in. At 32 headers,
 building the constraint system alone took 8.3 GiB, so it most likely
-failed during that step.
+failed during that step. A first 40-header run under a 13 GiB limit failed
+292 s in, while proving. The 44-header setup time is high probably because
+the machine was near its free RAM and paged.
 
-Committed memory is 2.8 KB per constraint at both 16 and 32 headers, in
-line with the Linux VM. The MSI's lower 32- and 64-header figures were
-working-set trimming, not lower demand. At 2.8 KB, 64 headers needs about
-20.6 GiB.
+Committed memory is 2.8–2.9 KB per constraint from 16 to 44 headers, about
+0.33 GiB per header, in line with the Linux VM. The MSI's lower 32- and
+64-header figures were working-set trimming, not lower demand. At that
+rate, 64 headers needs about 20.6 GiB.
+
+Proving time per header rises with chain length: 1.8 s at 16 headers,
+4.5 s at 32, 6.1 s at 40 and 5.9 s at 44. Setup is a one-time cost per
+circuit size, because keys are reused.
 
 ## Reading it for a 15.5 GB DDR4 laptop
 
@@ -88,12 +97,12 @@ laptop.
   about 10.5 GiB free.
 - **64 headers:** about 20.6 GiB, so it does not fit. It also did not fit
   under a 14 GiB limit.
-- **Ceiling, estimated:** at about 0.33 GiB per header (121,500
-  constraints), 12–14 GiB of headroom allows about 36–42 headers per proof.
-  This replaces the earlier estimate of 64–70 headers.
+- **Ceiling:** 40 headers needs 13.3 GiB, and it failed under a 13 GiB
+  limit. With 12–13 GiB of headroom, the laptop's ceiling is about 36–38
+  headers per proof. This replaces the earlier estimate of 64–70 headers.
 
 `run-capped.ps1` checks a single size on the laptop itself, for example
-`-LimitGB 13 headers 40`. `run-gym.ps1 -CapGB` predicts from the working
+`-LimitGB 13 headers 36`. `run-gym.ps1 -CapGB` predicts from the working
 set, so on Windows its predictions can be low.
 
 Longer chains need recursion or folding, for example the Nova header-chain
