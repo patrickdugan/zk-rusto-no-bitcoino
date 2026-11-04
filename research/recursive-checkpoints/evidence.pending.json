@@ -1,0 +1,95 @@
+{
+  "schema": "recursive-checkpoint-evidence/v1",
+  "repository": "patrickdugan/zk-rusto-no-bitcoino",
+  "baseline_commit": "eb1bc5438cc9ad2830d19ef3e438e30e85ba3377",
+  "evidence_kind": "pending",
+  "candidate": null,
+  "artifacts": {},
+  "checks": [
+    {
+      "id": "recursive_sharding_benches_finished",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "spv_prototypes_finished",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "candidate_build_and_pins",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "header_semantics_and_retarget",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "bounded_input_streaming",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "resume_after_process_kill",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "resume_corruption_rejected",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "parameter_mismatch_rejected",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "authenticated_checkpoint",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "spv_expected_output_binding",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "full_state_join_and_fork_rejection",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "reorg_and_stale_tip_handling",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "no_unsafe_pruning",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    },
+    {
+      "id": "rollback_rehearsal",
+      "status": "pending",
+      "artifacts": [],
+      "notes": "Await measured results and operator review."
+    }
+  ],
+  "benchmarks": []
+}
