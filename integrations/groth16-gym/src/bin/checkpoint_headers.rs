@@ -81,7 +81,9 @@ fn write_sync(path: &Path, content: &[u8]) -> Result<(), String> {
 fn public_from_receipt(r: &Receipt) -> Result<ChainPublic, String> {
     fn read32(hexstr: &str) -> Result<Bytes32, String> {
         let bytes = hex::decode(hexstr).map_err(|e| e.to_string())?;
-        bytes.try_into().map_err(|_| "expected 32 bytes".to_string())
+        bytes
+            .try_into()
+            .map_err(|_| "expected 32 bytes".to_string())
     }
     if target_from_nbits(r.nbits)? != read32(&r.target_hex)? {
         return Err("target does not match compact nBits".into());
@@ -95,7 +97,10 @@ fn public_from_receipt(r: &Receipt) -> Result<ChainPublic, String> {
 }
 
 fn assert_range(start: u32, end: u32, max_chunk: u32) -> Result<(), String> {
-    if start < FIRST || end > LAST || end < start || end - start + 1 > max_chunk
+    if start < FIRST
+        || end > LAST
+        || end < start
+        || end - start + 1 > max_chunk
         || start / 2016 != end / 2016
     {
         return Err("header range invalid or crosses an epoch".into());
@@ -103,12 +108,19 @@ fn assert_range(start: u32, end: u32, max_chunk: u32) -> Result<(), String> {
     Ok(())
 }
 
-fn verified_batch(root: &Path, start: u32, end: u32, parent: Option<&str>) -> Result<Receipt, String> {
+fn verified_batch(
+    root: &Path,
+    start: u32,
+    end: u32,
+    parent: Option<&str>,
+) -> Result<Receipt, String> {
     assert_range(start, end, MAX_HEADERS_PER_BATCH)?;
     let path = batch_path(root, start, end);
     let metadata = read_bounded(&path.join("checkpoint.json"), 16_384)?;
     let receipt: Receipt = serde_json::from_slice(&metadata).map_err(|e| e.to_string())?;
-    if receipt.version != FORMAT || receipt.start != start || receipt.end != end
+    if receipt.version != FORMAT
+        || receipt.start != start
+        || receipt.end != end
         || receipt.parent_proof_sha256.as_deref() != parent
     {
         return Err("checkpoint version, range, or predecessor mismatch".into());
@@ -126,8 +138,9 @@ fn verified_batch(root: &Path, start: u32, end: u32, parent: Option<&str>) -> Re
     }
     let proof = Proof::<Bn254>::deserialize_compressed(&mut BufReader::new(proof_bytes.as_slice()))
         .map_err(|e| e.to_string())?;
-    let vk = VerifyingKey::<Bn254>::deserialize_compressed(&mut BufReader::new(vk_bytes.as_slice()))
-        .map_err(|e| e.to_string())?;
+    let vk =
+        VerifyingKey::<Bn254>::deserialize_compressed(&mut BufReader::new(vk_bytes.as_slice()))
+            .map_err(|e| e.to_string())?;
     let pvk = Groth16::<Bn254>::process_vk(&vk).map_err(|e| e.to_string())?;
     let valid = Groth16::<Bn254>::verify_with_processed_vk(&pvk, &claimed.inputs(), &proof)
         .map_err(|e| e.to_string())?;
@@ -137,7 +150,12 @@ fn verified_batch(root: &Path, start: u32, end: u32, parent: Option<&str>) -> Re
     Ok(receipt)
 }
 
-fn make_batch(root: &Path, start: u32, end: u32, parent: Option<String>) -> Result<Receipt, String> {
+fn make_batch(
+    root: &Path,
+    start: u32,
+    end: u32,
+    parent: Option<String>,
+) -> Result<Receipt, String> {
     assert_range(start, end, MAX_HEADERS_PER_BATCH)?;
     let path = batch_path(root, start, end);
     fs::create_dir_all(&path).map_err(|e| e.to_string())?;
@@ -147,8 +165,7 @@ fn make_batch(root: &Path, start: u32, end: u32, parent: Option<String>) -> Resu
     let mut rng = StdRng::seed_from_u64(0x0067_796d);
     let (pk, vk) = Groth16::<Bn254>::circuit_specific_setup(circuit.clone(), &mut rng)
         .map_err(|e| e.to_string())?;
-    let proof = Groth16::<Bn254>::prove(&pk, circuit, &mut rng)
-        .map_err(|e| e.to_string())?;
+    let proof = Groth16::<Bn254>::prove(&pk, circuit, &mut rng).map_err(|e| e.to_string())?;
     drop(pk);
     let pvk = Groth16::<Bn254>::process_vk(&vk).map_err(|e| e.to_string())?;
     if !Groth16::<Bn254>::verify_with_processed_vk(&pvk, &public.inputs(), &proof)
@@ -159,8 +176,11 @@ fn make_batch(root: &Path, start: u32, end: u32, parent: Option<String>) -> Resu
 
     let mut pb = Vec::new();
     let mut vb = Vec::new();
-    proof.serialize_compressed(&mut pb).map_err(|e| e.to_string())?;
-    vk.serialize_compressed(&mut vb).map_err(|e| e.to_string())?;
+    proof
+        .serialize_compressed(&mut pb)
+        .map_err(|e| e.to_string())?;
+    vk.serialize_compressed(&mut vb)
+        .map_err(|e| e.to_string())?;
     let receipt = Receipt {
         version: FORMAT,
         start,
@@ -183,9 +203,20 @@ fn make_batch(root: &Path, start: u32, end: u32, parent: Option<String>) -> Resu
 
 /// Scan every requested header range and cryptographically verify on recovery.
 /// No resume decision uses a file's existence without full Groth16 verification.
-fn run(root: &Path, start: u32, end: u32, chunk: u32, verify_only: bool, max_new: Option<u32>) -> Result<(usize, usize), String> {
-    if chunk == 0 || chunk > MAX_HEADERS_PER_BATCH || start < FIRST || end > LAST
-        || end < start || start / 2016 != end / 2016
+fn run(
+    root: &Path,
+    start: u32,
+    end: u32,
+    chunk: u32,
+    verify_only: bool,
+    max_new: Option<u32>,
+) -> Result<(usize, usize), String> {
+    if chunk == 0
+        || chunk > MAX_HEADERS_PER_BATCH
+        || start < FIRST
+        || end > LAST
+        || end < start
+        || start / 2016 != end / 2016
     {
         return Err("invalid requested range or chunk size".into());
     }
@@ -225,8 +256,10 @@ fn run(root: &Path, start: u32, end: u32, chunk: u32, verify_only: bool, max_new
 }
 
 fn parse_u32(value: Option<&String>, field: &str) -> u32 {
-    value.unwrap_or_else(|| panic!("missing {field}"))
-        .parse::<u32>().unwrap_or_else(|_| panic!("invalid {field}"))
+    value
+        .unwrap_or_else(|| panic!("missing {field}"))
+        .parse::<u32>()
+        .unwrap_or_else(|_| panic!("invalid {field}"))
 }
 
 fn main() {
@@ -235,15 +268,37 @@ fn main() {
         eprintln!("usage: checkpoint_headers prove|verify DIRECTORY [--start 959617] [--end 959620] [--chunk-size 1] [--max-new-chunks N]");
         std::process::exit(2);
     }
-    let value = |key: &str| args.iter().position(|x| x == key).and_then(|i| args.get(i + 1));
-    let start = value("--start").map(|x| parse_u32(Some(x), "start")).unwrap_or(FIRST);
-    let end = value("--end").map(|x| parse_u32(Some(x), "end")).unwrap_or(FIRST + 3);
-    let chunk = value("--chunk-size").map(|x| parse_u32(Some(x), "chunk-size")).unwrap_or(1);
+    let value = |key: &str| {
+        args.iter()
+            .position(|x| x == key)
+            .and_then(|i| args.get(i + 1))
+    };
+    let start = value("--start")
+        .map(|x| parse_u32(Some(x), "start"))
+        .unwrap_or(FIRST);
+    let end = value("--end")
+        .map(|x| parse_u32(Some(x), "end"))
+        .unwrap_or(FIRST + 3);
+    let chunk = value("--chunk-size")
+        .map(|x| parse_u32(Some(x), "chunk-size"))
+        .unwrap_or(1);
     let cap = value("--max-new-chunks").map(|x| parse_u32(Some(x), "max-new-chunks"));
-    let result = run(Path::new(&args[2]), start, end, chunk, args[1] == "verify", cap);
+    let result = run(
+        Path::new(&args[2]),
+        start,
+        end,
+        chunk,
+        args[1] == "verify",
+        cap,
+    );
     match result {
-        Ok((existing, created)) => println!("verified_existing={existing} created_and_verified={created}"),
-        Err(e) => { eprintln!("checkpoint proving failed: {e}"); std::process::exit(1); }
+        Ok((existing, created)) => {
+            println!("verified_existing={existing} created_and_verified={created}")
+        }
+        Err(e) => {
+            eprintln!("checkpoint proving failed: {e}");
+            std::process::exit(1);
+        }
     }
 }
 
@@ -253,21 +308,25 @@ mod tests {
     #[test]
     fn range_check_rejects_invalid_or_oversized_batches() {
         assert!(assert_range(FIRST, FIRST, 1).is_ok());
-        assert!(assert_range(FIRST, FIRST+64, 64).is_err());
-        assert!(assert_range(FIRST-1, FIRST, 64).is_err());
-        assert!(assert_range(FIRST+1, FIRST, 64).is_err());
+        assert!(assert_range(FIRST, FIRST + 64, 64).is_err());
+        assert!(assert_range(FIRST - 1, FIRST, 64).is_err());
+        assert!(assert_range(FIRST + 1, FIRST, 64).is_err());
         assert!(assert_range(FIRST, FIRST, 0).is_err());
     }
     #[test]
     fn public_statement_fails_if_target_is_changed() {
         let c = chain_from_txt(HEADERS, FIRST, 1).unwrap();
         let receipt = Receipt {
-            version: FORMAT, start: FIRST, end: FIRST,
+            version: FORMAT,
+            start: FIRST,
+            end: FIRST,
             start_prev_hex: hex::encode(c.public.prev),
             end_hash_hex: hex::encode(c.public.end),
             nbits: c.public.nbits,
             target_hex: hex::encode([0u8; 32]),
-            parent_proof_sha256: None, proof_sha256: String::new(), vk_sha256: String::new(),
+            parent_proof_sha256: None,
+            proof_sha256: String::new(),
+            vk_sha256: String::new(),
         };
         assert!(public_from_receipt(&receipt).is_err());
     }
