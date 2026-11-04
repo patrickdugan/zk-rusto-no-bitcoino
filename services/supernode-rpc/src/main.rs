@@ -9,7 +9,8 @@ use rust_bitcoin_supernode_rpc::jobs::{JobLimits, JobManager, WorkerPrograms};
 #[cfg(unix)]
 use rust_bitcoin_supernode_rpc::statement_broker::IsolatedStatementRunner;
 use rust_bitcoin_supernode_rpc::statements::{
-    NovaPolicy, NovaProgram, PaymentPolicy, PinnedProgram, StatementRunner, StatementVerifiers,
+    NovaNetwork, NovaPolicy, NovaProgram, PaymentPolicy, PinnedProgram, StatementRunner,
+    StatementVerifiers,
 };
 use rust_bitcoin_supernode_rpc::verification::RaitoVerifier;
 #[cfg(unix)]
@@ -55,6 +56,11 @@ fn statement_verifiers(dir: Option<String>) -> Result<StatementVerifiers, Box<dy
                 .split(',')
                 .map(|c| c.trim().to_owned())
                 .collect(),
+            // mainnet unless set; Core must serve the same chain.
+            network: match env::var("SUPERNODE_NOVA_NETWORK") {
+                Ok(name) => NovaNetwork::parse(&name)?,
+                Err(_) => NovaNetwork::Mainnet,
+            },
         }),
         Err(_) => None,
     };

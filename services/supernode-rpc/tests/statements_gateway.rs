@@ -16,7 +16,8 @@
 use axum::{routing::post, Json, Router};
 use bitcoin::hashes::{sha256, Hash};
 use rust_bitcoin_supernode_rpc::statements::{
-    NovaPolicy, NovaProgram, PaymentPolicy, PinnedProgram, StatementRunner, StatementVerifiers,
+    NovaNetwork, NovaPolicy, NovaProgram, PaymentPolicy, PinnedProgram, StatementRunner,
+    StatementVerifiers,
 };
 use rust_bitcoin_supernode_rpc::{router, CoreRpc, Gateway};
 use serde_json::{json, Value};
@@ -169,6 +170,7 @@ fn nova_policy(checkpoint: &str) -> NovaPolicy {
     NovaPolicy {
         vk_sha256: NOVA_VK_SHA256.into(),
         checkpoints: vec![checkpoint.into()],
+        network: NovaNetwork::Mainnet,
     }
 }
 
@@ -207,6 +209,18 @@ async fn start_with(
         eprintln!("skipped: verifier variables unset");
         return None;
     };
+    Some(serve(runner, chain, txout, nova, payment, require_expected_output).await)
+}
+
+/// A gateway with `runner` over a mock Core; returns its URL.
+async fn serve(
+    runner: StatementRunner,
+    chain: Chain,
+    txout: TxOut,
+    nova: Option<NovaPolicy>,
+    payment: Option<PaymentPolicy>,
+    require_expected_output: bool,
+) -> String {
     let core = CoreRpc::new(&mock_core(chain, txout).await, "u".into(), "p".into()).unwrap();
     let verifiers = StatementVerifiers::new(runner, nova, payment)
         .unwrap()
@@ -219,7 +233,7 @@ async fn start_with(
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
     tokio::spawn(async move { axum::serve(listener, router(gateway)).await.unwrap() });
-    Some(format!("http://{address}"))
+    format!("http://{address}")
 }
 
 async fn call(url: &str, token: &str, params: Value) -> Value {
@@ -607,4 +621,120 @@ async fn nova_spv_payment_is_verified_chained_and_bound_to_core() {
     chain.lock().unwrap().get_mut(&959_984).unwrap().0 = "33".repeat(32);
     let reorg = call(&url, CONTROL, json!(["nova_spv_payment_v1", bundle])).await;
     assert_eq!(reorg["error"]["code"], -32050, "{reorg}");
+}
+
+const T4_TXID: &str = "5604bd9493e51721d8b38913f6edaa7b973a4991bf874a43b4c01db9ea4c4747";
+const T4_VK_SHA256: &str = "2495da9bf5965030e45fa2cef1a43ade78e099ca844b5d3a9abf56400447eabe";
+/// Testnet4 checkpoint 99,008 (chainwork from Core).
+const T4_CHECKPOINT: &str = "39bc650e1f747a954a267b9507d9e9124fbc000f582bb11bd143fdb4d4ffeee2";
+
+/// Testnet4 points of the payment fixture: checkpoint, block and tip.
+fn testnet4_chain() -> Chain {
+    let point = |hash: &str, work: &str| (hash.to_owned(), work.to_owned());
+    Arc::new(Mutex::new(HashMap::from([
+        (
+            99_008,
+            point(
+                "00000000913000b0072e0cc42cc1851bb13853e799d98318dadd1389726cc1ad",
+                "0x4c76a4af2fc07a98ff9",
+            ),
+        ),
+        (
+            100_008,
+            point(
+                "0000000000000000c3b3aa6aedd02b1de82053f3307ac14509cfaa7515e59494",
+                "0x516c61db08debad11f2",
+            ),
+        ),
+        (
+            158_948,
+            point(
+                "000000008352c7932dc1685431177fc299ce24ac7ca7427c0d70c9744dffd9fd",
+                "0xf0dc9e835d72c52fb21",
+            ),
+        ),
+    ])))
+}
+
+/// Direct verifiers with the testnet4 key (`SUPERNODE_TEST_NOVA_TESTNET4_VK`,
+/// from `btc-header-fold vk-export 10 OUT --network testnet4`). The
+/// separate-UID broker holds the mainnet key, so this test runs direct only.
+fn testnet4_runner() -> Option<StatementRunner> {
+    if std::env::var_os("SUPERNODE_TEST_STATEMENT_SOCKET").is_some() {
+        return None;
+    }
+    let vk = std::env::var("SUPERNODE_TEST_NOVA_TESTNET4_VK").ok()?;
+    let nova = NovaProgram {
+        program: pinned("SUPERNODE_TEST_NOVA_VERIFIER")?,
+        vk_path: std::fs::canonicalize(vk).unwrap(),
+    };
+    let work_dir = std::env::temp_dir().join(format!("statements-t4-{}", std::process::id()));
+    Some(StatementRunner::Direct {
+        work_dir,
+        nova: Some(nova),
+        payment: None,
+    })
+}
+
+fn testnet4_policy(network: NovaNetwork) -> NovaPolicy {
+    NovaPolicy {
+        vk_sha256: T4_VK_SHA256.into(),
+        checkpoints: vec![T4_CHECKPOINT.into()],
+        network,
+    }
+}
+
+/// A testnet4 payment 58,941 blocks deep: tx 5604bd94 in block 100,008, under
+/// Nova proofs 99,008 -> 100,008 -> 158,948 that enforce testnet4's
+/// min-difficulty and BIP94 rules.
+#[tokio::test]
+async fn testnet4_nova_spv_payment_is_verified_and_bound_to_core() {
+    let Some(runner) = testnet4_runner() else {
+        eprintln!("skipped: testnet4 verifier variables unset");
+        return;
+    };
+    let chain = testnet4_chain();
+    let spent = Arc::new(Mutex::new(Value::Null));
+    let policy = Some(testnet4_policy(NovaNetwork::Testnet4));
+    let url = serve(runner, chain.clone(), spent, policy, None, false).await;
+    let bundle = fixture("nova-header-chain/fixtures/testnet4/payment100008.nsp1");
+
+    let ok = call(&url, CONTROL, json!(["nova_spv_payment_v1", bundle, T4_TXID, 0])).await;
+    let r = &ok["result"];
+    assert_eq!(r["proof_verified"], true, "{ok}");
+    assert_eq!(r["unspent_at_lookup"], false);
+    let s = &r["verified_statement"];
+    assert_eq!(s["statement"], "btc_nova_spv_payment_testnet4_v1");
+    assert_eq!(s["chain_to_block"]["network"], "testnet4");
+    assert_eq!(s["block_height"], 100_008);
+    assert_eq!(s["tip_height"], 158_948);
+    assert_eq!(s["confirmations"], 58_941);
+    assert_eq!(s["value_sats"], 4_249_405_972u64);
+    assert_eq!(
+        s["script_sha256"],
+        "f9259fb7f8d0ca556c1b282bf81122ff169a6af5a64acef82ef0daaa14ed7840"
+    );
+
+    // A reorganized tip is refused.
+    chain.lock().unwrap().get_mut(&158_948).unwrap().0 = "11".repeat(32);
+    let reorg = call(&url, CONTROL, json!(["nova_spv_payment_v1", bundle])).await;
+    assert_eq!(reorg["error"]["code"], -32050, "{reorg}");
+}
+
+/// A gateway configured for mainnet refuses the testnet4 proof even when its
+/// operator pins the testnet4 key: the receipts name testnet4.
+#[tokio::test]
+async fn mainnet_policy_refuses_a_testnet4_payment() {
+    let Some(runner) = testnet4_runner() else {
+        eprintln!("skipped: testnet4 verifier variables unset");
+        return;
+    };
+    let spent = Arc::new(Mutex::new(Value::Null));
+    let policy = Some(testnet4_policy(NovaNetwork::Mainnet));
+    let url = serve(runner, testnet4_chain(), spent, policy, None, false).await;
+    let bundle = fixture("nova-header-chain/fixtures/testnet4/payment100008.nsp1");
+    let refused = call(&url, CONTROL, json!(["nova_spv_payment_v1", bundle])).await;
+    assert!(refused["result"].is_null(), "{refused}");
+    let message = refused["error"]["message"].as_str().unwrap_or("");
+    assert!(message.contains("does not bind"), "{refused}");
 }

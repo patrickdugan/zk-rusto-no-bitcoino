@@ -286,3 +286,17 @@ k=10 `2495da9bf5965030e45fa2cef1a43ade78e099ca844b5d3a9abf56400447eabe`.
 Not done: an authenticated testnet4 checkpoint (it needs a node for
 chainwork), and testnet4 in `pack-spv` and the statement-verifier broker,
 which pin the mainnet key.
+
+### Deep testnet4 SPV payment, 2026-11-05
+
+`fixtures/testnet4/payment100008.nsp1` (27,776 B) proves output 0 of tx
+`5604bd94…4747` in block 100,008 with 58,941 confirmations. It holds:
+- Nova proofs at k=10: checkpoint 99,008 → 100,008 → 158,948, with
+  chainwork from Core;
+- Core's MerkleBlock and the raw transaction.
+
+The gateway verifies it in `tests/statements_gateway.rs` and verified it
+live against a testnet4 node. `scripts/export-node-headers.ps1` exported
+the headers from that node. `TESTNET4_SPV_BENCHMARKS.md` reports the
+payment proven at k=10, 20, 40 and 50. Folding cost about 0.09 s per header
+at every k on this CPU, so more memory did not prove faster.
