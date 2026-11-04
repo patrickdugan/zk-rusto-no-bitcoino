@@ -1,0 +1,6 @@
+{"start":959617,"ram_mb":24339,"time":"2026-11-04T18:03:04.9264592+08:00","available_mb":15537,"cap_mb":13000,"kind":"host","end":959744,"chunk_size":64}
+{"exit_code":null,"peak_rss_mb":13040.5,"elapsed_s":17.36,"kind":"phase","phase":"first-batch","over_cap":true}
+{"start":959617,"ram_mb":24339,"time":"2026-11-04T18:05:34.6401214+08:00","available_mb":15884,"cap_mb":13000,"kind":"host","end":959744,"chunk_size":32}
+{"exit_code":0,"peak_rss_mb":10112.6,"elapsed_s":98.42,"kind":"phase","phase":"first-batch","over_cap":false}
+{"exit_code":0,"peak_rss_mb":10138.1,"elapsed_s":366.62,"kind":"phase","phase":"resume","over_cap":false}
+{"exit_code":0,"peak_rss_mb":3,"elapsed_s":0.27,"kind":"phase","phase":"verify","over_cap":false}

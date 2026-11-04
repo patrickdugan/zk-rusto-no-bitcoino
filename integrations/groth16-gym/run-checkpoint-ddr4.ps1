@@ -1,12 +1,15 @@
-# Windows 15 GB DDR4: 128 Bitcoin headers in two verified 64-header batches.
-# Builds the native BN254 Groth16 gym once, then proves exactly one batch,
-# resumes to a second batch, and verifies the entire bundle.
+# Windows 15 GB DDR4: 128 Bitcoin headers in four verified 32-header batches.
+# Builds the native BN254 Groth16 gym once, proves exactly one batch, resumes
+# for the remaining batches, and verifies the entire bundle.
 #
 # powershell -ExecutionPolicy Bypass -File integrations/groth16-gym/run-checkpoint-ddr4.ps1
-# Additional options: -CapMB 13000 -ChunkSize 64 -StartHeight 959617 -EndHeight 959744
+# Additional options: -CapMB 13000 -ChunkSize 32 -StartHeight 959617 -EndHeight 959744
+#
+# A 32-header batch peaks at about 10.1 GB. A 64-header batch needs about
+# 20.6 GiB committed, so it does not fit a 13 GB cap (see CHECKPOINTS.md).
 param(
     [int]$CapMB = 13000,
-    [ValidateRange(1,64)][int]$ChunkSize = 64,
+    [ValidateRange(1,64)][int]$ChunkSize = 32,
     [int]$StartHeight = 959617,
     [int]$EndHeight = 959744,
     [string]$OutputDir = ''
@@ -24,7 +27,7 @@ if ($StartHeight -gt $EndHeight) { throw 'start height exceeds end height' }
 if (([math]::Floor($StartHeight / 2016)) -ne ([math]::Floor($EndHeight / 2016))) {
     throw 'The selected range must fit in one difficulty epoch'
 }
-if (-not $OutputDir) { $OutputDir = Join-Path $PSScriptRoot '.proofs\ddr4-64' }
+if (-not $OutputDir) { $OutputDir = Join-Path $PSScriptRoot ".proofs\ddr4-$ChunkSize" }
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Force $OutputDir | Out-Null
 $log = Join-Path $OutputDir 'ddr4-benchmark.jsonl'
@@ -55,6 +58,8 @@ function Run-Guarded([string]$phase, [string[]]$arguments) {
     if (Test-Path $stderr) { Remove-Item $stderr -Force }
     $start = Get-Date
     $process = Start-Process -FilePath $bin -ArgumentList $arguments -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    # Cache the process handle now; otherwise Windows PowerShell reports a null ExitCode after exit.
+    $null = $process.Handle
     $peak = 0L
     $killed = $false
     try {
