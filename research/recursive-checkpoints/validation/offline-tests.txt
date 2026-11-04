@@ -1,0 +1,47 @@
+test_128_mib_tolerance_boundary (test_recursive_checkpoint_gate.GateTests.test_128_mib_tolerance_boundary) ... ok
+test_boolean_integer_rejected (test_recursive_checkpoint_gate.GateTests.test_boolean_integer_rejected) ... ok
+test_changed_baseline_rejected (test_recursive_checkpoint_gate.GateTests.test_changed_baseline_rejected) ... ok
+test_complete_shape_never_authorizes_deploy_or_pruning (test_recursive_checkpoint_gate.GateTests.test_complete_shape_never_authorizes_deploy_or_pruning) ... ok
+test_corrupt_log_is_rejected (test_recursive_checkpoint_gate.GateTests.test_corrupt_log_is_rejected) ... ok
+test_duplicate_check_rejected (test_recursive_checkpoint_gate.GateTests.test_duplicate_check_rejected) ... ok
+test_duplicate_fold_workload_rejected (test_recursive_checkpoint_gate.GateTests.test_duplicate_fold_workload_rejected) ... ok
+test_duplicate_json_key_rejected (test_recursive_checkpoint_gate.GateTests.test_duplicate_json_key_rejected) ... ok
+test_empty_evidence_for_pass_is_blocked (test_recursive_checkpoint_gate.GateTests.test_empty_evidence_for_pass_is_blocked) ... ok
+test_exceeded_cap_is_blocked (test_recursive_checkpoint_gate.GateTests.test_exceeded_cap_is_blocked) ... ok
+test_explicit_synthetic_evidence_is_blocked (test_recursive_checkpoint_gate.GateTests.test_explicit_synthetic_evidence_is_blocked) ... ok
+test_failed_prerequisite_is_blocked (test_recursive_checkpoint_gate.GateTests.test_failed_prerequisite_is_blocked) ... ok
+test_failed_process_is_blocked (test_recursive_checkpoint_gate.GateTests.test_failed_process_is_blocked) ... ok
+test_incomplete_process_tree_is_blocked (test_recursive_checkpoint_gate.GateTests.test_incomplete_process_tree_is_blocked) ... ok
+test_large_memory_growth_is_blocked (test_recursive_checkpoint_gate.GateTests.test_large_memory_growth_is_blocked) ... ok
+test_linux_swap_rejected (test_recursive_checkpoint_gate.GateTests.test_linux_swap_rejected) ... ok
+test_missing_candidate_is_blocked (test_recursive_checkpoint_gate.GateTests.test_missing_candidate_is_blocked) ... ok
+test_missing_log_is_rejected (test_recursive_checkpoint_gate.GateTests.test_missing_log_is_rejected) ... ok
+test_missing_long_run_is_blocked (test_recursive_checkpoint_gate.GateTests.test_missing_long_run_is_blocked) ... ok
+test_missing_phase_is_blocked (test_recursive_checkpoint_gate.GateTests.test_missing_phase_is_blocked) ... ok
+test_nondivisible_workload_rejected (test_recursive_checkpoint_gate.GateTests.test_nondivisible_workload_rejected) ... ok
+test_nonfinite_json_rejected (test_recursive_checkpoint_gate.GateTests.test_nonfinite_json_rejected) ... ok
+test_nonfinite_metrics_rejected (test_recursive_checkpoint_gate.GateTests.test_nonfinite_metrics_rejected) ... ok
+test_nonhex_pin_rejected (test_recursive_checkpoint_gate.GateTests.test_nonhex_pin_rejected) ... ok
+test_other_backend_rejected (test_recursive_checkpoint_gate.GateTests.test_other_backend_rejected) ... ok
+test_oversize_json_rejected (test_recursive_checkpoint_gate.GateTests.test_oversize_json_rejected) ... ok
+test_path_traversal_rejected (test_recursive_checkpoint_gate.GateTests.test_path_traversal_rejected) ... ok
+test_pending_spv_prerequisite_is_blocked (test_recursive_checkpoint_gate.GateTests.test_pending_spv_prerequisite_is_blocked) ... ok
+test_pending_template_is_blocked (test_recursive_checkpoint_gate.GateTests.test_pending_template_is_blocked) ... ok
+test_polling_only_limit_rejected (test_recursive_checkpoint_gate.GateTests.test_polling_only_limit_rejected) ... ok
+test_symlink_rejected (test_recursive_checkpoint_gate.GateTests.test_symlink_rejected) ... ok
+test_template_roundtrip (test_recursive_checkpoint_gate.GateTests.test_template_roundtrip) ... ok
+test_unknown_artifact_rejected (test_recursive_checkpoint_gate.GateTests.test_unknown_artifact_rejected) ... ok
+test_unknown_check_rejected (test_recursive_checkpoint_gate.GateTests.test_unknown_check_rejected) ... ok
+test_unsupported_claim_fields_rejected (test_recursive_checkpoint_gate.GateTests.test_unsupported_claim_fields_rejected) ... ok
+test_width_change_rejected (test_recursive_checkpoint_gate.GateTests.test_width_change_rejected) ... ok
+test_windows_committed_memory_shape (test_recursive_checkpoint_gate.GateTests.test_windows_committed_memory_shape) ... ok
+test_working_set_metric_rejected (test_recursive_checkpoint_gate.GateTests.test_working_set_metric_rejected) ... ok
+test_wrong_cap_rejected (test_recursive_checkpoint_gate.GateTests.test_wrong_cap_rejected) ... ok
+test_wrong_log_digest_rejected (test_recursive_checkpoint_gate.GateTests.test_wrong_log_digest_rejected) ... ok
+test_wrong_network_rejected (test_recursive_checkpoint_gate.GateTests.test_wrong_network_rejected) ... ok
+test_zero_pin_rejected (test_recursive_checkpoint_gate.GateTests.test_zero_pin_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 42 tests in 0.035s
+
+OK
