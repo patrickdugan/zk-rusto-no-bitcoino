@@ -11,7 +11,14 @@
 //! btc-header-fold vk-export K OUT              (deterministic verifier key for fold width K)
 //! btc-header-fold pack-spv OUT VOUT TO_BLOCK.nhc1 TO_TIP.nhc1|- MERKLEBLOCK_HEX TX_HEX
 //!                                              (NSP1 payment bundle for zk.statement.verify)
-use nova_header_chain::native::{early_chainwork, load_headers, Header, State};
+//!
+//! `--network testnet4` (proving, `verify DIR` via DIR/network.txt, `vk-export`)
+//! selects the testnet4 circuit, which has its own keys. Testnet4 proofs need
+//! `--headers-txt` with either `--checkpoint-state` or `--chainwork HEX` (the
+//! checkpoint's cumulative work, a trust input like the rest of the
+//! checkpoint). Their bundles use the magic NHT4 and their receipts the
+//! statement btc_header_chain_testnet4_v1.
+use nova_header_chain::native::{early_chainwork, load_headers, Header, Network, State};
 use nova_header_chain::HeaderStep;
 use nova_snark::{
   nova::{CompressedSNARK, PublicParams, RecursiveSNARK},
@@ -106,59 +113,100 @@ fn tip_display(lo: &F1, hi: &F1) -> String {
 }
 
 /// Bundle layout read by `verify-bundle` and written by `pack`:
-/// b"NHC1" | steps u32 LE | k u32 LE | z0 (17 x 32-byte reprs) | compressed proof.
+/// magic | steps u32 LE | k u32 LE | z0 (17 x 32-byte reprs) | compressed proof.
+/// The magic names the circuit: b"NHC1" mainnet, b"NHT4" testnet4.
 const BUNDLE_MAGIC: &[u8; 4] = b"NHC1";
+const BUNDLE_MAGIC_TESTNET4: &[u8; 4] = b"NHT4";
 const MAX_BUNDLE_BYTES: usize = 1 << 20;
 const MAX_K: usize = 64;
 
-fn rebuild_vk(k: usize) -> Vec<u8> {
-  let shape = HeaderStep { headers: vec![[0u8; 80]; k] };
+fn magic(net: Network) -> &'static [u8; 4] {
+  match net {
+    Network::Mainnet => BUNDLE_MAGIC,
+    Network::Testnet4 => BUNDLE_MAGIC_TESTNET4,
+  }
+}
+
+fn statement(net: Network) -> &'static str {
+  match net {
+    Network::Mainnet => "btc_header_chain_v1",
+    Network::Testnet4 => "btc_header_chain_testnet4_v1",
+  }
+}
+
+fn network_arg(args: &[String]) -> Network {
+  arg(args, "--network").map(|v| Network::parse(&v).expect("--network mainnet|testnet4")).unwrap_or_default()
+}
+
+fn rebuild_vk(k: usize, net: Network) -> Vec<u8> {
+  let shape = HeaderStep::on(net, vec![[0u8; 80]; k]);
   let pp = PublicParams::<E1, E2, C>::setup(&shape, &*S1::ck_floor(), &*S2::ck_floor()).unwrap();
   let (_, vk) = CompressedSNARK::<E1, E2, C, S1, S2>::setup(&pp).unwrap();
   bincode::serialize(&vk).unwrap()
 }
 
-fn reject(msg: &str) -> i32 {
+fn reject(net: Network, msg: &str) -> i32 {
   let msg = msg.replace('\\', "\\\\").replace('"', "\\\"");
-  println!("{{\"statement\":\"btc_header_chain_v1\",\"verified\":false,\"error\":\"{msg}\"}}");
+  println!("{{\"statement\":\"{}\",\"verified\":false,\"error\":\"{msg}\"}}", statement(net));
   1
 }
 
-/// Split a bundle into (steps, k, z0, proof), bounding every field.
-fn unpack(b: &[u8]) -> Result<(usize, usize, Vec<u8>, Vec<u8>), String> {
-  if b.len() > MAX_BUNDLE_BYTES || b.len() < 12 + 17 * 32 || &b[..4] != BUNDLE_MAGIC {
-    return Err("not an NHC1 bundle".into());
+/// Split a bundle into (network, steps, k, z0, proof), bounding every field.
+#[allow(clippy::type_complexity)]
+fn unpack(b: &[u8]) -> Result<(Network, usize, usize, Vec<u8>, Vec<u8>), String> {
+  if b.len() > MAX_BUNDLE_BYTES || b.len() < 12 + 17 * 32 {
+    return Err("not an NHC1/NHT4 bundle".into());
   }
+  let net = match &b[..4] {
+    m if m == BUNDLE_MAGIC => Network::Mainnet,
+    m if m == BUNDLE_MAGIC_TESTNET4 => Network::Testnet4,
+    _ => return Err("not an NHC1/NHT4 bundle".into()),
+  };
   let steps = u32::from_le_bytes(b[4..8].try_into().unwrap()) as usize;
   let k = u32::from_le_bytes(b[8..12].try_into().unwrap()) as usize;
   if steps == 0 || k == 0 || k > MAX_K {
     return Err("bundle step count or fold width out of range".into());
   }
-  Ok((steps, k, b[12..12 + 17 * 32].to_vec(), b[12 + 17 * 32..].to_vec()))
+  Ok((net, steps, k, b[12..12 + 17 * 32].to_vec(), b[12 + 17 * 32..].to_vec()))
+}
+
+/// DIR/network.txt as written by --save; absent means mainnet.
+fn dir_network(dir: &std::path::Path) -> Network {
+  match std::fs::read_to_string(dir.join("network.txt")) {
+    Ok(s) => Network::parse(s.trim()).expect("network.txt: mainnet|testnet4"),
+    Err(_) => Network::Mainnet,
+  }
 }
 
 /// Verify a compressed proof and print its typed receipt. The verifier key
 /// (~250 MB, mostly IPA generators) is a deterministic function of the
 /// circuit shape: it is read from `vk_path` when given, else rebuilt; its
 /// SHA-256 is reported so the caller can pin it.
-fn verify(proof_b: Vec<u8>, z0_b: Vec<u8>, steps: usize, k: usize, vk_path: Option<&std::path::Path>) -> i32 {
+fn verify(
+  net: Network,
+  proof_b: Vec<u8>,
+  z0_b: Vec<u8>,
+  steps: usize,
+  k: usize,
+  vk_path: Option<&std::path::Path>,
+) -> i32 {
   let vk_b = match vk_path {
     Some(p) => match std::fs::read(p) {
       Ok(b) => b,
-      Err(e) => return reject(&format!("vk: {e}")),
+      Err(e) => return reject(net, &format!("vk: {e}")),
     },
-    None => rebuild_vk(k),
+    None => rebuild_vk(k, net),
   };
   let vk: nova_snark::nova::VerifierKey<E1, E2, C, S1, S2> = match bincode::deserialize(&vk_b) {
     Ok(v) => v,
-    Err(e) => return reject(&format!("vk decode: {e}")),
+    Err(e) => return reject(net, &format!("vk decode: {e}")),
   };
   let snark: CompressedSNARK<E1, E2, C, S1, S2> = match bincode::deserialize(&proof_b) {
     Ok(v) => v,
-    Err(e) => return reject(&format!("proof decode: {e}")),
+    Err(e) => return reject(net, &format!("proof decode: {e}")),
   };
   if z0_b.len() != 17 * 32 {
-    return reject("z0 must hold 17 field elements");
+    return reject(net, "z0 must hold 17 field elements");
   }
   let mut z0 = Vec::with_capacity(17);
   for c in z0_b.chunks(32) {
@@ -166,9 +214,14 @@ fn verify(proof_b: Vec<u8>, z0_b: Vec<u8>, steps: usize, k: usize, vk_path: Opti
     r.as_mut().copy_from_slice(c);
     match Option::<F1>::from(F1::from_repr(r)) {
       Some(f) => z0.push(f),
-      None => return reject("non-canonical field element in z0"),
+      None => return reject(net, "non-canonical field element in z0"),
     }
   }
+  // Mainnet receipts keep their original fields; testnet4 ones name the network.
+  let net_field = match net {
+    Network::Mainnet => String::new(),
+    Network::Testnet4 => ",\"network\":\"testnet4\"".to_string(),
+  };
   let t = Instant::now();
   let res = snark.verify(&vk, steps, &z0);
   let secs = t.elapsed().as_secs_f64();
@@ -176,15 +229,15 @@ fn verify(proof_b: Vec<u8>, z0_b: Vec<u8>, steps: usize, k: usize, vk_path: Opti
   match res {
     Ok(zn) => {
       println!(
-        "{{\"statement\":\"btc_header_chain_v1\",\"verifier\":\"nova-snark 0.76.0 pallas/vesta ipa, spartan compressed\",\"vk_sha256\":\"{}\",\"proof_sha256\":\"{}\",\"checkpoint_state_sha256\":\"{}\",\"end_state_sha256\":\"{}\",\"checkpoint\":{{\"height\":{},\"tip_hash\":\"{}\",\"chainwork\":\"{}\"}},\"end\":{{\"height\":{},\"tip_hash\":\"{}\",\"chainwork\":\"{}\"}},\"headers\":{},\"verify_seconds\":{:.3},\"verified\":true}}",
-        sha(&vk_b), sha(&proof_b), sha(&z0_b), sha(&z_bytes(&zn)),
+        "{{\"statement\":\"{}\"{net_field},\"verifier\":\"nova-snark 0.76.0 pallas/vesta ipa, spartan compressed\",\"vk_sha256\":\"{}\",\"proof_sha256\":\"{}\",\"checkpoint_state_sha256\":\"{}\",\"end_state_sha256\":\"{}\",\"checkpoint\":{{\"height\":{},\"tip_hash\":\"{}\",\"chainwork\":\"{}\"}},\"end\":{{\"height\":{},\"tip_hash\":\"{}\",\"chainwork\":\"{}\"}},\"headers\":{},\"verify_seconds\":{:.3},\"verified\":true}}",
+        statement(net), sha(&vk_b), sha(&proof_b), sha(&z0_b), sha(&z_bytes(&zn)),
         big(&z0[0]), tip_display(&z0[1], &z0[2]), hex_be(&big(&z0[3])),
         big(&zn[0]), tip_display(&zn[1], &zn[2]), hex_be(&big(&zn[3])),
         steps * k, secs
       );
       0
     }
-    Err(e) => reject(&format!("{e:?}")),
+    Err(e) => reject(net, &format!("{e:?}")),
   }
 }
 
@@ -197,15 +250,16 @@ fn main() {
       let read = |n: &str| std::fs::read(dir.join(n)).unwrap_or_else(|e| panic!("{n}: {e}"));
       let num = |n: &str| String::from_utf8(read(n)).unwrap().trim().parse::<usize>().unwrap();
       let vk = vk_arg.or_else(|| Some(dir.join("vk.bin")).filter(|p| p.exists()));
-      std::process::exit(verify(read("proof.bin"), read("z0.bin"), num("steps.txt"), num("k.txt"), vk.as_deref()));
+      let net = dir_network(dir);
+      std::process::exit(verify(net, read("proof.bin"), read("z0.bin"), num("steps.txt"), num("k.txt"), vk.as_deref()));
     }
     Some("verify-bundle") => {
       let code = match std::fs::read(args.get(2).expect("verify-bundle FILE")) {
         Ok(b) => match unpack(&b) {
-          Ok((steps, k, z0, proof)) => verify(proof, z0, steps, k, vk_arg.as_deref()),
-          Err(e) => reject(&e),
+          Ok((net, steps, k, z0, proof)) => verify(net, proof, z0, steps, k, vk_arg.as_deref()),
+          Err(e) => reject(Network::Mainnet, &e),
         },
-        Err(e) => reject(&format!("bundle: {e}")),
+        Err(e) => reject(Network::Mainnet, &format!("bundle: {e}")),
       };
       std::process::exit(code);
     }
@@ -213,7 +267,7 @@ fn main() {
       let dir = std::path::Path::new(args.get(2).expect("pack DIR OUT"));
       let read = |n: &str| std::fs::read(dir.join(n)).unwrap_or_else(|e| panic!("{n}: {e}"));
       let num = |n: &str| String::from_utf8(read(n)).unwrap().trim().parse::<u32>().unwrap();
-      let mut b = BUNDLE_MAGIC.to_vec();
+      let mut b = magic(dir_network(dir)).to_vec();
       b.extend(num("steps.txt").to_le_bytes());
       b.extend(num("k.txt").to_le_bytes());
       b.extend(read("z0.bin"));
@@ -224,7 +278,7 @@ fn main() {
     }
     Some("vk-export") => {
       let k: usize = args.get(2).expect("vk-export K OUT").parse().unwrap();
-      let b = rebuild_vk(k);
+      let b = rebuild_vk(k, network_arg(&args));
       std::fs::write(args.get(3).expect("vk-export K OUT"), &b).unwrap();
       println!("vk_sha256={}", hex::encode(Sha256::digest(&b)));
       return;
@@ -252,6 +306,7 @@ fn main() {
   let compress = args.iter().any(|a| a == "--compress");
   let corrupt: Option<u32> = arg(&args, "--corrupt-nonce").map(|v| v.parse().unwrap());
   let data = std::path::PathBuf::from(arg(&args, "--data").unwrap_or_else(|| "data".into()));
+  let net = network_arg(&args);
 
   let (hs, cp) = match (arg(&args, "--checkpoint-state"), arg(&args, "--headers-txt")) {
     (Some(state), Some(txt)) => {
@@ -259,12 +314,21 @@ fn main() {
       let mut cp = sp1_checkpoint(&std::fs::read(state).expect("checkpoint state"));
       // Advance natively from the file's checkpoint to --start.
       while cp.height < start {
-        cp = cp.apply(&hs[&(cp.height + 1)]).expect("headers before --start must be valid");
+        cp = cp.apply_on(net, &hs[&(cp.height + 1)]).expect("headers before --start must be valid");
       }
       assert_eq!(cp.height, start, "--start precedes the checkpoint state");
       (hs, cp)
     }
+    (None, Some(txt)) => {
+      // Checkpoint from the headers file itself: it must hold the checkpoint's
+      // last 11 headers and its period's first header. Chainwork is a trust input.
+      let hs = load_headers_txt(std::path::Path::new(&txt));
+      let cw = arg(&args, "--chainwork").expect("--headers-txt without --checkpoint-state needs --chainwork HEX");
+      let cw = BigUint::parse_bytes(cw.trim_start_matches("0x").as_bytes(), 16).expect("--chainwork is hex");
+      (hs.clone(), State::checkpoint(start, &hs, cw))
+    }
     _ => {
+      assert_eq!(net, Network::Mainnet, "the bundled data/ headers are mainnet; pass --headers-txt");
       let hs = load_headers(&data);
       let cp = State::checkpoint(start, &hs, early_chainwork(start));
       (hs, cp)
@@ -280,14 +344,14 @@ fn main() {
       }
       // The native mirror rejects corrupted headers; keep going so the
       // prover/verifier sees them.
-      state = state.apply(h).unwrap_or_else(|e| {
+      state = state.apply_on(net, h).unwrap_or_else(|e| {
         eprintln!("native check rejects header {}: {e}", start + 1 + s * k + i as u32);
         state.clone()
       });
     }
-    circuits.push(HeaderStep { headers });
+    circuits.push(HeaderStep::on(net, headers));
   }
-  println!("checkpoint {start}, {steps} step(s) x {k} header(s), compress={compress}");
+  println!("network {}, checkpoint {start}, {steps} step(s) x {k} header(s), compress={compress}", net.name());
 
   let t = Instant::now();
   let pp = PublicParams::<E1, E2, C>::setup(&circuits[0], &*S1::ck_floor(), &*S2::ck_floor()).unwrap();
@@ -350,6 +414,9 @@ fn main() {
       std::fs::write(dir.join("z0.bin"), z_bytes(&z0)).unwrap();
       std::fs::write(dir.join("steps.txt"), steps.to_string()).unwrap();
       std::fs::write(dir.join("k.txt"), k.to_string()).unwrap();
+      if net != Network::Mainnet {
+        std::fs::write(dir.join("network.txt"), net.name()).unwrap();
+      }
       println!("saved proof, vk, z0 to {}", dir.display());
     }
     let t = Instant::now();

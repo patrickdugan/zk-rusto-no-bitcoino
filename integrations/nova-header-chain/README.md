@@ -217,3 +217,72 @@ absent. The rebuilt key matched the saved one's SHA-256
 13.5 KB. Verification takes 81 s and 1.3 GB including the key rebuild; with
 a cached key it takes 4.9 s. A flipped proof byte, an altered checkpoint and
 a wrong step count are each rejected.
+
+## Testnet4 mode (`--network testnet4`), 2026-11-04
+
+Testnet4 is a separate circuit (`HeaderStep::on(Network::Testnet4, ..)`),
+so it has its own keys. The mainnet circuit is unchanged: its k=10 verifier
+key still rebuilds to `e46bb069…1698`. On top of the mainnet rules, the
+testnet4 circuit enforces Core's `fPowAllowMinDifficultyBlocks` and
+`enforce_BIP94` rules:
+
+- **Min-difficulty blocks.** Off a 2016-block boundary, nBits must be
+  powLimit (`0x1d00ffff`) when the header is more than 1200 s after its
+  predecessor, and the epoch's nBits otherwise. Core walks back to the last
+  block not using the exception; by induction that block carries the epoch's
+  nBits.
+- **Epoch nBits.** The state keeps the nBits of the period's first block, so
+  min-difficulty headers never replace it. BIP94 retargets from that block,
+  which is exactly this value.
+- **Timewarp (BIP94).** A boundary header may be at most 600 s earlier than
+  its predecessor.
+- **Versions.** BIP34/66/65 are active from height 1, so version must be at
+  least 4.
+
+Testnet4 adds 360 constraints per header (83,169 instead of 82,809).
+
+Proofs need `--headers-txt` and either `--checkpoint-state` (in which nBits
+must be the epoch's, not a min-difficulty checkpoint block's) or
+`--chainwork HEX`. `--save` writes `network.txt`, `pack` writes an `NHT4`
+bundle, and receipts use the statement `btc_header_chain_testnet4_v1` with
+`"network":"testnet4"`. Mainnet bundles and receipts are unchanged. A
+testnet4 bundle relabelled `NHC1` is rejected, and a verifier given a
+pinned mainnet key rejects testnet4 proofs.
+
+`scripts/fetch-testnet4-headers.ps1` fetches headers from an Esplora API. It
+keeps a header only if its double SHA-256 equals the block id and it links
+to its predecessor. `fixtures/testnet4/headers_100690_100900.txt` holds
+100,690–100,900 and 98,784, the first block of the period. 186 of its 210
+headers are min-difficulty blocks, including 100,799 just before the
+100,800 boundary, so mainnet's retarget rule would fail there.
+
+Tests (`cargo test --release`) cover:
+- the native rules over all 200 headers, which mainnet rules reject;
+- the circuit across the boundary, matching the native state;
+- the min-difficulty gap at 1200 s (rejected) and 1201 s (accepted);
+- epoch nBits used after a 20-minute gap (rejected);
+- the timewarp edge at 600 s (allowed) and 601 s (rejected);
+- a retarget from the min-difficulty predecessor (rejected);
+- version 3 (rejected).
+
+### 200 headers under a 1.5 GiB limit (i5-11400H, Windows, 2026-11-04)
+
+Each run used a Windows job object with an OS-enforced 1,536 MiB limit on
+committed memory, proving heights 100,701–100,900 from checkpoint 100,700
+with `--chainwork 0`. The fixture provides no chainwork, so this run's
+chainwork is not authentic; the circuit only adds to it.
+
+| Step | Peak commit | Time | Result |
+| --- | --- | --- | --- |
+| k=5, 40 folds + compress | 1,199 MiB | 76 s (fold 0.097 s/header, compress 42 s) | outputs match the native state; 12,664 B |
+| `verify DIR` (saved key) | 551 MiB | 18 s | verified |
+| `verify-bundle` (key rebuilt) | 731 MiB | 30 s | verified; rebuilt key equals the saved key |
+| checkpoint state altered | 731 MiB | 29 s | rejected |
+| relabelled as `NHC1` | 710 MiB | 29 s | rejected |
+
+Testnet4 verifier keys: k=5 `1ae88a7bcfdc5f14d030d0baafa06ec17fe904a5ebed42f9bd6fa6105fdc8c24`,
+k=10 `2495da9bf5965030e45fa2cef1a43ade78e099ca844b5d3a9abf56400447eabe`.
+
+Not done: an authenticated testnet4 checkpoint (it needs a node for
+chainwork), and testnet4 in `pack-spv` and the statement-verifier broker,
+which pin the mainnet key.
