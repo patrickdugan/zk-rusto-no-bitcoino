@@ -11,10 +11,10 @@ use groth16_gym::{chain_from_txt, target_from_nbits, Bytes32, ChainPublic};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 
-const HEADERS: &str = include_str!("../fixtures/headers_959617_959994.txt");
+const HEADERS: &str = include_str!("../../fixtures/headers_959617_959994.txt");
 const FIRST: u32 = 959_617;
 const LAST: u32 = 959_994;
 const FORMAT: u32 = 1;
