@@ -1,0 +1,6 @@
+procs	threads_each	headers_total	wall_s	headers_per_s	cgroup_peak
+1	8	200	39.6	5.05	Memory peak: 759.4M
+2	4	400	60.7	6.59	Memory peak: 1.2G
+4	2	800	103.5	7.73	Memory peak: 2.3G
+8	1	1600	181.6	8.81	Memory peak: 4.4G
+THROUGHPUT-DONE

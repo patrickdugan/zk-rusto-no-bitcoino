@@ -13,6 +13,9 @@ to its predecessor. Read-only RPC (getblockhash, getblockheader, getnetworkinfo,
 getblockchaininfo).
 
   dump-core-headers.py --datadir ~/btc-testnet4 --port 48352 --out ~/tn4-data [--to HEIGHT]
+  dump-core-headers.py --chain main --datadir %APPDATA%\\Bitcoin --port 8332 --out mainnet-data
+A pruned node is enough, but it must be synced: getblockhash only covers the
+active chain, which a headers-only node has not built.
 """
 import argparse, base64, hashlib, json, os, urllib.request
 
@@ -26,7 +29,9 @@ def main():
     ap.add_argument("--to", type=int)
     ap.add_argument("--batch", type=int, default=1000)
     a = ap.parse_args()
-    cookie = open(os.path.join(os.path.expanduser(a.datadir), a.chain, ".cookie")).read().strip()
+    # Core keeps the mainnet cookie in the datadir itself, others in a subdirectory.
+    sub = "" if a.chain in ("main", "mainnet") else a.chain
+    cookie = open(os.path.join(os.path.expanduser(a.datadir), sub, ".cookie")).read().strip()
     auth = "Basic " + base64.b64encode(cookie.encode()).decode()
 
     def batch(calls):

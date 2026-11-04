@@ -1,0 +1,6 @@
+Running as unit: tput-1.service; invocation ID: b2f606d4af0a49b3bbb24c59afcd4b90
+          Finished with result: success
+Main processes terminated with: code=exited, status=0/SUCCESS
+               Service runtime: 39.531s
+             CPU time consumed: 3min 12.017s
+                   Memory peak: 759.4M (swap: 0B)
