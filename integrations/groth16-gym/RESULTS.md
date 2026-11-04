@@ -47,6 +47,30 @@ falls to 2.1 KB at 32 headers and 1.3 KB at 64. That drop may be Windows
 trimming the working set, not lower demand. At the Linux rate, 32 headers
 would need about 11.4 GB and 64 headers about 22 GB.
 
+## Hard memory limit: Acer (2026-11-04)
+
+Intel i5-11400H with 12 threads and 23.8 GB RAM, Windows 11, MSVC build.
+Each proof ran under `run-capped.ps1 -LimitGB 14`: a Windows job object
+whose 14 GiB limit on committed memory the OS enforces. "Peak commit" is
+the job's peak committed memory, which Windows cannot trim. The raw output
+is `results/subhanallah-capped.jsonl`.
+
+| Circuit | Constraints | Setup | Prove | Peak commit | Peak working set | MSI peak |
+| --- | --- | --- | --- | --- | --- | --- |
+| Header chain, 16 headers | 1,945,062 | 37 s | 29 s | 5.1 GiB | 4.9 GiB | 4.7 GiB |
+| Header chain, 32 headers | 3,889,894 | 83 s | 144 s | 10.3 GiB | 9.9 GiB | 7.8 GiB |
+| Header chain, 64 headers | 7,779,558 | — | — | stopped at the 14 GiB limit | — | 10.2 GiB |
+
+Both completed runs verified their proof and rejected a wrong public input.
+The 64-header run failed an allocation about 105 s in. At 32 headers,
+building the constraint system alone took 8.3 GiB, so it most likely
+failed during that step.
+
+Committed memory is 2.8 KB per constraint at both 16 and 32 headers, in
+line with the Linux VM. The MSI's lower 32- and 64-header figures were
+working-set trimming, not lower demand. At 2.8 KB, 64 headers needs about
+20.6 GiB.
+
 ## Reading it for a 15.5 GB DDR4 laptop
 
 **SPV payment.** Peak 4.7–5.3 GB, so it fits with a large margin. This is
@@ -57,17 +81,20 @@ Groth16 step (`pay-wrap`) peaked at 19.1 GB host RSS and took 15:21 on the
 8-vCPU VPS (`btc-wrap.time` in the VPS archive), so it does not fit that
 laptop.
 
-**Header chains.** The two machines agree up to 16 headers (4.8–5.7 GB),
-which fits. Beyond that, the estimates depend on which figure is right:
-- **32 headers:** 8.0 GB on the MSI, about 11.4 GB at the Linux rate. It
-  probably fits, but with a small margin at the Linux rate.
-- **64 headers:** 10.4 GB on the MSI, about 22 GB at the Linux rate. At the
-  Linux rate it does not fit. The earlier ceiling of 64–70 headers came
-  from the MSI's 64-header rate and is withdrawn until it is measured.
+**Header chains.** Measured under a hard limit on the Acer (above), at
+2.8 KB of committed memory per constraint:
+- **16 headers:** 5.1 GiB, so it fits.
+- **32 headers:** 10.3 GiB. It fits if Windows and other programs leave
+  about 10.5 GiB free.
+- **64 headers:** about 20.6 GiB, so it does not fit. It also did not fit
+  under a 14 GiB limit.
+- **Ceiling, estimated:** at about 0.33 GiB per header (121,500
+  constraints), 12–14 GiB of headroom allows about 36–42 headers per proof.
+  This replaces the earlier estimate of 64–70 headers.
 
-To settle it, run 32 and then 64 headers on the laptop under a hard memory
-limit that the OS enforces, such as a Windows job object, not only under
-`-CapGB`. Then record the peak committed memory as well as the working set.
+`run-capped.ps1` checks a single size on the laptop itself, for example
+`-LimitGB 13 headers 40`. `run-gym.ps1 -CapGB` predicts from the working
+set, so on Windows its predictions can be low.
 
 Longer chains need recursion or folding, for example the Nova header-chain
 proofs (1.4 GB flat), with Groth16 only on the final statement.

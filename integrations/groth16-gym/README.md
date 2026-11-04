@@ -57,6 +57,14 @@ The gym is its own Cargo workspace, and no CI workflow builds or tests it. Run `
 
 **Peak memory differs by OS.** On Linux, `peak_rss_mb` is `VmHWM`. On Windows it is `PeakWorkingSetSize`, which Windows can trim under pressure, so it can read lower than the memory the process actually committed. Compare Windows and Linux figures with that in mind.
 
+**Hard limit (Windows).** `run-capped.ps1` runs one proof in a job object whose limit on committed memory the OS enforces, and it records the peak committed memory:
+
+```
+powershell -ExecutionPolicy Bypass -File run-capped.ps1 -LimitGB 13 headers 40
+```
+
+Build first with `run-gym.ps1` or `cargo build --release`. Each run appends a line to `results/<host>-capped.jsonl`. If the proof needs more than the limit, an allocation fails and the line has `"completed":false`.
+
 ## BitVM
 
 BitVM's chunked verifier (BitVM/BitVM `c620dbf`, `bitvm/src/chunk/api.rs`) has `NUM_PUBS = 1` and `PublicInputs = [ark_bn254::Fr; NUM_PUBS]`. Script generation asserts `vk.gamma_abc_g1.len() == NUM_PUBS + 1` (`api_compiletime_utils.rs`), so a verifying key with more public inputs is refused.
