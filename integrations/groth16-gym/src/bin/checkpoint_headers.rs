@@ -2,7 +2,7 @@
 //! This is a bundle of independently verifiable Groth16 proofs, not a
 //! recursive Groth16 proof, and does not authenticate canonical chain selection.
 //! Setup RNG is seeded for a reproducible gym ONLY: keys have known toxic waste.
-use ark_bn254::{Bn254, Fr};
+use ark_bn254::Bn254;
 use ark_groth16::{Groth16, Proof, VerifyingKey};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_snark::SNARK;
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 const HEADERS: &str = include_str!("../../fixtures/headers_959617_959994.txt");
 const FIRST: u32 = 959_617;
@@ -70,6 +70,11 @@ fn write_sync(path: &Path, content: &[u8]) -> Result<(), String> {
     let mut file = options.open(&tmp).map_err(|e| e.to_string())?;
     file.write_all(content).map_err(|e| e.to_string())?;
     file.sync_all().map_err(|e| e.to_string())?;
+    // A killed worker may leave prior unsealed output; replace only the
+    // precisely named artifact. The checkpoint manifest is written last.
+    if path.exists() {
+        fs::remove_file(path).map_err(|e| e.to_string())?;
+    }
     fs::rename(&tmp, path).map_err(|e| e.to_string())
 }
 
