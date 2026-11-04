@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const HEADERS: &str = include_str!("../../fixtures/headers_959617_959994.txt");
 const FIRST: u32 = 959_617;
