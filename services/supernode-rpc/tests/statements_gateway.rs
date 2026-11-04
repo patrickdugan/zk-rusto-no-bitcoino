@@ -699,7 +699,12 @@ async fn testnet4_nova_spv_payment_is_verified_and_bound_to_core() {
     let url = serve(runner, chain.clone(), spent, policy, None, false).await;
     let bundle = fixture("nova-header-chain/fixtures/testnet4/payment100008.nsp1");
 
-    let ok = call(&url, CONTROL, json!(["nova_spv_payment_v1", bundle, T4_TXID, 0])).await;
+    let ok = call(
+        &url,
+        CONTROL,
+        json!(["nova_spv_payment_v1", bundle, T4_TXID, 0]),
+    )
+    .await;
     let r = &ok["result"];
     assert_eq!(r["proof_verified"], true, "{ok}");
     assert_eq!(r["unspent_at_lookup"], false);
