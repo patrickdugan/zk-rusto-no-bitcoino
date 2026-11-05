@@ -3,7 +3,7 @@
 use bitcoin::{hashes::Hash, script::Instruction, taproot::TapLeafHash, ScriptBuf, Transaction};
 use bitcoin_scriptexec::{Exec, ExecCtx, Experimental, Options, TxTemplate};
 use ff::{Field, PrimeField};
-use halo2curves::{group::{prime::PrimeCurveAffine, Curve}, pasta::{PallasAffine, VestaAffine}, CurveAffine};
+use halo2curves::{group::Curve, pasta::{PallasAffine, VestaAffine}, CurveAffine};
 use serde::Deserialize;
 use std::{error::Error, fs, io::{BufRead, BufReader, Read}, time::Instant};
 
@@ -107,7 +107,8 @@ fn scripts(path: &str) -> Result<()> {
             tx:Transaction { version:bitcoin::transaction::Version::TWO,
                 lock_time:bitcoin::absolute::LockTime::ZERO,input:vec![],output:vec![] },
             prevouts:vec![],input_idx:0,taproot_annex_scriptleaf:Some((TapLeafHash::all_zeros(),None)) };
-        let mut exec=Exec::new(ExecCtx::Tapscript,options,template,script,witness)?;
+        let mut exec=Exec::new(ExecCtx::Tapscript,options,template,script,witness)
+            .map_err(|e| format!("interpreter initialization: {e:?}"))?;
         while exec.exec_next().is_ok() {}
         let result=exec.result().ok_or("interpreter produced no result")?;
         if result.success!=v.expected_success {
