@@ -5,6 +5,11 @@ in [M2-COMPACT.md](M2-COMPACT.md); `m2` remains the default compiler. Its comple
 point graph still totals 14,148,063 Script bytes before transaction/assertion
 overhead. This bounded optimization does not complete M3 or M4 below.
 
+[WOTS-LEAF.md](WOTS-LEAF.md) describes the next bounded adapter: one upstream-
+WOTS-authenticated multiplication step, including disputable malformed signed
+values. It does not supply the global shared-wire assertion registry or the
+Bitcoin transaction graph required by M4.
+
 ## Arithmetic argument for M1
 
 Let B=2^29 and write a field value as nine radix-B limbs. Both Pasta moduli

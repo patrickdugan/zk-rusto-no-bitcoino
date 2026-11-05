@@ -10,3 +10,6 @@ compact-engine-vectors.jsonl
 compact-bench.json
 compact-ci-*.txt
 compact-scriptexec.json
+wots-inputs.json
+wots-engine-vectors.jsonl
+wots-ci-*

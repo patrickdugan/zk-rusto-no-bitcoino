@@ -1,0 +1,24 @@
+{
+  "schema": "bitvm2-nova-wots-leaf-local-evidence/v1",
+  "base_commit": "39b15c6b595af31e31001d9dc04c6375d20c2cc1",
+  "python_tests_passed": 62,
+  "python_tests_seconds": 118.357,
+  "rustfmt_passed": true,
+  "local_rust_build": false,
+  "independent_execution": "pending hosted CI",
+  "input_cases": 56,
+  "input_bytes": 504920,
+  "input_sha256": "afcedc4d0dbd35ba506e4a22673babe8292fe1c4fbc998c8f821fd2e01aa94f9",
+  "source_sha256": {
+    "wots_leaf.py": "a6573cfd6d7df895f91bc30cbbb63c9cf1ba8745bebb8221cbaf6b3c1e764b2f",
+    "bench_wots.py": "4af1b271181d6b5e377911a42513bbc46bfc91b3cbdc2a41503578264ac39742",
+    "tests/test_wots_leaf.py": "7b80c62cf893194970ac4f7eaba40128b7e0de510a495f305b1c063cf5377274",
+    "rust-oracle/src/wots.rs": "c8cca0fc95355611f2688614583a37206f3cad552e4d233db4c546c4062302d0",
+    "rust-oracle/src/bin/wots.rs": "59bd2c3a1478113823038500242953e5633d1dd91552af242e6bc425d7b2b089",
+    "rust-oracle/Cargo.toml": "ddf4aae6e7847d9342ac4f436842986de6faaee8ea61905c174dd696c9aed27d"
+  },
+  "trusted_setup": false,
+  "complete_nova_verifier": false,
+  "complete_assertion_protocol": false,
+  "transactions_broadcast": 0
+}

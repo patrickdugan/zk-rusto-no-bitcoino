@@ -1,0 +1,48 @@
+name: BitVM2 Nova WOTS leaf checks
+on:
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-wots.yml']
+permissions:
+  contents: read
+jobs:
+  authenticated-leaf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Template, canonicality and assignment independence tests
+        run: |
+          set -o pipefail
+          python -m unittest discover -s tests -p test_wots_leaf.py -v 2>&1 | tee results/wots-ci-python.txt
+          python bench_wots.py | tee results/wots-ci-inputs.txt
+      - name: Build pinned upstream signatures and interpreter
+        run: |
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/wots-ci-rust-version.txt
+          rustfmt --edition 2021 --check rust-oracle/src/lib.rs rust-oracle/src/wots.rs rust-oracle/src/bin/wots.rs
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/wots-ci-dependencies.txt
+          cargo build --locked --manifest-path rust-oracle/Cargo.toml --bin wots
+      - name: Execute authenticated arithmetic and adversarial openings
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o results/wots-ci-rust-time.txt rust-oracle/target/debug/wots results/wots-inputs.json results/wots-engine-vectors.jsonl | tee results/wots-ci-execution.json
+          sha256sum results/wots-engine-vectors.jsonl > results/wots-ci-vector-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-wots-leaf-evidence
+          path: |
+            integrations/bitvm2-nova/results/wots-*
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock
