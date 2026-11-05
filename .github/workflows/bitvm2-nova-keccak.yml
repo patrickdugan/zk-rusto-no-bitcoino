@@ -2,9 +2,9 @@ name: BitVM2 Nova Keccak one-round checks
 on:
   push:
     branches: ['main']
-    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-keccak.yml']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-keccak.yml']
   pull_request:
-    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-keccak.yml']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-keccak.yml']
   workflow_dispatch:
 permissions:
   contents: read

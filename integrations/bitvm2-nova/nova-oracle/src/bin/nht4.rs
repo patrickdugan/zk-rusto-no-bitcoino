@@ -1,5 +1,8 @@
 //! Bounded NHC1/NHT4 framing and retained-proof verification; never proves.
 //! Run parameter reconstruction only in hosted CI under an external RAM/time cap.
+#[path = "../dimensions.rs"]
+mod dimensions;
+
 use bincode::Options;
 use ff::{Field, PrimeField};
 use nova_header_chain::{
@@ -386,6 +389,11 @@ fn verify_retained(bound: &Bound, e: &Expected) -> Result<Value> {
     let started = Instant::now();
     let vk = rebuild_vk(bound, e)?;
     let reconstruction_seconds = started.elapsed().as_secs_f64();
+    // Read private dimensions from the fully reconstructed, SHA-pinned key;
+    // neither the proof's row counts nor its metadata supply this descriptor.
+    let (verifier_dimensions, dimension_export) =
+        dimensions::export(&vk, &e.verifier_key_sha256, &e.network, bound.k)?;
+    let verifier_dimensions_sha256 = dimensions::canonical_sha256(&verifier_dimensions)?;
     let started = Instant::now();
     let zn = proof
         .verify(&vk, bound.steps as usize, &bound.z0)
@@ -514,6 +522,9 @@ fn verify_retained(bound: &Bound, e: &Expected) -> Result<Value> {
         json!({"native_nova_proofs_verified":1,"verifier_key_sha256":e.verifier_key_sha256,
               "end_state_sha256":sha(&z_bytes(&zn)),"end_height":final_state.height,
               "key_reconstruction_seconds":reconstruction_seconds,"verify_seconds":verify_seconds,
+              "verifier_dimensions":verifier_dimensions,
+              "verifier_dimensions_sha256":verifier_dimensions_sha256,
+              "dimension_export":dimension_export,
               "negative_checks":negatives,"proof_components":components}),
     )
 }
