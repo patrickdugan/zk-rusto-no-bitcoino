@@ -27,6 +27,10 @@ jobs:
           python -m unittest discover -s tests -v 2>&1 | tee results/m2-ci-tests.txt
       - name: Generate streaming fixtures and size ledger
         run: python bench_m2.py | tee results/m2-ci-generation.txt
+      - name: Generate compact comparison and adversarial fixtures
+        run: |
+          set -o pipefail
+          python bench_compact.py | tee results/compact-ci-generation.txt
       - name: Build pinned independent oracles
         run: |
           rustup update stable --no-self-update
@@ -43,10 +47,15 @@ jobs:
         run: |
           set -o pipefail
           /usr/bin/time -v -o results/m2-rust-time.txt m2-oracle/target/debug/bitvm2-nova-m2-oracle --scripts results/m2-engine-vectors.jsonl | tee results/m2-scriptexec.json
+      - name: Independently execute compact graphs and adversarial vectors
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o results/compact-ci-rust-time.txt m2-oracle/target/debug/bitvm2-nova-m2-oracle --scripts results/compact-engine-vectors.jsonl | tee results/compact-scriptexec.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: bitvm2-nova-m2-evidence
           path: |
             integrations/bitvm2-nova/results/m2-*
+            integrations/bitvm2-nova/results/compact-*
             integrations/bitvm2-nova/m2-oracle/Cargo.lock

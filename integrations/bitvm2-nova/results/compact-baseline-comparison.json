@@ -1,0 +1,27 @@
+{
+  "source_commit": "474299439e178da7b965d6c3716bdb8320e082d3",
+  "baseline_leaf_byte_comparisons": 15560,
+  "all_equal": true,
+  "cases": [
+    {
+      "curve": "pallas",
+      "case": "multiplication",
+      "disproof_leaf_stream_sha256": "9523fa680d734d5b2e079353d3963334d0740ac9828f05397eae99a1e37b8448"
+    },
+    {
+      "curve": "pallas",
+      "case": "point-add",
+      "disproof_leaf_stream_sha256": "0c1fe977db2b0afaa6780c6e58de0e606fe7fe5a1ced6ba4a1d1f65fb1d50af3"
+    },
+    {
+      "curve": "vesta",
+      "case": "multiplication",
+      "disproof_leaf_stream_sha256": "ab938cecf003465c73b55796d49bfe68f6a4d4cf7077dc3f25042fcbab71b06e"
+    },
+    {
+      "curve": "vesta",
+      "case": "point-add",
+      "disproof_leaf_stream_sha256": "59582b1d1642d307dc48399023e22622d41be276acc6ad64c1a2807129eae0b7"
+    }
+  ]
+}

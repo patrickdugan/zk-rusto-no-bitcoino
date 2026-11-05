@@ -131,12 +131,16 @@ class BoundTrace:
         c = self.program.constraints[ordinal]
         return tuple(self.words[w] for w in c.wires)
 
-    def script(self, ordinal, *, disprove=True):
+    def script(self, ordinal, *, disprove=True, compiler='m2'):
+        if compiler not in ('m2', 'compact-v1'):
+            raise ValueError('unsupported compiler')
         if type(ordinal) is not int or not 0 <= ordinal < len(self.program.constraints):
             raise ValueError('constraint ordinal out of bounds')
         c = self.program.constraints[ordinal]
         mode = b'D' if disprove else b'C'
-        tag = sha256(b'BITVM2-NOVA/LEAF/v2\x00' + self.program_digest
+        domain = (b'BITVM2-NOVA/LEAF/v2\x00' if compiler == 'm2'
+                  else b'BITVM2-NOVA/LEAF/compact-v1\x00')
+        tag = sha256(domain + self.program_digest
                      + self.claim_digest + ordinal.to_bytes(4, 'little') + mode).digest()
         # Check arity before any indexed stack access. This also gives malformed
         # witness lengths a deterministic rejection before opening checks.
@@ -148,7 +152,11 @@ class BoundTrace:
             code.extend([OPS['PICK'], OPS['SHA256']])
             code.extend(push(self.hashes[w]))
             code.append(OPS['EQUALVERIFY'])
-        code.extend(compile_predicate(self.program.p, c.kind, c.argument))
+        if compiler == 'compact-v1' and c.kind == 'mul_bit':
+            from compact import mul_bit
+            code.extend(mul_bit(self.program.p))
+        else:
+            code.extend(compile_predicate(self.program.p, c.kind, c.argument))
         if disprove:
             code.append(OPS['NOT'])
         return bytes(code)
@@ -158,8 +166,8 @@ class BoundTrace:
         return tuple(i for i, c in enumerate(self.program.constraints)
                      if not c.native(self.values, self.program.p))
 
-    def execute(self, ordinal, *, disprove=True):
-        return execute(self.script(ordinal, disprove=disprove), self.witness(ordinal))
+    def execute(self, ordinal, *, disprove=True, compiler='m2'):
+        return execute(self.script(ordinal, disprove=disprove, compiler=compiler), self.witness(ordinal))
 
     def manifest(self):
         return {'schema': 'bitvm2-nova-fixed-trace-manifest/v2',

@@ -10,7 +10,8 @@ from hashlib import sha256
 P = int('40000000000000000000000000000000224698fc094cf91b992d30ed00000001', 16)
 Q = int('40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001', 16)
 BASE, LIMBS = 1 << 29, 9
-OPS = dict(IF=0x63, ELSE=0x67, ENDIF=0x68, VERIFY=0x69, TOALTSTACK=0x6b,
+OPS = dict({'2DROP': 0x6d}, DUP=0x76, OVER=0x78,
+           IF=0x63, ELSE=0x67, ENDIF=0x68, VERIFY=0x69, TOALTSTACK=0x6b,
            FROMALTSTACK=0x6c, DEPTH=0x74, DROP=0x75, PICK=0x79, EQUAL=0x87,
            EQUALVERIFY=0x88, NOT=0x91, ADD=0x93, SUB=0x94, BOOLAND=0x9a,
            BOOLOR=0x9b, LESSTHAN=0x9f, GREATERTHANOREQUAL=0xa2, WITHIN=0xa5,
@@ -287,6 +288,14 @@ def execute(code, witness_items):
                     s.append(num(len(s)))
                 elif name == 'DROP':
                     pop()
+                elif name == '2DROP':
+                    pop()
+                    pop()
+                elif name in ('DUP', 'OVER'):
+                    depth = 0 if name == 'DUP' else 1
+                    if len(s) <= depth:
+                        raise ValueError('stack underflow')
+                    s.append(s[-1-depth])
                 elif name == 'PICK':
                     i = integer()
                     if not 0 <= i < len(s):

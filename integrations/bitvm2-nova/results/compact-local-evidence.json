@@ -1,0 +1,169 @@
+{
+  "schema": "bitvm2-nova-compact-evidence/v1",
+  "baseline_commit": "474299439e178da7b965d6c3716bdb8320e082d3",
+  "compiler": "compact-v1",
+  "python": "3.12.10",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "script_vectors": 19216,
+  "expected_script_rejections": 9958,
+  "engine_fixture_bytes": 148984550,
+  "engine_fixture_sha256": "b960829e50cc9bc8ff9c50c9b5ec4148c2a90e0e9b5dc4605acdd6dc2baa147b",
+  "generation_seconds": 10.526056200033054,
+  "python_peak_rss_bytes": 43294720,
+  "memory_limit_enforced": false,
+  "cases": [
+    {
+      "schema": "bitvm2-nova-fixed-trace-manifest/v2",
+      "program_sha256": "256de8affa17b26a827d6b39589454503715ff10863285b859e0ee0839953553",
+      "claim_sha256": "3c9cc3953d45a9a5174802a497949d21464677ba6893d535b59ee7a5800dac10",
+      "context_sha256": "f2f0bf90c00ad7ae05e4ea9853dad4c1bce10acc903b7e6c14ef47dc3aad6fd4",
+      "field_role": "pallas_base",
+      "operation_id": "benchmark/mul",
+      "words": 2586,
+      "constraints": 274,
+      "authentication": "fixed-claim-per-word-SHA256",
+      "dynamic_assertions": false,
+      "bitcoin_transaction_graph": false,
+      "case": "multiplication",
+      "compilers": {
+        "m2": {
+          "all_disproof_scripts_bytes": 1268152,
+          "largest_leaf_bytes": 4904,
+          "leaf_stream_sha256": "9523fa680d734d5b2e079353d3963334d0740ac9828f05397eae99a1e37b8448"
+        },
+        "compact-v1": {
+          "all_disproof_scripts_bytes": 1083022,
+          "largest_leaf_bytes": 4178,
+          "leaf_stream_sha256": "7dd7f57317dd175a3d4afd17c069badd2c8a5c3ffb363545fb8fdf47acd4df0e"
+        }
+      },
+      "saved_script_bytes": 185130,
+      "saved_percent": 14.598407761845584
+    },
+    {
+      "schema": "bitvm2-nova-fixed-trace-manifest/v2",
+      "program_sha256": "facbe7a35b49f854e99671e198c25da22c63307f997463bb48067c4b570f8d12",
+      "claim_sha256": "2ddecc55ad06c07973e34b467e9ea39752b552bd63b69019841514cbe2e1818c",
+      "context_sha256": "f2f0bf90c00ad7ae05e4ea9853dad4c1bce10acc903b7e6c14ef47dc3aad6fd4",
+      "field_role": "pallas_base",
+      "operation_id": "benchmark/point",
+      "words": 33588,
+      "constraints": 3616,
+      "authentication": "fixed-claim-per-word-SHA256",
+      "dynamic_assertions": false,
+      "bitcoin_transaction_graph": false,
+      "case": "point-add",
+      "compilers": {
+        "m2": {
+          "all_disproof_scripts_bytes": 16554753,
+          "largest_leaf_bytes": 4904,
+          "leaf_stream_sha256": "0c1fe977db2b0afaa6780c6e58de0e606fe7fe5a1ced6ba4a1d1f65fb1d50af3"
+        },
+        "compact-v1": {
+          "all_disproof_scripts_bytes": 14148063,
+          "largest_leaf_bytes": 4178,
+          "leaf_stream_sha256": "e032272ae55f8991bff17a24821b3d06baf7d7f0eaff8e3d0fa4396f7ebd5fef"
+        }
+      },
+      "saved_script_bytes": 2406690,
+      "saved_percent": 14.537758431068104
+    },
+    {
+      "schema": "bitvm2-nova-fixed-trace-manifest/v2",
+      "program_sha256": "aaae70a1eb5661fb2c968f0878b7e99d04886e981a669cabcd080f6c8093d736",
+      "claim_sha256": "26dd26d822c38ab4a337f39095750c75108594f04294fb59614364b87283cf44",
+      "context_sha256": "f2f0bf90c00ad7ae05e4ea9853dad4c1bce10acc903b7e6c14ef47dc3aad6fd4",
+      "field_role": "vesta_base",
+      "operation_id": "benchmark/mul",
+      "words": 2586,
+      "constraints": 274,
+      "authentication": "fixed-claim-per-word-SHA256",
+      "dynamic_assertions": false,
+      "bitcoin_transaction_graph": false,
+      "case": "multiplication",
+      "compilers": {
+        "m2": {
+          "all_disproof_scripts_bytes": 1268152,
+          "largest_leaf_bytes": 4904,
+          "leaf_stream_sha256": "ab938cecf003465c73b55796d49bfe68f6a4d4cf7077dc3f25042fcbab71b06e"
+        },
+        "compact-v1": {
+          "all_disproof_scripts_bytes": 1083022,
+          "largest_leaf_bytes": 4178,
+          "leaf_stream_sha256": "f70a9a43e495dae45069b00068eb0602da5cf960051b3c25b97b9c7fa0cc8b1d"
+        }
+      },
+      "saved_script_bytes": 185130,
+      "saved_percent": 14.598407761845584
+    },
+    {
+      "schema": "bitvm2-nova-fixed-trace-manifest/v2",
+      "program_sha256": "d28298129b71a08a093403553db1f6403f195afcd42147b3eeb81ef088caa742",
+      "claim_sha256": "edb5fc44703aab6b2bc8c72fd27585899d0ab1bd4c883e43a30816e47fd0b4fa",
+      "context_sha256": "f2f0bf90c00ad7ae05e4ea9853dad4c1bce10acc903b7e6c14ef47dc3aad6fd4",
+      "field_role": "vesta_base",
+      "operation_id": "benchmark/point",
+      "words": 33588,
+      "constraints": 3616,
+      "authentication": "fixed-claim-per-word-SHA256",
+      "dynamic_assertions": false,
+      "bitcoin_transaction_graph": false,
+      "case": "point-add",
+      "compilers": {
+        "m2": {
+          "all_disproof_scripts_bytes": 16554753,
+          "largest_leaf_bytes": 4904,
+          "leaf_stream_sha256": "59582b1d1642d307dc48399023e22622d41be276acc6ad64c1a2807129eae0b7"
+        },
+        "compact-v1": {
+          "all_disproof_scripts_bytes": 14148063,
+          "largest_leaf_bytes": 4178,
+          "leaf_stream_sha256": "8efb035fa33ed20219333f008e305f69cca3b5f5f75e98eacf5a21ecbfa2f180"
+        }
+      },
+      "saved_script_bytes": 2406690,
+      "saved_percent": 14.537758431068104
+    }
+  ],
+  "kernel_metrics": [
+    {
+      "modulus": "28948022309329048855892746252171976963363056481941560715954676764349967630337",
+      "bare_mul_bit_bytes": 3092,
+      "reference_peak_stack_items": 215,
+      "reference_executed_instructions": 2410
+    },
+    {
+      "modulus": "28948022309329048855892746252171976963363056481941647379679742748393362948097",
+      "bare_mul_bit_bytes": 3092,
+      "reference_peak_stack_items": 215,
+      "reference_executed_instructions": 2410
+    }
+  ],
+  "trusted_setup": false,
+  "production_transcript": false,
+  "dynamic_bitvm2_assertions": false,
+  "nova_proofs_verified": 0,
+  "transactions_broadcast": 0,
+  "local_tests": {
+    "passed": 57,
+    "seconds": 127.176,
+    "log": "compact-local-tests.txt"
+  },
+  "baseline_comparison": {
+    "passed": true,
+    "byte_equal_leaf_comparisons": 15560,
+    "report": "compact-baseline-comparison.json"
+  },
+  "independent_execution": {
+    "status": "pending hosted CI",
+    "local_rust_build": false
+  },
+  "source_sha256": {
+    "compact.py": "e769fc738d68fde15dc3894517195c2ac54f90bb859e7dd0125bf57d3ff05740",
+    "trace.py": "207a7719f447d4be083278b12775428570fd247147311265bbd89c93af254e15",
+    "script.py": "72771f9a961a5da92a7cbc1068b22f3239bb909f106583b37eeb13d34d306ad2",
+    "bench_compact.py": "4b6da791f49e23b77953b70d57961d049958a994913cad1447422cbeb16cd1e2",
+    "tests/test_compact.py": "d0b2132fc8d4f3418cea0f17e915295d9924f9665298424521e59a57bc2f9de2",
+    "m2-oracle/src/main.rs": "fa8910ab2a4d1c54ca308ef327d737d3bb19ebe4be053faef06a6c4d9e889676"
+  }
+}

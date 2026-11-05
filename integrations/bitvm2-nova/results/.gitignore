@@ -6,3 +6,7 @@ m2-rust-*.txt
 m2-dependency-tree.txt
 m2-halo2curves.json
 m2-scriptexec.json
+compact-engine-vectors.jsonl
+compact-bench.json
+compact-ci-*.txt
+compact-scriptexec.json
