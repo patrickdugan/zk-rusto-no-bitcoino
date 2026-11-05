@@ -1,0 +1,75 @@
+{
+  "schema": "bitvm2-nova-kernels/v1",
+  "status": "research-primitive-only",
+  "python": "3.13.5 (main, Jul 15 2026, 20:25:40) [GCC 14.2.0]",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "measurement_scope": "Python reference interpreter; excludes Rust engine and transaction graph",
+  "rows": [
+    {
+      "field": "pallas_base",
+      "kernel": "add",
+      "script_bytes": 2494,
+      "fixed_claim_disproof_bytes": 3538,
+      "witness_items": 27,
+      "witness_payload_bytes": 63,
+      "reference_peak_stack_items": 177,
+      "reference_executed_opcodes": 2046,
+      "reference_seconds_per_run": 0.0011668905999954403,
+      "script_sha256": "bb06b74e766731d4689eae939a6bd4bd168d2bf5581a566174d5ddee50d92a09"
+    },
+    {
+      "field": "pallas_base",
+      "kernel": "mul_bit",
+      "script_bytes": 3818,
+      "fixed_claim_disproof_bytes": 4900,
+      "witness_items": 28,
+      "witness_payload_bytes": 64,
+      "reference_peak_stack_items": 215,
+      "reference_executed_opcodes": 3127,
+      "reference_seconds_per_run": 0.0017950049999967631,
+      "script_sha256": "820fee8371dbcfa5519546b04465279b26220db66d9de16643b886d0344c2b34"
+    },
+    {
+      "field": "vesta_base",
+      "kernel": "add",
+      "script_bytes": 2494,
+      "fixed_claim_disproof_bytes": 3538,
+      "witness_items": 27,
+      "witness_payload_bytes": 63,
+      "reference_peak_stack_items": 177,
+      "reference_executed_opcodes": 2046,
+      "reference_seconds_per_run": 0.0012413338999976986,
+      "script_sha256": "64834f6e39da87093e8a34b5e9f27bbd738432ba377f53d44a09cdbc1beb68a7"
+    },
+    {
+      "field": "vesta_base",
+      "kernel": "mul_bit",
+      "script_bytes": 3818,
+      "fixed_claim_disproof_bytes": 4900,
+      "witness_items": 28,
+      "witness_payload_bytes": 64,
+      "reference_peak_stack_items": 215,
+      "reference_executed_opcodes": 3127,
+      "reference_seconds_per_run": 0.0017400880999957735,
+      "script_sha256": "19353319f61a9fc54d2bb7addf9b8190f87ef66b1510c107d5a4098a5afa213a"
+    }
+  ],
+  "full_field_multiplication_checks": [
+    {
+      "field": "pallas_base",
+      "microsteps": 255,
+      "result_matches": true,
+      "reference_wall_seconds": 0.4704197400000112
+    },
+    {
+      "field": "vesta_base",
+      "microsteps": 255,
+      "result_matches": true,
+      "reference_wall_seconds": 0.48059874099999433
+    }
+  ],
+  "upstream_vectors": 20,
+  "nova_proofs_verified": 0,
+  "bitcoin_transactions_broadcast": 0,
+  "trusted_setup": false
+}

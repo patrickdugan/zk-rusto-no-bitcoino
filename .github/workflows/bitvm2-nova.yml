@@ -1,0 +1,42 @@
+name: BitVM2 Nova primitive checks
+on:
+  push:
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova.yml']
+permissions:
+  contents: read
+jobs:
+  reference-and-upstream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reference tests and generated vectors
+        run: |
+          python -m unittest discover -s tests -v
+          python bench.py
+      - name: Install Rust toolchain
+        run: rustup update stable --no-self-update && rustup default stable
+      - name: Resolve and record dependencies
+        run: |
+          rustc --version
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/rust-dependency-tree.txt
+      - name: Execute with upstream BitVM (stack limit enabled)
+        run: |
+          set -o pipefail
+          cargo run --locked --manifest-path rust-oracle/Cargo.toml -- results/engine-vectors.json | tee results/upstream-engine.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-primitive-evidence
+          path: |
+            integrations/bitvm2-nova/results/
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock

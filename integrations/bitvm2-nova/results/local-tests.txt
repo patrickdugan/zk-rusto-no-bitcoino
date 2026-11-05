@@ -1,0 +1,30 @@
+test_bad_point (test_prototype.Algebra.test_bad_point) ... ok
+test_curve_orders (test_prototype.Algebra.test_curve_orders) ... ok
+test_dimension_one (test_prototype.Algebra.test_dimension_one) ... ok
+test_ipa_lengths_and_zero_challenge (test_prototype.Algebra.test_ipa_lengths_and_zero_challenge) ... ok
+test_ipa_tamper_each_round (test_prototype.Algebra.test_ipa_tamper_each_round) ... ok
+test_ipa_tamper_each_scalar (test_prototype.Algebra.test_ipa_tamper_each_scalar) ... ok
+test_ipa_wrong_vector_and_generator (test_prototype.Algebra.test_ipa_wrong_vector_and_generator) ... ok
+test_point_edge_cases (test_prototype.Algebra.test_point_edge_cases) ... ok
+test_streamed_weights_match_upstream_recurrence (test_prototype.Algebra.test_streamed_weights_match_upstream_recurrence) ... ok
+test_valid_ipa_equations (test_prototype.Algebra.test_valid_ipa_equations) ... ok
+test_bad_limbs (test_prototype.Kernels.test_bad_limbs) ... ok
+test_bit_is_boolean (test_prototype.Kernels.test_bit_is_boolean) ... ok
+test_bound_false_claim_is_disproved (test_prototype.Kernels.test_bound_false_claim_is_disproved) ... ok
+test_bound_honest_claim_cannot_be_disproved (test_prototype.Kernels.test_bound_honest_claim_cannot_be_disproved) ... ok
+test_boundary_add (test_prototype.Kernels.test_boundary_add) ... ok
+test_boundary_mul_bit (test_prototype.Kernels.test_boundary_mul_bit) ... ok
+test_context_changes_leaf (test_prototype.Kernels.test_context_changes_leaf) ... ok
+test_disabled_and_success_opcodes_fail_closed (test_prototype.Kernels.test_disabled_and_success_opcodes_fail_closed) ... ok
+test_full_multiplication_stream (test_prototype.Kernels.test_full_multiplication_stream) ... ok
+test_interpreter_bounds (test_prototype.Kernels.test_interpreter_bounds) ... ok
+test_noncanonical_inputs (test_prototype.Kernels.test_noncanonical_inputs) ... ok
+test_output_over_modulus_is_disputable (test_prototype.Kernels.test_output_over_modulus_is_disputable) ... ok
+test_random_arithmetic (test_prototype.Kernels.test_random_arithmetic) ... ok
+test_truncated_and_extra_witness (test_prototype.Kernels.test_truncated_and_extra_witness) ... ok
+test_wrong_modulus (test_prototype.Kernels.test_wrong_modulus) ... ok
+
+----------------------------------------------------------------------
+Ran 25 tests in 3.703s
+
+OK

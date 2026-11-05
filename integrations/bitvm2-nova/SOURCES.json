@@ -1,0 +1,19 @@
+{
+  "inspected_at": "2026-11-05",
+  "repository_base": "daf9a06153788de7b0e45bb324905632dcf83982",
+  "header_prover_revision": "de607d3db17d400dd6c2923d357f1d4a7bf233c7",
+  "nova": {
+    "repository": "https://github.com/microsoft/Nova",
+    "revision": "01b1e2d662a847ed7029770ecbaf6687398899dd",
+    "manifest_version": "0.76.0",
+    "ipa_path": "src/provider/ipa_pc.rs",
+    "ipa_git_blob": "c77b3c0cde7780ed7db0590c497cfc55666af9f1",
+    "use": "Algebraic equality and coefficient order only; production transcript still pending"
+  },
+  "bitvm": {
+    "repository": "https://github.com/BitVM/BitVM",
+    "revision": "c620dbfaacebdf778e765a6681985350389973b1",
+    "interpreter_api": "bitvm::execute_script_buf",
+    "stack_limit": true
+  }
+}
