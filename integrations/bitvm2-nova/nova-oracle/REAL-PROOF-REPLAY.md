@@ -2,11 +2,56 @@
 
 This records the exact non-EVM Nova 0.76.0 verifier sequence needed to connect
 the retained NHT4 proof to the arithmetic/Script components. A native forwarding
-engine and an independent Python replay are being integrated. Their current-head
-hosted execution is pending. A trace or partial replay does not establish a
+engine and an independent Python replay are implemented. The native capture
+passed hosted CI at `f630555`; the Python integration requires its corresponding
+current-head hosted run. A trace or partial replay does not establish a
 complete authenticated BitVM2 verifier or general proof validity.
 
 Fixture paths below are relative to `integrations/bitvm2-nova/`.
+
+## Executed retained-proof evidence
+
+[Native run 42126298151](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42126298151)
+passed all ten replay-bin unit tests and verified the actual retained proof
+through forwarding engines. Proof roundtrip, original full VK SHA-256,
+independently pinned dimensions and final-state pins all matched. It captured
+517 events in seven streams, including 358 Keccak events and 175 Keccak
+challenges. The process took 33.52 seconds and peaked at 625,648 KiB RSS under
+the 3 GiB/600-second cap. No trace overflow occurred.
+
+The actual archive was downloaded and its SHA-256 independently matched
+`e074c7fe028f6b6bbe4a82de1d91740a225fbd1f52474d8068a31816afa8341b`.
+The 1,167-byte key-binding fixture is pinned by
+`c8b117ea587c80bfdbdfc0cc262cdf68b1b4c07b3b45ba871413c7768aa62b9a`;
+the complete 368,570-byte canonical trace is pinned by
+`394d90b302b2fe6b8f5c0a65ada372d820996f3230770a816961a75cefec59b8`.
+Adjacent replay provenance records the source commit, run and artifact.
+Neither a report's printed digest nor an editable key label supplies authority;
+the replay caller must provide its expected pins independently.
+
+`production_replay.py` reconstructs the real proof's absorption objects,
+folded/derandomized instances, Keccak states/challenges, outer and batch terminal
+equations, batch opening statement and small-side IPA residual. It checks the
+five Poseidon absorption/state/truncation streams against actual proof inputs,
+while leaving the Poseidon hash computation native-only. It does not evaluate
+the large verifier-key matrices or generator MSM. The proof/Script,
+Poseidon, matrix and generator-verification limitations remain explicit flags.
+
+Local checking passed 138 reference tests in 108.497 seconds, then three added
+CLI transport regressions in 0.148 seconds. Thirteen replay tests include the
+actual captured positive and semantic mutations of objects, labels, ordering,
+states, challenges, RO inputs and decoded proof fields. Explicit diagnostic
+re-pinning tests demonstrate two unresolved boundaries: changing only high
+Poseidon hash bits can preserve a low-128-bit result, and changing unabsorbed
+`a_hat` changes the required generator residual without changing transcript
+challenges. Neither case establishes proof validity; the corresponding flags
+remain false. Production callers do not use those diagnostic replacement pins.
+
+`bench_replay.py` consumes the genuine native result and independently pinned
+fixture data. A local execution took about 0.50 seconds and 30.3 MB peak working
+set without an enforced local memory ceiling. All Rust, public-parameter
+reconstruction and full native verification remain hosted; no local proving
+or large generator MSM runs.
 
 The route remains transparent Nova -> Spartan/IPA. The authoritative crate is
 `nova-snark = 0.76.0`, archive SHA-256

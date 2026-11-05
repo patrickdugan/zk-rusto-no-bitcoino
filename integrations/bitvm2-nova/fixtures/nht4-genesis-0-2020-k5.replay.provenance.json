@@ -1,0 +1,14 @@
+{
+  "schema": "bitvm2-nova-replay-provenance/v1",
+  "source_commit": "f630555b8b71eb955dcfe142c5d5e3ca16c0c69e",
+  "workflow_run": 42126298151,
+  "job_id": 127591251027,
+  "artifact_id": 13460607307,
+  "zip_sha256": "e074c7fe028f6b6bbe4a82de1d91740a225fbd1f52474d8068a31816afa8341b",
+  "zip_downloaded_and_hash_verified": true,
+  "raw_native_report_sha256": "a1030a05ee6d4231e1308dddc76d11587467508462587372492472ef31d7d2d7",
+  "canonicalization": "Sorted compact ASCII-escaped UTF8 JSON, no trailing LF.",
+  "key_bindings_sha256": "c8b117ea587c80bfdbdfc0cc262cdf68b1b4c07b3b45ba871413c7768aa62b9a",
+  "trace_sha256": "394d90b302b2fe6b8f5c0a65ada372d820996f3230770a816961a75cefec59b8",
+  "scope": "Actual successful retained-proof verification through forwarding engines; replay conformance metadata, not a Script proof or unrestricted verifier."
+}

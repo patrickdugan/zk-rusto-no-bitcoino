@@ -14,6 +14,8 @@ transparent Nova SNARK verifier; complete authenticated verification and the
 Bitcoin transaction graph remain unfinished.
 The [bounded proof codec](PROOF-ADMISSION.md) uses independently pinned metadata
 exported from the actual authenticated verifier key.
+The [real-proof replay](nova-oracle/REAL-PROOF-REPLAY.md) binds the retained proof
+to actual native transcript events while explicitly exposing incomplete checks.
 
 ## What runs
 

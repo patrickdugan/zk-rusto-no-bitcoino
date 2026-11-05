@@ -18,6 +18,12 @@ an exact inner proof codec and a separate structural admission oracle. The
 native proof verifier retains its fixture gate; parser admission is not proof
 verification.
 
+The later [real-proof replay](nova-oracle/REAL-PROOF-REPLAY.md) captures actual
+positive verification and independently reconstructs proof-bound Keccak events.
+It keeps Poseidon hash computation, matrix evaluation and the generator MSM
+outside its independent verification claim; native complete-proof verification
+remains a separate upstream check.
+
 ## Authoritative implementation
 
 The header backend depends on the **published `nova-snark = "=0.76.0"` crate**.

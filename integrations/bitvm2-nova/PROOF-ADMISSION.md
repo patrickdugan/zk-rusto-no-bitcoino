@@ -63,8 +63,9 @@ duplicate/deep JSON transport. Independent review matched all 485 spans, tested
 
 Direct local generation with the pinned profile produces 213 differential
 cases: nine structural admissions and 204 rejections, covering all 119 length
-prefixes and 24 logical classes. The corpus is 8,194,808 bytes within its 8 MiB
-budget. This structural-only measurement took 0.133 seconds and 47,841,280 bytes
+prefixes and 24 logical classes. The corpus JSON is 8,194,808 bytes; the CLI
+adds one LF, giving 8,194,809 bytes within its 8 MiB budget.
+This structural-only measurement took 0.133 seconds and 47,841,280 bytes
 peak working set without an enforced local memory ceiling. It consumed no
 native report and supplies no new proof-verification evidence.
 
