@@ -170,7 +170,7 @@ where
         }
         "absorb_affine" => {
             let affine = point::<E>(field(event, "point")?)?.ok_or_else(|| {
-                admission("raw affine identity is unsupported: upstream coordinates unwrap")
+                admission("raw affine identity is outside this adapter's finite-point policy")
             })?;
             absorb(transcript, event, &affine)?;
         }

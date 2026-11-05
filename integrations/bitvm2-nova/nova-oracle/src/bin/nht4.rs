@@ -306,7 +306,7 @@ impl Write for HashWriter {
     }
 }
 
-fn rebuild_vk(bound: &Bound, e: &Expected) -> Result<Vk> {
+fn require_retained_scope(bound: &Bound, e: &Expected) -> Result<()> {
     // Keep the hosted job bounded to this independently retained k5 fixture.
     check(
         bound.network == Network::Testnet4
@@ -315,7 +315,16 @@ fn rebuild_vk(bound: &Bound, e: &Expected) -> Result<Vk> {
             && e.bundle_sha256 == RETAINED_SHA
             && e.checkpoint_origin == "genesis",
         "native fixture verification scope",
-    )?;
+    )
+}
+
+fn decode_retained(bound: &Bound, e: &Expected) -> Result<Proof> {
+    require_retained_scope(bound, e)?;
+    decode(&bound.proof)
+}
+
+fn rebuild_vk(bound: &Bound, e: &Expected) -> Result<Vk> {
+    require_retained_scope(bound, e)?;
     let shape = HeaderStep::on(bound.network, vec![[0u8; 80]; bound.k as usize]);
     let pp = PublicParams::<E1, E2, HeaderStep>::setup(&shape, &*S1::ck_floor(), &*S2::ck_floor())
         .map_err(|e| format!("public parameter reconstruction: {e:?}"))?;
@@ -345,8 +354,35 @@ fn bind_end(zn: &[F], e: &Expected) -> Result<()> {
     )
 }
 
+fn scope_before_decode_regression(bound: &Bound, e: &Expected) -> Result<Value> {
+    // This malformed inner proof has a coherent, canonical outer frame and
+    // verifier-owned policy. It must stop at the retained-fixture gate, not at
+    // bincode. An accidental decode-first ordering returns a different error.
+    let mut raw = b"NHT4".to_vec();
+    raw.extend_from_slice(&bound.steps.to_le_bytes());
+    raw.extend_from_slice(&bound.k.to_le_bytes());
+    raw.extend_from_slice(&z_bytes(&bound.z0));
+    raw.push(0xff);
+    let mut other = e.clone();
+    other.proof_bytes = 1;
+    other.proof_sha256 = sha(&[0xff]);
+    other.bundle_bytes = raw.len();
+    other.bundle_sha256 = sha(&raw);
+    let framed = bind(&raw, &other)?;
+    match decode_retained(&framed, &other) {
+        Err(error) => check(
+            error == "native fixture verification scope",
+            "unmatched retained fixture reached inner proof decoding",
+        )?,
+        Ok(_) => return Err("unmatched retained fixture was admitted".into()),
+    }
+    Ok(json!({"name":"unmatched_fixture_before_inner_decode",
+              "stage":"retained_fixture_scope","rejected":true,
+              "framing_accepted":true,"inner_decode_attempted":false}))
+}
+
 fn verify_retained(bound: &Bound, e: &Expected) -> Result<Value> {
-    let proof = decode(&bound.proof)?;
+    let proof = decode_retained(bound, e)?;
     let started = Instant::now();
     let vk = rebuild_vk(bound, e)?;
     let reconstruction_seconds = started.elapsed().as_secs_f64();
@@ -359,6 +395,7 @@ fn verify_retained(bound: &Bound, e: &Expected) -> Result<Value> {
     let final_state = State::from_z(&zn).ok_or("final state")?;
     check(final_state.height == 2020, "final height mismatch")?;
     let mut negatives = Vec::new();
+    negatives.push(scope_before_decode_regression(bound, e)?);
     negatives.push(identity_alias::<E1>("pallas")?);
     negatives.push(identity_alias::<E2>("vesta")?);
     for (name, steps) in [

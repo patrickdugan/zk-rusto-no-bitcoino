@@ -74,7 +74,7 @@ Its expected policy and provenance accompany it in `fixtures/`. The native
 and exact canonical reserialization,
 reconstructs the pinned public verifier parameters, checks key identity, calls
 the actual `CompressedSNARK::verify`, and binds the returned final state. It
-also checks 13 adversarial variants, including canonical sumcheck-coefficient
+also checks 14 adversarial variants, including canonical sumcheck-coefficient
 tampering and two identity-sign-alias regressions. Public parameter reconstruction involves no secret setup or proof
 generation, but may consume substantial resources and runs only hosted.
 Arbitrary malicious inner-proof shapes have not received exhaustive panic
@@ -154,6 +154,31 @@ passed all 230 independent Script vectors (200 rejections), and three WOTS
 sessions executed 24 vectors (12 rejections). WOTS leaves reached 4,975 bytes,
 35 stack items and 600 witness bytes. This samples four predicate shapes; it
 does not measure the full signature-inclusive round catalogue.
+
+Main `7b2e262` then passed the complete
+[native workflow](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42118077893):
+76 transcript cases (34 accepts, 42 rejections; 496 successful event comparisons),
+48 synthetic Spartan cases and the 60-case expanded genuine coefficient corpus.
+The latter made 44 actual upstream verifier calls and checked 289 accepted rounds
+and ten terminal equations. This still uses synthetic transcript states for
+the exported genuine coefficients.
+
+The retained NHT4 proof passed actual `CompressedSNARK::verify`, matched its
+verifier-key and output-state pins, and returned height 2020. All 22 rejected
+framing cases and 13 native negative checks passed in that run, including actual
+Pallas/Vesta identity-sign aliases rejected by canonical roundtrip. Parameter/key
+reconstruction took 32.947 s, proof verification 1.559 s and the process 34.64 s
+wall time, with 626,160 KiB peak RSS and zero swaps under the 3 GiB/600 s cap.
+The [evidence artifact](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42118077893/artifacts/13456622998)
+retains the lockfile, dependency/feature records, inputs and detailed results.
+Metrics here come from completed job logs; the ZIP was not downloaded locally.
+
+Review after that run found the retained-fixture gate was checked before key
+reconstruction but after inner decoding. `decode_retained` now requires it before
+bincode admission too. A fourteenth native negative first admits a coherent
+outer frame with a non-retained malformed inner proof, then requires the exact
+scope error before decoding. That additional ordering regression requires the
+corresponding current-head hosted run; the earlier 13-check run does not cover it.
 
 Current fixed-claim round measurements:
 

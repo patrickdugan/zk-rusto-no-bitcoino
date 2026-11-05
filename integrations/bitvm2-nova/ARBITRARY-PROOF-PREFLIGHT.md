@@ -114,17 +114,21 @@ equal canonical reserialization. Scalars likewise require canonical 32-byte
 field encodings. Identity commitments can be legitimate; do not reject all
 identity points or use a finite-affine-only decoder for commitments.
 
-One specific alias requires independent native confirmation: halo2curves
-0.9.0 `src/serde.rs` lines 326-377 removes the SingleSpare sign bit, then
+One specific alias was identified in halo2curves
+0.9.0: `src/serde.rs` lines 326-377 removes the SingleSpare sign bit, then
 identifies `x == 0` with infinity without checking that sign is zero. Source
 inspection therefore predicts that 32 zero bytes with byte 31 changed to
-`0x80` decode as identity and reserialize as 32 zero bytes. This is an
-**unexecuted source inference**, not current successful regression evidence.
+`0x80` decode as identity and reserialize as 32 zero bytes. This
+source inference was subsequently confirmed on both Pasta curves by the
+[native run at `7b2e262`](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42118077893):
+upstream decoding accepted the alias, while the canonical roundtrip guard
+rejected it.
 Both Pasta curves select SingleSpare in `src/pasta/{pallas,vesta}.rs`.
 The point serde implementation in `src/derive/curve.rs` lines 190-215 uses
 the checked compressed decoder, but that does not itself establish unique
 byte representation. A strict whole-proof decode/serialize byte equality
-check would reject this alias after bounded decoding.
+check rejects this alias after bounded decoding, while the retained-fixture
+gate must precede the decoding itself. Arbitrary proof admission remains open.
 
 ## Concrete panic and resource hazards
 

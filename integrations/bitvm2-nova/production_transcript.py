@@ -89,8 +89,9 @@ class NovaTranscript:
         return b"".join(self.scalar_repr(x) for x in values)
 
     def affine_repr(self, point):
-        # Upstream's raw affine trait unwraps coordinates. Do not feed it an
-        # identity or malformed point and mistake a panic for rejection.
+        # This adapter admits finite affine points only. The pinned backend's
+        # raw affine encoding accepts its (0, 0) identity sentinel without an
+        # infinity flag; this helper deliberately excludes that sentinel.
         if (type(point) is not tuple or len(point) != 2
                 or any(type(x) is not int or not 0 <= x < self.base_modulus for x in point)
                 or (point[1] ** 2 - point[0] ** 3 - 5) % self.base_modulus):
