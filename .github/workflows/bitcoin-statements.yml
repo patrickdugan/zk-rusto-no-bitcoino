@@ -47,12 +47,16 @@ jobs:
           out=$(target/release/btc-header-fold vk-export 10 "$RUNNER_TEMP/nova_vk.bin")
           echo "$out"
           test "$out" = "vk_sha256=e46bb06929d701f1986d320e004e8ed744b0e5f74eb9f5e9c9bd0e2fe6ad1698"
+          out4=$(target/release/btc-header-fold vk-export 10 "$RUNNER_TEMP/nova_vk_testnet4.bin" --network testnet4)
+          echo "$out4"
+          test "$out4" = "vk_sha256=2495da9bf5965030e45fa2cef1a43ade78e099ca844b5d3a9abf56400447eabe"
       - name: Gateway end to end with the real verifiers
         working-directory: services/supernode-rpc
         env:
           SUPERNODE_TEST_PAYMENT_VERIFIER: ${{ github.workspace }}/integrations/sp1-btc-payment/target/release/btc-pay-verify
           SUPERNODE_TEST_NOVA_VERIFIER: ${{ github.workspace }}/integrations/nova-header-chain/target/release/btc-header-fold
           SUPERNODE_TEST_NOVA_VK: ${{ runner.temp }}/nova_vk.bin
+          SUPERNODE_TEST_NOVA_TESTNET4_VK: ${{ runner.temp }}/nova_vk_testnet4.bin
         run: cargo test --test statements_gateway -- --nocapture
       - name: Gateway end to end through the separate-UID statement verifier
         run: |

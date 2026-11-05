@@ -173,6 +173,7 @@ SUPERNODE_STATEMENT_VERIFIER_UID=<id -u supernode-stmt-verify>   # needs SUPERNO
 
 SUPERNODE_NOVA_VK_SHA256=e46bb06929d701f1986d320e004e8ed744b0e5f74eb9f5e9c9bd0e2fe6ad1698
 SUPERNODE_NOVA_CHECKPOINTS=<checkpoint_state_sha256>[,<...>]
+SUPERNODE_NOVA_NETWORK=mainnet   # or testnet4: its own key (2495da9b…eabe for k=10); Core must serve testnet4
 
 SUPERNODE_PAYMENT_PAY_VKEY=0x00de861a80542b3089fed26b37ac4e1f4bb8664dcddadb3a6de5ae7205751e75
 SUPERNODE_PAYMENT_PROGRAM_WORDS=<node>,<leaf>,<segment>
@@ -339,3 +340,20 @@ against Core separately. A test shows that they agree on the tip (958,994 →
 **Full balances.** A UTXO-set commitment (for example, Utreexo roots) proven
 per block, so that non-spending and completeness can be shown. The cost is
 roughly full block validation; this is research, not a next step.
+
+## Testnet4
+
+`SUPERNODE_NOVA_NETWORK=testnet4` makes the Nova policy accept testnet4
+proofs and refuse mainnet ones:
+- header receipts must name `btc_header_chain_testnet4_v1` and
+  `"network":"testnet4"`;
+- payments report `btc_nova_spv_payment_testnet4_v1`.
+
+A mainnet policy refuses testnet4 receipts, even with the testnet4 key
+pinned. The testnet4 circuit has its own key: k=10 is `2495da9b…eabe`, from
+`btc-header-fold vk-export 10 OUT --network testnet4`. Core must serve
+testnet4.
+
+Fixture: `integrations/nova-header-chain/fixtures/testnet4/payment100008.nsp1`,
+a payment 58,941 blocks deep. Benchmarks and the live verification are in
+`integrations/nova-header-chain/TESTNET4_SPV_BENCHMARKS.md`.

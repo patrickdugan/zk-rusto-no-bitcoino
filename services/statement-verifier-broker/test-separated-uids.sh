@@ -94,12 +94,13 @@ with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as stream:
 print("Foreign UID rejected before request admission")
 PY
 
-# Every real-fixture gateway test, verifying through the broker.
+# Every real-fixture gateway test, verifying through the broker. The broker
+# holds only the mainnet key; the testnet4 tests run direct in CI.
 (
   cd "$repo/services/supernode-rpc"
   SUPERNODE_TEST_STATEMENT_SOCKET="$tmp/socket/statements.sock" \
   SUPERNODE_TEST_STATEMENT_UID="$verifier_uid" \
-    cargo test --test statements_gateway -- --nocapture 2>&1 | tee "$tmp/gateway-tests.log"
+    cargo test --test statements_gateway -- --nocapture --skip testnet4 2>&1 | tee "$tmp/gateway-tests.log"
 )
 if grep -q "skipped" "$tmp/gateway-tests.log"; then
   echo "FAIL a gateway test skipped instead of using the broker" >&2

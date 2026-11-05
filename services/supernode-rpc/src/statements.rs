@@ -52,6 +52,53 @@ const PAYMENT_STATEMENT_OFFSET: usize = 4 + 356;
 const PAYMENT_STATEMENT_BYTES: usize = 349;
 const PAYMENT_STATEMENT_DOMAIN: &[u8; 32] = b"LIGHTO-BTC-PAYMENT-v1\0\0\0\0\0\0\0\0\0\0\0";
 pub const SPV_PAYMENT_STATEMENT: &str = "btc_nova_spv_payment_v1";
+/// Testnet4 counterparts: a separate Nova circuit (min-difficulty and BIP94
+/// rules) with its own key, so its receipts never pass as mainnet ones.
+pub const NOVA_TESTNET4_STATEMENT: &str = "btc_header_chain_testnet4_v1";
+pub const SPV_PAYMENT_TESTNET4_STATEMENT: &str = "btc_nova_spv_payment_testnet4_v1";
+
+/// The chain a Nova policy accepts proofs for. Core must serve the same chain.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum NovaNetwork {
+    #[default]
+    Mainnet,
+    Testnet4,
+}
+
+impl NovaNetwork {
+    pub fn parse(name: &str) -> Result<Self, String> {
+        match name {
+            "mainnet" | "main" => Ok(Self::Mainnet),
+            "testnet4" => Ok(Self::Testnet4),
+            _ => Err("Nova network must be mainnet or testnet4".into()),
+        }
+    }
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Mainnet => "mainnet",
+            Self::Testnet4 => "testnet4",
+        }
+    }
+    fn header_statement(self) -> &'static str {
+        match self {
+            Self::Mainnet => NOVA_STATEMENT,
+            Self::Testnet4 => NOVA_TESTNET4_STATEMENT,
+        }
+    }
+    /// The receipt's `network` field: absent on mainnet receipts.
+    fn receipt_network(self) -> Option<&'static str> {
+        match self {
+            Self::Mainnet => None,
+            Self::Testnet4 => Some("testnet4"),
+        }
+    }
+    fn spv_statement(self) -> &'static str {
+        match self {
+            Self::Mainnet => SPV_PAYMENT_STATEMENT,
+            Self::Testnet4 => SPV_PAYMENT_TESTNET4_STATEMENT,
+        }
+    }
+}
 pub const MAX_SPV_BUNDLE_BYTES: usize = 30 * 1024;
 const MAX_SPV_TX_BYTES: usize = 4096;
 const MAX_RECEIPT_BYTES: u64 = 8192;
@@ -118,6 +165,8 @@ pub struct NovaPolicy {
     pub vk_sha256: String,
     /// SHA-256 of the 17 checkpoint field elements (`checkpoint_state_sha256`).
     pub checkpoints: Vec<String>,
+    /// The chain whose rules the pinned key proves (`SUPERNODE_NOVA_NETWORK`).
+    pub network: NovaNetwork,
 }
 
 /// Payment policy: the SP1 payment program key and the header-chain program
@@ -144,6 +193,9 @@ pub struct ChainPoint {
 #[serde(deny_unknown_fields)]
 pub struct NovaHeaderReceipt {
     pub statement: String,
+    /// Present (`testnet4`) only on non-mainnet receipts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub network: Option<String>,
     pub verifier: String,
     pub vk_sha256: String,
     pub proof_sha256: String,
@@ -253,11 +305,24 @@ impl NovaHeaderReceipt {
         checkpoints: &[String],
         bundle: &[u8],
     ) -> Result<(), String> {
+        self.validate_on(NovaNetwork::Mainnet, vk_sha256, checkpoints, bundle)
+    }
+
+    /// As `validate`, for a policy on `network`: the receipt must name that
+    /// network's statement (and, off mainnet, the network itself).
+    pub fn validate_on(
+        &self,
+        network: NovaNetwork,
+        vk_sha256: &str,
+        checkpoints: &[String],
+        bundle: &[u8],
+    ) -> Result<(), String> {
         let headers_ok = u64::from(self.end.height)
             .checked_sub(u64::from(self.checkpoint.height))
             .is_some_and(|n| n == self.headers && n > 0);
         if !self.verified
-            || self.statement != NOVA_STATEMENT
+            || self.statement != network.header_statement()
+            || self.network.as_deref() != network.receipt_network()
             || self.verifier != NOVA_VERIFIER
             || self.vk_sha256 != vk_sha256
             || bundle.len() <= NHC1_HEADER_BYTES
@@ -506,7 +571,8 @@ impl StatementVerifiers {
     pub fn capabilities(&self) -> Value {
         json!({
             "nova_header_chain_v1": self.nova.as_ref().map(|p| json!({
-                "vk_sha256":p.vk_sha256, "pinned_checkpoints":p.checkpoints.len()
+                "vk_sha256":p.vk_sha256, "pinned_checkpoints":p.checkpoints.len(),
+                "network":p.network.name()
             })),
             "sp1_btc_payment_v1": self.payment.as_ref().map(|p| json!({"pay_vkey":p.pay_vkey})),
             "nova_spv_payment_v1": self.nova.is_some(),
@@ -571,7 +637,7 @@ impl StatementVerifiers {
         let bytes = self.run(StatementKind::NovaHeaders, bundle).await?;
         let receipt: NovaHeaderReceipt =
             serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
-        receipt.validate(&policy.vk_sha256, checkpoints, bundle)?;
+        receipt.validate_on(policy.network, &policy.vk_sha256, checkpoints, bundle)?;
         Ok(receipt)
     }
 
@@ -621,7 +687,7 @@ impl StatementVerifiers {
             .ok_or("output index out of range")?;
         let tip = chain_to_tip.as_ref().unwrap_or(&chain_to_block).end.clone();
         Ok(SpvPaymentReceipt {
-            statement: SPV_PAYMENT_STATEMENT.into(),
+            statement: policy.network.spv_statement().into(),
             checkpoint_state_sha256: chain_to_block.checkpoint_state_sha256.clone(),
             block_height: chain_to_block.end.height,
             block_hash: chain_to_block.end.tip_hash.clone(),
@@ -1025,7 +1091,43 @@ mod tests {
             checkpoints: vec![
                 "3e53c33057b13ffecca476024bc78962b624814f41ac9d39e127e8f5a51a507e".into(),
             ],
+            network: NovaNetwork::Mainnet,
         }
+    }
+
+    #[test]
+    fn nova_receipts_bind_their_network() {
+        let receipt: NovaHeaderReceipt = serde_json::from_str(NOVA_RECEIPT).unwrap();
+        let policy = nova_policy();
+        let (vk, pins) = (&policy.vk_sha256, &policy.checkpoints);
+        let ok_on = |r: &NovaHeaderReceipt, net| r.validate_on(net, vk, pins, NOVA_BUNDLE).is_ok();
+        let (main, t4net) = (NovaNetwork::Mainnet, NovaNetwork::Testnet4);
+        assert_eq!(receipt.network, None);
+        assert!(ok_on(&receipt, main));
+        // A mainnet receipt does not satisfy a testnet4 policy with the same pins.
+        assert!(!ok_on(&receipt, t4net));
+        // A testnet4 receipt satisfies only a testnet4 policy, and only with
+        // its network field.
+        let mut t4 = receipt.clone();
+        t4.statement = NOVA_TESTNET4_STATEMENT.into();
+        t4.network = Some("testnet4".into());
+        assert!(ok_on(&t4, t4net));
+        assert!(!ok_on(&t4, main));
+        assert!(t4.validate(vk, pins, NOVA_BUNDLE).is_err());
+        let mut unnamed = t4.clone();
+        unnamed.network = None;
+        assert!(!ok_on(&unnamed, t4net));
+        assert!(!ok_on(&unnamed, main));
+        let mut mislabeled = receipt;
+        mislabeled.network = Some("testnet4".into());
+        assert!(!ok_on(&mislabeled, main));
+        // The field round-trips and stays absent on mainnet receipts.
+        let json = serde_json::to_value(&t4).unwrap();
+        assert_eq!(json["network"], "testnet4");
+        let plain = serde_json::to_value(&unnamed).unwrap();
+        assert!(plain.get("network").is_none());
+        assert_eq!(NovaNetwork::parse("testnet4"), Ok(NovaNetwork::Testnet4));
+        assert!(NovaNetwork::parse("testnet3").is_err());
     }
 
     pub(crate) fn payment_policy() -> PaymentPolicy {

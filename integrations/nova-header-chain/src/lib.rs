@@ -15,6 +15,13 @@
 //! Not enforced: the "time too far in the future" rule (needs a wall clock)
 //! and best-chain selection. Targets below 2^128 and exponents below 3 are
 //! rejected (never seen on mainnet).
+//!
+//! `Network::Testnet4` (a separate circuit with its own keys) instead
+//! requires, off a boundary, nBits = powLimit when the header is more than
+//! 1200 s after its predecessor and the epoch's nBits otherwise; keeps the
+//! epoch nBits of the period's first block (BIP94's retarget base); rejects a
+//! boundary header more than 600 s before its predecessor (BIP94 timewarp);
+//! and requires version >= 4 from height 1.
 
 use ff::PrimeField;
 use nova_snark::frontend::{
@@ -38,6 +45,61 @@ pub mod native {
   pub const BIP34: u32 = 227_931;
   pub const BIP66: u32 = 363_725;
   pub const BIP65: u32 = 388_381;
+  /// nBits of powLimit (the same on mainnet and testnet4).
+  pub const POW_LIMIT_BITS: u32 = 0x1d00_ffff;
+  /// Testnet4 min-difficulty rule: a block more than 2 x 600 s after its
+  /// predecessor may (and must) use powLimit.
+  pub const MIN_DIFF_GAP: u32 = 1200;
+  /// BIP94: a period's first block may be at most 600 s before its predecessor.
+  pub const MAX_TIMEWARP: u32 = 600;
+
+  /// Consensus rules the circuit checks. Mainnet is the default and its
+  /// circuit is unchanged; testnet4 adds Core's `fPowAllowMinDifficultyBlocks`
+  /// and `enforce_BIP94` rules and activates BIP34/66/65 at height 1.
+  #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+  pub enum Network {
+    #[default]
+    Mainnet,
+    Testnet4,
+  }
+
+  impl Network {
+    pub fn parse(s: &str) -> Option<Network> {
+      match s {
+        "mainnet" | "main" => Some(Network::Mainnet),
+        "testnet4" => Some(Network::Testnet4),
+        _ => None,
+      }
+    }
+    pub fn name(self) -> &'static str {
+      match self {
+        Network::Mainnet => "mainnet",
+        Network::Testnet4 => "testnet4",
+      }
+    }
+    /// BIP34, BIP66 and BIP65 activation heights.
+    pub fn version_heights(self) -> [u32; 3] {
+      match self {
+        Network::Mainnet => [BIP34, BIP66, BIP65],
+        Network::Testnet4 => [1, 1, 1],
+      }
+    }
+  }
+
+  /// Verifier keys (SHA-256 of the bincode VerifierKey) pinned per
+  /// (network, fold width). `verify` refuses a key pinned to another circuit.
+  pub const PINNED_VERIFIER_KEYS: [(Network, usize, &str); 3] = [
+    (Network::Mainnet, 10, "e46bb06929d701f1986d320e004e8ed744b0e5f74eb9f5e9c9bd0e2fe6ad1698"),
+    (Network::Testnet4, 5, "1ae88a7bcfdc5f14d030d0baafa06ec17fe904a5ebed42f9bd6fa6105fdc8c24"),
+    (Network::Testnet4, 10, "2495da9bf5965030e45fa2cef1a43ade78e099ca844b5d3a9abf56400447eabe"),
+  ];
+  pub fn pinned_verifier_key(net: Network, k: usize) -> Option<&'static str> {
+    PINNED_VERIFIER_KEYS.iter().find(|(n, kk, _)| *n == net && *kk == k).map(|p| p.2)
+  }
+  /// The pinned (network, k) a key belongs to, if any.
+  pub fn pinned_key_owner(vk_sha256: &str) -> Option<(Network, usize)> {
+    PINNED_VERIFIER_KEYS.iter().find(|p| p.2 == vk_sha256).map(|p| (p.0, p.1))
+  }
 
   pub fn pow_limit() -> BigUint {
     (BigUint::one() << 224u32) - BigUint::one()
@@ -148,28 +210,30 @@ pub mod native {
       for (i, t) in ts.iter_mut().enumerate() {
         *t = time(&hs[&(height - 10 + i as u32)]);
       }
-      State {
-        height,
-        prev: hash(&hs[&height]),
-        chainwork,
-        epoch_bits: bits(&hs[&height]),
-        epoch_start: time(&hs[&(height - height % INTERVAL)]),
-        ts,
-      }
+      // The epoch's nBits are its first block's: on testnet4 the checkpoint
+      // block itself may be a min-difficulty block. On mainnet they are equal.
+      let first = &hs[&(height - height % INTERVAL)];
+      State { height, prev: hash(&hs[&height]), chainwork, epoch_bits: bits(first), epoch_start: time(first), ts }
     }
     pub fn mtp(&self) -> u32 {
       let mut s = self.ts;
       s.sort_unstable();
       s[5]
     }
-    /// Native mirror of the circuit; the error names the failing check.
+    /// Native mirror of the mainnet circuit; the error names the failing check.
     pub fn apply(&self, h: &Header) -> Result<State, &'static str> {
+      self.apply_on(Network::Mainnet, h)
+    }
+
+    /// Native mirror of the circuit for `net`; the error names the failing check.
+    pub fn apply_on(&self, net: Network, h: &Header) -> Result<State, &'static str> {
       let height = self.height + 1;
       if prev(h) != self.prev {
         return Err("prev_link");
       }
-      let req = 1 + (height >= BIP34) as i32 + (height >= BIP66) as i32 + (height >= BIP65) as i32;
-      if height >= BIP34 && (version(h) as i32) < req {
+      let [bip34, bip66, bip65] = net.version_heights();
+      let req = 1 + (height >= bip34) as i32 + (height >= bip66) as i32 + (height >= bip65) as i32;
+      if height >= bip34 && (version(h) as i32) < req {
         return Err("version");
       }
       let t = time(h);
@@ -181,12 +245,27 @@ pub mod native {
       if target > pow_limit() {
         return Err("target_le_powlimit");
       }
-      if height % INTERVAL != 0 {
-        if b != self.epoch_bits {
+      let boundary = height % INTERVAL == 0;
+      if !boundary {
+        // Core's GetNextWorkRequired off a boundary. On testnet4 a block more
+        // than 20 minutes after its predecessor must use powLimit; otherwise
+        // Core walks back to the last block not using that exception, which
+        // by induction carries the epoch's (first block's) nBits.
+        let min_diff = net == Network::Testnet4 && t as u64 > self.ts[10] as u64 + MIN_DIFF_GAP as u64;
+        let expected = if min_diff { POW_LIMIT_BITS } else { self.epoch_bits };
+        if b != expected {
           return Err("bits_continuity");
         }
-      } else if b != next_bits(self.epoch_bits, self.ts[10], self.epoch_start) {
-        return Err("retarget");
+      } else {
+        // BIP94 (testnet4): no timewarp on the period's first block.
+        if net == Network::Testnet4 && (t as u64) + (MAX_TIMEWARP as u64) < self.ts[10] as u64 {
+          return Err("timewarp");
+        }
+        // Mainnet retargets from the last block's nBits and BIP94 from the
+        // period's first block's; both are the epoch nBits held in the state.
+        if b != next_bits(self.epoch_bits, self.ts[10], self.epoch_start) {
+          return Err("retarget");
+        }
       }
       let w = work(&target);
       if w.bits() > 128 {
@@ -202,8 +281,8 @@ pub mod native {
         height,
         prev: hash(h),
         chainwork: &self.chainwork + w,
-        epoch_bits: b,
-        epoch_start: if height % INTERVAL == 0 { t } else { self.epoch_start },
+        epoch_bits: if boundary { b } else { self.epoch_bits },
+        epoch_start: if boundary { t } else { self.epoch_start },
         ts,
       })
     }
@@ -223,7 +302,7 @@ pub mod native {
   }
 }
 
-use native::{Header, ARITY, BIP34, BIP65, BIP66, INTERVAL, TIMESPAN};
+use native::{Header, Network, ARITY, INTERVAL, MAX_TIMEWARP, MIN_DIFF_GAP, POW_LIMIT_BITS, TIMESPAN};
 
 type Val = Option<BigUint>;
 
@@ -643,10 +722,22 @@ fn alloc_lv<F: PrimeField, CS: ConstraintSystem<F>>(
   Ok(n)
 }
 
-/// `k` consecutive headers per fold step.
+/// `k` consecutive headers per fold step, checked under `net`'s rules. The
+/// network is part of the circuit shape, so each network has its own keys.
 #[derive(Clone, Debug)]
 pub struct HeaderStep {
   pub headers: Vec<Header>,
+  pub net: Network,
+}
+
+impl HeaderStep {
+  /// Mainnet headers.
+  pub fn new(headers: Vec<Header>) -> Self {
+    HeaderStep { headers, net: Network::Mainnet }
+  }
+  pub fn on(net: Network, headers: Vec<Header>) -> Self {
+    HeaderStep { headers, net }
+  }
 }
 
 impl<F: PrimeField> StepCircuit<F> for HeaderStep {
@@ -705,9 +796,10 @@ impl<F: PrimeField> StepCircuit<F> for HeaderStep {
       let is_b = is_zero(cs.namespace(|| "is_boundary"), &r.lc, r.fval())?;
 
       // Version minimums (BIP34/66/65), with Core's signed comparison.
-      let b1 = ge(cs.namespace(|| "bip34"), &h_new, &Lv::konst(BIP34 as u64), 33)?;
-      let b2 = ge(cs.namespace(|| "bip66"), &h_new, &Lv::konst(BIP66 as u64), 33)?;
-      let b3 = ge(cs.namespace(|| "bip65"), &h_new, &Lv::konst(BIP65 as u64), 33)?;
+      let [bip34, bip66, bip65] = self.net.version_heights();
+      let b1 = ge(cs.namespace(|| "bip34"), &h_new, &Lv::konst(bip34 as u64), 33)?;
+      let b2 = ge(cs.namespace(|| "bip66"), &h_new, &Lv::konst(bip66 as u64), 33)?;
+      let b3 = ge(cs.namespace(|| "bip65"), &h_new, &Lv::konst(bip65 as u64), 33)?;
       let req = Lv {
         lc: LinearCombination::zero() + one() + &b1.lc(one(), F::ONE) + &b2.lc(one(), F::ONE) + &b3.lc(one(), F::ONE),
         v: match (b1.get_value(), b2.get_value(), b3.get_value()) {
@@ -737,7 +829,31 @@ impl<F: PrimeField> StepCircuit<F> for HeaderStep {
       let pl = le256(cs.namespace(|| "target_le_powlimit"), &d.target, &pow_limit_bits())?;
       enforce_true(&mut cs, "target_le_powlimit_ok", &pl);
       let not_b = LinearCombination::zero() + one() - &is_b.lc(one(), F::ONE);
-      enforce_eq_if(&mut cs, "bits_continuity", &not_b, &pack::<F>(&nb), &pack::<F>(&ebits));
+      match self.net {
+        Network::Mainnet => {
+          enforce_eq_if(&mut cs, "bits_continuity", &not_b, &pack::<F>(&nb), &pack::<F>(&ebits));
+        }
+        Network::Testnet4 => {
+          // Off a boundary: nBits = (t > t_prev + 1200) ? powLimit : epoch nBits.
+          let gap = ts[10].add(&Lv::konst(MIN_DIFF_GAP as u64 + 1));
+          let md = ge(cs.namespace(|| "min_diff"), &t, &gap, 33)?;
+          let e = pack::<F>(&ebits);
+          // m = md * (powLimit bits - epoch bits), as a field element.
+          let m_f = opt2(&md.get_value(), &e.fval(), |m, ev| if *m { F::from(POW_LIMIT_BITS as u64) - *ev } else { F::ZERO });
+          let m = AllocatedNum::alloc(cs.namespace(|| "min_diff_delta"), || m_f.ok_or(SynthesisError::AssignmentMissing))?;
+          cs.enforce(
+            || "min_diff_mul",
+            |lc| lc + &md.lc(one(), F::ONE),
+            |lc| lc + (F::from(POW_LIMIT_BITS as u64), one()) - &e.lc,
+            |lc| lc + m.get_variable(),
+          );
+          let expected = Lv { lc: e.lc.clone() + m.get_variable(), v: None };
+          enforce_eq_if(&mut cs, "bits_continuity", &not_b, &pack::<F>(&nb), &expected);
+          // BIP94: at a boundary, t >= t_prev - 600.
+          let tw = ge(cs.namespace(|| "timewarp_ge"), &t.add(&Lv::konst(MAX_TIMEWARP as u64)), &ts[10], 33)?;
+          enforce_eq_if(&mut cs, "timewarp", &is_b.lc(one(), F::ONE), &pack::<F>(&[tw]), &Lv::konst(1));
+        }
+      }
       retarget(cs.namespace(|| "retarget"), &etarget, &ts[10], &estart, &d, &is_b)?;
       let w = work(cs.namespace(|| "work"), &d.target)?;
 
@@ -767,8 +883,18 @@ impl<F: PrimeField> StepCircuit<F> for HeaderStep {
         |lc| lc + es.get_variable() - &estart.lc,
       );
       estart = Lv::num(&es);
-      ebits = nb;
-      etarget = d.target;
+      match self.net {
+        // Mainnet: nb equals the epoch nBits off a boundary, so copying is exact.
+        Network::Mainnet => {
+          ebits = nb;
+          etarget = d.target;
+        }
+        // Testnet4: min-difficulty headers must not replace the epoch nBits.
+        Network::Testnet4 => {
+          ebits = select_bits(cs.namespace(|| "ebits_next"), &is_b, &nb, &ebits)?;
+          etarget = select_bits(cs.namespace(|| "etarget_next"), &is_b, &d.target, &etarget)?;
+        }
+      }
       ts.remove(0);
       ts.push(t);
     }
