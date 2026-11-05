@@ -108,6 +108,12 @@ jobs:
           timeout --signal=KILL 90s cargo test --release --locked --jobs 2 \
             --manifest-path nova-oracle/Cargo.toml --bin nht4 -- --test-threads=1 \
             2>&1 | tee results/native-dimension-unit-tests.txt
+      - name: Test transparent tracing wrappers without circuit setup
+        run: |
+          set -euo pipefail
+          timeout --signal=KILL 90s cargo test --release --locked --jobs 2 \
+            --manifest-path nova-oracle/Cargo.toml --bin replay -- --test-threads=1 \
+            2>&1 | tee results/native-replay-unit-tests.txt
       - name: Verify retained NHT4 proof with a strict 3 GiB and ten-minute cap
         timeout-minutes: 11
         run: |
@@ -145,6 +151,47 @@ jobs:
           print(json.dumps({'verifier_dimensions_canonical_sha256': hashlib.sha256(encoded).hexdigest()}))
           PY
           cat results/native-nht4-time.txt
+      - name: Capture actual retained-proof verification with forwarding engines
+        timeout-minutes: 11
+        run: |
+          set -euo pipefail
+          trap 'cat results/native-replay-stderr.txt results/native-replay-time.txt >&2 || true' ERR
+          /usr/bin/time -v -o results/native-replay-time.txt \
+            timeout --signal=KILL 600s prlimit --as=3221225472 --cpu=600 -- \
+            nova-oracle/target/release/replay fixtures/nht4-genesis-0-2020-k5.nht4 \
+            fixtures/nht4-genesis-0-2020-k5.expected.json \
+            fixtures/nht4-genesis-0-2020-k5.dimensions.json \
+            > results/native-replay-execution.json 2> results/native-replay-stderr.txt
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          report = json.loads(Path('results/native-replay-execution.json').read_text())
+          if report.get('passed') is not True or report.get('native_nova_proofs_verified') != 1:
+              raise SystemExit('tracing engine did not verify the retained proof')
+          def digest(value):
+              raw = json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode()
+              return hashlib.sha256(raw).hexdigest()
+          if digest(report['key_bindings']) != report['key_bindings_sha256']:
+              raise SystemExit('trusted key-binding canonical digest mismatch')
+          trace = report['trace']
+          keccak = [stream for stream in trace['streams'] if stream['kind'] == 'keccak']
+          poseidon = [stream for stream in trace['streams'] if stream['kind'].startswith('poseidon_')]
+          if (len(keccak) != 2 or len(poseidon) != 5
+                  or sorted(len(stream['events']) for stream in keccak) != [154, 204]
+                  or sorted(len(stream['events']) for stream in poseidon) != [11, 22, 36, 36, 54]
+                  or trace['events'] != 517 or trace['complete_capture'] is not True):
+              raise SystemExit('retained proof transcript coverage mismatch')
+          summary = [{key: stream[key] for key in ('kind', 'engine', 'field_role', 'session')}
+                     | {'events': len(stream['events'])} for stream in trace['streams']]
+          print(json.dumps({'passed': True, 'native_nova_proofs_verified': 1,
+              'key_bindings': report['key_bindings'],
+              'key_bindings_sha256': report['key_bindings_sha256'],
+              'trace_sha256': digest(trace), 'streams': summary,
+              'events': trace['events'], 'recorded_event_bytes': trace['recorded_event_bytes'],
+              'complete_capture': trace['complete_capture']}))
+          PY
+          cat results/native-replay-time.txt
       - name: Compare genuine proof coefficients in explicit synthetic transcript states
         run: |
           set -euo pipefail
