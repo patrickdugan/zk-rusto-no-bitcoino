@@ -8,11 +8,11 @@ use nova_header_chain::{
 };
 use nova_snark::{
     nova::{CompressedSNARK, PublicParams, VerifierKey},
-    provider::{ipa_pc, PallasEngine, VestaEngine},
+    provider::{ipa_pc, pedersen::Commitment, traits::DlogGroup, PallasEngine, VestaEngine},
     spartan::snark::RelaxedR1CSSNARK,
     traits::{snark::RelaxedR1CSSNARKTrait, Engine},
 };
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -236,15 +236,63 @@ fn bind(raw: &[u8], e: &Expected) -> Result<Bound> {
     })
 }
 
-fn decode(proof: &[u8]) -> Result<Proof> {
+fn canonical_bincode<T: DeserializeOwned + Serialize>(bytes: &[u8]) -> Result<T> {
     // bincode::serialize's legacy fixed-width LE encoding, with strict EOF.
-    bincode::DefaultOptions::new()
+    check(
+        !bytes.is_empty() && bytes.len() <= MAX_BUNDLE,
+        "inner proof byte limit",
+    )?;
+    let decoded: T = bincode::DefaultOptions::new()
         .with_fixint_encoding()
         .with_little_endian()
         .with_limit(MAX_BUNDLE as u64)
         .reject_trailing_bytes()
-        .deserialize(proof)
-        .map_err(|e| format!("strict proof decode: {e}"))
+        .deserialize(bytes)
+        .map_err(|e| format!("strict proof decode: {e}"))?;
+    // The checked group decoder admits an alternate sign bit for identity.
+    // Require canonical byte-for-byte reserialization before proof verification.
+    let canonical = bincode::serialize(&decoded).map_err(|e| e.to_string())?;
+    check(
+        canonical.len() <= MAX_BUNDLE && canonical.as_slice() == bytes,
+        "noncanonical compressed-proof encoding",
+    )?;
+    Ok(decoded)
+}
+
+fn decode(proof: &[u8]) -> Result<Proof> {
+    canonical_bincode(proof)
+}
+
+fn identity_alias<E: Engine>(engine: &str) -> Result<Value>
+where
+    E::GE: DlogGroup,
+{
+    let canonical = bincode::serialize(&Commitment::<E>::default()).map_err(|e| e.to_string())?;
+    check(
+        canonical.len() == 32 && canonical.iter().all(|byte| *byte == 0),
+        "unexpected canonical Pasta identity encoding",
+    )?;
+    let mut alias = canonical.clone();
+    alias[31] = 0x80;
+    // Exercise the pinned upstream alias directly, with no parameters or proof.
+    let upstream: Commitment<E> = bincode::DefaultOptions::new()
+        .with_fixint_encoding()
+        .with_little_endian()
+        .with_limit(32)
+        .reject_trailing_bytes()
+        .deserialize(&alias)
+        .map_err(|e| format!("upstream identity alias regression: {e}"))?;
+    check(
+        bincode::serialize(&upstream).map_err(|e| e.to_string())? == canonical,
+        "upstream alias did not represent the canonical identity",
+    )?;
+    check(
+        canonical_bincode::<Commitment<E>>(&alias).is_err(),
+        "identity sign alias passed canonical admission",
+    )?;
+    Ok(json!({"name":format!("{engine}_identity_sign_alias"),
+              "stage":"strict_bincode_roundtrip","rejected":true,
+              "upstream_alias_decoded":true}))
 }
 
 struct HashWriter(Sha256);
@@ -311,6 +359,8 @@ fn verify_retained(bound: &Bound, e: &Expected) -> Result<Value> {
     let final_state = State::from_z(&zn).ok_or("final state")?;
     check(final_state.height == 2020, "final height mismatch")?;
     let mut negatives = Vec::new();
+    negatives.push(identity_alias::<E1>("pallas")?);
+    negatives.push(identity_alias::<E2>("vesta")?);
     for (name, steps) in [
         ("zero_steps", 0),
         ("changed_steps", bound.steps as usize + 1),

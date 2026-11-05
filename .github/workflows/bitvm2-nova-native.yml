@@ -104,6 +104,7 @@ jobs:
         timeout-minutes: 11
         run: |
           set -euo pipefail
+          trap 'cat results/native-nht4-stderr.txt results/native-nht4-time.txt >&2 || true' ERR
           # This reconstructs deterministic transparent parameters/VK and verifies
           # an existing proof. It never calls a proving or recursive-step API.
           /usr/bin/time -v -o results/native-nht4-time.txt \
@@ -116,7 +117,18 @@ jobs:
           report = json.loads(Path('results/native-nht4-execution.json').read_text())
           if report.get('passed') is not True or report.get('native', {}).get('native_nova_proofs_verified') != 1:
               raise SystemExit('native proof verification did not complete successfully')
+          native = report['native']
+          print(json.dumps({'passed': report['passed'],
+              'framing_cases': len(report['framing_cases']),
+              'framing_rejections': sum(not row['accepted'] for row in report['framing_cases']),
+              'native_nova_proofs_verified': native['native_nova_proofs_verified'],
+              'negative_checks': native['negative_checks'],
+              'verifier_key_sha256': native['verifier_key_sha256'],
+              'end_state_sha256': native['end_state_sha256'], 'end_height': native['end_height'],
+              'key_reconstruction_seconds': native['key_reconstruction_seconds'],
+              'verify_seconds': native['verify_seconds']}))
           PY
+          cat results/native-nht4-time.txt
       - name: Compare genuine proof coefficients in explicit synthetic transcript states
         run: |
           set -euo pipefail

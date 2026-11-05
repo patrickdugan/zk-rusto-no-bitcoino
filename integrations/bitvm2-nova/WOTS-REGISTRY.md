@@ -147,8 +147,10 @@ totals against the uncached `7708a99` run. Main `6a87b90` passed
 2,492 vectors including 1,308 rejections, all 25 shapes per point catalogue and
 exact byte preservation. Runtime fell from 428.713 to 169.809 seconds on the
 respective hosted runners; this is an observed run comparison, not a controlled
-hardware benchmark. The expanded Boolean corpus requires its own current-head
-CI before claiming independent execution of those cases.
+hardware benchmark. The expanded Boolean corpus passed on main `f428c32`
+([42116859987](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42116859987)):
+49 cases, 2,538 Script vectors, 1,331 expected rejections, 56 native rejections,
+all 510 links and all four unchanged complete leaf-stream hashes and byte totals.
 
 ```sh
 cd integrations/bitvm2-nova

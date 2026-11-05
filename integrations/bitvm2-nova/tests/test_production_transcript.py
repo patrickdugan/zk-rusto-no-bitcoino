@@ -108,6 +108,7 @@ class ProductionTranscriptTests(unittest.TestCase):
                 lambda: t.absorb_scalars(b'x', [0, t.scalar_modulus]),
                 lambda: t.absorb_affine(b'x', None),
                 lambda: t.absorb_affine(b'x', (0, 0)),
+                lambda: t.absorb_commitment(b'x', (0, 0)),
                 lambda: t.absorb_affine(b'x', (t.base_modulus, 0)),
                 lambda: t.squeeze_bits(b'c', 1),
                 lambda: t.squeeze_bits(b'c', 255),

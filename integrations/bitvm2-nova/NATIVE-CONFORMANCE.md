@@ -70,11 +70,12 @@ Python framing acceptance explicitly reports **zero Nova proofs verified**.
 The retained fixture is the pinned backend's genuine testnet4 genesis-to-2020
 proof: `k=5`, 404 steps, 13,220 container bytes and 12,664 compressed-proof bytes.
 Its expected policy and provenance accompany it in `fixtures/`. The native
-`nht4` binary strictly decodes the inner bincode proof with an EOF requirement,
+`nht4` binary strictly decodes the inner bincode proof with an EOF requirement
+and exact canonical reserialization,
 reconstructs the pinned public verifier parameters, checks key identity, calls
 the actual `CompressedSNARK::verify`, and binds the returned final state. It
-also checks 11 adversarial variants, including canonical sumcheck-coefficient
-tampering. Public parameter reconstruction involves no secret setup or proof
+also checks 13 adversarial variants, including canonical sumcheck-coefficient
+tampering and two identity-sign-alias regressions. Public parameter reconstruction involves no secret setup or proof
 generation, but may consume substantial resources and runs only hosted.
 Arbitrary malicious inner-proof shapes have not received exhaustive panic
 analysis; the pinned native harness is not an unrestricted network verifier.
@@ -128,7 +129,7 @@ Generated corpora and their current expected counts:
 
 | Corpus | Cases | Acceptance/rejection expectation |
 | --- | ---: | --- |
-| Transcript | 74 | 34 accepted, 40 rejected; 528 generated events |
+| Transcript | 76 | 34 accepted, 42 rejected; 530 generated events |
 | NHT4 framing | 23 | One retained fixture, 22 rejected containers/policies |
 | Synthetic Spartan | 48 | 26 accepted folds, 16 admission, four upstream and two terminal rejections |
 | Expanded Spartan | 60 | Six genuine coefficient corpora and six tamper cases added; requires native report |
@@ -136,10 +137,23 @@ Generated corpora and their current expected counts:
 
 The synthetic Spartan corpus contains 188 accepted rounds and 10 terminal
 equation comparisons across both Pasta roles. The expanded corpus is generated
-only after the retained proof's native verification succeeds. Hosted Nova
-compilation, actual native verification, transcript/sumcheck conformance and
-independent execution of the new Keccak Script/registry fixtures remain pending
-until a successful current-head job and its artifacts are recorded here.
+only after the retained proof's native verification succeeds. Require a successful
+current-head job and its evidence artifacts before claiming native conformance.
+
+Main `f428c32` compiled all three native binaries. Its
+[native run](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42116860045)
+then failed a malformed-point admission case: halo2curves accepts `(0,0)` as its
+identity sentinel even when the transport marks a finite point. The oracle now
+checks actual group identity and rejects that noncanonical finite encoding.
+Both-curve regressions cover raw affine and commitment encodings. This failed
+run did not execute NHT4 verification and supplies no proof-verification evidence.
+
+The same commit's
+[Keccak run](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42116860078)
+passed all 230 independent Script vectors (200 rejections), and three WOTS
+sessions executed 24 vectors (12 rejections). WOTS leaves reached 4,975 bytes,
+35 stack items and 600 witness bytes. This samples four predicate shapes; it
+does not measure the full signature-inclusive round catalogue.
 
 Current fixed-claim round measurements:
 
@@ -209,6 +223,10 @@ encoding checks, disabled OP_CAT and forbidden OP_SUCCESS behavior.
 
 The production path still requires a complete authenticated composition:
 
+- Enforce the verifier-owned dimensions and bounded parsing conditions in
+  [ARBITRARY-PROOF-PREFLIGHT.md](ARBITRARY-PROOF-PREFLIGHT.md) before removing the
+  retained-fixture gate. Nova's outer hash/NIFS stages also require Poseidon;
+  the Keccak transcript implementation covers the Spartan/IPA transcript only.
 - Replay the entire compressed Nova/Spartan verifier transcript from the real
   proof and verifier key, with exact labels, object order and both curve roles;
   bind external network/circuit/key/`k`/step/state expectations to that execution.

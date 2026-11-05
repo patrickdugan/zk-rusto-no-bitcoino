@@ -104,6 +104,8 @@ def fixtures():
                 'infinity': True, 'x_le': '01' + '00' * 31, 'y_le': '00' * 32}},
             {'op': 'absorb_bytes', 'label_hex': '00' * 1025, 'data_hex': ''},
             {'op': 'dom_sep', 'data_hex': 'xy'},
+            {'op': 'absorb_commitment', 'label_hex': '', 'point': {
+                'infinity': False, 'x_le': '00' * 32, 'y_le': '00' * 32}},
         ]
         for i, item in enumerate(negatives):
             cases.append({'name': f'{engine}-bad-object-{i}', 'engine': engine,

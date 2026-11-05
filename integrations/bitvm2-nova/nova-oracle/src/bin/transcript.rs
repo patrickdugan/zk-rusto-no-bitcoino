@@ -127,9 +127,15 @@ where
         return Ok(None);
     }
     let affine = <E::GE as DlogGroup>::AffineGroupElement::from_xy(x, y);
-    Option::from(affine)
-        .map(Some)
-        .ok_or_else(|| admission("point not on curve"))
+    let affine = Option::from(affine).ok_or_else(|| admission("point not on curve"))?;
+    // halo2curves also accepts (0, 0) as its identity sentinel in from_xy.
+    // A successful constructor therefore does not establish finiteness.
+    // Keep the transport's explicit infinity flag canonical, and never feed
+    // a raw-affine identity into the upstream transcript representation.
+    if E::GE::group(&affine).to_coordinates().2 {
+        return Err(admission("identity encoded with finite point flag"));
+    }
+    Ok(Some(affine))
 }
 
 fn apply<E>(transcript: &mut Keccak256Transcript<E>, event: &Value) -> Result<Option<E::Scalar>>
