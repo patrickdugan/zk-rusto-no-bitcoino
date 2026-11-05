@@ -138,7 +138,10 @@ class BoundTrace:
         mode = b'D' if disprove else b'C'
         tag = sha256(b'BITVM2-NOVA/LEAF/v2\x00' + self.program_digest
                      + self.claim_digest + ordinal.to_bytes(4, 'little') + mode).digest()
-        code = bytearray(push(tag) + bytes([OPS['DROP']]))
+        # Check arity before any indexed stack access. This also gives malformed
+        # witness lengths a deterministic rejection before opening checks.
+        code = bytearray(bytes([OPS['DEPTH']]) + push(num(len(c.wires)))
+                         + bytes([OPS['EQUALVERIFY']]) + push(tag) + bytes([OPS['DROP']]))
         # The same named wire has exactly the same opening hash at every use.
         for i, w in enumerate(c.wires):
             code.extend(push(num(len(c.wires)-1-i)))
