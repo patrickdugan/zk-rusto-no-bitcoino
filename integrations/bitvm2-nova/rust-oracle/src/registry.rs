@@ -96,7 +96,8 @@ impl GraphSpec {
             "gate_equal" => {
                 gates
                     && bounds.len() == 19
-                    && bounds[0] == 5
+                    && matches!(bounds[0], 2 | 5)
+                    && leaf.argument.iter().all(|a| *a < bounds[0] as i64)
                     && bounds[1..].iter().all(|b| *b == BASE)
             }
             "gate_nonzero" => {
@@ -151,13 +152,13 @@ impl GraphSpec {
         }
         let mut needed = HashSet::new();
         let mut covered = HashSet::new();
-        for leaf in &self.leaves {
+        for (ordinal, leaf) in self.leaves.iter().enumerate() {
             if leaf.wires.is_empty()
                 || leaf.wires.len() > 64
                 || leaf.wires.iter().any(|i| *i >= self.words.len())
                 || !self.shape(leaf)
             {
-                return Err("unsupported catalogue leaf".into());
+                return Err(format!("unsupported catalogue leaf {ordinal}: {}", leaf.kind).into());
             }
             needed.insert(leaf.body_sha256.clone());
             covered.extend(leaf.wires.iter().copied());

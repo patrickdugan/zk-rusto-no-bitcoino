@@ -153,6 +153,11 @@ fn main() -> Result<()> {
     let mut out = BufWriter::new(fs::File::create(&args[2])?);
     for case in &cases {
         if case.name.len() > 192
+            || case.name.is_empty()
+            || !case
+                .name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"_.:/-".contains(&b))
             || !names.insert(case.name.clone())
             || case.words.len() != case.spec.words.len()
         {
@@ -174,7 +179,10 @@ fn main() -> Result<()> {
             })
             .collect();
         let keys: Vec<PublicKey> = secrets.iter().map(Wots4::generate_public_key).collect();
-        let id = case.spec.key_identity(&keys)?;
+        let id = case
+            .spec
+            .key_identity(&keys)
+            .map_err(|e| format!("{}: {e}", case.name))?;
         let registry = Registry::new(case.spec.clone(), keys.clone(), expected, id)?;
         let signatures: Vec<Signature> = secrets
             .iter()

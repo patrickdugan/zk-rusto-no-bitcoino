@@ -55,6 +55,15 @@ class GraphCatalogue(unittest.TestCase):
             self.assertEqual(set(w for l in spec.leaves for w in l.wires), set(range(len(spec.words))))
             self.assertTrue(any(len(set(l.wires)) < len(l.wires) for l in spec.leaves))
 
+    def test_point_membership_and_dispatch_use_their_declared_selector_bounds(self):
+        g = (PALLAS.p-1, 2)
+        pr, _ = point_add_trace(PALLAS, g, g)
+        spec = GraphSpec.from_program(pr)
+        selectors = {spec.words[l.wires[0]][1] for l in spec.leaves if l.kind == 'gate_equal'}
+        # Curve membership is gated by a Boolean infinity flag, while slope
+        # and output equations use the five-way addition dispatch selector.
+        self.assertEqual(selectors, {2, 5})
+
     def test_unreferenced_small_has_a_validity_path(self):
         g = TraceBuilder('pallas_base', 'bounds', bytes(32))
         g.constant('zero', 0)

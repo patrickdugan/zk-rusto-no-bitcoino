@@ -118,6 +118,15 @@ OP_SUCCESS is forbidden. Interpreter panics are fatal, never rejection evidence.
 Read the completed current-head workflow and its evidence artifact before
 claiming independent execution or measured signature-inclusive costs.
 
+The first main-branch registry run
+([42109257674](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42109257674))
+compiled successfully but failed its complete run: the catalogue guard wrongly
+required every `gate_equal` selector to have bound five. Curve membership uses
+a Boolean infinity flag with bound two. The guard now accepts the declared
+Boolean or five-way selector, requiring gate cases to fit that bound; the WOTS
+decoder still enforces the exact registered bound. A regression records both
+selector roles. That failed run is not complete-execution acceptance evidence.
+
 ```sh
 cd integrations/bitvm2-nova
 python -m unittest discover -s tests -v
