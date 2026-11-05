@@ -1,0 +1,36 @@
+{
+  "schema": "bitvm2-nova-keccak-sources/v1",
+  "scope": "Native bounded Keccak-256 reference and exactly one Boolean Keccak-f[1600] Script round; not an authenticated whole hash or Nova verifier",
+  "specification": "https://keccak.team/keccak_specs_summary.html",
+  "reference": {
+    "repository": "XKCP/XKCP",
+    "commit": "5585d0213203c0c5b2dfdf3b34f5da9275abc3e7",
+    "path": "Standalone/CompactFIPS202/Python/CompactFIPS202.py",
+    "git_blob": "0b9608fc01852ea94182139890beca21b61b677a",
+    "license": "CC0 / public domain",
+    "vectors_path": "tests/TestVectors/KeccakF-1600-IntermediateValues.txt",
+    "vectors_git_blob": "5d2b1bc0b68c15548e8993959ba947f051d67f9f"
+  },
+  "mature_hash_oracle": {"package": "pycryptodomex", "version": "3.23.0", "module": "Cryptodome.Hash.keccak"},
+  "bitvm_reuse_review": {
+    "repository": "BitVM/BitVM",
+    "commit": "c620dbfaacebdf778e765a6681985350389973b1",
+    "hash_module": "bitvm/src/hash/mod.rs",
+    "hash_module_git_blob": "73e0c3e9a5154c9941f8d55debe03eef7c8a5f5a",
+    "reviewed": [
+      {"path": "bitvm/src/u4/u4_logic.rs", "git_blob": "e62d4f9c8adf6a321441025960f624741146d3fa"},
+      {"path": "bitvm/src/u32/u32_xor.rs", "git_blob": "be92dd0379367b7220c3ab620b19f75329825bc1"}
+    ],
+    "finding": "Pinned hash module contains SHA256 and Blake3, no Keccak. The mature u4/u32 XOR/AND gadgets use persistent lookup tables and a different stack layout. This trace instead uses the existing typed Script compiler with tiny Boolean equality/arithmetic predicates; it uses no disabled OP_XOR/OP_AND/OP_INVERT opcodes."
+  },
+  "conventions": {
+    "lane_index": "x + 5*y",
+    "lane_byte_order": "little",
+    "bit_order": "least significant bit first",
+    "rate_bytes": 136,
+    "keccak_delimited_suffix_hex": "01",
+    "last_padding_bit_hex": "80",
+    "rounds": "0 through 23; each Script graph implements only the selected round"
+  },
+  "composition_blocker": "Separate per-round programs or identically spelled boundary wire names do not establish a shared authenticated assertion registry. Whole-hash linkage, absorption, padding and squeeze remain required."
+}

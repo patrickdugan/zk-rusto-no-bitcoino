@@ -1,14 +1,15 @@
 # Next implementation boundary
 
-M2 is implemented on PR #18. The opt-in M2.1 footprint comparison is documented
+M2 and the subsequent arithmetic/WOTS milestones are integrated on main. The
+opt-in M2.1 footprint comparison is documented
 in [M2-COMPACT.md](M2-COMPACT.md); `m2` remains the default compiler. Its complete
 point graph still totals 14,148,063 Script bytes before transaction/assertion
 overhead. This bounded optimization does not complete M3 or M4 below.
 
 [WOTS-LEAF.md](WOTS-LEAF.md) describes the next bounded adapter: one upstream-
 WOTS-authenticated multiplication step, including disputable malformed signed
-values. It does not supply the global shared-wire assertion registry or the
-Bitcoin transaction graph required by M4.
+values. The global registry is described separately below; the Bitcoin
+transaction graph required by M4 remains unimplemented.
 
 [WOTS-REGISTRY.md](WOTS-REGISTRY.md) extends that boundary to a complete global
 wire/key catalogue, explicit field-validity leaves, and signature reuse across
@@ -54,6 +55,15 @@ probe uses upstream BitVM's interpreter, which is a different acceptance
 layer from a mined Bitcoin transaction.
 
 ## M3: exact production transcript and Spartan/Nova verifier
+
+The bounded implementation in [NATIVE-CONFORMANCE.md](NATIVE-CONFORMANCE.md)
+adds the published Nova 0.76.0 non-EVM Keccak transcript, strict retained NHT4
+framing, production sumcheck folds and terminal-equation helpers. Independent
+native oracles call actual Nova APIs; hosted execution is required before
+claiming their conformance. Genuine proof coefficients exercised from synthetic
+transcript states do not establish the actual proof's Fiat-Shamir replay.
+The Keccak Script work covers one permutation round with Boolean gates; linked
+round boundaries and a complete authenticated sponge remain open.
 
 Instrument the pinned Nova implementation rather than substitute the
 TEST-ONLY transcript. Account for its challenge reduction and byte encodings.

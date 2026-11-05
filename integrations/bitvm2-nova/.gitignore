@@ -5,3 +5,14 @@ rust-oracle/Cargo.lock
 results/engine-vectors.json
 results/rust-dependency-tree.txt
 results/upstream-engine.txt
+nova-oracle/target/
+nova-oracle/Cargo.lock
+results/transcript-inputs.json
+results/spartan-inputs.json
+results/nht4-inputs.json
+results/keccak-engine-vectors.jsonl
+results/keccak-registry-vectors.jsonl
+results/keccak-registry-inputs.json
+results/keccak-registry-engine-vectors.jsonl
+results/keccak-ci-*
+results/native-integration-python-tests.txt

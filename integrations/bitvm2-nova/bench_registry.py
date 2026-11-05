@@ -9,6 +9,7 @@ from trace import multiplication_trace, TraceBuilder
 from curve_trace import point_add_trace
 from ipa_algebra import PALLAS, VESTA
 from wots_graph import GraphSpec, authenticated_shape
+import itertools
 from bench_compact import peak_rss
 
 
@@ -110,6 +111,25 @@ def main():
                       'expected_spec_id': spec.digest().hex(), 'words': [changed[w] for w, _ in spec.words],
                       'checks': [dict(ordinal=len(spec.leaves)-1, expected_correct=value < 3)],
                       'measure_all': False})
+    # Exact truth tables and malformed signed bits for the Boolean predicates
+    # used by the production Keccak trace. Every case has fresh one-time keys.
+    for kind in ('bool_xor', 'bool_and', 'bool_not'):
+        width = 2 if kind == 'bool_not' else 3
+        g = TraceBuilder('pallas_base', 'boolean/'+kind, bytes(32))
+        wires = [g.small(f'w{i}', 0, 2) for i in range(width)]
+        g.check(kind, wires)
+        pr, _ = g.finish()
+        spec = GraphSpec.from_program(pr)
+        for i, values in enumerate(itertools.product((0, 1), repeat=width)):
+            expected = (1-values[0] if kind == 'bool_not' else
+                        values[0] ^ values[1] if kind == 'bool_xor' else values[0] & values[1])
+            cases.append({'name': f'boolean/{kind}/{i}', 'spec': spec.json(),
+                          'expected_spec_id': spec.digest().hex(), 'words': list(values),
+                          'checks': [dict(ordinal=0, expected_correct=values[-1] == expected)],
+                          'measure_all': False})
+        cases.append({'name': f'boolean/{kind}/invalid-signed-bit', 'spec': spec.json(),
+                      'expected_spec_id': spec.digest().hex(), 'words': [2]+[0]*(width-1),
+                      'checks': [dict(ordinal=0, expected_correct=False)], 'measure_all': False})
     out = Path(__file__).resolve().parent/'results'
     path = out/'registry-inputs.json'
     with path.open('w', encoding='ascii', newline='\n') as f:

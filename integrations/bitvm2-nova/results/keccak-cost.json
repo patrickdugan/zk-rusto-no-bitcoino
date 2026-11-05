@@ -1,0 +1,38 @@
+{
+  "schema": "bitvm2-nova-keccak-one-round-cost/v1",
+  "round": 23,
+  "round_constant_hex": "8000000080008008",
+  "manifest": {
+    "schema": "bitvm2-nova-fixed-trace-manifest/v2",
+    "program_sha256": "7e0b22cb57d8285b06736b7ec516343b5908b4414442bac90ff461d74a851d19",
+    "claim_sha256": "9d6be7966b273c0c6b0a9703e17471d7e23b19412c9d263a1ebb3b7ce56e52a4",
+    "context_sha256": "7b013a8a8bc908051b3f9be2613ac17a86d45ecf42e0aec1bb59fc7e3ebe19a6",
+    "field_role": "pallas_scalar",
+    "operation_id": "benchmark/keccak/round/23",
+    "words": 11205,
+    "constraints": 9605,
+    "authentication": "fixed-claim-per-word-SHA256",
+    "dynamic_assertions": false,
+    "bitcoin_transaction_graph": false
+  },
+  "constraint_kinds": {
+    "bool_xor": 6400,
+    "bool_not": 1604,
+    "bool_and": 1600,
+    "const": 1
+  },
+  "disproof_script_bytes": 1770264,
+  "largest_disproof_script_bytes": 194,
+  "selected_script_peak_stack": 8,
+  "engine_vectors": 230,
+  "engine_expected_rejections": 200,
+  "engine_vectors_sha256": "8cde009b52c220d0d5e608d5b465f1356ff0ec7876b9caa87179fcecf866d09f",
+  "registry_selected_checks": 12,
+  "registry_words": 11205,
+  "registry_leaves": 9605,
+  "registry_bodies": 4,
+  "wall_seconds": 0.55,
+  "peak_rss_bytes": 44158976,
+  "accounting": "Actual fixed-claim disproof Script bytes; excludes transaction framing, control blocks and assertion signatures",
+  "boundary": "One permutation round only. Independent round programs do not authenticate a composed hash. No full transcript verifier or deployability claim."
+}

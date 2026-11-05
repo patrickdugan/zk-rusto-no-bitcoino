@@ -1,0 +1,10 @@
+{
+  "framing_cases": 23,
+  "accepted_framing": 1,
+  "rejected_framing": 22,
+  "retained_bundle_bytes": 13220,
+  "retained_proof_bytes": 12664,
+  "native_nova_proofs_verified": 0,
+  "bitvm2_script_verified": false,
+  "note": "Python checks bind framing/identity only; native oracle must verify proof."
+}

@@ -35,6 +35,13 @@ class Constraint:
 
     def native(self, values, p):
         v = [values[w] for w in self.wires]
+        if self.kind in ('bool_xor', 'bool_and', 'bool_not'):
+            if any(x not in (0, 1) for x in v):
+                return False
+            if self.kind == 'bool_not':
+                return v[1] == 1-v[0]
+            result = v[0] ^ v[1] if self.kind == 'bool_xor' else v[0] & v[1]
+            return v[2] == result
         if self.kind == 'add':
             return (_field(v[:9]) + _field(v[9:18])) % p == _field(v[18:])
         if self.kind == 'mul_bit':
@@ -211,6 +218,9 @@ class TraceBuilder:
 
     def check(self, kind, ws, argument=()):
         ws, argument = tuple(ws), tuple(argument)
+        boolean_arity = {'bool_xor': 3, 'bool_and': 3, 'bool_not': 2}
+        if kind in boolean_arity and len(ws) != boolean_arity[kind]:
+            raise ValueError('Boolean predicate arity mismatch')
         if len(ws) > MAX_ARGUMENTS or any(w not in self.words for w in ws):
             raise ValueError('unknown wire or oversize predicate')
         if len(self.constraints) >= MAX_CONSTRAINTS:

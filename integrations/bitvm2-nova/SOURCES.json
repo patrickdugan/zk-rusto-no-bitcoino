@@ -8,7 +8,13 @@
     "manifest_version": "0.76.0",
     "ipa_path": "src/provider/ipa_pc.rs",
     "ipa_git_blob": "c77b3c0cde7780ed7db0590c497cfc55666af9f1",
-    "use": "Algebraic equality and coefficient order only; production transcript still pending"
+    "use": "Historical inspected algebra reference; exact published release below is authoritative for production transcript and native conformance",
+    "authoritative_dependency": "crates.io:nova-snark=0.76.0",
+    "crate_sha256": "c9bb3809a6c70057ea722c1c4fe5097cf29a3479d0b4671f3cddb1d81043bb31",
+    "crate_vcs_revision": "98576efa884072bfe69bfad8f275a3a5cd8754e5",
+    "keccak_rs_sha256": "9a63349a255e0bdf24117f07ec50aeafb592995eb5520186c8ffcfd89b4bb6b9",
+    "provider_traits_rs_sha256": "85019648754735a269235bcab7e5dc4bbc238a80cbb68706916eaf50224c852e",
+    "production_use": "Bounded non-EVM transcript, sumcheck and retained NHT4 native verification conformance; complete authenticated Script verifier remains unimplemented"
   },
   "bitvm": {
     "repository": "https://github.com/BitVM/BitVM",

@@ -1,0 +1,2 @@
+# Mature Keccak implementation; do not substitute hashlib.sha3_256.
+pycryptodomex==3.23.0

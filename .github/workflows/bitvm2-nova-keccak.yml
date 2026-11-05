@@ -1,0 +1,96 @@
+name: BitVM2 Nova Keccak one-round checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-keccak.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-keccak.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bounded-round-and-independent-engines:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install mature independent Keccak oracle
+        run: python -m pip install --requirement transcript-requirements.txt
+      - name: Test bounded hash reference, bit wiring and malformed witnesses
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m unittest discover -s tests -p test_keccak_trace.py -v 2>&1 | tee results/keccak-ci-python.txt
+      - name: Generate one-round size ledger and independent-engine fixtures
+        run: |
+          set -euo pipefail
+          python bench_keccak.py | tee results/keccak-ci-generation.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('results')
+          cost = json.loads((p/'keccak-cost.json').read_text())
+          rows = [json.loads(line) for line in (p/'keccak-engine-vectors.jsonl').read_text().splitlines()]
+          cases = json.loads((p/'keccak-registry-inputs.json').read_text())
+          assert cost['engine_vectors'] == len(rows) == 230
+          assert cost['engine_expected_rejections'] == sum(not row['expected_success'] for row in rows) == 200
+          assert type(cases) is list and len(cases) == 3
+          assert cost['registry_selected_checks'] == sum(len(case['checks']) for case in cases) == 12
+          assert all(case['measure_all'] is False for case in cases)
+          assert all(len(case['words']) == cost['registry_words'] for case in cases)
+          PY
+      - name: Build pinned upstream Script and WOTS registry oracles on hosted runner
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/keccak-ci-rust-version.txt
+          cargo generate-lockfile --manifest-path m2-oracle/Cargo.toml
+          cargo tree --locked --manifest-path m2-oracle/Cargo.toml > results/keccak-ci-script-dependencies.txt
+          cargo build --locked --manifest-path m2-oracle/Cargo.toml
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/keccak-ci-registry-dependencies.txt
+          cargo build --locked --manifest-path rust-oracle/Cargo.toml --bin registry
+      - name: Independently execute all 230 Boolean Script vectors
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/keccak-ci-script-time.txt m2-oracle/target/debug/bitvm2-nova-m2-oracle --scripts results/keccak-engine-vectors.jsonl | tee results/keccak-ci-script-execution.json
+      - name: Independently execute three authenticated round registry cases
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/keccak-ci-registry-time.txt rust-oracle/target/debug/registry results/keccak-registry-inputs.json results/keccak-registry-engine-vectors.jsonl | tee results/keccak-ci-registry-execution.json
+      - name: Require complete independent execution and record vector hashes
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('results')
+          script = json.loads((p/'keccak-ci-script-execution.json').read_text())
+          registry = json.loads((p/'keccak-ci-registry-execution.json').read_text())
+          assert script['passed'] is True and script['vectors'] == 230 and script['expected_rejections'] == 200
+          assert registry['passed'] is True and registry['cases'] == 3
+          assert registry['metrics']['vectors'] == 24 and registry['metrics']['expected_rejections'] == 12
+          assert script['stack_limit_enabled'] is True and registry['stack_limit_enabled'] is True
+          assert script['op_cat_enabled'] is False and registry['op_cat_enabled'] is False
+          assert registry['complete_nova_verifier'] is False and registry['bitcoin_transaction_graph'] is False
+          PY
+          sha256sum results/keccak-engine-vectors.jsonl results/keccak-registry-inputs.json results/keccak-registry-engine-vectors.jsonl > results/keccak-ci-vector-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-keccak-one-round-evidence
+          path: |
+            integrations/bitvm2-nova/results/keccak-*
+            integrations/bitvm2-nova/m2-oracle/Cargo.lock
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock

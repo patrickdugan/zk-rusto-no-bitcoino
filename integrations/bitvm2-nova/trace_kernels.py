@@ -38,6 +38,20 @@ def gate(b: Builder, selector, cases):
 @lru_cache(maxsize=128)
 def compile_predicate(p: int, kind: str, argument: tuple[int, ...] = ()) -> bytes:
     """Compile a fixed shape. Parameters never contain claim values."""
+    if kind in ('bool_xor', 'bool_and', 'bool_not'):
+        if argument:
+            raise ValueError('Boolean predicates have no parameters')
+        names = ['a', 'out'] if kind == 'bool_not' else ['a', 'b', 'out']
+        b = Builder(names)
+        for name in names:
+            b.range(name, 2)
+        if kind == 'bool_not':
+            result = negate(b, 'a')
+        elif kind == 'bool_and':
+            result = b.binary('BOOLAND', 'a', 'b')
+        else:
+            result = negate(b, b.binary('EQUAL', 'a', 'b'))
+        return finish(b, b.binary('EQUAL', result, 'out'))
     if kind in ('add', 'mul_bit'):
         return kernel(p, kind)
     if kind == 'bits':

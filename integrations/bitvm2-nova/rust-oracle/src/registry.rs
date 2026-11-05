@@ -67,6 +67,8 @@ impl GraphSpec {
             && leaf.argument.iter().all(|x| (0..5).contains(x))
             && leaf.argument.iter().collect::<HashSet<_>>().len() == leaf.argument.len();
         match leaf.kind.as_str() {
+            "bool_xor" | "bool_and" => empty && bounds == [2, 2, 2],
+            "bool_not" => empty && bounds == [2, 2],
             "add" => empty && bounds == vec![BASE; 27],
             "mul_bit" => {
                 empty

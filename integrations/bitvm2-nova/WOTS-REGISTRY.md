@@ -104,11 +104,11 @@ oversize words, wrong canonical point results, signature corruption/substitution
 all witness-length variants and catalogue/key/role/context substitutions.
 Native malformed-JSON, index/shape and forbidden-opcode checks fail closed.
 
-`bench_registry.py` produces a bounded JSON input with 26 signing sessions,
-18,658,059 bytes, SHA-256
-`52a46a9da2afbb7ab7da2f10705fc945c36195a7f4ce6d8c1b2d071d18bd463d`.
-Local generation took 2.314 s and peaked at 85,651,456 bytes of Windows working
-set (about 81.7 MiB); this was not an enforced memory ceiling. No Rust build,
+`bench_registry.py` now produces a bounded JSON input with 49 signing sessions,
+including Boolean truth tables and invalid signed bits, 18,676,730 bytes, SHA-256
+`887a9d2ff810be2c937fe123ccfa79b730550f88f83cad9caf0655d2aadbc5f5`.
+Local generation took 1.951 s and peaked at 87,867,392 bytes of Windows working
+set (about 83.8 MiB); this was not an enforced memory ceiling. No Rust build,
 Nova proving job, GPU run or heavy test runs on the local PC.
 
 The hosted `BitVM2 Nova global registry checks` workflow uses BitVM WOTS at
@@ -142,8 +142,13 @@ bodies (25 point shapes instead of 23). Registry construction also lazily caches
 each immutable wire's compiled WOTS/decoder block to avoid repeated upstream
 compilation. This increases bounded verifier-generation memory and changes no
 leaf bytes; the harness checks all four complete leaf-stream hashes and byte
-totals against the uncached `7708a99` run. Current-head CI must confirm these
-additional samples and exact byte preservation before accepting the update.
+totals against the uncached `7708a99` run. Main `6a87b90` passed
+[42113034117](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42113034117):
+2,492 vectors including 1,308 rejections, all 25 shapes per point catalogue and
+exact byte preservation. Runtime fell from 428.713 to 169.809 seconds on the
+respective hosted runners; this is an observed run comparison, not a controlled
+hardware benchmark. The expanded Boolean corpus requires its own current-head
+CI before claiming independent execution of those cases.
 
 ```sh
 cd integrations/bitvm2-nova
@@ -157,8 +162,10 @@ cargo run --locked --manifest-path rust-oracle/Cargo.toml --bin registry -- \
 
 This completes an arithmetic assertion-registry boundary only when those checks
 pass. Production key lifecycle, authenticated Bitcoin commitments/transactions,
-data-availability disputes, exact Nova/Spartan transcripts, NHT4 decoding and
-complete IPA verification remain future work. No complete Nova proof or
+data-availability disputes, whole-proof Nova/Spartan transcript binding and
+complete authenticated IPA verification remain future work. The bounded
+transcript, NHT4 and sumcheck components in
+[NATIVE-CONFORMANCE.md](NATIVE-CONFORMANCE.md) do not close those gaps. No complete Nova proof or
 deployability result is established, and no transaction is broadcast. The
 transparent Nova -> Spartan/IPA pipeline still has no Groth16/KZG wrapper or
 trusted setup, including final compression.

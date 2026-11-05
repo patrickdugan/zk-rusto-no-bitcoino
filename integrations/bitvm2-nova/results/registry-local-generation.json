@@ -1,8 +1,8 @@
 {
   "schema": "bitvm2-nova-registry-generation/v1",
-  "cases": 26,
-  "input_bytes": 18658059,
-  "input_sha256": "52a46a9da2afbb7ab7da2f10705fc945c36195a7f4ce6d8c1b2d071d18bd463d",
+  "cases": 49,
+  "input_bytes": 18676730,
+  "input_sha256": "887a9d2ff810be2c937fe123ccfa79b730550f88f83cad9caf0655d2aadbc5f5",
   "census": [
     {
       "field_role": "pallas_base",
@@ -43,8 +43,8 @@
       "executed_shapes": 25
     }
   ],
-  "generation_seconds": 2.314037600008305,
-  "python_peak_rss_bytes": 85651456,
+  "generation_seconds": 1.9507665000273846,
+  "python_peak_rss_bytes": 87867392,
   "platform": "Windows-11-10.0.26200-SP0",
   "enforced_memory_limit": false,
   "nova_proofs_generated": 0

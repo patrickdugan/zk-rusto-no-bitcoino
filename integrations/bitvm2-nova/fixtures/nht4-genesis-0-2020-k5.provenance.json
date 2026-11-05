@@ -1,0 +1,20 @@
+{
+  "source_repository": "patrickdugan/zk-rusto-no-bitcoino",
+  "source_revision": "de607d3db17d400dd6c2923d357f1d4a7bf233c7",
+  "source_path": "integrations/nova-header-chain/fixtures/testnet4/genesis_0_2020_k5.nht4",
+  "source_git_blob": "5f1ab190064d63101065a98f867f1efc0e3ce75c",
+  "bundle_sha256": "c3143d5627ef7291ab6a858b866a4ba19e356a168dea992d3e572ef6531904e9",
+  "initial_state_sha256": "9c82dffe8b6005378775c8f2028b7644039defadb0fcc1d77820b7aaced6de9c",
+  "proof_sha256": "2137c6e8621cedb7423e0ef7f9ff7c27b2c6fdf3ceb227e644b3d9660d056617",
+  "nova_crate_version": "0.76.0",
+  "nova_crate_sha256": "c9bb3809a6c70057ea722c1c4fe5097cf29a3479d0b4671f3cddb1d81043bb31",
+  "nova_crate_vcs_revision": "98576efa884072bfe69bfad8f275a3a5cd8754e5",
+  "historical_receipt": {
+    "verified": true,
+    "end_height": 2020,
+    "tip_hash_display": "00000000360b7ae1602c56dd58e7c0676f526a852f4693c44fcf0e99a4f5ee36",
+    "end_state_sha256": "9c2c618540f1c52e25974c19e9ca6835a2336cc0debb35bf95b087087561a81c",
+    "verifier_key_sha256": "1ae88a7bcfdc5f14d030d0baafa06ec17fe904a5ebed42f9bd6fa6105fdc8c24"
+  },
+  "evidence_limit": "Historical receipt is provenance, not current proof-verification evidence. Policy is verifier-owned and must be authenticated externally for production use."
+}

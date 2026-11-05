@@ -1,0 +1,138 @@
+name: BitVM2 Nova native transcript and proof checks
+on:
+  workflow_dispatch:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-native.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-native.yml']
+permissions:
+  contents: read
+jobs:
+  production-native-conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+    defaults:
+      run:
+        shell: bash
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned mature Keccak implementation
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m pip install --disable-pip-version-check -r transcript-requirements.txt
+      - name: Transcript, strict framing and sumcheck Python regressions
+        run: |
+          set -euo pipefail
+          {
+            python -m unittest discover -s tests -p test_production_transcript.py -v
+            python -m unittest discover -s tests -p test_nht4.py -v
+            python -m unittest discover -s tests -p test_spartan_checks.py -v
+          } 2>&1 | tee results/native-python-tests.txt
+      - name: Generate bounded transcript, sumcheck and retained-proof inputs
+        run: |
+          set -euo pipefail
+          python bench_transcript.py --cases results/native-transcript-inputs.json | tee results/native-transcript-generation.json
+          python bench_spartan.py results/native-spartan-inputs.json | tee results/native-spartan-generation.json
+          python bench_nht4.py | tee results/native-nht4-generation.json
+      - name: Resolve and authenticate the exact published Nova backend
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustup component add rustfmt
+          rustc --version | tee results/native-rust-version.txt
+          cargo fmt --manifest-path nova-oracle/Cargo.toml -- --check
+          cargo generate-lockfile --manifest-path nova-oracle/Cargo.toml
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import tomllib
+          packages = tomllib.loads(Path('nova-oracle/Cargo.lock').read_text())['package']
+          nova = [p for p in packages if p['name'] == 'nova-snark']
+          expected = 'c9bb3809a6c70057ea722c1c4fe5097cf29a3479d0b4671f3cddb1d81043bb31'
+          if len(nova) != 1 or nova[0]['version'] != '0.76.0':
+              raise SystemExit('expected exactly the production Nova 0.76.0 release')
+          if (nova[0].get('source') != 'registry+https://github.com/rust-lang/crates.io-index'
+                  or nova[0].get('checksum') != expected):
+              raise SystemExit('Nova release source/checksum mismatch')
+          revision = 'de607d3db17d400dd6c2923d357f1d4a7bf233c7'
+          headers = [p for p in packages if p['name'] == 'nova-header-chain']
+          source = 'git+https://github.com/patrickdugan/zk-rusto-no-bitcoino?rev=' + revision + '#' + revision
+          if len(headers) != 1 or headers[0].get('source') != source:
+              raise SystemExit('header circuit source revision mismatch')
+          Path('results/native-lock-pins.json').write_text(json.dumps({
+              'nova_version': nova[0]['version'], 'nova_crate_sha256': expected,
+              'header_revision': revision, 'verified': True}, indent=2) + '\n')
+          PY
+          cargo tree --locked --manifest-path nova-oracle/Cargo.toml > results/native-cargo-tree.txt
+          cargo tree --locked -e features --manifest-path nova-oracle/Cargo.toml > results/native-cargo-features.txt
+          cargo metadata --locked --format-version 1 --manifest-path nova-oracle/Cargo.toml > results/native-cargo-metadata.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('results/native-cargo-metadata.json').read_text())
+          ids = {p['id'] for p in data['packages'] if p['name'] == 'nova-snark'}
+          nodes = [n for n in data['resolve']['nodes'] if n['id'] in ids]
+          if len(nodes) != 1 or {'evm', 'test-utils'} & set(nodes[0]['features']):
+              raise SystemExit('unsupported EVM/test-utils Nova feature activation')
+          PY
+      - name: Build native conformance binaries on the hosted runner
+        timeout-minutes: 16
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/native-build-time.txt timeout --signal=KILL 900s \
+            cargo build --release --locked --jobs 2 --manifest-path nova-oracle/Cargo.toml --bins
+      - name: Compare actual upstream transcript and Spartan arithmetic
+        run: |
+          set -euo pipefail
+          timeout --signal=KILL 120s nova-oracle/target/release/transcript results/native-transcript-inputs.json \
+            | tee results/native-transcript-execution.json
+          timeout --signal=KILL 120s nova-oracle/target/release/sumcheck results/native-spartan-inputs.json \
+            | tee results/native-spartan-execution.json
+      - name: Verify retained NHT4 proof with a strict 3 GiB and ten-minute cap
+        timeout-minutes: 11
+        run: |
+          set -euo pipefail
+          # This reconstructs deterministic transparent parameters/VK and verifies
+          # an existing proof. It never calls a proving or recursive-step API.
+          /usr/bin/time -v -o results/native-nht4-time.txt \
+            timeout --signal=KILL 600s prlimit --as=3221225472 --cpu=600 -- \
+            nova-oracle/target/release/nht4 results/nht4-inputs.json \
+            > results/native-nht4-execution.json 2> results/native-nht4-stderr.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('results/native-nht4-execution.json').read_text())
+          if report.get('passed') is not True or report.get('native', {}).get('native_nova_proofs_verified') != 1:
+              raise SystemExit('native proof verification did not complete successfully')
+          PY
+      - name: Compare genuine proof coefficients in explicit synthetic transcript states
+        run: |
+          set -euo pipefail
+          # This optional corpus feature is exercised only after real proof
+          # verification succeeds; it is not that proof's full transcript replay.
+          python bench_spartan.py results/native-spartan-expanded-inputs.json \
+            --native-report results/native-nht4-execution.json \
+            | tee results/native-spartan-expanded-generation.json
+          timeout --signal=KILL 120s nova-oracle/target/release/sumcheck results/native-spartan-expanded-inputs.json \
+            | tee results/native-spartan-expanded-execution.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-production-native-evidence
+          path: |
+            integrations/bitvm2-nova/nova-oracle/Cargo.lock
+            integrations/bitvm2-nova/results/native-*
+            integrations/bitvm2-nova/results/nht4-inputs.json
+            integrations/bitvm2-nova/results/nht4-summary.json

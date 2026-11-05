@@ -1,10 +1,17 @@
-# BitVM2 Nova/IPA backend: M1 arithmetic kernels
+# BitVM2 Nova/IPA backend
 
 This starts a transparent Nova verifier backend for BitVM2. M1 emits real
 Bitcoin Tapscript for arithmetic over both Pasta fields and checks the IPA
 verification equality in a separate native reference. The complete Nova
 verifier and bridge transaction graph remain unimplemented. BitVM3 is outside
 this package. Existing header provers and the default Rust crate are unchanged.
+
+Later milestones add complete point arithmetic, compact predicates and the
+[global WOTS registry](WOTS-REGISTRY.md). The production transcript, retained
+NHT4/native Nova checks, Spartan folds and one Keccak Script round are described
+in [NATIVE-CONFORMANCE.md](NATIVE-CONFORMANCE.md). These are components of the
+transparent Nova SNARK verifier; complete authenticated verification and the
+Bitcoin transaction graph remain unfinished.
 
 ## What runs
 
@@ -45,10 +52,11 @@ must be connected to the pinned upstream implementation.
 
 ## Run
 
-Python 3.10+ and its standard library suffice for the local reference:
+Python 3.10+ and the pinned mature Keccak dependency run the local references:
 
 ```sh
 cd integrations/bitvm2-nova
+python -m pip install -r transcript-requirements.txt
 python -m unittest discover -s tests -v
 python bench.py
 ```
