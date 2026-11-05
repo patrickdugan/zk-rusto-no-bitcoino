@@ -1,0 +1,109 @@
+{
+  "schema": "bitvm2-nova-m2-evidence/v1",
+  "scope": "fixed-claim arithmetic and point trace",
+  "python": "3.13.5",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "script_vectors": 10884,
+  "expected_script_rejections": 1630,
+  "curve_vectors": 74,
+  "engine_fixture_bytes": 97761008,
+  "engine_fixture_sha256": "5c66e773ec2149199f7001bd6843edd2a5ad4bacff11ebff9927b8e38cfc6e12",
+  "generation_seconds": 12.554630152999835,
+  "python_peak_rss_bytes": 160784384,
+  "trusted_setup": false,
+  "production_transcript": false,
+  "dynamic_bitvm2_assertions": false,
+  "nova_proofs_verified": 0,
+  "transactions_broadcast": 0,
+  "local_new_tests_passed": 24,
+  "operation_sizes": [
+    {
+      "schema": "bitvm2-nova-fixed-trace-manifest/v2",
+      "field_role": "pallas_base",
+      "operation_id": "benchmark/mul",
+      "words": 2586,
+      "constraints": 274,
+      "authentication": "fixed-claim-per-word-SHA256",
+      "dynamic_assertions": false,
+      "bitcoin_transaction_graph": false,
+      "case": "multiplication",
+      "all_disproof_scripts_bytes": 1267065,
+      "full_point_graph": false
+    },
+    {
+      "schema": "bitvm2-nova-fixed-trace-manifest/v2",
+      "field_role": "pallas_base",
+      "operation_id": "benchmark/point",
+      "words": 33588,
+      "constraints": 3616,
+      "authentication": "fixed-claim-per-word-SHA256",
+      "dynamic_assertions": false,
+      "bitcoin_transaction_graph": false,
+      "case": "point-add",
+      "all_disproof_scripts_bytes": 16540432,
+      "full_point_graph": true
+    },
+    {
+      "schema": "bitvm2-nova-fixed-trace-manifest/v2",
+      "field_role": "vesta_base",
+      "operation_id": "benchmark/mul",
+      "words": 2586,
+      "constraints": 274,
+      "authentication": "fixed-claim-per-word-SHA256",
+      "dynamic_assertions": false,
+      "bitcoin_transaction_graph": false,
+      "case": "multiplication",
+      "all_disproof_scripts_bytes": 1267065,
+      "full_point_graph": false
+    },
+    {
+      "schema": "bitvm2-nova-fixed-trace-manifest/v2",
+      "field_role": "vesta_base",
+      "operation_id": "benchmark/point",
+      "words": 33588,
+      "constraints": 3616,
+      "authentication": "fixed-claim-per-word-SHA256",
+      "dynamic_assertions": false,
+      "bitcoin_transaction_graph": false,
+      "case": "point-add",
+      "all_disproof_scripts_bytes": 16540432,
+      "full_point_graph": true
+    }
+  ],
+  "independent_rust_execution": "pending CI at initial commit",
+  "source_blobs": {
+    "trace.py": "ac4a09ecc5a67a99d9303a4068891662e8d98060",
+    "trace_kernels.py": "15260918be656eb3096c7b6ced81f0fe36575911",
+    "curve_trace.py": "9f92cf59cb74a066ab235567cc6b7bbc692d5973",
+    "tests/test_trace.py": "e7a665a7b2f4489c3a701fa05097e096c3f9570f",
+    "bench_m2.py": "e049a52c84b5a602da66acf3538aeff11faac0ba",
+    "m2-oracle/Cargo.toml": "ab845539d50817627ce13be66819b1a1369b03c7",
+    "m2-oracle/src/main.rs": "6312f1f2227d66761881da1dafb54e7c55caf097"
+  },
+  "test_groups": [
+    {
+      "class": "MultiplicationTrace",
+      "tests": 15,
+      "seconds": 24.062,
+      "passed": true
+    },
+    {
+      "class": "CurveTraces excluding full Script loops",
+      "tests": 7,
+      "seconds": 23.852,
+      "passed": true
+    },
+    {
+      "test": "test_every_pallas_leaf_in_script",
+      "tests": 1,
+      "seconds": 14.917,
+      "passed": true
+    },
+    {
+      "test": "test_every_vesta_leaf_in_script",
+      "tests": 1,
+      "seconds": 18.038,
+      "passed": true
+    }
+  ]
+}
