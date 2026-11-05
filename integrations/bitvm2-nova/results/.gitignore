@@ -13,3 +13,6 @@ compact-scriptexec.json
 wots-inputs.json
 wots-engine-vectors.jsonl
 wots-ci-*
+registry-inputs.json
+registry-engine-vectors.jsonl
+registry-ci-*

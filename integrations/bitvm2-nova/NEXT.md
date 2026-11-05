@@ -10,6 +10,11 @@ WOTS-authenticated multiplication step, including disputable malformed signed
 values. It does not supply the global shared-wire assertion registry or the
 Bitcoin transaction graph required by M4.
 
+[WOTS-REGISTRY.md](WOTS-REGISTRY.md) extends that boundary to a complete global
+wire/key catalogue, explicit field-validity leaves, and signature reuse across
+linked constraints. It remains an arithmetic adapter pending production key
+lifecycle, transaction commitments and the actual Nova/Spartan verifier.
+
 ## Arithmetic argument for M1
 
 Let B=2^29 and write a field value as nine radix-B limbs. Both Pasta moduli

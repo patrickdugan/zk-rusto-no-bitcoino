@@ -1,5 +1,8 @@
 name: BitVM2 Nova WOTS leaf checks
 on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-wots.yml']
   pull_request:
     paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-wots.yml']
 permissions:

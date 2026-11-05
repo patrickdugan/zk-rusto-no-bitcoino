@@ -1,0 +1,51 @@
+name: BitVM2 Nova global registry checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-registry.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-registry.yml']
+permissions:
+  contents: read
+jobs:
+  shared-wire-assertions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Catalogue coverage, aliases and canonicality
+        run: |
+          set -o pipefail
+          python -m unittest discover -s tests -p test_wots_graph.py -v 2>&1 | tee results/registry-ci-python.txt
+          python bench_registry.py | tee results/registry-ci-generation.txt
+      - name: Build pinned upstream signatures and interpreter
+        run: |
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/registry-ci-rust-version.txt
+          rustfmt --edition 2021 --check rust-oracle/src/lib.rs rust-oracle/src/registry.rs rust-oracle/src/engine.rs rust-oracle/src/bin/registry.rs
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/registry-ci-dependencies.txt
+          cargo build --locked --manifest-path rust-oracle/Cargo.toml --bin registry
+      - name: Execute linked assertions and measure complete catalogues
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o results/registry-ci-rust-time.txt rust-oracle/target/debug/registry results/registry-inputs.json results/registry-engine-vectors.jsonl | tee results/registry-ci-execution.json
+          sha256sum results/registry-engine-vectors.jsonl > results/registry-ci-vector-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-global-registry-evidence
+          path: |
+            integrations/bitvm2-nova/results/registry-*
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock

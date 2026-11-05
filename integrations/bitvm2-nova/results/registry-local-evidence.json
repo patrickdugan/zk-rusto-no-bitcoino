@@ -1,0 +1,65 @@
+{
+  "schema": "bitvm2-nova-registry-generation/v1",
+  "cases": 26,
+  "input_bytes": 18657899,
+  "input_sha256": "8c974a4a934d9d85d667d2628eb734173f619466da8903760247570dff7c5c13",
+  "census": [
+    {
+      "field_role": "pallas_base",
+      "case": "multiplication",
+      "words": 2586,
+      "original_constraints": 274,
+      "field_validity_leaves": 259,
+      "authenticated_leaves": 533,
+      "predicate_bodies": 6
+    },
+    {
+      "field_role": "vesta_base",
+      "case": "multiplication",
+      "words": 2586,
+      "original_constraints": 274,
+      "field_validity_leaves": 259,
+      "authenticated_leaves": 533,
+      "predicate_bodies": 6
+    },
+    {
+      "field_role": "pallas_base",
+      "case": "point-add",
+      "words": 33588,
+      "original_constraints": 3616,
+      "field_validity_leaves": 3363,
+      "authenticated_leaves": 6979,
+      "predicate_bodies": 23,
+      "executed_shapes": 23
+    },
+    {
+      "field_role": "vesta_base",
+      "case": "point-add",
+      "words": 33588,
+      "original_constraints": 3616,
+      "field_validity_leaves": 3363,
+      "authenticated_leaves": 6979,
+      "predicate_bodies": 23,
+      "executed_shapes": 23
+    }
+  ],
+  "generation_seconds": 1.732870500010904,
+  "python_peak_rss_bytes": 87609344,
+  "platform": "Windows-11-10.0.26200-SP0",
+  "enforced_memory_limit": false,
+  "nova_proofs_generated": 0,
+  "base_commit": "3be58ce06510c9408e03f2f9f1d73db29e51aabd",
+  "python_tests_passed": 68,
+  "python_tests_seconds": 123.673,
+  "rustfmt_passed": true,
+  "local_rust_build": false,
+  "independent_execution": "pending hosted CI",
+  "source_sha256": {
+    "wots_graph.py": "e06e0fa0ff3f7b877aa146ca282359b65f6d888f8e6b4f1f646069a23395daca",
+    "bench_registry.py": "8af23fa1cce7d6802f99d24d652ae8af027cfa46dc34fa633fab4c0e66fca283",
+    "tests/test_wots_graph.py": "83a0c819f249cc9bdeeb9aed516dded66e2f1dcdfbce53896c63131c2dbfce04",
+    "rust-oracle/src/registry.rs": "4f3e1fa1af3e3a990477521225bcb38c6f381a2da5c757058cb3701295d57569",
+    "rust-oracle/src/engine.rs": "492ec5e9df6f24a8e26a0589be4c6f747bf199e887cbe9bb1df9bffc0a26524b",
+    "rust-oracle/src/bin/registry.rs": "a27c21a9fc9b258aede2bda6e6d9792fffb4cdcc8f7a4e9aa42b5103318e40f4"
+  }
+}
