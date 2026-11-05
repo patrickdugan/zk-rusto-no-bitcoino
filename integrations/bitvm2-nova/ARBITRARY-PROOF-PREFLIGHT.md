@@ -16,6 +16,13 @@ The group-encoding review uses the resolved halo2curves 0.9.0 source. All
 requirements apply to the non-EVM Pallas/Vesta Spartan/IPA backend; other
 engines, features and proof systems require separate admission rules.
 
+The bounded implementation now described in
+[PROOF-ADMISSION.md](PROOF-ADMISSION.md) derives and independently pins actual
+key dimensions, then checks this layout with separate Python/Rust cursors.
+Its current-head differential CI is required. The complete native verifier
+keeps its retained-fixture gate; these admission checks do not establish
+whole-proof cryptographic validity or unrestricted production readiness.
+
 ## Verifier-owned dimensions
 
 Obtain dimensions from an authenticated, trusted verifier key, separately for

@@ -15,7 +15,7 @@ A caller must authenticate its exact bytes or expected digest independently.
 An editable descriptor containing the correct verifier-key hash does not prove
 that its dimensions came from that key.
 
-The next parser integration will pin the descriptor obtained from successful
+The parser integration pins the descriptor obtained from successful
 hosted reconstruction before admitting inner proof bytes. Provisional profiles
 used in isolated tests are caller-owned test inputs, never inferred production
 authority. The retained NHT4 fixture gate remains before inner decoding and

@@ -12,6 +12,8 @@ NHT4/native Nova checks, Spartan folds and one Keccak Script round are described
 in [NATIVE-CONFORMANCE.md](NATIVE-CONFORMANCE.md). These are components of the
 transparent Nova SNARK verifier; complete authenticated verification and the
 Bitcoin transaction graph remain unfinished.
+The [bounded proof codec](PROOF-ADMISSION.md) uses independently pinned metadata
+exported from the actual authenticated verifier key.
 
 ## What runs
 

@@ -12,6 +12,12 @@ provers, their RAM-targeted `k` settings, BitVM3, and separate testnet4 work are
 outside this change. All fixture generation and local tests described here
 avoid proving, GPU work, local Rust compilation and parameter reconstruction.
 
+[PROOF-ADMISSION.md](PROOF-ADMISSION.md) adds the next bounded component:
+the actual key-derived dimension descriptor, independently pinned metadata,
+an exact inner proof codec and a separate structural admission oracle. The
+native proof verifier retains its fixture gate; parser admission is not proof
+verification.
+
 ## Authoritative implementation
 
 The header backend depends on the **published `nova-snark = "=0.76.0"` crate**.

@@ -31,13 +31,15 @@ jobs:
           set -euo pipefail
           mkdir -p results
           python -m pip install --disable-pip-version-check -r transcript-requirements.txt
-      - name: Transcript, strict framing and sumcheck Python regressions
+      - name: Transcript, framing, sumcheck and proof admission reference regressions
         run: |
           set -euo pipefail
           {
             python -m unittest discover -s tests -p test_production_transcript.py -v
             python -m unittest discover -s tests -p test_nht4.py -v
             python -m unittest discover -s tests -p test_spartan_checks.py -v
+            python -m unittest discover -s tests -p test_proof_codec.py -v
+            python -m unittest discover -s tests -p test_admission_generation.py -v
           } 2>&1 | tee results/native-python-tests.txt
       - name: Generate bounded transcript, sumcheck and retained-proof inputs
         run: |
@@ -138,6 +140,8 @@ jobs:
           import hashlib
           encoded = json.dumps(native['verifier_dimensions'], sort_keys=True,
                                separators=(',', ':'), ensure_ascii=True).encode('utf-8')
+          if hashlib.sha256(encoded).hexdigest() != native['verifier_dimensions_sha256']:
+              raise SystemExit('Rust/Python canonical descriptor SHA256 mismatch')
           print(json.dumps({'verifier_dimensions_canonical_sha256': hashlib.sha256(encoded).hexdigest()}))
           PY
           cat results/native-nht4-time.txt
@@ -151,6 +155,23 @@ jobs:
             | tee results/native-spartan-expanded-generation.json
           timeout --signal=KILL 120s nova-oracle/target/release/sumcheck results/native-spartan-expanded-inputs.json \
             | tee results/native-spartan-expanded-execution.json
+      - name: Generate bounded adversarial proof admission corpus from the pinned key profile
+        run: |
+          set -euo pipefail
+          python bench_admission.py --native-report results/native-nht4-execution.json \
+            --descriptor fixtures/nht4-genesis-0-2020-k5.dimensions.json \
+            --output results/native-admission-inputs.json \
+            | tee results/native-admission-generation.json
+      - name: Independently admit malformed proof shapes under a 256 MiB process cap
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/native-admission-time.txt \
+            timeout --signal=KILL 90s prlimit --as=268435456 --cpu=60 -- \
+            nova-oracle/target/release/admission results/native-admission-inputs.json \
+            results/native-nht4-execution.json fixtures/nht4-genesis-0-2020-k5.expected.json \
+            fixtures/nht4-genesis-0-2020-k5.dimensions.json \
+            | tee results/native-admission-execution.json
+          cat results/native-admission-time.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

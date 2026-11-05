@@ -65,6 +65,13 @@ transcript states do not establish the actual proof's Fiat-Shamir replay.
 The Keccak Script work covers one permutation round with Boolean gates; linked
 round boundaries and a complete authenticated sponge remain open.
 
+[PROOF-ADMISSION.md](PROOF-ADMISSION.md) records actual k=5 IPA dimensions from
+the authenticated key (524,288 primary generators and 16,384 secondary), a
+separately pinned descriptor and bounded inner decoding. The independent native
+admission oracle must pass current-head CI before use. Complete native proof
+verification still retains the fixture gate; whole-proof protocol replay and
+Script composition remain separate work.
+
 Instrument the pinned Nova implementation rather than substitute the
 TEST-ONLY transcript. Account for its challenge reduction and byte encodings.
 Bind network, circuit/key identity, k, step count, expected initial/final state
@@ -73,7 +80,7 @@ the outer compressed-Nova checks, Spartan's sumchecks, matrix evaluations,
 and the IPA openings. Reject surplus/truncated proof data and all unsupported
 variants. Compare against the real NHT4 fixtures on the pinned header branch.
 
-Measure the actual IPA dimension for k=1 and k=5 first. Stream generator
+The k=5 dimension is now measured; k=1 remains unmeasured here. Stream generator
 access and coefficient computation. Include cold parameter generation and
 verification in the RAM measurement. The native upstream IPA implementation
 still needs a generator MSM whose length depends on circuit width.

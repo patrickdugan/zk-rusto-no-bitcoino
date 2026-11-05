@@ -1,0 +1,19 @@
+{
+  "schema": "bitvm2-nova-dimension-provenance/v1",
+  "source_commit": "44219a5d92dfe58cc15bb028947ef2ab15c7c8c7",
+  "workflow_run": 42121264330,
+  "job_id": 127573911221,
+  "artifact_id": 13458966065,
+  "verifier_key_sha256": "1ae88a7bcfdc5f14d030d0baafa06ec17fe904a5ebed42f9bd6fa6105fdc8c24",
+  "canonical_descriptor_sha256": "de6333df2e41b5f5bae1c103fab862f8d6022fd54abeb80ba61920bc9f360edc",
+  "source": "Descriptor exported from the fully SHA-pinned reconstructed key in successful hosted CI; values were not inferred from proof lengths.",
+  "canonicalization": "UTF-8 JSON with sorted keys, compact separators and ASCII escaping; no trailing newline.",
+  "dimension_export": {
+    "full_key_materialized": false,
+    "generator_elements_read": 0,
+    "generator_lengths_read": 4,
+    "numeric_fields_read": 7,
+    "skipped_fields": 16
+  },
+  "scope": "Metadata pin for bounded proof admission. Not proof validity or authenticated Bitcoin verification."
+}
