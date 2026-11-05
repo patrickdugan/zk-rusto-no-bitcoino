@@ -41,6 +41,12 @@ def expansion_script(occurrences):
     return bytes(b.code)
 
 
+def authenticated_shape(spec, leaf):
+    """Body/alias layout plus every recovered word's decoder bound."""
+    unique = tuple(dict.fromkeys(leaf.wires))
+    return leaf.body_sha256, tuple(spec.words[i][1] for i in unique)
+
+
 @dataclass(frozen=True)
 class Leaf:
     kind: str

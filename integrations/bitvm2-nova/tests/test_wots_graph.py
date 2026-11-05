@@ -4,7 +4,7 @@ from script import BASE, P, Q, execute, num
 from trace import multiplication_trace, TraceBuilder
 from curve_trace import point_add_trace
 from ipa_algebra import PALLAS, VESTA
-from wots_graph import GraphSpec, expansion_script, field_valid_body
+from wots_graph import GraphSpec, expansion_script, field_valid_body, authenticated_shape
 
 
 class GraphCatalogue(unittest.TestCase):
@@ -63,6 +63,16 @@ class GraphCatalogue(unittest.TestCase):
         # Curve membership is gated by a Boolean infinity flag, while slope
         # and output equations use the five-way addition dispatch selector.
         self.assertEqual(selectors, {2, 5})
+
+    def test_point_sampling_distinguishes_decoder_bounds(self):
+        g = (PALLAS.p-1, 2)
+        pr, _ = point_add_trace(PALLAS, g, PALLAS.mul(g, 2))
+        spec = GraphSpec.from_program(pr)
+        self.assertEqual(len({l.body_sha256 for l in spec.leaves}), 23)
+        self.assertEqual(len({authenticated_shape(spec, l) for l in spec.leaves}), 25)
+        self.assertEqual(spec.leaves[0].body_sha256, spec.leaves[18].body_sha256)
+        self.assertNotEqual(authenticated_shape(spec, spec.leaves[0]),
+                            authenticated_shape(spec, spec.leaves[18]))
 
     def test_unreferenced_small_has_a_validity_path(self):
         g = TraceBuilder('pallas_base', 'bounds', bytes(32))

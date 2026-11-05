@@ -9,7 +9,10 @@ use bitcoin::{
 };
 use bitvm::signatures::{utils::digits_to_number, CompactWots, Wots, Wots4};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashSet},
+    sync::OnceLock,
+};
 
 const BASE: u32 = 1 << 29;
 pub type Signature = <Wots4 as CompactWots>::CompactSignature;
@@ -229,6 +232,25 @@ pub struct Registry {
     keys: Vec<PublicKey>,
     bodies: BTreeMap<String, Vec<u8>>,
     id: [u8; 32],
+    recovery_blocks: Vec<OnceLock<Vec<u8>>>,
+}
+
+fn recovery_block(key: &PublicKey, bound: u32) -> Vec<u8> {
+    let mut code = Wots4::compact_checksig_verify(key).compile().into_bytes();
+    number(&mut code, 7);
+    code.push(0x79);
+    number(&mut code, 2);
+    code.extend_from_slice(&[0x9f, 0x63]);
+    code.extend_from_slice(digits_to_number::<8, 4>().compile().as_bytes());
+    code.push(0x76);
+    number(&mut code, bound as i64);
+    code.push(0x9f);
+    code.push(0x67);
+    code.extend_from_slice(&[0x6d; 4]);
+    number(&mut code, 0);
+    number(&mut code, 0);
+    code.extend_from_slice(&[0x68, 0x6b, 0x6b]);
+    code
 }
 
 impl Registry {
@@ -252,11 +274,13 @@ impl Registry {
                 Ok((id.clone(), body))
             })
             .collect::<Result<_>>()?;
+        let recovery_blocks = keys.iter().map(|_| OnceLock::new()).collect();
         Ok(Self {
             spec,
             keys,
             bodies,
             id,
+            recovery_blocks,
         })
     }
     pub fn spec(&self) -> &GraphSpec {
@@ -313,24 +337,12 @@ impl Registry {
         // Same decoder as the verified v1 leaf, generalized to unique global slots.
         // The v1 implementation remains unchanged as an independent baseline.
         for i in slots.iter().rev() {
+            // The key and bound are immutable for the lifetime of this registry.
+            // Cache only their deterministic decoder block, never a leaf tag.
             code.extend_from_slice(
-                Wots4::compact_checksig_verify(&self.keys[*i])
-                    .compile()
-                    .as_bytes(),
+                self.recovery_blocks[*i]
+                    .get_or_init(|| recovery_block(&self.keys[*i], self.spec.words[*i].bound)),
             );
-            number(&mut code, 7);
-            code.push(0x79);
-            number(&mut code, 2);
-            code.extend_from_slice(&[0x9f, 0x63]);
-            code.extend_from_slice(digits_to_number::<8, 4>().compile().as_bytes());
-            code.push(0x76);
-            number(&mut code, self.spec.words[*i].bound as i64);
-            code.push(0x9f);
-            code.push(0x67);
-            code.extend_from_slice(&[0x6d; 4]);
-            number(&mut code, 0);
-            number(&mut code, 0);
-            code.extend_from_slice(&[0x68, 0x6b, 0x6b]);
         }
         number(&mut code, 1);
         for _ in &slots {

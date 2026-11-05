@@ -217,12 +217,41 @@ fn main() -> Result<()> {
                 h.input(&(code.len() as u32).to_le_bytes());
                 h.input(code.as_bytes());
             }
+            let stream_hash = sha256::Hash::from_engine(h).to_string();
+            // Captured from independently executed main 7708a99 before caching.
+            // Decoder-block caching must preserve EVERY compiled leaf byte.
+            let baseline = match case.name.as_str() {
+                "pallas_base/honest-full-multiplication" => Some((
+                    16_798_073,
+                    "b0971c94594cebb5134b4f70786a97a1d9b8202afeea6236c3b42c456914bec4",
+                )),
+                "vesta_base/honest-full-multiplication" => Some((
+                    16_798_073,
+                    "61eeed34e6541bb89df28625a47f92ecf2c2929be474207bf22de03f943fda75",
+                )),
+                "pallas/point-graph" => Some((
+                    219_498_908,
+                    "39744f1ea8961aa36a0f3ffc472baaebb2363def55c3c684cf56c8b0d642a7c4",
+                )),
+                "vesta/point-graph" => Some((
+                    219_498_908,
+                    "a2c5d28cd29a32daa31d61eae07cebf927f6cf823b0b5528df666e606c67deef",
+                )),
+                _ => None,
+            };
+            if let Some((bytes, expected_hash)) = baseline {
+                if sum != bytes || stream_hash != expected_hash {
+                    return Err(
+                        "compiled catalogue differs from independently executed baseline".into(),
+                    );
+                }
+            }
             ledger.push(serde_json::json!({"case":case.name,"registry_id":hex::encode(id),"catalogue_id":case.expected_spec_id,
                 "words":case.spec.words.len(),"leaves":case.spec.leaves.len(),"executed_leaves":checks.len(),
                 "all_disproof_script_bytes":sum,"largest_disproof_leaf_bytes":largest,
                 "global_public_key_payload_bytes":keys.len()*Wots4::TOTAL_DIGIT_LEN as usize*20,
                 "global_signature_payload_bytes":signatures.len()*Wots4::TOTAL_DIGIT_LEN as usize*20,
-                "leaf_stream_sha256":sha256::Hash::from_engine(h).to_string()}));
+                "leaf_stream_sha256":stream_hash}));
         }
         for check in &checks {
             let witness = registry.witness(check.ordinal, &signatures)?;

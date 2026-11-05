@@ -91,7 +91,8 @@ count as an optimization, and are not fee estimates.
 
 Both complete 533-leaf multiplication catalogues execute in both predicate
 directions. Both point catalogues execute every distinct predicate/alias shape
-(23 each), plus the failed leaves for a wrong but canonical point result.
+(25 each, including decoder-bound variants), plus the failed leaves for a wrong
+but canonical point result.
 Every point leaf is compiled and measured, but not every point leaf is executed
 with WOTS in this bounded suite. Existing M2 tests continue executing every
 fixed-claim point leaf and independent curve comparisons.
@@ -104,10 +105,10 @@ all witness-length variants and catalogue/key/role/context substitutions.
 Native malformed-JSON, index/shape and forbidden-opcode checks fail closed.
 
 `bench_registry.py` produces a bounded JSON input with 26 signing sessions,
-18,657,899 bytes, SHA-256
-`8c974a4a934d9d85d667d2628eb734173f619466da8903760247570dff7c5c13`.
-Local generation took 1.733 s and peaked at 87,609,344 bytes of Windows working
-set (about 83.6 MiB); this was not an enforced memory ceiling. No Rust build,
+18,658,059 bytes, SHA-256
+`52a46a9da2afbb7ab7da2f10705fc945c36195a7f4ce6d8c1b2d071d18bd463d`.
+Local generation took 2.314 s and peaked at 85,651,456 bytes of Windows working
+set (about 81.7 MiB); this was not an enforced memory ceiling. No Rust build,
 Nova proving job, GPU run or heavy test runs on the local PC.
 
 The hosted `BitVM2 Nova global registry checks` workflow uses BitVM WOTS at
@@ -126,6 +127,23 @@ a Boolean infinity flag with bound two. The guard now accepts the declared
 Boolean or five-way selector, requiring gate cases to fit that bound; the WOTS
 decoder still enforces the exact registered bound. A regression records both
 selector roles. That failed run is not complete-execution acceptance evidence.
+
+Main `7708a99` subsequently passed the complete registry run
+([42110490602](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42110490602)):
+2,484 vectors, 1,304 expected rejections, 56 native rejections and all 510 shared
+accumulator/final links. Complete authenticated multiplication sums to
+16,798,073 disproof Script bytes (533 leaves); each point catalogue sums to
+219,498,908 bytes (6,979 leaves). Largest leaves are 49,538 and 79,381 bytes,
+respectively. The corpus reached 485 stack items and 9,600 witness bytes.
+These costs are much larger than the fixed-claim arithmetic baseline.
+
+The sampler now distinguishes decoder-bound variants as well as predicate/alias
+bodies (25 point shapes instead of 23). Registry construction also lazily caches
+each immutable wire's compiled WOTS/decoder block to avoid repeated upstream
+compilation. This increases bounded verifier-generation memory and changes no
+leaf bytes; the harness checks all four complete leaf-stream hashes and byte
+totals against the uncached `7708a99` run. Current-head CI must confirm these
+additional samples and exact byte preservation before accepting the update.
 
 ```sh
 cd integrations/bitvm2-nova

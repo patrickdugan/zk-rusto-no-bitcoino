@@ -8,7 +8,7 @@ from script import P, Q, limbs
 from trace import multiplication_trace, TraceBuilder
 from curve_trace import point_add_trace
 from ipa_algebra import PALLAS, VESTA
-from wots_graph import GraphSpec
+from wots_graph import GraphSpec, authenticated_shape
 from bench_compact import peak_rss
 
 
@@ -78,8 +78,9 @@ def main():
         # measuring EVERY point leaf with actual global keys in Rust.
         seen, checks = set(), []
         for i, leaf in enumerate(spec.leaves):
-            if leaf.body_sha256 not in seen:
-                seen.add(leaf.body_sha256)
+            shape = authenticated_shape(spec, leaf)
+            if shape not in seen:
+                seen.add(shape)
                 checks.append(dict(ordinal=i, expected_correct=True))
         cases.append({'name': f'{curve.name}/point-graph', 'spec': spec.json(),
                       'expected_spec_id': spec.digest().hex(), 'words': [values[w] for w, _ in spec.words],
