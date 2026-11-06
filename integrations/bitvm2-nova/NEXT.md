@@ -1,5 +1,16 @@
 # Next implementation boundary
 
+[The opt-in full BYTE permutation](BYTE-KECCAK-PERMUTATION.md) flattens six
+fresh sealed blocks into one 29,245-leaf, 29,445-word GraphSpec. Its program
+identity is explicitly a versioned manifest hash, while every small child
+retains its actual Program digest. The factory preserves all 23 round states,
+4,600 shared entries and 9,200 actual consumer coordinates, with a separate
+source hash after the parent catalogue. Full parent Script execution, its
+256-MiB compiled-byte fit, 512-MiB worker fit and actual component Taproot
+checks are pending hosted measurement. This is a permutation on external byte
+states; both framed hash branches and proof/transcript/IPA Script binding remain
+open.
+
 [The opt-in four-round BYTE component](BYTE-KECCAK-BLOCK.md) composes four fresh
 sealed child rounds under one actual Program and one authenticated registry.
 It preserves the child predicate bodies and aliases, merges exactly three
@@ -8,7 +19,7 @@ consumer occurrences. Its hosted run passed 318,248 Script executions with
 162,274 expected rejections and 38,400 actual opening comparisons across 32
 parents. The six aligned ranges measured 25,228,060-25,248,161 Script bytes per
 parent in either scalar role. All 16 workflows and 391 Python tests passed.
-The next full-permutation boundary can flatten six sealed blocks into one
+The separate full-permutation boundary above flattens six sealed blocks into one
 29,245-leaf GraphSpec, using an explicit manifest program identity because a
 29,245-constraint Program is forbidden. Its five additional state joins, all
 23 round boundaries, actual full Script cost, memory and tree/disproof checks

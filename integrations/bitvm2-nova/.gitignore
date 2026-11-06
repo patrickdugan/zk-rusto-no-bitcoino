@@ -33,5 +33,6 @@ results/digest-*
 results/byte-kernel-*
 results/byte-round-*
 results/byte-block-*
+results/byte-permutation-*
 results/proving-*
 proving-fixtures/

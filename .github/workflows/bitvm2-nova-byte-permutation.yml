@@ -1,0 +1,67 @@
+name: BitVM2 Nova full byte Keccak permutation checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-byte-permutation.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-byte-permutation.yml']
+permissions:
+  contents: read
+jobs:
+  byte-permutation-and-full-tree-conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CUDA_VISIBLE_DEVICES: ''
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check sealed full permutation, all state joins and coherent claims
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m pip install -r transcript-requirements.txt
+          /usr/bin/time -v -o results/byte-permutation-python-time.txt \
+            timeout --signal=KILL 480s prlimit --as=268435456 --cpu=480 -- \
+            python -m unittest discover -s tests -p 'test_byte_keccak_permutation*.py' -v \
+            2>&1 | tee results/byte-permutation-python-tests.txt
+      - name: Build pinned full worker and run independent identity and tree tests
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/byte-permutation-rust-version.txt
+          rustfmt --edition 2021 --check rust-oracle/src/registry.rs rust-oracle/src/taproot_commitment.rs rust-oracle/src/bin/byte_keccak_permutation.rs
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/byte-permutation-dependencies.txt
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --lib registry::tests -- --nocapture
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --lib taproot_commitment::tests -- --nocapture
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --bin byte_keccak_permutation -- --nocapture
+          cargo build --release --locked --manifest-path rust-oracle/Cargo.toml --bin byte_keccak_permutation
+      - name: Execute all full parent leaves, state openings and selected Taproot disproofs
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/byte-permutation-execution-time.txt \
+            timeout --signal=KILL 1500s prlimit --as=536870912 --cpu=1500 -- \
+            python bench_byte_keccak_permutation.py --cases-dir results/byte-permutation-cases \
+            --native-worker rust-oracle/target/release/byte_keccak_permutation \
+            --output results/byte-permutation-conformance.json | tee results/byte-permutation-stdout.json
+          cat results/byte-permutation-execution-time.txt
+          cp results/byte-permutation-cases/manifest.json results/byte-permutation-manifest.json
+          sha256sum results/byte-permutation-manifest.json results/byte-permutation-conformance.json > results/byte-permutation-report-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-byte-permutation-evidence
+          path: |
+            integrations/bitvm2-nova/results/byte-permutation-*.json
+            integrations/bitvm2-nova/results/byte-permutation-*.txt
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock
