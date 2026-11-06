@@ -2,9 +2,10 @@
 
 [The streamed full-permutation graph](KECCAK-PERMUTATION.md) extends the linked
 Keccak pair to twelve bounded components with globally reused state signatures
-and hierarchical offline Taproot membership. Hosted measurement and execution
-are required before reporting its actual costs; authenticated sponge endpoints
-and the complete verifier remain unfinished.
+and hierarchical offline Taproot membership. All ten workflows passed on source
+commit `46448d9`; each full scenario measured 230,510 leaves and 1,083,207,078
+Script bytes. Authenticated sponge endpoints and the complete verifier remain
+unfinished.
 
 M2 and the subsequent arithmetic/WOTS milestones are integrated on main. The
 opt-in M2.1 footprint comparison is documented
