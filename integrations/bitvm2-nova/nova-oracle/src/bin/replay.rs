@@ -335,12 +335,19 @@ fn run() -> Result<Value> {
         final_state.height == 2020 && sha(&z_bytes(&zn)) == END_SHA,
         "verified output state pin",
     )?;
-    Ok(
+    // Keep macro expansion bounded as optional diagnostic groups grow. Merging
+    // owned Values preserves the report schema and rejects duplicate fields.
+    let groups = [
         json!({"schema":"bitvm2-nova-native-production-replay/v1","passed":true,
         "native_nova_proofs_verified":1,"network":"testnet4","k":5,"steps":404,
         "nova_version":"0.76.0","header_revision":REVISION,"bundle_sha256":BUNDLE_SHA,
         "proof_sha256":PROOF_SHA,"proof_bytes":PROOF_BYTES,"verifier_key_sha256":VK_SHA,
-        "verifier_dimensions_sha256":DIM_SHA,"verifier_dimensions":dims,"dimension_export":dimension_export,
+        "verifier_dimensions_sha256":DIM_SHA,
+        "end_state_sha256":END_SHA,"end_height":final_state.height,
+        "key_reconstruction_seconds":key_reconstruction_seconds,"metadata_export_seconds":metadata_export_seconds,
+        "verify_seconds":verify_seconds,"setup_calls":1,"proving_jobs":0,"transactions_broadcast":0,
+        "bitcoin_script_verified":false,"independent_poseidon_verification":false,"complete_bitvm2_verifier":false}),
+        json!({"verifier_dimensions":dims,"dimension_export":dimension_export,
         "key_bindings":key_bindings,"key_bindings_sha256":key_bindings_sha256,"key_binding_export":key_binding_export,
         "poseidon_parameters":poseidon_parameters,"poseidon_parameters_sha256":poseidon_parameters_sha256,
         "poseidon_parameter_export":poseidon_parameter_export,
@@ -350,11 +357,21 @@ fn run() -> Result<Value> {
         "matrix_payload_export":matrix_payload_export,"matrix_payload_export_seconds":matrix_payload_export_seconds,
         "ipa_generators":ipa_generators,"ipa_generators_sha256":ipa_generators_sha256,
         "ipa_generator_export":ipa_generator_export,"ipa_generator_export_seconds":ipa_generator_export_seconds,
-        "trace":trace,"end_state_sha256":END_SHA,"end_height":final_state.height,
-        "key_reconstruction_seconds":key_reconstruction_seconds,"metadata_export_seconds":metadata_export_seconds,
-        "verify_seconds":verify_seconds,"setup_calls":1,"proving_jobs":0,"transactions_broadcast":0,
-        "bitcoin_script_verified":false,"independent_poseidon_verification":false,"complete_bitvm2_verifier":false}),
-    )
+        "trace":trace}),
+    ];
+    let mut fields = serde_json::Map::new();
+    for group in groups {
+        let Value::Object(group) = group else {
+            return Err("native report group must be an object".into());
+        };
+        for (key, value) in group {
+            check(
+                fields.insert(key, value).is_none(),
+                "duplicate native report field",
+            )?;
+        }
+    }
+    Ok(Value::Object(fields))
 }
 
 fn main() {
