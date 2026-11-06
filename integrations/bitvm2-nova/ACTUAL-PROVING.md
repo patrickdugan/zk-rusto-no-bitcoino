@@ -46,7 +46,7 @@ not remote attestation that an arbitrary executable was compiled from it.
 python proving_shards.py --source-root C:\your-workspace\nova-source `
   --bin-dir C:\your-workspace\nova-target\release `
   --out results\proving-k10-example --k 10 --to 40 --shards 2 `
-  --parallel 2 --export-parallel 2 --threads 2 --memory-mib 6144 `
+  --parallel 2 --export-parallel 2 --threads 4 --memory-mib 6144 `
   --total-memory-mib 16384 --reserve-memory-mib 2048
 ```
 
@@ -133,8 +133,8 @@ The measured pilot was sequential: an earlier conservative six-GiB host reserve
 refused parallel launch when available RAM fell to about 15 GiB. After the
 16-GiB authorization, the coordinator gained the explicit total budget and
 two-GiB reserve above. A live plan check admitted two six-GiB jobs with about
-17.6 GiB available. The completed proof work was preserved; a full parallel
-k=10 throughput run was not repeated or claimed.
+17.6 GiB available. The completed proof work was preserved as a baseline.
+The subsequent parallel validation is recorded below.
 
 The original fast genesis preflight exposed a console-host observation race.
 It failed closed and was not counted as proof rejection. The dedicated observer
@@ -143,6 +143,45 @@ regressions before the successful proving run. Proofs, keys, raw logs and the
 complete verification report remain in local ignored output directories.
 Automatic approval review rejected public binary proof upload; no binary proof
 publication is claimed.
+
+## Parallel validation within the 16-GiB budget
+
+The current coordinator completed a second genuine run with two concurrent
+k=10 shards and two concurrent exports, four Rayon threads per child, six-GiB
+child Job ceilings, a 16-GiB total budget and a two-GiB host reserve. The admitted
+aggregate child ceiling was 12 GiB; initial available physical memory was
+16.53 GiB. All ten child calls had complete accounting and successful exits.
+
+Both 12,976-byte compressed proofs were cold-verified again. The genesis anchor,
+height-20 full-state join, height-40 final state, header input identity and
+existing verifier-key pin matched the sequential run. Each NHT4 bundle was
+13,532 bytes. No key or retained-proof identity gate was changed.
+
+| Profile | Concurrent shards/exports | Threads per child | Total wall time |
+| --- | ---: | ---: | ---: |
+| Earlier sequential baseline | 1 / 1 | 2 | 1,304.83 s (21m 44.83s) |
+| 16-GiB parallel validation | 2 / 2 | 4 | 242.21 s (4m 2.21s) |
+
+The observed time ratio is about 5.4. Both concurrency and thread count changed,
+and timing/cache conditions vary; this is not a controlled RAM-only benchmark.
+The larger budget enabled the concurrent jobs without raising the child ceiling.
+
+| Parallel-run phase | Maximum individual Job commit | Maximum queried process working-set peak |
+| --- | ---: | ---: |
+| Folding/resume | 1,380.89 MiB | 1,179.08 MiB |
+| Compression/export | 2,265.48 MiB (2.21 GiB) | 2,058.83 MiB (2.01 GiB) |
+| Cold verification | 987.74 MiB | 867.47 MiB |
+
+The sum of the two export Job-commit maxima is less than 4.425 GiB, an upper bound across
+these child jobs rather than a measured simultaneous aggregate peak. Parent
+and unrelated host memory are not included. This validates the configured k=10
+profile; other k values still need their own measurements and explicit ceilings.
+
+All 12 workflows passed on source commit
+[`5aa6c05278e16b20f0a62d9776c688eb74906296`](https://github.com/patrickdugan/zk-rusto-no-bitcoino/commit/5aa6c05278e16b20f0a62d9776c688eb74906296),
+including 304 full-suite Python tests, 21 Windows source/plan/budget tests and
+nine actual Windows Job Object tests with tiny children. The real proving runs
+were explicit local executions, not automatically launched by CI.
 
 ## Limits of this milestone
 

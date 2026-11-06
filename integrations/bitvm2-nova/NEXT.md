@@ -6,8 +6,11 @@ header prover and mandatory cold verification/full-state joins. Its explicit
 resource budget is independent of the retained low-RAM conformance profiles.
 The actual k=10 run generated and cold-verified two 12,976-byte proofs spanning
 genesis through height 40, with the full 17-scalar join checked. Peak export Job
-commit was 2.23 GiB. The current total proving budget is 16 GiB, with configurable
-parallelism and per-child ceilings; complete Script verification remains open.
+commit was 2.23 GiB in the sequential baseline. The 16-GiB parallel validation
+also cold-verified both proofs, completing in 242.21 seconds with maximum
+individual export Job commit 2.21 GiB. The configured total budget admits two
+six-GiB child jobs plus a separate two-GiB host reserve check. All 12 workflows
+passed on `5aa6c05`; complete Script verification remains open.
 
 [The streamed full-permutation graph](KECCAK-PERMUTATION.md) extends the linked
 Keccak pair to twelve bounded components with globally reused state signatures
