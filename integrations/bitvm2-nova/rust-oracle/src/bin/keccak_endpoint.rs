@@ -668,14 +668,20 @@ fn tail_truth(spec: &GraphSpec, values: &[u32], ordinal: usize) -> Result<bool> 
             }
             v[0] == sum
         }
-        "conv_ab" => v[v.len() - 1] == v[..v.len() - 1].chunks_exact(2).map(|p| p[0] * p[1]).sum(),
+        "conv_ab" => {
+            v[v.len() - 1]
+                == v[..v.len() - 1]
+                    .chunks_exact(2)
+                    .map(|p| p[0] * p[1])
+                    .sum::<u64>()
+        }
         "conv_pq" => {
             v[v.len() - 1]
                 == v[..v.len() - 1]
                     .iter()
                     .zip(&leaf.argument)
                     .map(|(a, b)| a * (*b as u64))
-                    .sum()
+                    .sum::<u64>()
         }
         "conv_column" => {
             let ab = leaf.argument[0] as usize;
