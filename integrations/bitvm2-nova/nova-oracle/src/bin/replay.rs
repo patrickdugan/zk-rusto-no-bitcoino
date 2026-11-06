@@ -4,6 +4,8 @@
 mod dimensions;
 #[path = "../key_bindings.rs"]
 mod key_bindings;
+#[path = "../matrix_profile.rs"]
+mod matrix_profile;
 #[path = "../poseidon_parameters.rs"]
 mod poseidon_parameters;
 #[path = "../tracing.rs"]
@@ -227,6 +229,20 @@ fn run() -> Result<Value> {
     let (poseidon_parameters, poseidon_parameter_export) =
         poseidon_parameters::export_authenticated_vk(&vk, VK_SHA, DIM_SHA, "testnet4", 5)?;
     let poseidon_parameters_sha256 = poseidon_parameters::canonical_sha256(&poseidon_parameters)?;
+    let (matrix_profile, matrix_profile_export) =
+        matrix_profile::export_authenticated_vk(&vk, VK_SHA, DIM_SHA, "testnet4", 5)?;
+    for role in ["primary", "secondary"] {
+        for field in ["num_cons", "num_vars", "num_io"] {
+            let expected = dim_expected[role][field]
+                .as_u64()
+                .ok_or("pinned matrix logical dimension missing")?;
+            check(
+                matrix_profile[role][field].as_u64() == Some(expected),
+                "matrix logical dimensions differ from the independent descriptor",
+            )?;
+        }
+    }
+    let matrix_profile_sha256 = matrix_profile::canonical_sha256(&matrix_profile)?;
     let metadata_export_seconds = started.elapsed().as_secs_f64();
 
     // Never capture setup, metadata hashing or negative-verification loops.
@@ -250,6 +266,8 @@ fn run() -> Result<Value> {
         "key_bindings":key_bindings,"key_bindings_sha256":key_bindings_sha256,"key_binding_export":key_binding_export,
         "poseidon_parameters":poseidon_parameters,"poseidon_parameters_sha256":poseidon_parameters_sha256,
         "poseidon_parameter_export":poseidon_parameter_export,
+        "matrix_profile":matrix_profile,"matrix_profile_sha256":matrix_profile_sha256,
+        "matrix_profile_export":matrix_profile_export,
         "trace":trace,"end_state_sha256":END_SHA,"end_height":final_state.height,
         "key_reconstruction_seconds":key_reconstruction_seconds,"metadata_export_seconds":metadata_export_seconds,
         "verify_seconds":verify_seconds,"setup_calls":1,"proving_jobs":0,"transactions_broadcast":0,

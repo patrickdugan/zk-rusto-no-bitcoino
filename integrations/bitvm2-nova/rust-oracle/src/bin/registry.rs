@@ -219,8 +219,9 @@ fn main() -> Result<()> {
                 h.input(code.as_bytes());
             }
             let stream_hash = sha256::Hash::from_engine(h).to_string();
-            // Captured from independently executed main 7708a99 before caching.
-            // Decoder-block caching must preserve EVERY compiled leaf byte.
+            // Baselines captured at main7708a99 before decoder caching;
+            // convolution streams independently executed at c3de2fc.
+            // Future changes must preserve every versioned compiled leaf byte.
             let baseline = match case.name.as_str() {
                 "pallas_base/honest-full-multiplication" => Some((
                     16_798_073,
@@ -237,6 +238,22 @@ fn main() -> Result<()> {
                 "vesta/point-graph" => Some((
                     219_498_908,
                     "a2c5d28cd29a32daa31d61eae07cebf927f6cf823b0b5528df666e606c67deef",
+                )),
+                "pallas_base/convolution-mul" => Some((
+                    6_993_315,
+                    "23bf6823a5cc8bc0ec20d3c95462827cb45d01d92b356c59442e3480cf1e8d7a",
+                )),
+                "vesta_base/convolution-mul" => Some((
+                    7_001_191,
+                    "ca7ea7653dfbb426ea80aecb531e6f1a002777c9600fcccbaf39860fc87d1c6e",
+                )),
+                "pallas/convolution-point" => Some((
+                    88_586_200,
+                    "b89b9aef5be9e089717cdf3a4355a5ac4b3d1ca3a3d455ab7c108aa55ad81a75",
+                )),
+                "vesta/convolution-point" => Some((
+                    88_688_588,
+                    "8b606dd645fe43c3c6c620a5f0c519fba4192e3bd46fd0719f8c4a2dbe1bb4ce",
                 )),
                 _ => None,
             };

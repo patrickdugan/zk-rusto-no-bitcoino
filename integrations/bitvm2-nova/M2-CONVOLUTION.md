@@ -99,6 +99,44 @@ include exact witness guards and the respective opening/word-recovery code.
 They exclude transaction framing, control blocks and assertion signatures.
 These are aggregate Script bytes, not transaction weights or fees.
 
+## Executed WOTS comparison
+
+Source commit `c3de2fc08bc391e39f5a33bcfe019e49e732f5ad` passed all seven
+workflows. [Registry run42138502256](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42138502256)
+compiled and measured both catalogues in the same job with the same pinned
+interpreter, input claims and accounting:
+
+| Graph | Baseline Script bytes | Convolution Script bytes | Reduction |
+| --- | ---: | ---: | ---: |
+| Pallas multiplication | 16,798,073 | 6,993,315 | 58.37% |
+| Vesta multiplication | 16,798,073 | 7,001,191 | 58.32% |
+| Pallas complete point addition | 219,498,908 | 88,586,200 | 59.64% |
+| Vesta complete point addition | 219,498,908 | 88,688,588 | 59.59% |
+
+The largest multiplication leaf falls from49,538 to22,639 bytes. The largest
+point leaf remains79,381 bytes. Across the executed candidate corpus, peak
+combined stack remains485 items; maximum witness remains480 items/9,600 bytes.
+The enabled stack limit remains1,000. Neither a maximum-leaf nor a maximum-stack
+improvement is claimed for the complete point graph.
+
+The candidate passed3,778 Script vectors including1,987 expected rejections,
+54 native catalogue/API rejections, four native shape tests and126 shared carry
+links. Its44 signing sessions generated55,264 test signatures once per global
+wire and took108.504seconds under the512MiB/300second process cap. The unchanged
+baseline passed2,538 vectors including1,331 rejections,56 native rejections and
+510 accumulator/final links; all four baseline Script stream hashes matched.
+The separate M2 job passed172 Python tests,74 independent halo2curves cases,
+10,884 original Script vectors with1,630 rejections and19,216 compact vectors
+with9,958 rejections. No upstream interpreter panic counted as a rejection.
+
+The `bitvm2-nova-global-registry-evidence` artifact contains both complete
+native ledgers, the comparison JSON, length-prefixed leaf hashes, vector hashes,
+dependency lockfile and resource records. The native numbers above include
+repeated WOTS recovery in every leaf, but still exclude transaction framing,
+control blocks and assertion signatures. The fixed-claim regression above
+remains real: this optimization benefits the authenticated catalogue and does
+not replace the smaller compact-v1 fixed-claim default.
+
 ## Verification boundary
 
 Tests cover independent integer products, arbitrary unsigned quotients,

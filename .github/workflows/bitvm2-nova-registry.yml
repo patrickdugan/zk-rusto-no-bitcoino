@@ -60,6 +60,7 @@ jobs:
             rust-oracle/target/debug/registry results/convolution-registry-inputs.json \
             results/convolution-registry-engine-vectors.jsonl \
             | tee results/convolution-registry-execution.json
+          cat results/convolution-registry-time.txt
           sha256sum results/convolution-registry-engine-vectors.jsonl > results/convolution-registry-vector-sha256.txt
           python - <<'PY'
           import json

@@ -198,6 +198,23 @@ jobs:
           parameters = report['poseidon_parameters']
           if digest(parameters) != report['poseidon_parameters_sha256']:
               raise SystemExit('authenticated Poseidon parameter digest mismatch')
+          matrix_profile = report['matrix_profile']
+          if digest(matrix_profile) != report['matrix_profile_sha256']:
+              raise SystemExit('matrix metadata canonical digest mismatch')
+          matrix_stats = report['matrix_profile_export']
+          expected_stats = {'numeric_fields_read': 12, 'sequence_lengths_read': 18,
+              'matrices_profiled': 6, 'matrix_elements_read': 0,
+              'matrix_payloads_materialized': False, 'full_key_materialized': False}
+          if any(type(matrix_stats.get(k)) is not type(v) or matrix_stats[k] != v
+                 for k, v in expected_stats.items()):
+              raise SystemExit('matrix metadata export traversed payload or missed a selected header')
+          for role, engine in (('primary', 'pallas'), ('secondary', 'vesta')):
+              shape = matrix_profile[role]
+              if shape['engine'] != engine or shape['field_role'] != engine+'_scalar':
+                  raise SystemExit('matrix scalar-field role mismatch')
+              if any(shape[k] != report['verifier_dimensions'][role][k]
+                     for k in ('num_cons', 'num_vars', 'num_io')):
+                  raise SystemExit('matrix metadata dimensions differ from independent profile')
           profiles = [{key: profile[key] for key in ('arity', 'width', 'rate', 'capacity', 'rf', 'rp', 's', 'ht')}
                       | {'engine': parameters[role]['engine'], 'mode': mode,
                          'compressed_constants': len(profile['crc']), 'sparse_matrices': len(profile['sm'])}
@@ -221,6 +238,8 @@ jobs:
               'complete_capture': trace['complete_capture'],
               'poseidon_parameters_sha256': report['poseidon_parameters_sha256'],
               'poseidon_parameter_export': report['poseidon_parameter_export'],
+              'matrix_profile': matrix_profile, 'matrix_profile_sha256': report['matrix_profile_sha256'],
+              'matrix_profile_export': matrix_stats,
               'poseidon_profiles': profiles}))
           PY
           cat results/native-replay-time.txt
