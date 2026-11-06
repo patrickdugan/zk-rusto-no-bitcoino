@@ -1,13 +1,16 @@
 # Next implementation boundary
 
-[The linked rho/sumcheck challenge source](BYTE-RHO-CHAIN.md) now targets the
+[The linked rho/sumcheck challenge](BYTE-RHO-CHAIN.md) closes the
 next actual transcript boundary: rho's 64 raw digest producer bytes feed the
 following two-block challenge. The shared prefix, canonical `c0,c2` encodings,
 rate absorption and unchanged-capacity forwarding form nine components with
-five full permutations. Its analytical census is 147,043 leaves and 147,355
-unique words. Hosted cost, memory, record and complete disproof conformance
-remain pending under the unchanged limits. This source does not complete the
-transcript or IPA verifier.
+five full permutations. Its census is 147,043 leaves and 147,355 unique words.
+Hosted execution passed 623,600 Script calls with 324,792 expected rejections,
+measuring 762,253,538 complete Script bytes for Pallas scalar and 762,237,292
+for Vesta scalar under the unchanged limits. All 19 workflows passed. Two
+honest main cases execute fully; four coherent main cases are targeted and
+twenty small probes have separately bound keys/trees. This source does not
+complete the transcript or IPA verifier.
 
 [The framed BYTE rho composition](BYTE-RHO.md) connects both LO/HI permutations
 to the unchanged uniform reducer through a three-component source. It shares
@@ -42,28 +45,55 @@ The unchanged 1.25-GiB forest and 16-component policies prevent straightforward
 replication of this backend. They are experimental constructor budgets, not a
 theorem about Bitcoin or all possible verifiers.
 
-The next bounded transcript boundary should connect the current RHO's actual
-raw `LO || HI` 64-byte producers to the immediately following batch-sumcheck
-challenge, rather than feed back the reduced scalar. These are primary events
+The completed linked experiment connects RHO's actual raw `LO || HI` 64-byte
+producers to the immediately following batch-sumcheck challenge. These are primary events
 103/104/105 (counter 60) and secondary events 78/79/80 (counter 45). The next
 143-byte preimage contains two encoded polynomial coefficients and puts the
 previous raw state at message bytes 77-140. Its first 136 bytes are identical
 across LO/HI, permitting one explicitly shared prefix permutation followed by
 two branch-final permutations. Together with RHO, five full permutations have
-a 757,162,580-byte linear subtotal before bridges and tails. This only motivates
-a bounded measurement attempt; actual cost, record, memory and component limits
-must pass unchanged.
+a 757,162,580-byte isolated subtotal before bridges and tails. Complete measured
+totals are now 762,253,538 and 762,237,292 bytes, with all original cost, record,
+memory and component limits passed. This remains a bounded source relation.
 
-That milestone must authenticate both rate-XOR absorption and unchanged-capacity
-forwarding, all raw-state producer links, counters, selectors and padding, and
-canonical coefficient encodings. Coherent changed-state attacks, both block
-boundaries, exact witness lengths and actual forest disproofs need independent
-checks. Stop or optimize if existing limits fail. Proof-byte/length/EOF parsing,
+That experiment authenticates rate-XOR absorption, unchanged-capacity forwarding,
+raw-state producer links, counters, selectors, padding and canonical coefficients.
+Coherent changed-state attacks, both block boundaries, exact witness lengths and
+actual forest disproofs passed. Further extensions must stop or optimize if
+existing limits fail. Proof-byte/length/EOF parsing,
 scalar-to-BYTE source bridges, compressed-point transcript encodings, initial
 state/key origins and authenticated folded commitments remain explicit gaps.
 After those source boundaries, authenticated scalar multiplication and IPA/MSM
 verification still require their own measured implementations before end-to-end
 proof verification can be claimed.
+
+## Next curve boundary
+
+The smallest useful scalar-action extension is `R = A + bP`: compute `E = A+P`
+with one unchanged complete convolution point-add child, then select `R = b?E:A`.
+This still checks `P` when `b=0`. The measured 219,498,908-byte "Horner point"
+component is affine addition using thirteen Horner field products; it is not a
+scalar-bit point transition. The existing convolution alternative contributes
+88,586,200 Pallas / 88,688,588 Vesta bytes before any new selector or bridge.
+
+Nine canonical challenge limbs can feed nine unchanged reconstruction leaves
+with 255 bound-2 bits, widths `29*8,23`: 264 words and nine leaves analytically.
+The scalar-role bridge must retain the actual Uniform canonical guard, use its
+real reconstruction openings and expose a verifier-fixed bit index. Only that
+chosen bound-2 bit may cross to the curve base-role selector. Point-coordinate
+openings must not be described as new SSA producers. Existing point dispatch,
+on-curve, infinity form, canonicality and witness guards must remain intact.
+
+A fresh point/selector Program is analytically 7,498 words and 6,161 leaves,
+with explicit projection of all original arithmetic and relocated canonical
+guards. A new mixed-role wrapper could extend this chain to eleven components,
+153,213 leaves and 155,107 unique words. These are source-derived counts, not
+new execution or cost measurements. The current scalar-only chain factory and
+its exact fixed-count key helper must remain unchanged. Adversarial tests need
+both bit values, invalid2, index/endianness swaps, coherent changed-bit witnesses,
+invalid points even on the unselected branch, infinity/dispatch cases and actual
+opening comparisons. Authenticated doubling would then give `R=2A+bP`; complete
+scalar multiplication, MSM, generator/proof origins and IPA remain open.
 
 [The opt-in full BYTE permutation](BYTE-KECCAK-PERMUTATION.md) flattens six
 fresh sealed blocks into one 29,245-leaf, 29,445-word GraphSpec. Its program
