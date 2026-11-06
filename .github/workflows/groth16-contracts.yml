@@ -1,0 +1,41 @@
+name: Groth16 statement-contract regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'integrations/groth16-gym/**'
+      - '.github/workflows/groth16-contracts.yml'
+  pull_request:
+    paths:
+      - 'integrations/groth16-gym/**'
+      - '.github/workflows/groth16-contracts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: Bound public inputs and R1CS tamper tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: integrations/groth16-gym
+      - name: Check benchmark crate compilation
+        run: |
+          cargo fmt --manifest-path integrations/groth16-gym/Cargo.toml -- --check
+          cargo check --manifest-path integrations/groth16-gym/Cargo.toml --all-targets
+      - name: Check honest fixtures and tampered statements
+        run: |
+          cargo test --manifest-path integrations/groth16-gym/Cargo.toml --test tamper -- --test-threads=1
+
+# The full SNARK setup and proof benchmark is kept as a separate,
+# resource-intensive manual run. CI here tests circuit satisfaction,
+# tamper rejection, and compilation of the public-input mutation loop.
