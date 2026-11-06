@@ -7,10 +7,12 @@ no Script, full graph, native process, key generation or proving work.
 from collections import Counter
 from dataclasses import FrozenInstanceError
 from hashlib import sha256
+import gc
 import json
 import os
 import sys
 import unittest
+import weakref
 from unittest.mock import patch
 
 CONTEXT=sha256(b'byte-keccak-permutation-tests/caller-owned-context').digest()
@@ -48,6 +50,24 @@ def _constants():
 CONSTANTS=_constants()
 ROUND_LEAVES=tuple(1216+sum(byte!=0 for byte in value.to_bytes(8,'little')) for value in CONSTANTS)
 ROUND_OFFSETS=tuple(sum(ROUND_LEAVES[:index]) for index in range(24))
+
+
+class _NonRetainingProgramCap:
+    """Count bounded child compilations without recording Program arguments.
+
+    A Mock side_effect retains every Program in call_args_list, preventing the
+    streaming tests from releasing their child graphs under the unchanged cap.
+    """
+    def __init__(self,compiler,maximum):
+        self._compiler=compiler
+        self._maximum=maximum
+        self.call_count=0
+
+    def __call__(self,program):
+        if len(program.constraints)>self._maximum:
+            raise AssertionError('only real bounded child Programs may use GraphSpec.from_program')
+        self.call_count+=1
+        return self._compiler(program)
 
 
 def _producer(round_index,slot):
@@ -119,6 +139,33 @@ def _quotient(child_ids):
 
 
 class BytePermutationPureMapsAndGuards(unittest.TestCase):
+    def test_program_cap_hook_counts_and_releases_tiny_argument_objects(self):
+        class TinyChild:
+            def __init__(self,size):self.constraints=(None,)*size
+        class TinyCatalogue:
+            calls=0
+            @classmethod
+            def from_program(cls,program):
+                cls.calls+=1
+                return len(program.constraints)
+        original=TinyCatalogue.from_program
+        hook=_NonRetainingProgramCap(original,2)
+        references=[]
+        # Exercise the exact staticmethod replacement used by the hosted
+        # observer, with tiny objects rather than Programs or GraphSpecs.
+        with patch.object(TinyCatalogue,'from_program',new=staticmethod(hook)):
+            for _ in range(32):
+                child=TinyChild(2)
+                references.append(weakref.ref(child))
+                self.assertEqual(TinyCatalogue.from_program(child),2)
+                del child
+            gc.collect()
+            self.assertTrue(all(reference() is None for reference in references))
+            self.assertEqual((hook.call_count,TinyCatalogue.calls),(32,32))
+            self.assertFalse(hasattr(hook,'call_args_list'))
+            with self.assertRaises(AssertionError):TinyCatalogue.from_program(TinyChild(3))
+            self.assertEqual((hook.call_count,TinyCatalogue.calls),(32,32))
+
     def test_analytical_census_preserves_caps_and_has9200_consumer_coordinates(self):
         from trace import MAX_CONSTRAINTS,MAX_WORDS
         from wots_graph import MAX_GRAPH_LEAVES
@@ -238,12 +285,9 @@ class HostedByteKeccakPermutationTests(unittest.TestCase):
         self.module=byte_keccak_permutation
         from trace import MAX_CONSTRAINTS
         original=self.module.GraphSpec.from_program
-        def bounded_child(program):
-            self.assertLessEqual(len(program.constraints),MAX_CONSTRAINTS,
-                'only real bounded child Programs may use GraphSpec.from_program')
-            return original(program)
-        guard=patch.object(self.module.GraphSpec,'from_program',side_effect=bounded_child)
-        self._child_from_program=guard.start()
+        self._child_from_program=_NonRetainingProgramCap(original,MAX_CONSTRAINTS)
+        guard=patch.object(self.module.GraphSpec,'from_program',new=staticmethod(self._child_from_program))
+        guard.start()
         self.addCleanup(guard.stop)
 
     def build(self,role='pallas_scalar',*,context=CONTEXT,operation=OPERATION):
