@@ -147,11 +147,29 @@ Script-stream goldens. The hosted Taproot run took 44.503489095 seconds and
 composition: two proof-derived outer sumcheck rounds in one global WOTS graph,
 sharing the first output wire with the next prior claim. Only the initial zero
 claim is a protocol anchor; coefficients and challenges are canonical ports
-with explicit source identities. Hosted complete-catalogue execution is pending.
+with explicit source identities. Code commit
+`abd2d29afe0c872dcd0b98cf9c109d78864700d0` passed all eight workflows. The linked
+sumcheck run executed 20 signed cases / 1,204 Script vectors / 728 rejections,
+including both coherent shared-claim attacks and their Taproot-member disproofs.
+The complete two-round catalogues cost 42,398,317 primary and 42,351,061 secondary
+Script bytes with identical accounting. The benchmark records canonical-input
+`VERIFY` aborts separately from ordinary false predicates; all malformed-field
+cases and witness guards remain.
 This establishes arithmetic given authenticated ports. Their proof-byte and
 Fiat-Shamir Script binding remains a separate obligation. Whole-hash chunk
 composition and curve scalar multiplication/MSM lowering also remain open;
 isolated additions or native terminal checks do not supply those graphs.
+
+A bounded next hash-composition step is a sealed two-round Keccak catalogue,
+freshly building its child programs and merging exactly 1,600 producer-output /
+consumer-input slots. It must preserve each child's injective word mapping and
+every leaf's occurrence/alias partition, commit the complete source topology,
+and retain both current Program and registry caps. Two rounds 0/1 have a
+calculated 19,206 leaves / 20,806 global words; Script costs are unmeasured.
+This would close one internal boundary only. Twelve such pairs still leave
+eleven inter-pair boundaries, absorption/padding/squeeze and the complete Nova
+transcript framing to authenticate. Registry/key and Taproot commitment order
+must remain acyclic; a resulting root cannot be its own input context.
 
 Integrate authenticated assertions using the existing BitVM2 commitment
 mechanism. Define a static chunk graph and prove complete dispute coverage

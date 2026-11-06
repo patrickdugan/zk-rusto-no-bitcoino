@@ -125,4 +125,61 @@ runners under 512 MiB / 300 CPU seconds / 300 wall seconds; Python corpus work
 has separate 256 MiB / 180-second caps. No native build, bulk generator/matrix
 access, large MSM, proving or GPU job runs on the local PC.
 
-Hosted measurements and execution results for this new stage remain pending.
+## Executed hosted evidence
+
+Code commit `abd2d29afe0c872dcd0b98cf9c109d78864700d0` passed all eight workflows.
+The [linked-sumcheck job](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42156333714/job/127691262909)
+passed 17 dedicated Python tests, then executed **20 signed cases / 1,204 Script
+vectors / 728 expected rejections**, plus **54 native catalogue/registry
+substitution rejections**. It generated one signature per wire per fresh test
+session, totaling **74,740 TEST-ONLY signatures**. The complete Python suite
+passed 227 tests; existing M2, WOTS, Keccak and all original catalogue goldens
+also passed on this code commit.
+
+| Role | Words | Authenticated leaves | Executed honest leaf shapes/boundaries | Aggregate disproof Script bytes |
+| --- | ---: | ---: | ---: | ---: |
+| Primary / Pallas scalar Q | 3,737 | 2,908 | 83 | 42,398,317 |
+| Secondary / Vesta scalar P | 3,737 | 2,908 | 83 | 42,351,061 |
+
+Every leaf was compiled and measured. The 83 selected honest leaves per role
+cover all **71 distinct authenticated shapes**, aliases, initial anchors and
+shared-claim uses; they are not a claim that every leaf was executed through
+WOTS. The separate Python test executed every original arithmetic leaf. Script
+totals include exact witness guards and word recovery, and exclude transaction
+framing, control blocks and assertion signatures. These are fragment costs,
+not complete-verifier weights or fees.
+
+Native execution checked **18 shared claim-word openings** and **756 adjacent
+convolution carry links**. The producer equality is ordinal **1442** and its
+round1 linear-coefficient consumer is ordinal **1446**, in both catalogues.
+Both coherent shared-claim attacks passed the remaining second-round checks and
+produced an actual successful disproof at the first producer. The disproof
+Scripts also passed membership against the complete corresponding malicious
+test-registry Taproot roots. The two honest catalogues and two malicious
+catalogues each had a complete tree construction; all selected controls were
+**417 bytes**. Malicious and honest roots differ because their signing sessions
+use separate keys, while catalogue IDs and Script byte totals stay identical.
+
+The honest leaf-stream SHA-256 values (u32 LE length followed by exact Script
+bytes, in ordinal order) are:
+
+- Primary: `9c9204bed01b53d57031550b18300f06154e103a64009f9c80fda6d0dec87230`.
+- Secondary: `8acbc352e9d63382438144505adec557ba3d2866f5e8bb2f88c8fcf5a19fb163`.
+
+The signed native run took **82.475601447 seconds**, with **69,976 KiB
+(71,655,424 bytes) peak RSS**. Its largest Script was **46,617 bytes**, with
+**275 peak stack items**, **270 witness items** and **5,400 witness payload
+bytes**. Python generation took **3.100032728 seconds** and **37,748,736 bytes
+peak RSS**, emitting **17,896,802 bytes** for the 20-case bounded corpus. Its
+SHA-256 is `516c6a093b4b0158f393600cfd5b610bd913019c31dd3014561ce3185044e16e`.
+
+All p/p+1 cases retained explicit field-validity refutations. Their diagnostics
+record arithmetic ordinals 9 and 1441 as canonical-input `VERIFY` aborts, excluded
+from the Boolean-mode checks; no abort or interpreter panic was counted as a
+successful disproof. Signed oversized-word cases also passed their disproofs.
+
+All complete-verifier, proof-source Script binding, Fiat-Shamir Script binding,
+production root/UTXO/transaction binding flags remain false. The successful
+coherent source-substitution study remains an explicit limitation. These tests
+establish the linked arithmetic fragment and selected authenticated disproofs;
+they do not establish a spendable Bitcoin transaction or complete Nova verifier.
