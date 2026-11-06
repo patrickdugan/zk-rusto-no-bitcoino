@@ -3,9 +3,10 @@
 This separate thirteen-component experiment adds an asserted 112-byte scalar
 block and a canonical `eval_W` encoder to the completed
 [challenge-bit/conditional-point relation](BYTE-C-BIT-POINT.md). Hosted execution
-and new Script costs are pending. The eleven-component baseline and its evidence
-remain unchanged. This is a local source relation, not a complete Nova SNARK or
-BitVM2 verifier.
+passed on source `3c55e4c31748661b8c157fd14406186490653cd1`, with all twenty-one
+workflows green. The eleven-component baseline and its measured costs remain
+unchanged. This is a local source relation, not a complete Nova SNARK or BitVM2
+verifier.
 
 ## Reference and assertion boundary
 
@@ -75,15 +76,15 @@ comparisons connect actual split/reconstruction/field-validity occurrences.
 All comparisons capture real registry openings after complete source and
 registry validation. Six main profiles therefore add 2,250 comparisons to the
 baseline's 289,266, giving 291,516 main comparisons. Private encoder probes add
-322 separately reported comparisons. These are planned/source-derived counts
-until hosted execution reports them.
+322 separately reported comparisons. The successful run captures and compares
+all these actual registry openings; the counters are not metadata-only links.
 
 ## Closed execution corpus
 
 The six main profiles are `p/h,p/c,p/w,v/h,v/c,v/w`: honest, coherent changed
 coefficient, and coherent changed eval_W. Their claimed scalar inputs and every
-downstream consumer are re-witnessed consistently; every local predicate should
-be true. Both honest profiles execute all 153,342 leaves. Each coherent profile
+downstream consumer are re-witnessed consistently; every local predicate is
+true in the successful run. Both honest profiles execute all 153,342 leaves. Each coherent profile
 executes all 956 small-component leaves and 107 selected point leaves; five full
 permutations have no normal calls in those targeted profiles. Full catalogue
 measurement and authenticated guard-layout coverage remain mandatory. Only the
@@ -102,16 +103,18 @@ signing. A diagnostic unsigned integer is never truncated through a u8 cast.
 Empty, truncated, prepended, appended, forged and cross-wired witness guards stay
 mandatory. An upstream panic, process failure or bare unexpected VERIFY abort
 cannot count as a successful rejection. Existing point diagnostic abort domains
-remain separately classified. All private registries use disjoint test keys;
-no production assertion-root/key-lifecycle binding is claimed.
+remain separately classified. Private registries use separate probe seed domains
+and check their keys against the corresponding complete honest main pool. No
+production assertion-root/key-lifecycle binding is claimed.
 
 ## Resource and evidence gates
 
 The unchanged compact-record hard limit is 134,217,728 bytes. Independent closed
 serialization accounting bounds this corpus at 133,969,276 bytes, leaving
-248,452 bytes. This is an upper-bound calculation, not a measured run. The native
-worker and report validator must enforce the exact corpus and identifier lengths;
-no extra Script calls or limit increase is authorized by that estimate.
+248,452 bytes between the closed bound and hard limit. The measured stream is
+128,420,666 bytes, below both limits. The native worker and report validator enforce
+the exact corpus and identifier lengths; the upper bound authorizes no extra
+Script calls or limit increase.
 
 The dedicated workflow uses the existing 256-MiB Python-test and 512-MiB parent
 execution address-space limits, bounded wall/CPU time, two build threads, and
@@ -125,8 +128,115 @@ Publication requires strict transport admission before keys/output, independent
 source and assignment reconstruction, complete cost/forest-stream agreement,
 actual opening comparisons, exact expected execution/rejection totals, unchanged
 witness guards, bounded pre/post source/binary snapshots, and independent report
-review. The new measured Pallas/Vesta costs, runtime, memory and artifact hashes
-will be recorded only after those gates pass.
+review. These gates pass for the hosted run below. The generated lockfiles and
+source/binary observations are evidence for that run, not a fully fixed release
+build or a binary/source-equivalence attestation.
+
+## Measured hosted result
+
+[Run 42307107515](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42307107515)
+and [job 128199100341](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42307107515/job/128199100341)
+pass on source `3c55e4c31748661b8c157fd14406186490653cd1`. Complete measurements
+and live tree streams agree for all six main profiles. All eleven old component
+costs match the prior measured baseline exactly, under the same accounting.
+
+These are complete WOTS-adapted disproof Script bytes. They exclude witnesses/
+assertion signatures, control blocks and transaction framing.
+
+| Complete source or added component | Pallas role | Vesta role |
+| --- | ---: | ---: |
+| Unchanged eleven-component baseline | 851,477,668 | 851,563,810 |
+| Asserted scalar block | 187,889 | 187,888 |
+| Canonical eval_W encoder | 140,132 | 140,132 |
+| Thirteen-component source | **851,805,689** | **851,891,830** |
+| Added coverage versus baseline | 328,021 | 328,020 |
+
+The one-byte Tape difference comes from the different fixed row-count constants.
+This experiment adds coverage and cost. It establishes no multiplication or
+whole-verifier savings ratio.
+
+The job passes **687,412 actual Script calls**, including **372,924 expected
+rejections**. Calls comprise 621,872 main normal, 6,944 private normal, 58,436
+malformed-authentication guards, and 160 selected-tree calls. Every normal/tree
+correctness-disproof pair has one expected rejection; every malformed guard must
+reject. Panics, process failures and unexpected VERIFY aborts never count as
+successful rejection evidence.
+
+Both honest profiles execute all 153,342 leaves. Each coherent profile executes
+1,063 leaves: all 956 small-component leaves and 107 selected point leaves.
+All six have 379 authenticated layouts and 5,306 guard calls. Coherent canonical
+coefficient/eval substitutions pass, demonstrating the explicit claimed/reference
+separation rather than whole-proof origin authentication. Their selected
+canonicality leaf is also true; only the two honest cases claim full-statement
+execution. All six selected hierarchical controls are 257 bytes, for component
+12, leaf 16. Comparing these controls to a different baseline selected point leaf
+would not establish a control-size optimization.
+
+The preserved 52 private probes retain their prior execution/guard scopes. The
+fourteen encoder probes execute all 238 leaves and 3,332 guard calls in total.
+The eight Tape probes execute eight selected leaves and 112 guard calls. Full
+catalogues and local trees are measured even for selected-only probes. Each
+private registry checks key disjointness against the complete corresponding
+honest main pool and uses a separate probe seed domain.
+
+Main pools create 930,876 signature entries for 937,980 declarations, reusing
+7,104. Private pools create 230,302 entries. Actual main opening comparisons total
+291,516; private encoder comparisons add 322 separately. All expected source/map/
+cache/registry rejections pass, along with empty, truncated, prepended, appended,
+forged and cross-wired witness guards. Nine independent mutations of the completed
+report's nested reference summary reject, including false verification claims,
+changed sizes/offsets/roles, missing/extra fields and Boolean/integer aliases.
+
+The maximum Script is 79,381 bytes. Observed maxima remain 485 stack
+items, 481 witness items and 9,600 witness payload bytes, including negative guards.
+The compact stream is 128,420,666 bytes, SHA-256
+`250ec3cf8bb7a50474c5c6c2513ab3f7c9141b4cfd4ffadba68613cabb6a2f11`.
+Existing Script, stack, input, map, tree, record and time limits pass unchanged.
+
+Native wall time is 658.275418474 seconds; the parent plus generation takes
+1,025.788528847 seconds. Parent-reported peak RSS is 138,928,128 bytes. External
+GNU time observes 392,768 KiB (402,194,432 bytes) for its invocation scope. This
+is distinct from parent RSS, is not a standalone native-worker RSS measurement,
+and must not be summed with it. Different hosted timings do not establish a
+runtime improvement over the baseline.
+
+The dedicated job passes all ten Python tests in 100.421 seconds and 77 worker
+unit tests, plus nine registry and five forest tests. The broad M2 job passes
+459 of 468 collected tests, with nine explicit hosted opt-in skips, in 749.544
+seconds. The four new skips run in the dedicated job; the older opt-in scopes
+have their own jobs. Original independent checks still pass: 74 curve vectors,
+10,884 M2 Script vectors with 1,630 rejections, and 19,216 compact vectors with
+9,958 rejections. All twenty-one workflows pass on the source above. Local work
+is restricted to six lightweight tests/four hosted skips, syntax/format/body
+checks, and bounded report/hash audits. No local full graphs, native builds,
+key generation, Script execution or proving ran.
+
+Two earlier attempts failed and supply no completed conformance/cost result.
+The first stopped at two imports referring to the new transport instead of the
+frozen legacy point DTOs/helper. The second passed native tests but failed strict
+report assembly because old point hashes collided with outer source hash names.
+The successful source separates those labels and includes a regression through
+the actual identity helper; strict duplicate rejection remains enabled.
+
+### Evidence pins
+
+[Artifact 13548227064](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42307107515/artifacts/13548227064)
+is a 246,147-byte ZIP, SHA-256
+`209341b7314428549bb3782d2ede817732c2efcbebf2d8e6f6a1951a93976835`.
+Its 370,145-byte report has SHA-256
+`e0e08c9480bf9b8d0a416110d96692009f4259a1ee31e08ae5581896a0ac659e`;
+the 447,229-byte manifest has SHA-256
+`dfb719227afbe4638d92808126009803c0841eb002b4875bbe4f22f83fe7ecbd`.
+Parsed compact report, artifact stdout and direct job stdout agree. The native
+worker pins that exact raw manifest before parsing it.
+
+Pre/post source snapshots agree: 141 files, 3,898,760 bytes, list SHA-256
+`4421f1ca360c4d6b0bc0fa7d6e8f7aa71848347b7c4a6a7f132421b8ed707247`.
+All 138 non-lock entries match exact source Git blobs; all three generated locks
+match artifact bytes and the pinned BitVM revision. Both curve-worker locks pin
+Halo2curves 0.9.0. The 6,072,672-byte configured executable has SHA-256
+`0ea68e12f5fb3c895dc93b4781b9dfa26a7f13f049ce996d23fa670df970c813`.
+These are observed source/binary pins, not binary/source-equivalence attestation.
 
 ## Remaining verifier work
 

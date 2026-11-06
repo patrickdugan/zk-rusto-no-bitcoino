@@ -1,11 +1,16 @@
 # Next implementation boundary
 
-[The retained scalar-source extension](RETAINED-SCALAR-SOURCES.md) is being
-integrated as a separate thirteen-component experiment. It adds an asserted
-112-byte block and canonical eval_W encoding to the measured relation below.
-Native reference admission does not authenticate asserted proof bytes in Script;
-whole-proof origins and EOF remain open. New hosted costs and execution evidence
-are pending. The complete existing experiment remains the verified baseline.
+[The retained scalar-source extension](RETAINED-SCALAR-SOURCES.md) passes its
+separate thirteen-component hosted experiment on
+`3c55e4c31748661b8c157fd14406186490653cd1`, with all twenty-one workflows green.
+Its 687,412 Script calls include 372,924 expected rejections; complete costs are
+851,805,689 Pallas / 851,891,830 Vesta bytes under unchanged accounting and caps.
+The eleven old components retain their exact baseline costs. An asserted 112-byte
+block and canonical eval_W encoding add 328,021/328,020 bytes of coverage.
+Two honest cases execute fully; four coherent canonical substitutions pass their
+local targeted relations. Native reference admission and those joins do not
+authenticate claimed whole-proof bytes in Script. Whole-proof origins and EOF,
+full scalar/MSM/IPA, production binding and the Bitcoin graph remain open.
 
 [The challenge-bit/conditional-point extension](BYTE-C-BIT-POINT.md) now binds
 the actual canonical sumcheck scalar to one fixed bit and `R=A+bP`, retaining
@@ -118,6 +123,39 @@ the selector adds 201,985 bytes to either unchanged complete-add baseline.
 Authenticated doubling would next give `R=2A+bP`; full-width scalar action and
 MSM still require their own cost experiment. Generator/proof origins and the
 complete IPA remain open.
+
+## Next bounded cost experiment
+
+Compare the current full-width CompactWots4 verifier with the mature full-width
+hinted Wots4/Listpick verifier. Keep four-byte signed messages, all eight message
+digits and both checksum digits; do not shorten BYTE messages or cast away signed
+256/u32::MAX diagnostics. Use a new isolated registry/witness format and source
+identity, with verifier-owned mode choices from declared bounds. Preserve the
+existing implementation as the measured baseline.
+
+Start with one tiny mixed/aliased convolution component, then one unchanged BYTE
+round in both roles. Measure actual Script bytes, witness items/payload and
+combined stack peaks with identical accounting. Actual opening captures must
+bind mode, packet boundaries, key, value and authenticated signature chunks;
+unused host-side metadata is not authenticated data. Exact witness-length guards
+remain mandatory before indexed reads.
+
+Every hinted digit needs canonical empty-zero or one-byte 1-15 checks before
+upstream clipping. Forged hash/hint/checksum packets must reject both modes even
+when another word is legitimately out of bounds. Test checksum-isolating forward
+hash-chain mutations and the 15-to-16 clamp aliases. Signed 256 and u32::MAX remain
+ordinary semantic disproofs with authentic full-width signatures. Raw upstream
+parsers that assert/unwrap must not turn adversarial inputs into rejection credit.
+
+The hinted verifier emits standard OP_MIN, absent from the frozen executor's
+allowlist. Any candidate therefore needs a separately reviewed isolated executor;
+the original executor and all resource limits remain unchanged. The larger hinted
+packet also needs explicit witness/combined-stack admission and measured peaks.
+Stop on any soundness/binding mismatch, accepted forgery, panic, limit failure or
+honest negative result. Independent implementation review and actual hosted
+execution are required before claiming savings or applying it to larger graphs.
+No candidate has been implemented or measured yet, and no whole-verifier fit or
+70-GiB solution follows from static opcode counts.
 
 ## Route to an end-to-end Nova SNARK verifier
 
