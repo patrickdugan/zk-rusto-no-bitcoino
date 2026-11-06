@@ -176,6 +176,14 @@ jobs:
               return hashlib.sha256(raw).hexdigest()
           if digest(report['key_bindings']) != report['key_bindings_sha256']:
               raise SystemExit('trusted key-binding canonical digest mismatch')
+          parameters = report['poseidon_parameters']
+          if digest(parameters) != report['poseidon_parameters_sha256']:
+              raise SystemExit('authenticated Poseidon parameter digest mismatch')
+          profiles = [{key: profile[key] for key in ('arity', 'width', 'rate', 'capacity', 'rf', 'rp', 's', 'ht')}
+                      | {'engine': parameters[role]['engine'], 'mode': mode,
+                         'compressed_constants': len(profile['crc']), 'sparse_matrices': len(profile['sm'])}
+                      for role in ('primary', 'secondary') for mode in ('wide', 'narrow')
+                      for profile in (parameters[role][mode],)]
           trace = report['trace']
           keccak = [stream for stream in trace['streams'] if stream['kind'] == 'keccak']
           poseidon = [stream for stream in trace['streams'] if stream['kind'].startswith('poseidon_')]
@@ -191,7 +199,10 @@ jobs:
               'key_bindings_sha256': report['key_bindings_sha256'],
               'trace_sha256': digest(trace), 'streams': summary,
               'events': trace['events'], 'recorded_event_bytes': trace['recorded_event_bytes'],
-              'complete_capture': trace['complete_capture']}))
+              'complete_capture': trace['complete_capture'],
+              'poseidon_parameters_sha256': report['poseidon_parameters_sha256'],
+              'poseidon_parameter_export': report['poseidon_parameter_export'],
+              'poseidon_profiles': profiles}))
           PY
           cat results/native-replay-time.txt
       - name: Independently replay proof-bound production transcript events

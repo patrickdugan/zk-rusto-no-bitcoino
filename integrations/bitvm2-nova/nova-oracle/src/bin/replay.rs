@@ -4,6 +4,8 @@
 mod dimensions;
 #[path = "../key_bindings.rs"]
 mod key_bindings;
+#[path = "../poseidon_parameters.rs"]
+mod poseidon_parameters;
 #[path = "../tracing.rs"]
 mod tracing;
 
@@ -222,6 +224,9 @@ fn run() -> Result<Value> {
     )?;
     let (key_bindings, key_binding_export) = key_bindings::export(&vk, VK_SHA, DIM_SHA)?;
     let key_bindings_sha256 = key_bindings::canonical_sha256(&key_bindings)?;
+    let (poseidon_parameters, poseidon_parameter_export) =
+        poseidon_parameters::export_authenticated_vk(&vk, VK_SHA, DIM_SHA, "testnet4", 5)?;
+    let poseidon_parameters_sha256 = poseidon_parameters::canonical_sha256(&poseidon_parameters)?;
     let metadata_export_seconds = started.elapsed().as_secs_f64();
 
     // Never capture setup, metadata hashing or negative-verification loops.
@@ -243,6 +248,8 @@ fn run() -> Result<Value> {
         "proof_sha256":PROOF_SHA,"proof_bytes":PROOF_BYTES,"verifier_key_sha256":VK_SHA,
         "verifier_dimensions_sha256":DIM_SHA,"verifier_dimensions":dims,"dimension_export":dimension_export,
         "key_bindings":key_bindings,"key_bindings_sha256":key_bindings_sha256,"key_binding_export":key_binding_export,
+        "poseidon_parameters":poseidon_parameters,"poseidon_parameters_sha256":poseidon_parameters_sha256,
+        "poseidon_parameter_export":poseidon_parameter_export,
         "trace":trace,"end_state_sha256":END_SHA,"end_height":final_state.height,
         "key_reconstruction_seconds":key_reconstruction_seconds,"metadata_export_seconds":metadata_export_seconds,
         "verify_seconds":verify_seconds,"setup_calls":1,"proving_jobs":0,"transactions_broadcast":0,
