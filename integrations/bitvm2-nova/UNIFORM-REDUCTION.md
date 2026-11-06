@@ -31,10 +31,9 @@ carries stay within their unchanged 14-bit bounds. Every admitted column
 intermediate is below `2^23`; reconstructed limbs stay below `2^29`. Numeric
 operands therefore fit four-byte ScriptNums. There are no new opcodes or OP_CAT.
 
-The analytical topology is 379 words, 244 constraints, one canonical field and
+The topology has 379 words, 244 constraints, one canonical field and
 245 WOTS leaves. It contains 64 input adapters, 94 public-product blocks, 65
-columns and 66 carry words. Actual hosted verification and accounting are required
-before treating these counts as measured evidence.
+columns and 66 carry words. Hosted verification and accounting below confirmed these counts.
 
 ## Independent checks and boundary attacks
 
@@ -78,6 +77,57 @@ forgery, cross-wire and native catalogue identity checks. Interpreter panics fai
 the job and never count as successful rejection. Every leaf of both measured
 catalogues executes in both correctness and disproof mode and is measured using
 the same serialized Script-only accounting as earlier milestones.
+
+
+## Hosted conformance and measured costs
+
+The [dedicated hosted run](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42171859441)
+passed on source commit
+[`ae07f22c3f881caa87f04aa2c4ebefffd90364d0`](https://github.com/patrickdugan/zk-rusto-no-bitcoino/commit/ae07f22c3f881caa87f04aa2c4ebefffd90364d0).
+All eleven workflows passed on that source commit. All 12 reduction Python
+tests and five mature-oracle Rust test groups passed.
+The complete Python suite passed all 283 tests. Twelve mature-library reductions
+matched the independent integer reference: six in Fp and six in Fq, including
+the maximum 512-bit input and the retained event 103.
+
+Every one of the 245 leaves in each measured catalogue executed in both modes.
+The native WOTS measurements are:
+
+| Role | Modulus | Words | Leaves | Disproof Script bytes | Largest leaf |
+| --- | --- | ---: | ---: | ---: | ---: |
+| pallas_scalar | Q | 379 | 245 | 2,143,759 | 18,509 |
+| vesta_scalar | P | 379 | 245 | 2,135,636 | 18,291 |
+
+Across 20 signed graph cases, the worker executed 3,048 Script vectors with
+1,622 expected rejections, 54 native catalogue/admission rejections, 128 shared
+carry-opening links and 7,580 signatures generated once per case wire. The
+196 malformed-witness/forgery/cross-wire vectors are included in those totals.
+Maximum stack was 95 items; maximum witness payload was 1,800 bytes. The maximum
+91-item witness includes deliberately malformed length cases.
+
+All eight coherent attack cases failed exactly at the intended leaf: initial
+carry anchor 83, overflow column 242, unit anchor 0 or canonical-field leaf 244,
+for each modulus. The overflow case kept its final anchor true, and the
+noncanonical c=p case satisfied all original integer equations.
+
+The Script worker used an optimized Rust build and took 2.985473884 seconds.
+External maximum RSS was 12,576 KiB (12,877,824 bytes); the separate mature
+oracle's maximum was 7,636 KiB (7,819,264 bytes). Generation took 0.405705654
+seconds with parent peak RSS 31,776,768 bytes. These are separate process
+measurements, not a combined simultaneous memory sum. All graph, Script and
+native work ran in hosted CI under the existing runtime limits.
+
+| Evidence identity | SHA-256 |
+| --- | --- |
+| 3,669,088 input-corpus bytes | `a81b2ff24c789e37c68c98d67a1f6e434032b9ceefecde03b4b3d5a7d6894d71` |
+| 3,644 mature-oracle input bytes | `4ddc5a05bf20b1003f97173575a50f2ab226bffac7fc4a3c84496d08edcc8c2f` |
+| Pallas-scalar compiled Script stream | `80bc9e38734113701fb578fac7f8e201c1468089f94655102ad11687b2b95638` |
+| Vesta-scalar compiled Script stream | `fe02ec0ece9f9d2aea86c5845e07ba981214406ef2d71bd08e668c41d768d4b9` |
+
+These are measured arithmetic-conformance costs. They do not establish a
+multiplication saving or authenticated Nova squeeze. The artifact contains small
+reports, oracle requests, hashes, timings and dependency records; raw registry
+inputs, keys/signatures and Script-vector payloads are excluded.
 
 ## Remaining scope
 

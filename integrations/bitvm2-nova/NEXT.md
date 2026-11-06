@@ -9,9 +9,10 @@ unfinished.
 
 [The separate unsigned 512-bit reduction graph](UNIFORM-REDUCTION.md) addresses
 Nova's 258-bit quotient requirement while preserving the existing multiplication
-path. Hosted conformance and measurements are required before reporting its
-actual costs; Keccak/proof-byte input origins remain unbound by this arithmetic
-adapter.
+path. Its hosted run passed 12 mature field reductions and 3,048 Script vectors,
+including 1,622 expected rejections; the 245-leaf catalogues measured 2,143,759
+Pallas-scalar and 2,135,636 Vesta-scalar Script bytes. Keccak/proof-byte input
+origins remain unbound by this arithmetic adapter.
 
 M2 and the subsequent arithmetic/WOTS milestones are integrated on main. The
 opt-in M2.1 footprint comparison is documented
@@ -232,3 +233,14 @@ Ship an end-to-end negative test before accepting any deposit or withdrawal:
 an invalid Nova proof must have a spendable disproof path, while every
 purported disproof of the valid proof must fail. Neither security property
 has been established for a complete Nova graph by M1.
+
+
+The next unchanged-kernel linkage can use `bits(width=8)` to reconstruct one
+BASE-bound auxiliary word from eight MSB-first Boolean ports, followed by
+`conv_reconstruct((8,))` to equate it to a BYTE-bound word. Connecting two
+256-bit digests to the uniform input therefore needs 128 leaves and 64 auxiliary
+words. Keccak bits are lane-major/LSB-first, so each byte's bit list must be
+reversed for the existing `bits` predicate. Global bit, byte and auxiliary IDs
+must retain their distinct declared bounds and actual shared opening checks.
+A separate optional bytewise Keccak backend could later reduce this overhead;
+no Script savings have been measured for either design.

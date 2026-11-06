@@ -139,6 +139,28 @@ Its reproducibility identifiers are:
 These identify offline conformance evidence; they are not proof acceptance or
 production assertion anchors.
 
+
+## Optimized hosted worker
+
+Commit [`d7cf40214807164a83c02fb896801a492d8c2261`](https://github.com/patrickdugan/zk-rusto-no-bitcoino/commit/d7cf40214807164a83c02fb896801a492d8c2261)
+builds the hosted worker and its unit tests with Rust's optimized release profile.
+The [corresponding run](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42172734434)
+passed all 13 topology tests, five forest groups and three worker groups, followed
+by both complete native scenarios. The 512 MiB, CPU and wall limits are unchanged.
+
+Native time was 61.199725139 seconds versus 844.077056162 in the earlier debug
+run, an observed ratio of about 13.8 for these hosted runs. Generation plus
+orchestration took 84.454053712 seconds. Runner timing varies; this is not a
+controlled hardware benchmark. Parent peak RSS was 84,013,056 bytes and external
+maximum process RSS was 261,572 KiB (267,849,728 bytes).
+
+An exact comparison with the debug baseline matched topology and run-manifest
+identities; both key/signature catalogues; every component's catalogue, registry,
+compiled-stream hash, root and output key; both global roots/output keys and
+control hashes; and the complete selected-vector digest and execution metrics.
+The measured 1,083,207,078 Script bytes per scenario are unchanged. This improves
+hosted execution time and does not change verifier semantics or Script footprint.
+
 ## Remaining verifier work
 
 An independently checked empty-input Keccak known answer validates the reference
