@@ -284,9 +284,13 @@ catalogues; it does not turn this native terminal check into Script verification
 
 [Mandatory retained-profile composition](MATH-COMPOSITION.md) now provides a
 single call requiring actual matrix replay and both directly executed IPA
-terminals under the same admitted inputs. Its new hosted execution is pending;
-only its dedicated composition flag may become true. Existing general proof,
-complete IPA and complete Script verification flags remain false.
+terminals under the same admitted inputs. Code commit
+`2bee4dde7f160be029f40fcd659bac7fd6d0ae0b` passed all eight workflows and its
+actual hosted composition in 25.583282246 seconds, checking all six matrices
+and both complete original generator vectors. Only its dedicated composition
+flag becomes true. Existing general proof, complete IPA and complete Script
+verification flags remain false; the linked document distinguishes parent,
+worker and earlier setup memory measurements.
 
 ## Reproduce reference checks
 

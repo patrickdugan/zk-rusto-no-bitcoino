@@ -138,8 +138,12 @@ sampled generator weights cannot authorize proof acceptance.
 composition call: fresh replay with all six authenticated matrices and both
 inner equations, matched sealed requests, then both direct native IPA executions.
 It accepts no imported result receipt and preserves every general proof/Script
-verification flag as false. Literal policy preflight precedes bulk work; hosted
-execution of this new composition is pending.
+verification flag as false. Literal policy preflight precedes bulk work. Code
+commit `2bee4dde7f160be029f40fcd659bac7fd6d0ae0b` passed all eight workflows and
+244 Python tests. The real composed call checked six matrices / 2,667,462 entries
+and both IPA terminals / 540,672 generators in 25.583282246 seconds. The result
+enables only `retained_math_checks_composed`; it remains scoped to the retained
+profile and is not a Script verifier or general proof-acceptance API.
 
 ## M4: BitVM2 graph adapter
 

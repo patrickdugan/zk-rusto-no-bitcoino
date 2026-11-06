@@ -109,4 +109,41 @@ dispute coverage, production single-assertion/signature binding and the Bitcoin
 transaction graph remain future work. Mathematical composition does not close
 those boundaries or establish deployability.
 
-Hosted execution of this new composition remains pending.
+## Executed hosted composition
+
+Code commit `2bee4dde7f160be029f40fcd659bac7fd6d0ae0b` passed all eight workflows,
+including the complete **244-test Python suite**. The
+[native composition job](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42159174046/job/127700459079)
+passed the 17 focused tests and the actual receipt-free invocation.
+
+That invocation checked **six original CSR matrices / 2,667,462 entries /
+119,674,848 authenticated bytes**, both direct inner terminals, all five
+independent Poseidon hashes, both outer/batch terminals and **two direct native
+IPA executions / 540,672 generators / 17,301,520 authenticated generator bytes**.
+Neither optional matrix omission nor an imported success report can satisfy it.
+
+| Role | Matrix entries | Generators | Native wall seconds | Native MSM seconds |
+| --- | ---: | ---: | ---: | ---: |
+| Primary / Pallas | 2,540,975 | 524,288 | 12.325993979 | 0.988491035 |
+| Secondary / Vesta | 126,487 | 16,384 | 0.410587415 | 0.045653610 |
+
+The full composition benchmark took **25.583282246 seconds** and recorded
+**78,057,472 bytes of parent peak RSS**. The separate `/usr/bin/time` measurement
+recorded **157,764 KiB (161,550,336 bytes) maximum RSS** for the command/children;
+this is not aggregate simultaneous process memory. Earlier circuit/key
+reconstruction in the same workflow is a separate, larger-memory stage. These
+figures must not be presented as its memory cost or as a PC proving benchmark.
+All actual bulk evaluation and native work stayed on the hosted runner.
+
+Both sealed requests reproduced the earlier terminal checks exactly:
+
+- Primary: `d500e3b66e7beba1a10132516018e0b4140ab522311565efe80ebcc289c1236c`.
+- Secondary: `484777fa774632ec012b2a63c4c0e7fcd30aede621fe828d3bc4e7374f34cf78`.
+
+The result enables `retained_math_checks_composed=true` only. All general proof,
+complete IPA API, independent Python MSM, complete Script and production
+assertion/transaction flags remain false. It records zero setup calls, proving
+jobs, complete native proof-verifier calls and broadcasts by this command.
+The benchmark separately binds the retained NHT4 container; the composition API
+accepts its admitted inner proof and records
+`container_framing_checked_by_this_call=false`.
