@@ -5,6 +5,7 @@ use bitvm::signatures::{CompactWots, Wots, Wots4};
 use bitvm2_nova_script_oracle::{
     engine::{emit, Metrics},
     registry::{GraphSpec, Registry, Signature, Word},
+    taproot_commitment::TaprootCommitment,
     wots::{id32, PublicKey, Result},
 };
 use serde::Deserialize;
@@ -46,7 +47,12 @@ fn native_checks(
     x.program_sha256 = "02".repeat(32);
     variants.push(x);
     let mut x = spec.clone();
-    x.field_role = "vesta_scalar".into();
+    x.field_role = if spec.field_role == "vesta_scalar" {
+        "pallas_scalar"
+    } else {
+        "vesta_scalar"
+    }
+    .into();
     variants.push(x);
     let mut x = spec.clone();
     x.operation_id = "wrong-operation".into();
@@ -131,6 +137,203 @@ fn native_checks(
     Ok(count + 6)
 }
 
+fn sumcheck_fragment_checks(
+    case: &Case,
+    registry: &Registry,
+    keys: &[PublicKey],
+    signatures: &[Signature],
+    out: &mut impl Write,
+    metrics: &mut Metrics,
+) -> Result<(usize, serde_json::Value)> {
+    let expected_role = match case.name.as_str() {
+        "primary/sumcheck-two-outer-rounds" => "pallas_scalar",
+        "secondary/sumcheck-two-outer-rounds" => "vesta_scalar",
+        _ => return Err("unrecognized sumcheck fragment role".into()),
+    };
+    if !case.measure_all
+        || case.spec.field_role != expected_role
+        || case.checks.iter().any(|check| !check.expected_correct)
+    {
+        return Err("sumcheck fragment must measure its complete role-specific catalogue".into());
+    }
+    let field = |prefix: &str| -> Result<Vec<usize>> {
+        (0..9)
+            .map(|i| {
+                case.spec
+                    .words
+                    .iter()
+                    .position(|word| word.name == format!("{prefix}/l{i}") && word.bound == 1 << 29)
+                    .ok_or_else(|| "missing sumcheck scalar wire".into())
+            })
+            .collect()
+    };
+    let shared = field("round/0/next")?;
+    let linear = field("round/1/c1")?;
+    let producers: Vec<_> = case
+        .spec
+        .leaves
+        .iter()
+        .enumerate()
+        .filter(|(_, leaf)| {
+            leaf.kind == "equal" && leaf.wires.len() == 18 && leaf.wires[9..] == shared
+        })
+        .collect();
+    let consumers: Vec<_> = case
+        .spec
+        .leaves
+        .iter()
+        .enumerate()
+        .filter(|(_, leaf)| {
+            leaf.kind == "add"
+                && leaf.wires.len() == 27
+                && leaf.wires[9..18] == linear
+                && leaf.wires[18..] == shared
+        })
+        .collect();
+    if producers.len() != 1 || consumers.len() != 1 {
+        return Err("sumcheck producer/consumer must share the exact prior-claim field".into());
+    }
+    let (producer, consumer) = (producers[0].0, consumers[0].0);
+    let left_slots = registry.unique_slots(producer)?;
+    let right_slots = registry.unique_slots(consumer)?;
+    let left = registry.witness(producer, signatures)?;
+    let right = registry.witness(consumer, signatures)?;
+    let width = Wots4::TOTAL_DIGIT_LEN as usize;
+    for wire in &shared {
+        let a = left_slots
+            .iter()
+            .position(|slot| slot == wire)
+            .ok_or("producer claim slot")?;
+        let b = right_slots
+            .iter()
+            .position(|slot| slot == wire)
+            .ok_or("consumer claim slot")?;
+        if left[a * width..(a + 1) * width] != right[b * width..(b + 1) * width] {
+            return Err("sumcheck shared claim did not reuse the same WOTS opening".into());
+        }
+    }
+    let mut rejected = native_checks(
+        &case.spec,
+        keys,
+        id32(&case.expected_spec_id)?,
+        registry.identity(),
+    )?;
+    if registry
+        .witness(0, &signatures[..signatures.len() - 1])
+        .is_ok()
+        || registry.script(usize::MAX, true).is_ok()
+    {
+        return Err("sumcheck signature-count/ordinal guard failed".into());
+    }
+    rejected += 2;
+    // Keep empty/truncated/prepended/appended tests at the authenticated boundary,
+    // including its arithmetic kinds and canonical field-validity predicate.
+    let mut kinds = HashSet::new();
+    for (ordinal, leaf) in case.spec.leaves.iter().enumerate() {
+        if !kinds.insert(leaf.kind.as_str()) {
+            continue;
+        }
+        let witness = registry.witness(ordinal, signatures)?;
+        for disprove in [false, true] {
+            let code = registry.script(ordinal, disprove)?;
+            let lengths = [
+                vec![],
+                witness[..witness.len() - 1].to_vec(),
+                [vec![vec![]], witness.clone()].concat(),
+                [witness.clone(), vec![vec![]]].concat(),
+            ];
+            for (index, bad) in lengths.iter().enumerate() {
+                emit(
+                    out,
+                    metrics,
+                    &code,
+                    bad,
+                    false,
+                    &format!("{}/length/{ordinal}/{index}/{disprove}", case.name),
+                )?;
+            }
+            for position in [0, witness.len() - 1] {
+                let mut forged = witness.clone();
+                *forged[position].first_mut().ok_or("empty WOTS digit")? ^= 1;
+                emit(
+                    out,
+                    metrics,
+                    &code,
+                    &forged,
+                    false,
+                    &format!("{}/forgery/{ordinal}/{position}/{disprove}", case.name),
+                )?;
+            }
+            let slot = registry.unique_slots(ordinal)?[0];
+            let mut substituted = signatures.to_vec();
+            substituted[slot] = signatures[(slot + 1) % signatures.len()];
+            emit(
+                out,
+                metrics,
+                &code,
+                &registry.witness(ordinal, &substituted)?,
+                false,
+                &format!("{}/cross-wire/{ordinal}/{disprove}", case.name),
+            )?;
+        }
+    }
+    let columns: Vec<_> = case
+        .spec
+        .leaves
+        .iter()
+        .enumerate()
+        .filter(|(_, leaf)| leaf.kind == "conv_column")
+        .collect();
+    if columns.len() != 6 * 64 {
+        return Err("two cubic rounds must contain six complete products".into());
+    }
+    let mut carry_links = 0;
+    for product in columns.chunks_exact(64) {
+        for pair in product.windows(2) {
+            let (a, left) = pair[0];
+            let (b, right) = pair[1];
+            let left_index = (left.argument[0] + left.argument[1]) as usize;
+            let right_index = (right.argument[0] + right.argument[1]) as usize;
+            let shared = left.wires[left_index + 1];
+            if shared != right.wires[right_index] {
+                return Err("sumcheck convolution carry field is disconnected".into());
+            }
+            let a_slots = registry.unique_slots(a)?;
+            let b_slots = registry.unique_slots(b)?;
+            let ai = a_slots
+                .iter()
+                .position(|slot| *slot == shared)
+                .ok_or("left carry slot")?;
+            let bi = b_slots
+                .iter()
+                .position(|slot| *slot == shared)
+                .ok_or("right carry slot")?;
+            let aw = registry.witness(a, signatures)?;
+            let bw = registry.witness(b, signatures)?;
+            if aw[ai * width..(ai + 1) * width] != bw[bi * width..(bi + 1) * width] {
+                return Err("sumcheck carry WOTS opening differs across adjacent columns".into());
+            }
+            carry_links += 1;
+        }
+    }
+    let tree = TaprootCommitment::new(registry, producer)?;
+    tree.verify_member(registry, tree.merkle_root(), tree.output_key(), producer)?;
+    Ok((
+        rejected,
+        serde_json::json!({"case":case.name,
+        "producer_ordinal":producer,"consumer_ordinal":consumer,
+        "shared_claim_word_links_checked":shared.len(),"convolution_carry_links_checked":carry_links,
+        "taproot_selected_ordinal":producer,"taproot_merkle_root":tree.merkle_root().to_string(),
+        "taproot_output_key":tree.output_key().to_string(),
+        "taproot_control_block_bytes":tree.control_block_bytes().len(),
+        "taproot_compiled_script_bytes":tree.compiled_script_bytes(),
+        "taproot_leaf_stream_sha256":hex::encode(tree.compiled_stream_sha256()),
+        "offline_taproot_membership_verified":true,"taproot_roots_independently_pinned":false,
+        "proof_source_ports_script_bound":false,"fiat_shamir_script_bound":false,
+        "complete_nova_verifier":false,"bitcoin_transaction_binding":false}),
+    ))
+}
+
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 3 {
@@ -151,6 +354,8 @@ fn main() -> Result<()> {
     let mut shared_links = 0;
     let mut convolution_carry_links = 0;
     let mut assertion_signatures = 0;
+    let mut sumcheck_fragments = Vec::new();
+    let mut sumcheck_disproofs = Vec::new();
     let mut out = BufWriter::new(fs::File::create(&args[2])?);
     for case in &cases {
         if case.name.len() > 192
@@ -388,6 +593,63 @@ fn main() -> Result<()> {
                 convolution_carry_links += 1;
             }
         }
+        if case.name.ends_with("/sumcheck-two-outer-rounds") {
+            let (rejections, fragment) = sumcheck_fragment_checks(
+                case,
+                &registry,
+                &keys,
+                &signatures,
+                &mut out,
+                &mut metrics,
+            )?;
+            native_rejections += rejections;
+            let measured = ledger
+                .last()
+                .ok_or("missing full sumcheck catalogue measurement")?;
+            if measured["all_disproof_script_bytes"] != fragment["taproot_compiled_script_bytes"]
+                || measured["leaf_stream_sha256"] != fragment["taproot_leaf_stream_sha256"]
+            {
+                return Err(
+                    "sumcheck Taproot tree differs from executed registry catalogue".into(),
+                );
+            }
+            sumcheck_fragments.push(fragment);
+        }
+        if case.name.ends_with("/sumcheck-coherent-wrong-shared-claim") {
+            // The ordinary check loop above actually executed both modes: this
+            // one false equality accepts disproof and rejects correctness.
+            let failed: Vec<_> = case
+                .checks
+                .iter()
+                .filter(|check| !check.expected_correct)
+                .collect();
+            if case.measure_all
+                || failed.len() != 1
+                || case
+                    .spec
+                    .leaves
+                    .get(failed[0].ordinal)
+                    .map(|leaf| leaf.kind.as_str())
+                    != Some("equal")
+            {
+                return Err("coherent shared-claim attack must refute exactly one equality".into());
+            }
+            let ordinal = failed[0].ordinal;
+            let tree = TaprootCommitment::new(&registry, ordinal)?;
+            tree.verify_member(&registry, tree.merkle_root(), tree.output_key(), ordinal)?;
+            sumcheck_disproofs.push(serde_json::json!({"case":case.name,
+                "catalogue_id":case.expected_spec_id,"registry_id":hex::encode(id),
+                "selected_ordinal":ordinal,"script_disproof_executed":true,
+                "offline_taproot_membership_verified":true,
+                "taproot_merkle_root":tree.merkle_root().to_string(),
+                "taproot_output_key":tree.output_key().to_string(),
+                "taproot_control_block_bytes":tree.control_block_bytes().len(),
+                "taproot_compiled_script_bytes":tree.compiled_script_bytes(),
+                "taproot_leaf_stream_sha256":hex::encode(tree.compiled_stream_sha256()),
+                "test_keys_only":true,"taproot_roots_independently_pinned":false,
+                "proof_source_ports_script_bound":false,"fiat_shamir_script_bound":false,
+                "complete_nova_verifier":false,"bitcoin_transaction_binding":false}));
+        }
         if case.name.ends_with("honest-full-multiplication") {
             native_rejections += native_checks(&case.spec, &keys, expected, id)?;
             for i in 18..272 {
@@ -485,14 +747,18 @@ fn main() -> Result<()> {
     if fs::metadata(&args[2])?.len() > 256 * 1024 * 1024 {
         return Err("executed vector file exceeds 256 MiB".into());
     }
-    println!(
-        "{}",
-        serde_json::json!({"scope":"global-WOTS-wire-registry-and-arithmetic-catalogue","passed":true,
+    let mut report = serde_json::json!({"scope":"global-WOTS-wire-registry-and-arithmetic-catalogue","passed":true,
         "cases":cases.len(),"metrics":metrics,"ledger":ledger,"native_rejections":native_rejections,
         "shared_accumulator_and_final_links_checked":shared_links,"signatures_generated_once_per_wire":assertion_signatures,
         "shared_convolution_carry_links_checked":convolution_carry_links,
         "wall_seconds":start.elapsed().as_secs_f64(),"test_keys_only":true,"stack_limit_enabled":true,"op_cat_enabled":false,
-        "complete_nova_verifier":false,"bitcoin_transaction_graph":false,"transactions_broadcast":0})
-    );
+        "complete_nova_verifier":false,"bitcoin_transaction_graph":false,"transactions_broadcast":0});
+    if !sumcheck_fragments.is_empty() {
+        report["sumcheck_fragments"] = serde_json::Value::Array(sumcheck_fragments);
+    }
+    if !sumcheck_disproofs.is_empty() {
+        report["sumcheck_disproofs"] = serde_json::Value::Array(sumcheck_disproofs);
+    }
+    println!("{report}");
     Ok(())
 }

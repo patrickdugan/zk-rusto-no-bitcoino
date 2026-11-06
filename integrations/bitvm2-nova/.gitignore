@@ -24,3 +24,4 @@ results/native-matrices/
 results/native-matrix-*
 results/native-ipa-generators/
 results/native-ipa-*
+results/sumcheck-*

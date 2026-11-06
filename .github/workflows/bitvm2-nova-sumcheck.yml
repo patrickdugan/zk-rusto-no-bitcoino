@@ -1,0 +1,118 @@
+name: BitVM2 Nova linked outer sumcheck checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-sumcheck.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-sumcheck.yml']
+permissions:
+  contents: read
+jobs:
+  linked-proof-derived-arithmetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install mature independent Keccak oracle
+        run: python -m pip install --requirement transcript-requirements.txt
+      - name: Check linked rounds and explicit source-binding limitations
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          /usr/bin/time -v -o results/sumcheck-python-time.txt \
+            timeout --signal=KILL 180s prlimit --as=268435456 --cpu=180 -- \
+            python -m unittest discover -s tests -p 'test_sumcheck*.py' -v \
+            2>&1 | tee results/sumcheck-python-tests.txt
+      - name: Generate complete proof-derived catalogues and adversarial assertions
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/sumcheck-generation-time.txt \
+            timeout --signal=KILL 180s prlimit --as=268435456 --cpu=180 -- \
+            python bench_sumcheck_graph.py --inputs results/sumcheck-registry-inputs.json \
+            --output results/sumcheck-generation.json | tee results/sumcheck-generation-stdout.json
+          cat results/sumcheck-generation-time.txt
+      - name: Build pinned Script and WOTS registry oracle on hosted runner
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/sumcheck-rust-version.txt
+          rustfmt --edition 2021 --check rust-oracle/src/bin/registry.rs
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/sumcheck-dependencies.txt
+          cargo build --locked --manifest-path rust-oracle/Cargo.toml --bin registry
+      - name: Execute signed assertions, shared claims and all catalogue commitments
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/sumcheck-registry-time.txt \
+            timeout --signal=KILL 300s prlimit --as=536870912 --cpu=300 -- \
+            rust-oracle/target/debug/registry results/sumcheck-registry-inputs.json \
+            results/sumcheck-registry-vectors.jsonl | tee results/sumcheck-registry-execution.json
+          cat results/sumcheck-registry-time.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('results')
+          generation = json.loads((p/'sumcheck-generation.json').read_bytes())
+          execution = json.loads((p/'sumcheck-registry-execution.json').read_bytes())
+          if generation['schema'] != 'bitvm2-nova-sumcheck-graph-generation/v1' or execution.get('passed') is not True:
+              raise SystemExit('actual generation and authenticated execution required')
+          expected = {'cases': generation['cases'],
+              'native_rejections': generation['expected_native_catalogue_rejections'],
+              'signatures_generated_once_per_wire': generation['expected_assertion_signatures']}
+          if any(type(execution.get(k)) is not int or execution[k] != v for k, v in expected.items()):
+              raise SystemExit('native assertion/catalogue coverage differs from generator')
+          metrics = execution['metrics']
+          if metrics['vectors'] != generation['expected_registry_vectors'] or metrics['expected_rejections'] != generation['expected_script_rejections']:
+              raise SystemExit('native Script vector/rejection coverage differs')
+          census, ledger, fragments = generation['census'], execution['ledger'], execution['sumcheck_fragments']
+          if len(census) != 2 or len(ledger) != 2 or len(fragments) != 2 or type(generation['expected_sumcheck_fragments']) is not int or generation['expected_sumcheck_fragments'] != 2:
+              raise SystemExit('both complete ordered roles required')
+          if [row['role'] for row in census] != ['primary', 'secondary']:
+              raise SystemExit('sumcheck role order changed')
+          if sum(row['shared_claim_word_links_checked'] for row in fragments) != generation['expected_shared_sumcheck_claim_links'] or sum(row['convolution_carry_links_checked'] for row in fragments) != generation['expected_shared_convolution_carry_links']:
+              raise SystemExit('shared claim/carry WOTS links incomplete')
+          for source, measured, fragment in zip(census, ledger, fragments):
+              if measured['catalogue_id'] != source['catalogue_sha256'] or measured['leaves'] != source['authenticated_leaves'] or measured['words'] != source['words']:
+                  raise SystemExit('native catalogue differs from proof-derived graph')
+              if measured['all_disproof_script_bytes'] <= 0 or fragment['taproot_compiled_script_bytes'] != measured['all_disproof_script_bytes'] or fragment['taproot_leaf_stream_sha256'] != measured['leaf_stream_sha256']:
+                  raise SystemExit('Taproot must commit every exact measured Script')
+              if fragment['producer_ordinal'] != source['output_constraint_ordinals'][0] or fragment['shared_claim_word_links_checked'] != 9 or fragment['convolution_carry_links_checked'] != 378:
+                  raise SystemExit('two-round claim/carry boundary changed')
+              if fragment.get('offline_taproot_membership_verified') is not True:
+                  raise SystemExit('selected actual Script membership missing')
+              for flag in ('proof_source_ports_script_bound', 'fiat_shamir_script_bound', 'taproot_roots_independently_pinned', 'complete_nova_verifier', 'bitcoin_transaction_binding'):
+                  if fragment.get(flag) is not False:
+                      raise SystemExit('fragment scope exceeded: '+flag)
+          disproofs = execution['sumcheck_disproofs']
+          if len(disproofs) != 2:
+              raise SystemExit('both coherent shared-claim attacks need actual authenticated disproofs')
+          for source, measured, disproof in zip(census, ledger, disproofs):
+              if disproof['case'] != source['role']+'/sumcheck-coherent-wrong-shared-claim' or disproof['catalogue_id'] != source['catalogue_sha256'] or disproof['selected_ordinal'] != source['output_constraint_ordinals'][0]:
+                  raise SystemExit('coherent attack lost its original producer equality')
+              if disproof.get('script_disproof_executed') is not True or disproof.get('offline_taproot_membership_verified') is not True or disproof['taproot_compiled_script_bytes'] != measured['all_disproof_script_bytes']:
+                  raise SystemExit('coherent attack disproof/membership evidence missing')
+              for flag in ('proof_source_ports_script_bound', 'fiat_shamir_script_bound', 'taproot_roots_independently_pinned', 'complete_nova_verifier', 'bitcoin_transaction_binding'):
+                  if disproof.get(flag) is not False:
+                      raise SystemExit('coherent attack scope exceeded: '+flag)
+          if execution.get('stack_limit_enabled') is not True or execution.get('op_cat_enabled') is not False or execution.get('complete_nova_verifier') is not False or execution.get('bitcoin_transaction_graph') is not False or execution.get('transactions_broadcast') != 0:
+              raise SystemExit('independent execution scope/flags changed')
+          PY
+          sha256sum results/sumcheck-registry-inputs.json results/sumcheck-registry-vectors.jsonl > results/sumcheck-corpus-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-linked-sumcheck-evidence
+          path: |
+            integrations/bitvm2-nova/results/sumcheck-*
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock
