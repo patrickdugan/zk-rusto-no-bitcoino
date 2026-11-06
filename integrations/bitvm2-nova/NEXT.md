@@ -75,9 +75,10 @@ Script composition remain separate work.
 The [real-proof replay boundary](nova-oracle/REAL-PROOF-REPLAY.md) now captures
 the actual verifier with forwarding engines and reconstructs proof-bound Keccak
 events independently. It replaces synthetic transcript states for this retained
-conformance path. Independent Poseidon hashing, matrix evaluations and the full
-generator MSM remain unchecked by Python; the complete authenticated Script
-verifier is still unfinished.
+conformance path. [Independent Poseidon hashing](nova-oracle/POSEIDON.md) now
+computes all five full hashes from separately pinned actual-key parameters.
+Matrix evaluations and the full generator MSM remain unchecked by Python; the
+complete authenticated Script verifier is still unfinished.
 
 Instrument the pinned Nova implementation rather than substitute the
 TEST-ONLY transcript. Account for its challenge reduction and byte encodings.

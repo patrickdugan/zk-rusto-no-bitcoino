@@ -3,7 +3,8 @@
 This records the exact non-EVM Nova 0.76.0 verifier sequence needed to connect
 the retained NHT4 proof to the arithmetic/Script components. A native forwarding
 engine and an independent Python replay are implemented. The native capture
-passed hosted CI at `f630555`; the Python integration requires its corresponding
+passed hosted CI at `f630555`, with the initial Python integration passing at
+`8ed66d3`. The independent Poseidon extension requires its corresponding
 current-head hosted run. A trace or partial replay does not establish a
 complete authenticated BitVM2 verifier or general proof validity.
 
@@ -32,24 +33,28 @@ the replay caller must provide its expected pins independently.
 `production_replay.py` reconstructs the real proof's absorption objects,
 folded/derandomized instances, Keccak states/challenges, outer and batch terminal
 equations, batch opening statement and small-side IPA residual. It checks the
-five Poseidon absorption/state/truncation streams against actual proof inputs,
-while leaving the Poseidon hash computation native-only. It does not evaluate
-the large verifier-key matrices or generator MSM. The proof/Script,
-Poseidon, matrix and generator-verification limitations remain explicit flags.
+five Poseidon absorption/state/truncation streams against actual proof inputs
+and independently computes their complete hashes using the actual-key parameter
+fixture documented in [POSEIDON.md](POSEIDON.md). Missing parameters reject by
+default. Explicit `allow_native_poseidon=True` permits the older native-only
+diagnostic mode with a false independent-Poseidon flag. It does not evaluate
+the large verifier-key matrices or generator MSM. The proof/Script, matrix and
+generator-verification limitations remain explicit false flags.
 
 Local checking passed 138 reference tests in 108.497 seconds, then three added
 CLI transport regressions in 0.148 seconds. Thirteen replay tests include the
 actual captured positive and semantic mutations of objects, labels, ordering,
 states, challenges, RO inputs and decoded proof fields. Explicit diagnostic
-re-pinning tests demonstrate two unresolved boundaries: changing only high
-Poseidon hash bits can preserve a low-128-bit result, and changing unabsorbed
-`a_hat` changes the required generator residual without changing transcript
-challenges. Neither case establishes proof validity; the corresponding flags
-remain false. Production callers do not use those diagnostic replacement pins.
+re-pinning tests now reject changed high Poseidon hash bits in all five streams,
+even when low returned bits match. Changing unabsorbed `a_hat` still changes
+the required generator residual without changing transcript challenges. That
+remaining boundary keeps generator-MSM and proof-verification flags false.
+Production callers do not use diagnostic replacement pins.
 
 `bench_replay.py` consumes the genuine native result and independently pinned
-fixture data. A local execution took about 0.50 seconds and 30.3 MB peak working
-set without an enforced local memory ceiling. All Rust, public-parameter
+fixture data. With independent Poseidon enabled, a local execution took about
+0.66 seconds and 32.7 MB peak working set without an enforced local memory
+ceiling. All Rust, public-parameter
 reconstruction and full native verification remain hosted; no local proving
 or large generator MSM runs.
 

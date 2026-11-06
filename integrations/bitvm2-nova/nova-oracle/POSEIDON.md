@@ -1,11 +1,11 @@
 # Independent production Poseidon replay
 
 This is the source map and verification boundary for replacing the native-only
-Poseidon stage in the retained Nova replay. The new parameter export, native
-oracle and independent Python implementation require their corresponding
-current-head hosted evidence before this stage can be called verified. It does
-not complete matrix evaluation, the IPA generator MSM or Bitcoin Script proof
-verification.
+Poseidon stage in the retained Nova replay. The actual-key parameter export has
+the hosted evidence recorded below. The native conformance oracle and
+independent Python replay still require their corresponding current-head hosted
+evidence before this stage can be called verified. It does not complete matrix
+evaluation, the IPA generator MSM or Bitcoin Script proof verification.
 
 ## Authoritative implementation and parameter binding
 
@@ -190,6 +190,53 @@ All native compilation and parameter/default generation stays on bounded
 hosted runners. Local source review, tag arithmetic and bounded Python checks
 generate no proofs and run no large generator MSM. No debug-parameter parsing,
 trusted setup, wrapper proof system, transaction or deployment is introduced.
+
+## Captured parameter evidence
+
+Source commit `8628502b7779e8b7035f00cf600e09d19e4e1022` produced the
+actual-key export in hosted run
+[42133918717](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42133918717),
+job `127617122076`, artifact `13464802953`. The downloaded 925,585-byte ZIP
+independently hashes to
+`e7729a4435424c65c89a7336b64098133fd81bbb591af4f0de6b6c814ec16115`.
+Its raw `native-replay-8628502.json` report hashes to
+`5ebeffaf03c70fc162d46fa8d2763160be8937bb9934350886cbb7dcfce7dead`.
+
+The fixture `../fixtures/nht4-genesis-0-2020-k5.poseidon.json` is exactly the
+report's parameter object encoded as sorted compact ASCII JSON without a
+trailing line feed: 702,325 bytes, SHA-256
+`b55fa125133315243cb299ee7603c5f0508d68abf64f0dab43ecba4a0d09fa67`.
+This was checked against the downloaded report, separately from the adjacent
+provenance document. The report retains the expected full VK SHA, dimension
+SHA, proof SHA and end-state SHA, and reports one successful native proof
+verification, one deterministic setup call and zero proving jobs.
+
+For each of the two fields, Wide has rf=8, rp=59, width=25, CRC count=259 and
+59 sparse matrices; Narrow has rf=8, rp=56, width=6, CRC count=104 and 56 sparse
+matrices. The selective exporter reports 10,384 scalar fields, 11,230 JSON
+nodes, 32 selected leaves and 27 skipped fields. It materializes neither the
+full key nor inverse MDS caches.
+
+A separate local source-derived dense-matrix implementation expanded each
+sparse matrix, transposed the PSM explicitly, and recomputed the I/O tag with
+a separate wrapping-arithmetic loop. It matched the optimized Python reference
+and all five full hashes in the genuine native trace, including each returned
+128/250-bit truncation:
+
+| Engine/session | Absorbed elements | Full field hash, canonical little-endian hex |
+| --- | ---: | --- |
+| Pallas/0 | 20 | `3190d4acd76dd70a9aa1bd75de02168b9ed54a543d724e16cdf9cdab8db98e3d` |
+| Pallas/1 | 34 | `be1973a7b79cd8436deb176768dcda1bac6dfa0de957c2b44a8f758c18e43d1c` |
+| Vesta/0 | 52 | `5d39013a50b33e3baa53e2283f6cda052299b73a7bdc5a23a60e03298bc3f332` |
+| Vesta/1 | 9 | `f3aa4be40afb920b3b42865bbaefa26190b01ad18a3e75b90e15674f12f86327` |
+| Vesta/2 | 34 | `08c6d4d740f382c3b6bc0d308920bfee72c3830e911d362bc36bdce416fd8636` |
+
+This is bounded arithmetic comparison against the retained real-proof trace.
+It does not claim a hosted result for the new native differential corpus,
+independent matrix evaluation, generator MSM, Script execution or complete
+proof verification. The planned corpus has 254 cases: 200 accepted sessions,
+54 admission rejections and 776 squeeze/full-hash comparisons across both
+fields and modes; its hosted result remains pending here.
 
 Primary sources: [provider RO](https://github.com/microsoft/Nova/blob/98576efa884072bfe69bfad8f275a3a5cd8754e5/src/provider/poseidon.rs),
 [permutation](https://github.com/microsoft/Nova/blob/98576efa884072bfe69bfad8f275a3a5cd8754e5/src/frontend/gadgets/poseidon/poseidon_inner.rs),

@@ -18,3 +18,4 @@ results/keccak-ci-*
 results/native-integration-python-tests.txt
 results/native-admission-*
 results/native-production-*
+results/native-poseidon-*

@@ -1,12 +1,12 @@
 """Proof-bound Nova 0.76.0 transcript replay with explicit native-only stages.
 
 This reconstructs production absorption objects/order from an admitted proof,
-independently pinned key metadata, and caller-owned NHT4 expectations. Keccak
-states/challenges, tiny NIFS folds, batching and IPA scalar factors are computed
-here. Poseidon sponge hashes, matrix evaluations and the large generator MSM
-are NOT independently evaluated. Captured Poseidon results are accepted only
-inside a separately pinned native capture and their exact inputs/truncations
-are checked. This is conformance evidence, not standalone proof verification.
+independently pinned key metadata/parameters, and caller-owned NHT4 expectations.
+Keccak states/challenges, Poseidon sponge hashes, tiny NIFS folds, batching and
+IPA scalar factors are computed here. Matrix evaluations and the large generator
+MSM are NOT independently evaluated. Explicit native-only Poseidon diagnostics
+remain available with a false verification flag. This is conformance evidence,
+not standalone proof verification.
 """
 from dataclasses import dataclass
 from hashlib import sha256
@@ -15,6 +15,7 @@ import json
 
 from ipa_algebra import PALLAS, VESTA
 from nht4 import ExpectedBundle, HEADER_REVISION
+from poseidon_reference import PoseidonParameters, PoseidonProfile, sponge_hash
 from proof_codec import (BASE_MODULI, SCALAR_MODULI, DecodedProof,
                          VerifierDimensions, decode_point)
 from production_transcript import NovaTranscript
@@ -302,8 +303,8 @@ class _KeccakReplay:
             raise ValueError('surplus transcript events')
 
 
-def _native_ro(engine, events, inputs, bits):
-    """Check exact inputs, snapshots and truncation; do NOT compute Poseidon."""
+def _native_ro(engine, events, inputs, bits, profile=None):
+    """Check inputs/snapshots; with a typed profile, compute the full hash."""
     if len(events) != len(inputs)+2:
         raise ValueError('Poseidon native stream length mismatch')
     expected = {'sequence': 0, 'op': 'new', 'mode': 'wide',
@@ -323,10 +324,19 @@ def _native_ro(engine, events, inputs, bits):
     if type(after.get('state_le')) is not list or len(after['state_le']) != 1:
         raise ValueError('Poseidon post-squeeze hash shape')
     full_native_hash = _scalar(after['state_le'][0], BASE_MODULI[engine])
-    output = full_native_hash & ((1 << bits)-1)
+    if profile is None:
+        full_hash = full_native_hash  # Explicitly opted-in native-only diagnostics.
+    else:
+        if type(profile) is not PoseidonProfile or profile.engine != engine or profile.mode != 'wide':
+            raise ValueError('Poseidon profile role/mode mismatch')
+        # The expected native hash is never used as a hash input or output source.
+        full_hash = sponge_hash(profile, tuple(value % BASE_MODULI[engine] for value in inputs))
+        if full_hash != full_native_hash:
+            raise ValueError('independent Poseidon full hash mismatch')
+    output = full_hash & ((1 << bits)-1)
     expected = {'sequence': len(inputs)+1, 'op': 'squeeze', 'num_bits': bits,
         'start_with_one': False, 'challenge_le': _le(output),
-        'after': {'mode': 'wide', 'state_le': [_le(full_native_hash)]}}
+        'after': {'mode': 'wide', 'state_le': [_le(full_hash)]}}
     if last != expected:
         raise ValueError('Poseidon captured output truncation mismatch')
     return output
@@ -537,12 +547,14 @@ def _spartan_replay(instance, proof, key, shape, events):
         'final_transcript': _keccak_snapshot(te.transcript)}
 
 
-def replay_production(decoded, expected, bindings, native_trace, *, expected_trace_sha256):
+def replay_production(decoded, expected, bindings, native_trace, *, expected_trace_sha256,
+                      poseidon_parameters=None, allow_native_poseidon=False):
     """Check a separately pinned native capture against proof/key-derived events.
 
-    Caller-owned pins authenticate the capture and metadata. In particular,
-    Poseidon results here are native-only inputs, not self-authenticating logs.
-    Successful replay never returns ``proof_verified=True``.
+    The default requires independently pinned Poseidon parameters and computes
+    every full hash. Omitting them requires an explicit diagnostic opt-in, which
+    retains a false independent-Poseidon flag. Captures and metadata require
+    separate caller-owned pins. Replay never returns ``proof_verified=True``.
     """
     if (type(decoded) is not DecodedProof or type(expected) is not ExpectedBundle
             or type(bindings) is not ReplayKeyBindings):
@@ -555,6 +567,20 @@ def replay_production(decoded, expected, bindings, native_trace, *, expected_tra
         raise ValueError('replay policy identity mismatch')
     if not compare_digest(decoded.proof_sha256, expected.proof_sha256) or decoded.proof_bytes != expected.proof_bytes:
         raise ValueError('replay proof differs from verifier-owned proof identity')
+    if type(allow_native_poseidon) is not bool:
+        raise ValueError('native-only diagnostic opt-in must be boolean')
+    if poseidon_parameters is None:
+        if not allow_native_poseidon:
+            raise ValueError('independently pinned Poseidon parameters required')
+        independent_poseidon = False
+    else:
+        if (type(poseidon_parameters) is not PoseidonParameters
+                or poseidon_parameters.dimensions != decoded.dimensions):
+            raise ValueError('typed Poseidon parameters with matching dimensions required')
+        independent_poseidon = True
+    def ro(engine, events, inputs, bits):
+        profile = poseidon_parameters.profile(engine, 'wide') if independent_poseidon else None
+        return _native_ro(engine, events, inputs, bits, profile)
     streams = _validate_trace(native_trace)
     capture_sha = _pin(native_trace, expected_trace_sha256, 'native trace')
     required = {('keccak', 'pallas', 0), ('keccak', 'vesta', 0),
@@ -577,22 +603,22 @@ def replay_production(decoded, expected, bindings, native_trace, *, expected_tra
     random_s = _instance(proof['l_ur_secondary'], 'vesta')
     q_p, q_s = SCALAR_MODULI['pallas'], SCALAR_MODULI['vesta']
     ri_p, ri_s = _scalar(proof['ri_primary'], q_p), _scalar(proof['ri_secondary'], q_s)
-    hash_p = _native_ro('vesta', streams['poseidon_base', 'vesta', 0],
+    hash_p = ro('vesta', streams['poseidon_base', 'vesta', 0],
         [bindings.pp_digest, expected.steps]+list(z0)+list(zn)+_ro_instance(s)+[ri_p], 250)
-    hash_s = _native_ro('pallas', streams['poseidon_base', 'pallas', 0],
+    hash_s = ro('pallas', streams['poseidon_base', 'pallas', 0],
         [bindings.pp_digest, expected.steps, 0, 0]+_ro_instance(p)+[ri_s], 250)
     if ordinary.x != (hash_p, hash_s):
         raise ValueError('captured native output hashes differ from proof public outputs')
     t_f = _point(proof['nifs_Uf_secondary']['comm_T'], 'vesta')
-    challenge_f = _native_ro('vesta', streams['poseidon_base', 'vesta', 1],
+    challenge_f = ro('vesta', streams['poseidon_base', 'vesta', 1],
         [bindings.pp_digest]+_ro_instance(ordinary, ordinary=True)+_ro_point(t_f), 128)
     folded_s = _fold(s, ordinary, t_f, challenge_f, ordinary=True)
     t_s = _point(proof['nifs_Un_secondary']['comm_T'], 'vesta')
-    challenge_s = _native_ro('vesta', streams['poseidon_base', 'vesta', 2],
+    challenge_s = ro('vesta', streams['poseidon_base', 'vesta', 2],
         [bindings.pp_digest]+_ro_instance(folded_s)+_ro_instance(random_s)+_ro_point(t_s), 128)
     folded_s = _fold(folded_s, random_s, t_s, challenge_s)
     t_p = _point(proof['nifs_Un_primary']['comm_T'], 'pallas')
-    challenge_p = _native_ro('pallas', streams['poseidon_base', 'pallas', 1],
+    challenge_p = ro('pallas', streams['poseidon_base', 'pallas', 1],
         [bindings.pp_digest]+_ro_instance(p)+_ro_instance(random_p)+_ro_point(t_p), 128)
     folded_p = _fold(p, random_p, t_p, challenge_p)
     unblinded = []
@@ -605,12 +631,16 @@ def replay_production(decoded, expected, bindings, native_trace, *, expected_tra
         decoded.dimensions.primary, streams['keccak', 'pallas', 0])
     secondary = _spartan_replay(unblinded[1], proof['snark_secondary'], bindings.secondary,
         decoded.dimensions.secondary, streams['keccak', 'vesta', 0])
-    return {'passed': True, 'scope': 'proof-bound Keccak replay with native-only Poseidon results',
+    scope = ('proof-bound independently computed Keccak and Poseidon replay' if independent_poseidon
+             else 'diagnostic proof-bound Keccak replay with native-only Poseidon results')
+    return {'passed': True, 'scope': scope,
         'proof_sha256': decoded.proof_sha256.hex(), 'native_trace_sha256': capture_sha.hex(),
         'key_bindings_sha256': bindings.metadata_sha256.hex(),
         'verifier_dimensions_sha256': decoded.dimensions.descriptor_sha256.hex(),
         'native_capture_pin_matched': True, 'poseidon_absorption_streams_checked': 5,
-        'poseidon_hashes_independently_verified': False,
+        'poseidon_hashes_independently_verified': independent_poseidon,
+        'poseidon_full_hashes_checked': 5 if independent_poseidon else 0,
+        'poseidon_parameters_sha256': poseidon_parameters.parameters_sha256.hex() if independent_poseidon else None,
         'poseidon_return_truncations_checked': True,
         'nifs_challenges_le': {'secondary_ordinary': _le(challenge_f),
             'secondary_relaxed': _le(challenge_s), 'primary_relaxed': _le(challenge_p)},

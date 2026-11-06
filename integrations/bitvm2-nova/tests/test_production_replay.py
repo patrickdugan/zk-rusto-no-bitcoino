@@ -10,6 +10,7 @@ import unittest
 from ipa_algebra import PALLAS, VESTA, test_generator, weights
 from nht4 import HEADER_BYTES, load_expected_json
 from proof_codec import decode_proof, load_dimensions_json
+from poseidon_reference import load_parameters_json
 from production_transcript import NovaTranscript
 from production_replay import (KEY_SCHEMA, TRACE_SCHEMA, ReplayKeyBindings,
     _EngineKey, _Instance, _KeccakReplay, _derandomize, _fold, _instance_repr,
@@ -20,6 +21,7 @@ FIXTURES = Path(__file__).resolve().parents[1]/'fixtures'
 DIMENSION_PIN = bytes.fromhex('de6333df2e41b5f5bae1c103fab862f8d6022fd54abeb80ba61920bc9f360edc')
 KEY_BINDINGS_PIN = bytes.fromhex('c8b117ea587c80bfdbdfc0cc262cdf68b1b4c07b3b45ba871413c7768aa62b9a')
 TRACE_PIN = bytes.fromhex('394d90b302b2fe6b8f5c0a65ada372d820996f3230770a816961a75cefec59b8')
+POSEIDON_PIN = bytes.fromhex('b55fa125133315243cb299ee7603c5f0508d68abf64f0dab43ecba4a0d09fa67')
 
 
 def synthetic_keccak(engine, operations):
@@ -267,7 +269,7 @@ class ProductionReplayComponents(unittest.TestCase):
                 _validate_trace(bad)
         with self.assertRaisesRegex(ValueError, 'missing or extra'):
             replay_production(self.decoded, self.expected, self.bindings, trace,
-                expected_trace_sha256=canonical_sha256(trace))
+                expected_trace_sha256=canonical_sha256(trace), allow_native_poseidon=True)
         scalar = next(span for span in self.decoded.spans if span.path == 'ri_primary')
         changed = self.raw[:scalar.start]+bytes(32)+self.raw[scalar.start+32:]
         admitted = decode_proof(changed, self.dimensions)
@@ -290,15 +292,18 @@ class ActualRetainedProductionReplay(unittest.TestCase):
         cls.trace = json.loads((FIXTURES/'nht4-genesis-0-2020-k5.trace.json').read_bytes())
         cls.bindings = ReplayKeyBindings.from_json(cls.metadata, cls.expected, cls.dimensions,
             expected_key_bindings_sha256=KEY_BINDINGS_PIN)
+        cls.parameters = load_parameters_json(
+            (FIXTURES/'nht4-genesis-0-2020-k5.poseidon.json').read_bytes(), cls.expected, cls.dimensions,
+            expected_parameters_sha256=POSEIDON_PIN)
         cls.result = replay_production(cls.decoded, cls.expected, cls.bindings, cls.trace,
-                                       expected_trace_sha256=TRACE_PIN)
+                                       expected_trace_sha256=TRACE_PIN, poseidon_parameters=cls.parameters)
 
     @staticmethod
     def stream(trace, kind, engine, session=0):
         return next(stream for stream in trace['streams']
                     if (stream['kind'], stream['engine'], stream['session']) == (kind, engine, session))
 
-    def diagnostic_repin(self, trace, decoded=None, expected=None):
+    def diagnostic_repin(self, trace, decoded=None, expected=None, *, native_only=False):
         """TEST ONLY: own a new pin to reach semantic checks after transport.
 
         This explicitly does not authenticate a changed capture as native output.
@@ -309,7 +314,9 @@ class ActualRetainedProductionReplay(unittest.TestCase):
             len(json.dumps(event, sort_keys=True, separators=(',', ':')).encode())
             for stream in trace['streams'] for event in stream['events'])
         return replay_production(decoded or self.decoded, expected or self.expected,
-            self.bindings, trace, expected_trace_sha256=canonical_sha256(trace))
+            self.bindings, trace, expected_trace_sha256=canonical_sha256(trace),
+            poseidon_parameters=None if native_only else self.parameters,
+            allow_native_poseidon=native_only)
 
     def changed_proof(self, path):
         """TEST ONLY: own changed statement pins to inspect proof-object binding."""
@@ -328,6 +335,9 @@ class ActualRetainedProductionReplay(unittest.TestCase):
         self.assertEqual(canonical_sha256(self.metadata), KEY_BINDINGS_PIN)
         self.assertEqual(canonical_sha256(self.trace), TRACE_PIN)
         self.assertTrue(self.result['passed'])
+        self.assertTrue(self.result['poseidon_hashes_independently_verified'])
+        self.assertEqual(self.result['poseidon_parameters_sha256'], POSEIDON_PIN.hex())
+        self.assertEqual(self.result['poseidon_full_hashes_checked'], 5)
         self.assertEqual(self.result['poseidon_absorption_streams_checked'], 5)
         self.assertEqual(self.trace['events'], 517)
         self.assertEqual(self.trace['recorded_event_bytes'], 367197)
@@ -339,8 +349,7 @@ class ActualRetainedProductionReplay(unittest.TestCase):
             self.assertTrue(engine['batch_terminal_checked'])
             self.assertFalse(engine['matrix_evaluations_verified'])
             self.assertFalse(engine['ipa']['generator_msm_verified'])
-        for name in ('proof_verified', 'bitvm2_script_verified',
-                     'poseidon_hashes_independently_verified', 'ipa_generator_msm_verified'):
+        for name in ('proof_verified', 'bitvm2_script_verified', 'ipa_generator_msm_verified'):
             self.assertFalse(self.result[name])
 
     def test_capture_pin_is_independent_of_edited_trace_metadata(self):
@@ -348,7 +357,7 @@ class ActualRetainedProductionReplay(unittest.TestCase):
         changed['recorded_event_bytes'] += 1
         with self.assertRaises(ValueError):
             replay_production(self.decoded, self.expected, self.bindings, changed,
-                               expected_trace_sha256=TRACE_PIN)
+                               expected_trace_sha256=TRACE_PIN, poseidon_parameters=self.parameters)
         changed = deepcopy(self.trace)
         event = self.stream(changed, 'keccak', 'pallas')['events'][1]
         event['repr_hex'] = '00'*32
@@ -359,7 +368,7 @@ class ActualRetainedProductionReplay(unittest.TestCase):
             for stream in changed['streams'] for event in stream['events'])
         with self.assertRaisesRegex(ValueError, 'digest mismatch'):
             replay_production(self.decoded, self.expected, self.bindings, changed,
-                               expected_trace_sha256=TRACE_PIN)
+                               expected_trace_sha256=TRACE_PIN, poseidon_parameters=self.parameters)
 
     def test_diagnostic_repin_still_checks_source_objects_labels_states_and_order(self):
         # Re-pinning here is a test-only way to reach semantic comparisons. It
@@ -412,21 +421,42 @@ class ActualRetainedProductionReplay(unittest.TestCase):
             with self.subTest(path=path), self.assertRaisesRegex(ValueError, message):
                 self.diagnostic_repin(deepcopy(self.trace), decoded, policy)
 
-    def test_native_only_poseidon_boundary_is_explicit_after_diagnostic_repin(self):
+    def test_independent_poseidon_rejects_re_pinned_hash_and_native_only_requires_opt_in(self):
+        # Every full hash must be checked, including the bits discarded by its
+        # protocol output. Coherent diagnostic pins cannot bypass arithmetic.
+        for original in self.trace['streams']:
+            if original['kind'] != 'poseidon_base':
+                continue
+            altered = deepcopy(self.trace)
+            output = self.stream(altered, original['kind'], original['engine'], original['session'])['events'][-1]
+            full = int.from_bytes(bytes.fromhex(output['after']['state_le'][0]), 'little')
+            changed_full = full ^ (1 << output['num_bits'])
+            self.assertLess(changed_full, self.parameters.profile(original['engine']).modulus)
+            output['after']['state_le'][0] = _le(changed_full)
+            with self.subTest(engine=original['engine'], session=original['session']), \
+                    self.assertRaisesRegex(ValueError, 'independent Poseidon full hash'):
+                self.diagnostic_repin(altered)
         changed = deepcopy(self.trace)
         event = self.stream(changed, 'poseidon_base', 'vesta', 1)['events'][-1]
         old = int.from_bytes(bytes.fromhex(event['after']['state_le'][0]), 'little')
         # Changing a bit ABOVE the returned128 bits leaves the fold challenge
         # unchanged. A separately authenticated original capture rejects it;
-        # a diagnostic caller-owned replacement pin cannot make this checker
-        # independently evaluate the Poseidon permutation.
+        # independent arithmetic rejects the changed full hash even under a
+        # diagnostic replacement capture pin. Native-only diagnostics remain
+        # available solely through an explicit opt-in with a false flag.
         event['after']['state_le'][0] = _le(old ^ (1 << 128))
         with self.assertRaisesRegex(ValueError, 'digest mismatch'):
             replay_production(self.decoded, self.expected, self.bindings, changed,
+                               expected_trace_sha256=TRACE_PIN, poseidon_parameters=self.parameters)
+        with self.assertRaisesRegex(ValueError, 'independent Poseidon full hash'):
+            self.diagnostic_repin(deepcopy(changed))
+        with self.assertRaisesRegex(ValueError, 'pinned Poseidon parameters required'):
+            replay_production(self.decoded, self.expected, self.bindings, self.trace,
                                expected_trace_sha256=TRACE_PIN)
-        diagnostic = self.diagnostic_repin(changed)
+        diagnostic = self.diagnostic_repin(changed, native_only=True)
         self.assertTrue(diagnostic['passed'])
         self.assertFalse(diagnostic['poseidon_hashes_independently_verified'])
+        self.assertEqual(diagnostic['poseidon_full_hashes_checked'], 0)
         self.assertFalse(diagnostic['proof_verified'])
 
     def test_unabsorbed_a_hat_remains_an_explicit_generator_msm_boundary(self):

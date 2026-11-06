@@ -40,6 +40,8 @@ jobs:
             python -m unittest discover -s tests -p test_spartan_checks.py -v
             python -m unittest discover -s tests -p test_proof_codec.py -v
             python -m unittest discover -s tests -p test_admission_generation.py -v
+            python -m unittest discover -s tests -p test_poseidon_reference.py -v
+            python -m unittest discover -s tests -p test_poseidon_generation.py -v
             python -m unittest discover -s tests -p test_production_replay.py -v
             python -m unittest discover -s tests -p test_replay_cli.py -v
           } 2>&1 | tee results/native-python-tests.txt
@@ -116,6 +118,23 @@ jobs:
           timeout --signal=KILL 90s cargo test --release --locked --jobs 2 \
             --manifest-path nova-oracle/Cargo.toml --bin replay -- --test-threads=1 \
             2>&1 | tee results/native-replay-unit-tests.txt
+      - name: Test Poseidon admission and state extraction without circuit setup
+        run: |
+          set -euo pipefail
+          timeout --signal=KILL 90s cargo test --release --locked --jobs 2 \
+            --manifest-path nova-oracle/Cargo.toml --bin poseidon -- --test-threads=1 \
+            2>&1 | tee results/native-poseidon-unit-tests.txt
+      - name: Compare independent Poseidon arithmetic against actual Nova APIs
+        run: |
+          set -euo pipefail
+          python bench_poseidon.py --parameters fixtures/nht4-genesis-0-2020-k5.poseidon.json \
+            --output results/native-poseidon-inputs.json | tee results/native-poseidon-generation.json
+          /usr/bin/time -v -o results/native-poseidon-time.txt \
+            timeout --signal=KILL 90s prlimit --as=268435456 --cpu=60 -- \
+            nova-oracle/target/release/poseidon results/native-poseidon-inputs.json \
+            fixtures/nht4-genesis-0-2020-k5.poseidon.json \
+            | tee results/native-poseidon-execution.json
+          cat results/native-poseidon-time.txt
       - name: Verify retained NHT4 proof with a strict 3 GiB and ten-minute cap
         timeout-minutes: 11
         run: |

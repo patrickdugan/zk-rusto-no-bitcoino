@@ -1,0 +1,13 @@
+{
+  "schema": "bitvm2-nova-poseidon-provenance/v1",
+  "source_commit": "8628502b7779e8b7035f00cf600e09d19e4e1022",
+  "workflow_run": 42133918717,
+  "job_id": 127617122076,
+  "artifact_id": 13464802953,
+  "zip_sha256": "e7729a4435424c65c89a7336b64098133fd81bbb591af4f0de6b6c814ec16115",
+  "zip_downloaded_and_hash_verified": true,
+  "raw_native_report_sha256": "5ebeffaf03c70fc162d46fa8d2763160be8937bb9934350886cbb7dcfce7dead",
+  "canonicalization": "Sorted compact ASCII-escaped UTF8 JSON, no trailing LF.",
+  "poseidon_parameters_sha256": "b55fa125133315243cb299ee7603c5f0508d68abf64f0dab43ecba4a0d09fa67",
+  "scope": "Parameters projected from the authenticated retained verifier key using the pinned Nova 0.76.0 release; not a proof or Script verifier."
+}

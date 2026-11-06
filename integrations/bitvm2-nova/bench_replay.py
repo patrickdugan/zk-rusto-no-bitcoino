@@ -11,6 +11,7 @@ import time
 
 from bench_compact import peak_rss
 from nht4 import bind_container, load_expected_json
+from poseidon_reference import PoseidonParameters, load_parameters_json
 from proof_codec import VerifierDimensions, decode_proof, load_dimensions_json
 from production_replay import ReplayKeyBindings, canonical_sha256, replay_production
 
@@ -18,6 +19,7 @@ FIXTURES = Path(__file__).resolve().parent/'fixtures'
 DIMENSION_PIN = 'de6333df2e41b5f5bae1c103fab862f8d6022fd54abeb80ba61920bc9f360edc'
 KEY_PIN = 'c8b117ea587c80bfdbdfc0cc262cdf68b1b4c07b3b45ba871413c7768aa62b9a'
 TRACE_PIN = '394d90b302b2fe6b8f5c0a65ada372d820996f3230770a816961a75cefec59b8'
+POSEIDON_PIN = 'b55fa125133315243cb299ee7603c5f0508d68abf64f0dab43ecba4a0d09fa67'
 
 
 def read(path, cap):
@@ -53,6 +55,8 @@ def run(native_report):
     trace = strict_json(read(FIXTURES/'nht4-genesis-0-2020-k5.trace.json', 1 << 20))
     if canonical_sha256(keys).hex() != KEY_PIN or canonical_sha256(trace).hex() != TRACE_PIN:
         raise ValueError('independent replay fixture pin mismatch')
+    load_parameters_json(read(FIXTURES/'nht4-genesis-0-2020-k5.poseidon.json', 2 << 20),
+        expected, dims, expected_parameters_sha256=bytes.fromhex(POSEIDON_PIN))
     raw = read(native_report, 4 << 20)
     report = strict_json(raw)
     if (type(report) is not dict or report.get('passed') is not True
@@ -75,13 +79,20 @@ def run(native_report):
         raise ValueError('native key-binding digest differs from independent pin')
     bindings = ReplayKeyBindings.from_json(report.get('key_bindings'), expected, dims,
         expected_key_bindings_sha256=bytes.fromhex(KEY_PIN))
+    if report.get('poseidon_parameters_sha256') != POSEIDON_PIN:
+        raise ValueError('native Poseidon digest differs from independent pin')
+    # Validate the original exported object as well as the retained fixture.
+    # The report's printed digest cannot authorize replacement constants.
+    parameters = PoseidonParameters.from_json(report.get('poseidon_parameters'), expected, dims,
+        expected_parameters_sha256=bytes.fromhex(POSEIDON_PIN))
     proof = bind_container(read(FIXTURES/'nht4-genesis-0-2020-k5.nht4', 1 << 20), expected).proof
     decoded = decode_proof(proof, dims)
     result = replay_production(decoded, expected, bindings, report.get('trace'),
-                              expected_trace_sha256=bytes.fromhex(TRACE_PIN))
+        expected_trace_sha256=bytes.fromhex(TRACE_PIN), poseidon_parameters=parameters)
     return {'schema': 'bitvm2-nova-production-python-replay/v1',
         'source_native_report_sha256': sha256(raw).hexdigest(),
         'key_bindings_sha256': KEY_PIN, 'trace_sha256': TRACE_PIN,
+        'poseidon_parameters_sha256': POSEIDON_PIN,
         'native_proof_verifications_in_source_report': 1, 'replay': result,
         'native_proofs_verified_by_this_command': 0, 'proving_jobs': 0,
         'scope': 'retained real-proof protocol conformance; incomplete independent verification'}
@@ -99,7 +110,7 @@ def main():
     args.output.write_text(json.dumps(result, indent=2)+'\n', encoding='utf-8')
     replay = result['replay']
     print(json.dumps({'passed': replay['passed'], 'key_bindings_sha256': KEY_PIN,
-        'trace_sha256': TRACE_PIN,
+        'trace_sha256': TRACE_PIN, 'poseidon_parameters_sha256': POSEIDON_PIN,
         'engines': [{key: engine[key] for key in ('engine', 'keccak_events', 'keccak_squeezes',
                                                 'outer_terminal_checked', 'batch_terminal_checked')}
                     for engine in replay['engines']],

@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from bench_replay import DIMENSION_PIN, KEY_PIN, run
+from bench_replay import DIMENSION_PIN, KEY_PIN, POSEIDON_PIN, run
 from nht4 import load_expected_json
 
 FIXTURES = Path(__file__).resolve().parents[1]/'fixtures'
@@ -26,9 +26,10 @@ class ReplayReportTransport(unittest.TestCase):
             'proof_bytes': expected.proof_bytes, 'verifier_key_sha256': expected.verifier_key_sha256.hex(),
             'verifier_dimensions_sha256': DIMENSION_PIN,
             'end_state_sha256': expected.end_state_sha256.hex(),
-            'key_bindings_sha256': KEY_PIN}
+            'key_bindings_sha256': KEY_PIN, 'poseidon_parameters_sha256': POSEIDON_PIN}
         for field, suffix in (('verifier_dimensions', 'dimensions'),
-                              ('key_bindings', 'key-bindings'), ('trace', 'trace')):
+                              ('key_bindings', 'key-bindings'), ('trace', 'trace'),
+                              ('poseidon_parameters', 'poseidon')):
             cls.base[field] = json.loads((FIXTURES/f'nht4-genesis-0-2020-k5.{suffix}.json').read_bytes())
 
     def rejected(self, report, message):
@@ -57,6 +58,16 @@ class ReplayReportTransport(unittest.TestCase):
         self.assertEqual(value['trace']['streams'][0]['session'], 0)
         value['trace']['streams'][0]['session'] = False
         self.rejected(value, 'session')
+
+    def test_report_poseidon_constants_cannot_be_replaced_under_copied_digest(self):
+        value = deepcopy(self.base)
+        value['poseidon_parameters']['primary']['wide']['mds'][0][0] = '00'*32
+        self.rejected(value, 'Poseidon parameter digest mismatch')
+
+    def test_poseidon_boolean_width_is_not_integer_one(self):
+        value = deepcopy(self.base)
+        value['poseidon_parameters']['primary']['wide']['capacity'] = True
+        self.rejected(value, 'unsupported Poseidon profile identity')
 
 
 if __name__ == '__main__':
