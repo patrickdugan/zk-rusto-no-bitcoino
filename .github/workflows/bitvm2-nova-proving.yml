@@ -28,7 +28,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Test actual Job Object cleanup and limits with tiny Python children
         run: |
-          python proving_process.py
+          python proving_process.py --self-test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       # Real proving is explicit through proving_shards.py. This push workflow
       # runs small process/policy tests and never starts a proving workload.
