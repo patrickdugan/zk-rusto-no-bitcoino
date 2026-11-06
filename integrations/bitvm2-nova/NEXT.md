@@ -23,6 +23,11 @@ also cold-verified both proofs, completing in 242.21 seconds with maximum
 individual export Job commit 2.21 GiB. The configured total budget admits two
 six-GiB child jobs plus a separate two-GiB host reserve check. All 12 workflows
 passed on `5aa6c05`; complete Script verification remains open.
+The same 16-GiB budget has now also supported a real **k=20** run: two
+13,288-byte proofs covering 80 headers, separate cold key reconstruction and
+verification, and the full 17-scalar height-40 join. It completed in 544.76
+seconds with maximum individual export Job commit 4.19 GiB. No default k,
+child ceiling or existing fixture/key gate changed.
 
 [The streamed full-permutation graph](KECCAK-PERMUTATION.md) extends the linked
 Keccak pair to twelve bounded components with globally reused state signatures

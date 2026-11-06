@@ -114,7 +114,7 @@ Both cold native verifications passed against the existing k=10 key pin
 `2495da9bf5965030e45fa2cef1a43ade78e099ca844b5d3a9abf56400447eabe`.
 The initial state was the pinned genesis state; all 17 canonical scalars at the
 height-20 boundary matched exactly. The Core fixture differential check also
-passed at every height 0–40. The total run took 1,304.8303272 seconds
+passed at every height 0â€“40. The total run took 1,304.8303272 seconds
 (21 minutes 44.83 seconds), excluding the earlier source build.
 
 | Phase | Maximum Job commit | Maximum queried process working-set peak |
@@ -182,6 +182,66 @@ All 12 workflows passed on source commit
 including 304 full-suite Python tests, 21 Windows source/plan/budget tests and
 nine actual Windows Job Object tests with tiny children. The real proving runs
 were explicit local executions, not automatically launched by CI.
+
+## Measured k=20 validation under the same budget
+
+A further explicit local run used **20 headers per fold**, two folds per shard,
+two concurrent shards covering (0,40] and (40,80], and two concurrent exports.
+It retained four Rayon threads per child, six-GiB child ceilings, the 16-GiB
+total proving budget and two-GiB host reserve. Initial available physical RAM
+was 15.95 GiB; the admitted aggregate child ceiling was 12 GiB.
+
+```powershell
+python proving_shards.py --source-root C:\your-workspace\nova-source --bin-dir C:\your-workspace\nova-target\release --out results\proving-k20-two-shards-16g-parallel --k 20 --to 80 --shards 2 --parallel 2 --export-parallel 2 --threads 4 --memory-mib 6144 --total-memory-mib 16384 --reserve-memory-mib 2048
+```
+
+Both genuine transparent Spartan/IPA proofs were generated, verified during
+export and verified again by separate cold native processes. Each compressed
+proof was **13,288 bytes**, each NHT4 bundle **13,844 bytes**. The full 17-scalar
+height-40 join matched exactly, starting from the pinned genesis state. The
+native/Core fixture differential agreed at every height 0-80. This is a verified
+set of two separate proofs, not a recursively merged proof.
+
+The common verifier-key SHA-256 was
+`9e94b9083b5be30e796e974218804214b7106284c071eeec9b15945735321727`.
+k=20 has no static entry in the coordinator's existing key-pin table, so both
+cold verifier invocations reconstructed the trusted circuit's key independently
+without a supplied key file, then matched its hash. No acceptance gate, default
+k setting or existing key/retained-fixture pin changed.
+
+| k=20 phase | Maximum individual Job commit | Maximum queried process working-set peak |
+| --- | ---: | ---: |
+| Folding/resume | 2,574.26 MiB (2.51 GiB) | 2,317.38 MiB |
+| Compression/export | 4,289.67 MiB (4.19 GiB) | 4,017.18 MiB |
+| Cold verification including key reconstruction | 2,572.70 MiB (2.51 GiB) | 2,309.34 MiB |
+
+The sum of the two export Job-commit maxima was 8.37816 GiB, an upper bound
+across those child jobs, not a measured simultaneous aggregate peak. The total
+run took **544.7620324 seconds (9m 4.76s)**. Every one of the ten child calls had
+complete accounting, two observed processes with exit codes [0,0], and no
+memory-limit signal. The six-GiB child ceiling was never raised. Compared with
+the earlier k=10 run, this profile proves twice as many headers and uses a
+different cold key-loading path; the two timings are not a controlled speed
+comparison. These measurements demonstrate the k-dependent memory increase
+for these two profiles without changing the prover defaults.
+
+The height-40 full-state hash was
+`e8b8cf0934152716f9d54cdeec405019c4a6eb9bde815398854d21268741b123`,
+matching the previous k=10 final state. The height-80 full-state hash was
+`df3824edb9c5222256710a35504730bade2fe558de0a6e9090b0966c8a677991`;
+its tip was
+`00000000f2d5675990f22987f0fa75cebcf1ae9d18cdc16b817fce54c390ebc2`
+and cumulative work `0x5100510051`. The input header fixture and exact source
+package/binaries were unchanged from the k=10 profile.
+
+The complete local report is
+`results/proving-k20-two-shards-16g-parallel/verified.json`: 25,160 bytes,
+SHA-256 `ed6d62972dc2525e5f8ce34925cd7678a4fe31a54302e9cf9a9702bd199072e1`.
+Proofs, keys and raw reports remain local; public proof-binary upload was not
+retried. Only implementation, tests and measurement documentation were pushed.
+The unchanged coordinator executed this profile. All 12 workflows passed on
+`dafab871bbe038bb4b57b0cc875ed6331075ba4c`, including all 315 Python tests.
+The new proving run was an explicit local execution, not a CI job.
 
 ## Limits of this milestone
 

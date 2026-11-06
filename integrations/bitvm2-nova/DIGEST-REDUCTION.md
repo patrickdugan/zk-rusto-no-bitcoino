@@ -55,6 +55,7 @@ The [dedicated run](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions
 passed on source commit `dafab871bbe038bb4b57b0cc875ed6331075ba4c`.
 All 11 digest tests ran on hosted Linux, including the seven real graph/Script
 tests that skip locally. The primitive workflow also passed all 315 Python tests.
+All 12 workflows passed on that source commit.
 The existing uniform workflow reproduced both earlier Script byte totals and
 compiled-stream hashes unchanged.
 
