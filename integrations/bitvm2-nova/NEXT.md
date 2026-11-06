@@ -10,6 +10,49 @@ pending. Full and targeted execution profiles are reported separately. Script
 eval_W canonicality, proof/message origins and prior-state provenance remain
 open; this composition does not complete transcript, IPA or proof verification.
 
+## Transcript roadmap and size constraint
+
+The retained trace `fixtures/nht4-genesis-0-2020-k5.trace.json` has SHA-256
+`394d90b302b2fe6b8f5c0a65ada372d820996f3230770a816961a75cefec59b8`.
+Its primary Keccak stream has 100 squeezes (`t:19`, `c:59`, `r:22`); the
+secondary stream has 75 (`t:14`, `c:44`, `r:17`). Including initialization,
+there are 354 LO/HI branch hashes. The literal multiblock schedule uses 642
+permutations, not 354 single-block permutations. Preimages range from 21 to
+339 bytes and require one to three padded rate blocks.
+
+Multiplying the measured isolated BYTE permutation cost by that schedule gives
+97,219,675,272 Script bytes (90.543 GiB), before absorption, reductions and
+other verifier work. Explicitly sharing complete prefix blocks between LO/HI
+reduces the analytical schedule to 498 permutations and its linear subtotal to
+75,413,392,968 bytes (70.234 GiB). Neither transcript composition has been
+measured, and neither projection is a lower bound on future implementations.
+The unchanged 1.25-GiB forest and 16-component policies prevent straightforward
+replication of this backend. They are experimental constructor budgets, not a
+theorem about Bitcoin or all possible verifiers.
+
+The next bounded transcript boundary should connect the current RHO's actual
+raw `LO || HI` 64-byte producers to the immediately following batch-sumcheck
+challenge, rather than feed back the reduced scalar. These are primary events
+103/104/105 (counter 60) and secondary events 78/79/80 (counter 45). The next
+143-byte preimage contains two encoded polynomial coefficients and puts the
+previous raw state at message bytes 77-140. Its first 136 bytes are identical
+across LO/HI, permitting one explicitly shared prefix permutation followed by
+two branch-final permutations. Together with RHO, five full permutations have
+a 757,162,580-byte linear subtotal before bridges and tails. This only motivates
+a bounded measurement attempt; actual cost, record, memory and component limits
+must pass unchanged.
+
+That milestone must authenticate both rate-XOR absorption and unchanged-capacity
+forwarding, all raw-state producer links, counters, selectors and padding, and
+canonical coefficient encodings. Coherent changed-state attacks, both block
+boundaries, exact witness lengths and actual forest disproofs need independent
+checks. Stop or optimize if existing limits fail. Proof-byte/length/EOF parsing,
+scalar-to-BYTE source bridges, compressed-point transcript encodings, initial
+state/key origins and authenticated folded commitments remain explicit gaps.
+After those source boundaries, authenticated scalar multiplication and IPA/MSM
+verification still require their own measured implementations before end-to-end
+proof verification can be claimed.
+
 [The opt-in full BYTE permutation](BYTE-KECCAK-PERMUTATION.md) flattens six
 fresh sealed blocks into one 29,245-leaf, 29,445-word GraphSpec. Its program
 identity is explicitly a versioned manifest hash, while every small child
