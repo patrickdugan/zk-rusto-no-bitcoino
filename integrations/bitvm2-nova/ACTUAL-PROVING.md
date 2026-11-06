@@ -114,7 +114,7 @@ Both cold native verifications passed against the existing k=10 key pin
 `2495da9bf5965030e45fa2cef1a43ade78e099ca844b5d3a9abf56400447eabe`.
 The initial state was the pinned genesis state; all 17 canonical scalars at the
 height-20 boundary matched exactly. The Core fixture differential check also
-passed at every height 0â€“40. The total run took 1,304.8303272 seconds
+passed at every height 0–40. The total run took 1,304.8303272 seconds
 (21 minutes 44.83 seconds), excluding the earlier source build.
 
 | Phase | Maximum Job commit | Maximum queried process working-set peak |
