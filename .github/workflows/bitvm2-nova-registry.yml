@@ -42,10 +42,63 @@ jobs:
           set -o pipefail
           /usr/bin/time -v -o results/registry-ci-rust-time.txt rust-oracle/target/debug/registry results/registry-inputs.json results/registry-engine-vectors.jsonl | tee results/registry-ci-execution.json
           sha256sum results/registry-engine-vectors.jsonl > results/registry-ci-vector-sha256.txt
+      - name: Generate opt-in convolution graphs and compare fixed-claim costs
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p test_convolution_generation.py -v
+          python bench_convolution.py --out results | tee results/convolution-generation.json
+      - name: Check convolution catalogue shape admission
+        run: |
+          set -euo pipefail
+          cargo test --locked --jobs 2 --manifest-path rust-oracle/Cargo.toml --lib registry::tests \
+            2>&1 | tee results/convolution-registry-unit-tests.txt
+      - name: Execute convolution assertions and measure every point leaf
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/convolution-registry-time.txt \
+            timeout --signal=KILL 300s prlimit --as=536870912 --cpu=300 -- \
+            rust-oracle/target/debug/registry results/convolution-registry-inputs.json \
+            results/convolution-registry-engine-vectors.jsonl \
+            | tee results/convolution-registry-execution.json
+          sha256sum results/convolution-registry-engine-vectors.jsonl > results/convolution-registry-vector-sha256.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          baseline = json.loads(Path('results/registry-ci-execution.json').read_bytes())
+          candidate = json.loads(Path('results/convolution-registry-execution.json').read_bytes())
+          if baseline.get('passed') is not True or candidate.get('passed') is not True:
+              raise SystemExit('both actual native ledgers required')
+          before = {row['case']: row for row in baseline['ledger']}
+          after = {row['case']: row for row in candidate['ledger']}
+          comparisons = []
+          for engine in ('pallas', 'vesta'):
+              for kind, old_name, new_name, expected in (
+                  ('multiplication', engine+'_base/honest-full-multiplication',
+                   engine+'_base/convolution-mul', 16798073),
+                  ('point-add', engine+'/point-graph', engine+'/convolution-point', 219498908)):
+                  old, new = before[old_name], after[new_name]
+                  if old['all_disproof_script_bytes'] != expected:
+                      raise SystemExit('executed baseline cost changed')
+                  for row in (old, new):
+                      for field in ('words', 'leaves', 'all_disproof_script_bytes', 'largest_disproof_leaf_bytes'):
+                          if type(row[field]) is not int or row[field] <= 0:
+                              raise SystemExit('invalid native cost ledger')
+                  saved = old['all_disproof_script_bytes']-new['all_disproof_script_bytes']
+                  comparisons.append({'engine': engine, 'case': kind, 'baseline': old,
+                      'convolution': new, 'saved_script_bytes': saved,
+                      'saved_percent': 100*saved/old['all_disproof_script_bytes']})
+          report = {'schema': 'bitvm2-nova-convolution-wots-comparison/v1',
+              'passed': True, 'comparisons': comparisons,
+              'accounting': 'Every authenticated disproof Script once, including word recovery and exact witness guards; excludes transaction framing, control blocks and assertion signatures.',
+              'complete_nova_verifier': False, 'bitcoin_transaction_graph': False}
+          Path('results/convolution-wots-comparison.json').write_text(json.dumps(report, indent=2)+'\n')
+          print(json.dumps(report))
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: bitvm2-nova-global-registry-evidence
           path: |
             integrations/bitvm2-nova/results/registry-*
+            integrations/bitvm2-nova/results/convolution-*
             integrations/bitvm2-nova/rust-oracle/Cargo.lock

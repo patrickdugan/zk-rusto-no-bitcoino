@@ -6,6 +6,11 @@ in [M2-COMPACT.md](M2-COMPACT.md); `m2` remains the default compiler. Its comple
 point graph still totals 14,148,063 Script bytes before transaction/assertion
 overhead. This bounded optimization does not complete M3 or M4 below.
 
+[M2-CONVOLUTION.md](M2-CONVOLUTION.md) records the further opt-in integer
+convolution argument and its identical-accounting fixed-claim/WOTS comparison.
+The Horner builder remains the default; fewer signed words do not by themselves
+establish a smaller authenticated Script graph.
+
 [WOTS-LEAF.md](WOTS-LEAF.md) describes the next bounded adapter: one upstream-
 WOTS-authenticated multiplication step, including disputable malformed signed
 values. The global registry is described separately below; the Bitcoin

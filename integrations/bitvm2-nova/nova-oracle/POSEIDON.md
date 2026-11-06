@@ -1,11 +1,11 @@
 # Independent production Poseidon replay
 
 This is the source map and verification boundary for replacing the native-only
-Poseidon stage in the retained Nova replay. The actual-key parameter export has
-the hosted evidence recorded below. The native conformance oracle and
-independent Python replay still require their corresponding current-head hosted
-evidence before this stage can be called verified. It does not complete matrix
-evaluation, the IPA generator MSM or Bitcoin Script proof verification.
+Poseidon stage in the retained Nova replay. The actual-key parameter export,
+native conformance oracle and independent Python replay have the source-specific
+hosted evidence recorded below. These checks validate this retained Poseidon
+stage. They do not complete matrix evaluation, the IPA generator MSM or Bitcoin
+Script proof verification.
 
 ## Authoritative implementation and parameter binding
 
@@ -231,12 +231,35 @@ and all five full hashes in the genuine native trace, including each returned
 | Vesta/1 | 9 | `f3aa4be40afb920b3b42865bbaefa26190b01ad18a3e75b90e15674f12f86327` |
 | Vesta/2 | 34 | `08c6d4d740f382c3b6bc0d308920bfee72c3830e911d362bc36bdce416fd8636` |
 
-This is bounded arithmetic comparison against the retained real-proof trace.
-It does not claim a hosted result for the new native differential corpus,
-independent matrix evaluation, generator MSM, Script execution or complete
-proof verification. The planned corpus has 254 cases: 200 accepted sessions,
-54 admission rejections and 776 squeeze/full-hash comparisons across both
-fields and modes; its hosted result remains pending here.
+This local check is bounded arithmetic comparison against the retained
+real-proof trace. The separate hosted differential result is recorded next;
+neither check supplies independent matrix evaluation, generator MSM, Script
+execution or complete proof verification.
+
+## Completed hosted differential and replay evidence
+
+The Poseidon stage at source commit
+`666202061796afed10bf75c36debadb1b558446f` passed hosted run
+[42136357424](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42136357424).
+The original native Poseidon implementation checked all 254 corpus cases:
+200 accepted sessions, 54 admission rejections and 776 squeeze comparisons.
+Every squeeze compared the Python full hash, an original native shadow hash,
+the observed live post-squeeze full state and the returned challenge. The
+corpus exercised 192 forced-255-bit field reductions and both fields/modes,
+including empty input and the documented block boundaries. Native execution
+took about 0.57 seconds and 17,400 KiB peak RSS. No arbitrary serialized
+constants were deserialized into the native RO, and no panic counted as a
+rejection.
+
+The stronger retained production Python replay also passed in that hosted
+run, taking about 0.705 seconds and 30 MB peak RSS. It independently computes
+the five complete Poseidon hashes from proof/key/state-derived inputs, then
+checks native snapshots and truncations. Its independent-Poseidon flag is
+true. Removing the authenticated parameters requires an explicit diagnostic
+opt-in and leaves that flag false; re-pinned high-hash-bit mutations reject
+under the independent path. Matrix, IPA generator MSM, standalone proof and
+Bitcoin Script verification flags remain false. These commands generate no
+proofs or transactions.
 
 Primary sources: [provider RO](https://github.com/microsoft/Nova/blob/98576efa884072bfe69bfad8f275a3a5cd8754e5/src/provider/poseidon.rs),
 [permutation](https://github.com/microsoft/Nova/blob/98576efa884072bfe69bfad8f275a3a5cd8754e5/src/frontend/gadgets/poseidon/poseidon_inner.rs),

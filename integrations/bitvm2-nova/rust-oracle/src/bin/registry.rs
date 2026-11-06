@@ -149,6 +149,7 @@ fn main() -> Result<()> {
     let mut ledger = Vec::new();
     let mut native_rejections = 0;
     let mut shared_links = 0;
+    let mut convolution_carry_links = 0;
     let mut assertion_signatures = 0;
     let mut out = BufWriter::new(fs::File::create(&args[2])?);
     for case in &cases {
@@ -267,6 +268,109 @@ fn main() -> Result<()> {
                 )?;
             }
         }
+        if case.name.ends_with("/convolution-mul") {
+            native_rejections += native_checks(&case.spec, &keys, expected, id)?;
+            if registry
+                .witness(0, &signatures[..signatures.len() - 1])
+                .is_ok()
+                || registry.script(usize::MAX, true).is_ok()
+            {
+                return Err("convolution signature count or ordinal guard failed".into());
+            }
+            native_rejections += 2;
+            // Exercise every new predicate shape, field validity and anchors
+            // through the same authenticated boundary as the baseline.
+            let mut kinds = HashSet::new();
+            for (ordinal, leaf) in case.spec.leaves.iter().enumerate() {
+                if !kinds.insert(leaf.kind.as_str()) {
+                    continue;
+                }
+                let witness = registry.witness(ordinal, &signatures)?;
+                for disprove in [false, true] {
+                    let code = registry.script(ordinal, disprove)?;
+                    for (j, bad) in [
+                        vec![],
+                        witness[..witness.len() - 1].to_vec(),
+                        [vec![vec![]], witness.clone()].concat(),
+                        [witness.clone(), vec![vec![]]].concat(),
+                    ]
+                    .iter()
+                    .enumerate()
+                    {
+                        emit(
+                            &mut out,
+                            &mut metrics,
+                            &code,
+                            bad,
+                            false,
+                            &format!("{}/length/{ordinal}/{j}/{disprove}", case.name),
+                        )?;
+                    }
+                    for position in [0, witness.len() - 1] {
+                        let mut bad = witness.clone();
+                        *bad[position].first_mut().ok_or("empty signature digit")? ^= 1;
+                        emit(
+                            &mut out,
+                            &mut metrics,
+                            &code,
+                            &bad,
+                            false,
+                            &format!("{}/forgery/{ordinal}/{position}/{disprove}", case.name),
+                        )?;
+                    }
+                    let slot = registry.unique_slots(ordinal)?[0];
+                    let mut substituted = signatures.clone();
+                    substituted[slot] = signatures[(slot + 1) % signatures.len()];
+                    emit(
+                        &mut out,
+                        &mut metrics,
+                        &code,
+                        &registry.witness(ordinal, &substituted)?,
+                        false,
+                        &format!("{}/cross-wire/{ordinal}/{disprove}", case.name),
+                    )?;
+                }
+            }
+            let columns: Vec<_> = case
+                .spec
+                .leaves
+                .iter()
+                .enumerate()
+                .filter(|(_, leaf)| leaf.kind == "conv_column")
+                .collect();
+            if columns.len() != 64 {
+                return Err("convolution column coverage".into());
+            }
+            for pair in columns.windows(2) {
+                let (left_ordinal, left) = pair[0];
+                let (right_ordinal, right) = pair[1];
+                let left_offset = (left.argument[0] + left.argument[1]) as usize;
+                let right_offset = (right.argument[0] + right.argument[1]) as usize;
+                let shared = left.wires[left_offset + 1];
+                if shared != right.wires[right_offset] {
+                    return Err("shared convolution carry slot mismatch".into());
+                }
+                let left_slots = registry.unique_slots(left_ordinal)?;
+                let right_slots = registry.unique_slots(right_ordinal)?;
+                let a = left_slots
+                    .iter()
+                    .position(|slot| *slot == shared)
+                    .ok_or("left carry slot")?;
+                let b = right_slots
+                    .iter()
+                    .position(|slot| *slot == shared)
+                    .ok_or("right carry slot")?;
+                let left_witness = registry.witness(left_ordinal, &signatures)?;
+                let right_witness = registry.witness(right_ordinal, &signatures)?;
+                let width = Wots4::TOTAL_DIGIT_LEN as usize;
+                if left_witness[a * width..(a + 1) * width]
+                    != right_witness[b * width..(b + 1) * width]
+                {
+                    return Err("shared convolution carry signature mismatch".into());
+                }
+                convolution_carry_links += 1;
+            }
+        }
         if case.name.ends_with("honest-full-multiplication") {
             native_rejections += native_checks(&case.spec, &keys, expected, id)?;
             for i in 18..272 {
@@ -369,6 +473,7 @@ fn main() -> Result<()> {
         serde_json::json!({"scope":"global-WOTS-wire-registry-and-arithmetic-catalogue","passed":true,
         "cases":cases.len(),"metrics":metrics,"ledger":ledger,"native_rejections":native_rejections,
         "shared_accumulator_and_final_links_checked":shared_links,"signatures_generated_once_per_wire":assertion_signatures,
+        "shared_convolution_carry_links_checked":convolution_carry_links,
         "wall_seconds":start.elapsed().as_secs_f64(),"test_keys_only":true,"stack_limit_enabled":true,"op_cat_enabled":false,
         "complete_nova_verifier":false,"bitcoin_transaction_graph":false,"transactions_broadcast":0})
     );

@@ -67,6 +67,71 @@ impl GraphSpec {
             && leaf.argument.iter().all(|x| (0..5).contains(x))
             && leaf.argument.iter().collect::<HashSet<_>>().len() == leaf.argument.len();
         match leaf.kind.as_str() {
+            "conv_split" => {
+                if leaf.argument.len() != 1 || !(1..=7).contains(&leaf.argument[0]) {
+                    false
+                } else {
+                    let bits = leaf.argument[0] as u32;
+                    bounds == [256, 1u32 << bits, 1u32 << (8 - bits)]
+                }
+            }
+            "conv_reconstruct" => {
+                !leaf.argument.is_empty()
+                    && leaf.argument.len() <= 5
+                    && leaf.argument.iter().all(|width| (1..=8).contains(width))
+                    && leaf.argument.iter().sum::<i64>() <= 29
+                    && bounds.len() == leaf.argument.len() + 1
+                    && bounds[0] == BASE
+                    && bounds[1..]
+                        .iter()
+                        .zip(&leaf.argument)
+                        .all(|(bound, width)| *bound == 1u32 << (*width as u32))
+            }
+            "conv_ab" => {
+                if leaf.argument.len() != 1 || !(1..=4).contains(&leaf.argument[0]) {
+                    false
+                } else {
+                    let n = leaf.argument[0] as usize;
+                    bounds.len() == 2 * n + 1
+                        && bounds[..2 * n].iter().all(|bound| *bound == 256)
+                        && bounds[2 * n] == 1 << 18
+                }
+            }
+            "conv_pq" => {
+                !leaf.argument.is_empty()
+                    && leaf.argument.len() <= 8
+                    && leaf
+                        .argument
+                        .iter()
+                        .all(|coefficient| (1..=255).contains(coefficient))
+                    && bounds.len() == leaf.argument.len() + 1
+                    && bounds[..leaf.argument.len()]
+                        .iter()
+                        .all(|bound| *bound == 256)
+                    && bounds[leaf.argument.len()] == 1 << 19
+            }
+            "conv_column" => {
+                if leaf.argument.len() != 3
+                    || !(0..=8).contains(&leaf.argument[0])
+                    || !(0..=4).contains(&leaf.argument[1])
+                    || !(0..=1).contains(&leaf.argument[2])
+                {
+                    false
+                } else {
+                    let (ab, pq, has_c) = (
+                        leaf.argument[0] as usize,
+                        leaf.argument[1] as usize,
+                        leaf.argument[2] == 1,
+                    );
+                    let mut expected = vec![1u32 << 18; ab];
+                    expected.extend(std::iter::repeat(1u32 << 19).take(pq));
+                    expected.extend([16384, 16384]);
+                    if has_c {
+                        expected.push(256);
+                    }
+                    bounds == expected
+                }
+            }
             "bool_xor" | "bool_and" => empty && bounds == [2, 2, 2],
             "bool_not" => empty && bounds == [2, 2],
             "add" => empty && bounds == vec![BASE; 27],
@@ -226,6 +291,227 @@ impl GraphSpec {
             h.input(&bytes);
         }
         Ok(sha256::Hash::from_engine(h).to_byte_array())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // These fixtures exercise catalogue admission only. The dummy predicate
+    // body is never executed and is not evidence for arithmetic correctness.
+    fn graph(kind: &str, argument: &[i64], bounds: &[u32]) -> GraphSpec {
+        let body = hex::encode(sha256::Hash::hash(&[0x51]).to_byte_array());
+        GraphSpec {
+            program_sha256: "00".repeat(32),
+            context: "00".repeat(32),
+            field_role: "pallas_base".into(),
+            operation_id: "test/convolution-shape".into(),
+            words: bounds
+                .iter()
+                .enumerate()
+                .map(|(i, bound)| Word {
+                    name: format!("w{i}"),
+                    bound: *bound,
+                })
+                .collect(),
+            leaves: vec![Leaf {
+                kind: kind.into(),
+                argument: argument.to_vec(),
+                wires: (0..bounds.len()).collect(),
+                body_sha256: body.clone(),
+            }],
+            bodies: [(body, "51".into())].into_iter().collect(),
+        }
+    }
+    fn shaped(spec: &GraphSpec) -> bool {
+        spec.shape(&spec.leaves[0])
+    }
+
+    #[test]
+    fn convolution_shapes_accept_exact_public_schema_boundaries() {
+        for width in 1..=7 {
+            assert!(shaped(&graph(
+                "conv_split",
+                &[width],
+                &[256, 1 << width, 1 << (8 - width)]
+            )));
+        }
+        for widths in [
+            vec![1],
+            vec![8, 8, 8],
+            vec![8, 8, 8, 5],
+            vec![5, 6, 6, 6, 6],
+        ] {
+            let mut bounds = vec![BASE];
+            bounds.extend(widths.iter().map(|width| 1u32 << *width as u32));
+            assert!(shaped(&graph("conv_reconstruct", &widths, &bounds)));
+        }
+        for n in 1..=4 {
+            let mut bounds = vec![256; 2 * n];
+            bounds.push(1 << 18);
+            assert!(shaped(&graph("conv_ab", &[n as i64], &bounds)));
+        }
+        for n in 1..=8 {
+            let mut bounds = vec![256; n];
+            bounds.push(1 << 19);
+            assert!(shaped(&graph("conv_pq", &vec![255; n], &bounds)));
+        }
+        for ab in 0..=8 {
+            for pq in 0..=4 {
+                for c in 0..=1 {
+                    let mut bounds = vec![1 << 18; ab];
+                    bounds.extend(std::iter::repeat(1 << 19).take(pq));
+                    bounds.extend([16384, 16384]);
+                    if c == 1 {
+                        bounds.push(256);
+                    }
+                    assert!(shaped(&graph(
+                        "conv_column",
+                        &[ab as i64, pq as i64, c],
+                        &bounds
+                    )));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn malformed_convolution_arguments_reject_without_shifts_or_allocations() {
+        let cases = [
+            (
+                "conv_split",
+                vec![
+                    vec![],
+                    vec![0],
+                    vec![8],
+                    vec![-1],
+                    vec![i64::MAX],
+                    vec![1, 2],
+                ],
+                vec![256, 16, 16],
+            ),
+            (
+                "conv_reconstruct",
+                vec![
+                    vec![],
+                    vec![0],
+                    vec![9],
+                    vec![8, 8, 8, 8],
+                    vec![1; 6],
+                    vec![i64::MAX],
+                ],
+                vec![BASE, 256],
+            ),
+            (
+                "conv_ab",
+                vec![
+                    vec![],
+                    vec![0],
+                    vec![5],
+                    vec![-1],
+                    vec![i64::MAX],
+                    vec![1, 2],
+                ],
+                vec![256, 256, 1 << 18],
+            ),
+            (
+                "conv_pq",
+                vec![
+                    vec![],
+                    vec![0],
+                    vec![256],
+                    vec![-1],
+                    vec![i64::MAX],
+                    vec![1; 9],
+                ],
+                vec![256, 1 << 19],
+            ),
+            (
+                "conv_column",
+                vec![
+                    vec![],
+                    vec![0],
+                    vec![0, 0],
+                    vec![0, 0, 0, 0],
+                    vec![9, 0, 0],
+                    vec![0, 5, 0],
+                    vec![0, 0, 2],
+                    vec![-1, 0, 0],
+                    vec![0, -1, 0],
+                    vec![0, 0, -1],
+                    vec![i64::MAX, 0, 0],
+                ],
+                vec![16384, 16384],
+            ),
+        ];
+        for (kind, arguments, bounds) in cases {
+            for argument in arguments {
+                let spec = graph(kind, &argument, &bounds);
+                assert!(!shaped(&spec), "{kind} accepted {argument:?}");
+                assert!(spec.identity().is_err());
+            }
+        }
+    }
+
+    #[test]
+    fn custom_bounds_and_formal_slot_counts_are_exact() {
+        let cases = [
+            graph("conv_split", &[4], &[256, 16, 16]),
+            graph(
+                "conv_reconstruct",
+                &[8, 8, 8, 5],
+                &[BASE, 256, 256, 256, 32],
+            ),
+            graph("conv_ab", &[2], &[256, 256, 256, 256, 1 << 18]),
+            graph("conv_pq", &[1, 255], &[256, 256, 1 << 19]),
+            graph(
+                "conv_column",
+                &[2, 1, 1],
+                &[1 << 18, 1 << 18, 1 << 19, 16384, 16384, 256],
+            ),
+        ];
+        for valid in cases {
+            assert!(valid.identity().is_ok());
+            for i in 0..valid.words.len() {
+                let mut changed = valid.clone();
+                changed.words[i].bound += 1;
+                assert!(!shaped(&changed));
+                assert!(changed.identity().is_err());
+            }
+            let mut truncated = valid.clone();
+            truncated.leaves[0].wires.pop();
+            assert!(!shaped(&truncated));
+            let mut extra = valid.clone();
+            extra.leaves[0].wires.push(0);
+            assert!(!shaped(&extra));
+            let mut bad_index = valid.clone();
+            bad_index.leaves[0].wires[0] = bad_index.words.len();
+            assert!(bad_index.identity().is_err());
+        }
+    }
+
+    #[test]
+    fn aliases_preserve_formal_slots_and_change_catalogue_identity() {
+        let mut first = graph("conv_ab", &[2], &[256, 256, 1 << 18]);
+        first.leaves[0].wires = vec![0, 0, 1, 1, 2];
+        assert!(shaped(&first));
+        let mut second = first.clone();
+        second.leaves[0].wires = vec![0, 1, 0, 1, 2];
+        assert!(shaped(&second));
+        assert_ne!(first.identity().unwrap(), second.identity().unwrap());
+        let mut collapsed = first.clone();
+        collapsed.leaves[0].wires = vec![0, 1, 2];
+        assert!(!shaped(&collapsed));
+        let mut wrong_role = first;
+        wrong_role.leaves[0].wires[0] = 2;
+        assert!(!shaped(&wrong_role));
+        let mut split = graph("conv_split", &[4], &[256, 16]);
+        split.leaves[0].wires = vec![0, 1, 1];
+        assert!(split.identity().is_ok());
+        let mut carries = graph("conv_column", &[0, 0, 0], &[16384]);
+        carries.leaves[0].wires = vec![0, 0];
+        assert!(carries.identity().is_ok());
     }
 }
 

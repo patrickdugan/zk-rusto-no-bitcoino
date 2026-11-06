@@ -28,7 +28,8 @@ class EncodedPoint:
 
 
 def point_add_trace(curve, a, b, *, claimed_output=AUTO,
-                    context=bytes(32), operation_id='point-add'):
+                    context=bytes(32), operation_id='point-add',
+                    multiplication_backend='horner'):
     if curve not in (PALLAS, VESTA):
         raise ValueError('Pallas or Vesta required')
     a, b = EncodedPoint.of(a), EncodedPoint.of(b)
@@ -40,7 +41,14 @@ def point_add_trace(curve, a, b, *, claimed_output=AUTO,
         r = EncodedPoint.of(curve.add(a.native(), b.native()))
     else:
         r = EncodedPoint.of(claimed_output)
-    g = TraceBuilder(curve.name+'_base', operation_id, context)
+    if multiplication_backend == 'horner':
+        builder = TraceBuilder
+    elif multiplication_backend == 'convolution-v1':
+        from convolution import ConvolutionTraceBuilder
+        builder = ConvolutionTraceBuilder
+    else:
+        raise ValueError('unsupported multiplication backend')
+    g = builder(curve.name+'_base', operation_id, context)
     zero = g.constant('constant/zero', 0)
     five = g.constant('constant/five', 5)
     false = g.small_constant('constant/false', 0, 2)

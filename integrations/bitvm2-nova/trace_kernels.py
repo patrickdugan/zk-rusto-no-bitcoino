@@ -35,8 +35,17 @@ def gate(b: Builder, selector, cases):
     return yes
 
 
-@lru_cache(maxsize=128)
 def compile_predicate(p: int, kind: str, argument: tuple[int, ...] = ()) -> bytes:
+    # The optional backend validates types before its private cache, so a bool
+    # cannot alias an integer shape that was compiled earlier.
+    if kind in ('conv_split', 'conv_reconstruct', 'conv_ab', 'conv_pq', 'conv_column'):
+        from convolution import compile_convolution_predicate
+        return compile_convolution_predicate(p, kind, argument)
+    return _compile_predicate(p, kind, argument)
+
+
+@lru_cache(maxsize=128)
+def _compile_predicate(p: int, kind: str, argument: tuple[int, ...] = ()) -> bytes:
     """Compile a fixed shape. Parameters never contain claim values."""
     if kind in ('bool_xor', 'bool_and', 'bool_not'):
         if argument:
