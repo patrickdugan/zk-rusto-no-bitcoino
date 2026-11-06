@@ -50,7 +50,7 @@ fn full_tree_branch(leaves: &[TxMerkleNode], mut index: usize) -> Vec<TxMerkleNo
     let mut level = leaves.to_vec();
     let mut branch = Vec::new();
     while level.len() > 1 {
-        let sibling_index = if index % 2 == 0 {
+        let sibling_index = if index.is_multiple_of(2) {
             (index + 1).min(level.len() - 1)
         } else {
             index - 1
@@ -79,8 +79,7 @@ fn full_tree_oracle_metamorphisms_cover_every_position_to_width_32() {
         let leaves: Vec<_> = ids.iter().copied().map(node).collect();
         let root = full_tree_root(&leaves);
 
-        for index in 0..width {
-            let original_id = ids[index];
+        for (index, &original_id) in ids.iter().enumerate() {
             let branch = full_tree_branch(&leaves, index);
             let count = width as u32;
             let position = index as u32;
