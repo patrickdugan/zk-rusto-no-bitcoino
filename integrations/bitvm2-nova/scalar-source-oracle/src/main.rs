@@ -976,7 +976,7 @@ fn group_run(
 }
 
 fn point_identity(g: &Group) -> Value {
-    let mut row = json!({"name":g.name,"profile":g.profile,"role":g.role,"base_role":g.base_role,"rho_counter":g.rho_counter,"c_counter":g.c_counter,"bit_index":g.bit_index,"execution_mode":g.execution_mode,"source_sha256":g.source_sha256,"source_maps_sha256":g.source_maps_sha256,"chain_source_sha256":g.chain_source_sha256,"chain_source_maps_sha256":g.chain_source_maps_sha256});
+    let mut row = json!({"name":g.name,"profile":g.profile,"role":g.role,"base_role":g.base_role,"rho_counter":g.rho_counter,"c_counter":g.c_counter,"bit_index":g.bit_index,"execution_mode":g.execution_mode,"chain_source_sha256":g.chain_source_sha256,"chain_source_maps_sha256":g.chain_source_maps_sha256});
     for (key, value) in [
         ("asserted_scalar_le", json!(g.asserted_scalar_le)),
         (
@@ -1058,7 +1058,8 @@ fn run() -> Result<Value> {
     let mut cases = vec![];
     let mut probe_rows = BTreeMap::new();
     for g in &run.cases {
-        let (row, positive, reference) = group_run(&run, g, root, &mut records, &mut metrics)?;
+        let (row, positive, reference) = group_run(&run, g, root, &mut records, &mut metrics)
+            .map_err(|error| format!("case {}: {error}", g.point.name))?;
         cases.push(row);
         if let Some(keys) = positive {
             let point_run = run.point_run();
@@ -1307,6 +1308,89 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn report_keeps_point_and_outer_source_identities_separate() {
+        let empty = String::new();
+        let identity = legacy_transport::PointValue {
+            infinity: 1,
+            x_le: "00".repeat(32),
+            y_le: "00".repeat(32),
+        };
+        let point = Group {
+            name: "p/h".into(),
+            profile: "honest".into(),
+            role: "pallas_scalar".into(),
+            base_role: "pallas_base".into(),
+            rho_counter: 59,
+            c_counter: 60,
+            bit_index: 0,
+            execution_mode: "full".into(),
+            source_sha256: "11".repeat(32),
+            source_maps_sha256: "22".repeat(32),
+            chain_source_sha256: "33".repeat(32),
+            chain_source_maps_sha256: "44".repeat(32),
+            eval_w_le: empty.clone(),
+            prior_state_hex: empty.clone(),
+            compressed_coefficients_le: [empty.clone(), empty.clone()],
+            expected_rho_hi_output_state_hex: empty.clone(),
+            expected_rho_lo_output_state_hex: empty.clone(),
+            expected_rho_raw_state_le: empty.clone(),
+            expected_rho_result_le: empty.clone(),
+            expected_rho_quotient_le: empty.clone(),
+            expected_prefix_output_state_hex: empty.clone(),
+            expected_c_hi_output_state_hex: empty.clone(),
+            expected_c_lo_output_state_hex: empty.clone(),
+            expected_c_raw_state_le: empty.clone(),
+            expected_c_result_le: empty.clone(),
+            expected_c_quotient_le: empty.clone(),
+            asserted_scalar_le: empty.clone(),
+            asserted_scalar_quotient_le: empty.clone(),
+            selected_bit: 0,
+            canonical_bit: 0,
+            point_A: identity.clone(),
+            point_P: identity.clone(),
+            expected_E: identity.clone(),
+            expected_R: identity,
+            point_source_filename: empty.clone(),
+            point_source_file_sha256: empty.clone(),
+            point_source_file_bytes: 0,
+            point_maps_filename: empty.clone(),
+            point_maps_file_sha256: empty.clone(),
+            point_maps_file_bytes: 0,
+            chain_source_filename: empty.clone(),
+            chain_source_file_sha256: empty.clone(),
+            chain_source_file_bytes: 0,
+            chain_maps_filename: empty.clone(),
+            chain_maps_file_sha256: empty,
+            chain_maps_file_bytes: 0,
+            components: vec![],
+        };
+        let mut row = point_identity(&point);
+        // Same identity/statement field set added by group_run, without graphs,
+        // keys, Script execution or fabricated execution-success evidence.
+        chain::permutation::extend_object(
+            &mut row,
+            json!({
+                "point_source_sha256":point.source_sha256,
+                "point_source_maps_sha256":point.source_maps_sha256,
+                "source_sha256":"55".repeat(32), "source_maps_sha256":"66".repeat(32),
+                "asserted_block_hex":"", "asserted_block_sha256":"", "reference_block_sha256":"",
+                "asserted_equals_reference":true, "reference_admitted_native":false,
+                "reference":{}, "full_statement_executed":false,
+                "components":[], "connections":[], "forest":{}
+            }),
+        )
+        .unwrap();
+        assert_eq!(row["point_source_sha256"], "11".repeat(32));
+        assert_eq!(row["point_source_maps_sha256"], "22".repeat(32));
+        assert_eq!(row["source_sha256"], "55".repeat(32));
+        assert_eq!(row["source_maps_sha256"], "66".repeat(32));
+        assert_eq!(row["chain_source_sha256"], "33".repeat(32));
+        assert!(
+            chain::permutation::extend_object(&mut row, json!({"source_sha256":"duplicate"}))
+                .is_err()
+        );
+    }
     #[test]
     fn fixed_profile_census_is_new_not_old_gate() {
         assert_eq!(WORDS.iter().sum::<usize>(), 156330);
