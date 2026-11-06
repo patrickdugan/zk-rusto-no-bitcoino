@@ -1,5 +1,11 @@
 # Next implementation boundary
 
+[The streamed full-permutation graph](KECCAK-PERMUTATION.md) extends the linked
+Keccak pair to twelve bounded components with globally reused state signatures
+and hierarchical offline Taproot membership. Hosted measurement and execution
+are required before reporting its actual costs; authenticated sponge endpoints
+and the complete verifier remain unfinished.
+
 M2 and the subsequent arithmetic/WOTS milestones are integrated on main. The
 opt-in M2.1 footprint comparison is documented
 in [M2-COMPACT.md](M2-COMPACT.md); `m2` remains the default compiler. Its complete
@@ -67,8 +73,9 @@ framing, production sumcheck folds and terminal-equation helpers. Independent
 native oracles call actual Nova APIs; hosted execution is required before
 claiming their conformance. Genuine proof coefficients exercised from synthetic
 transcript states do not establish the actual proof's Fiat-Shamir replay.
-The Keccak Script work covers one permutation round with Boolean gates; linked
-round boundaries and a complete authenticated sponge remain open.
+The Keccak Script work covers individual rounds and a measured linked pair.
+The streamed 24-round graph and hierarchical membership now have dedicated
+hosted checks; a complete authenticated sponge remains open.
 
 [PROOF-ADMISSION.md](PROOF-ADMISSION.md) records actual k=5 IPA dimensions from
 the authenticated key (524,288 primary generators and 16,384 secondary), a

@@ -1,0 +1,65 @@
+name: BitVM2 Nova streamed Keccak permutation checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-keccak-full.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-keccak-full.yml']
+permissions:
+  contents: read
+jobs:
+  streamed-permutation-and-hierarchical-membership:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check sealed streaming topology, complete joins and corrupt shared state
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m pip install -r transcript-requirements.txt
+          /usr/bin/time -v -o results/keccak-full-python-time.txt \
+            timeout --signal=KILL 480s prlimit --as=268435456 --cpu=480 -- \
+            python -m unittest discover -s tests -p 'test_keccak_permutation*.py' -v \
+            2>&1 | tee results/keccak-full-python-tests.txt
+      - name: Build pinned worker and run tiny native forest/admission unit tests
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/keccak-full-rust-version.txt
+          rustfmt --edition 2021 --check rust-oracle/src/taproot_forest.rs rust-oracle/src/bin/keccak_full.rs
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/keccak-full-dependencies.txt
+          cargo test --locked --manifest-path rust-oracle/Cargo.toml --lib taproot_forest::tests -- --nocapture
+          cargo test --locked --manifest-path rust-oracle/Cargo.toml --bin keccak_full -- --nocapture
+          cargo build --locked --manifest-path rust-oracle/Cargo.toml --bin keccak_full
+      - name: Compile every leaf, reuse global signatures and execute hierarchical disproofs
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/keccak-full-execution-time.txt \
+            timeout --signal=KILL 1500s prlimit --as=536870912 --cpu=1500 -- \
+            python bench_keccak_permutation.py --cases-dir results/keccak-full-cases \
+            --native-worker rust-oracle/target/debug/keccak_full \
+            --output results/keccak-full-conformance.json | tee results/keccak-full-stdout.json
+          cat results/keccak-full-execution-time.txt
+          cp results/keccak-full-cases/manifest.json results/keccak-full-manifest.json
+          sha256sum results/keccak-full-manifest.json results/keccak-full-conformance.json > results/keccak-full-report-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-streamed-keccak-permutation-evidence
+          path: |
+            integrations/bitvm2-nova/results/keccak-full-*.json
+            integrations/bitvm2-nova/results/keccak-full-*.txt
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock

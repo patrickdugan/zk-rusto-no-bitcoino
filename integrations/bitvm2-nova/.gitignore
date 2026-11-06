@@ -26,3 +26,4 @@ results/native-ipa-generators/
 results/native-ipa-*
 results/sumcheck-*
 results/keccak-pair-*
+results/keccak-full-*

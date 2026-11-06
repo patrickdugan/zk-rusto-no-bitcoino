@@ -2,4 +2,5 @@
 pub mod engine;
 pub mod registry;
 pub mod taproot_commitment;
+pub mod taproot_forest;
 pub mod wots;
