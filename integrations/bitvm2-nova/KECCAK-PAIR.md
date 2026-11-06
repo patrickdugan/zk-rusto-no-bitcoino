@@ -119,4 +119,58 @@ single-assertion/signature binding and the Bitcoin transaction graph remain
 required. Full hash/transcript/proof/production flags stay false. Aggregate Script
 totals exclude control blocks, assertion signatures and transaction framing.
 
-Actual full-pair costs and native execution remain pending hosted CI.
+## Executed hosted evidence
+
+Code commit `f85621920ca8598d2397f4d516353eee5293b501` passed all nine workflows,
+including the complete **258-test Python suite**. The
+[linked-pair job](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42163639381/job/127714885585)
+passed 14 dedicated tests in 22.176 seconds, including the four actual full-pair
+tests that were skipped locally. It then executed five signed sessions,
+**116 Script vectors / 86 expected rejections**, and **27 native catalogue,
+registry, signature-count and ordinal rejections**.
+
+| Measurement | Actual value |
+| --- | ---: |
+| Complete catalogue words / leaves | 20,806 / 19,206 |
+| Aggregate disproof Script bytes | 90,256,702 |
+| Largest disproof Script | 4,975 bytes |
+| Honest leaves selected for engine execution | 24 |
+| Shared words / producer-consumer opening comparisons | 1,600 / 3,200 |
+| Selected producer control block | 481 bytes |
+| Global public-key / signature payload per session | 4,161,200 bytes each |
+| TEST-ONLY signatures across five sessions | 104,030 |
+| Peak stack / witness items | 35 / 31 |
+| Maximum witness payload | 600 bytes |
+
+Every leaf was compiled and measured; 24 selected honest leaves exercised all
+authenticated shapes and sampled endpoints. The complete 1,600-word linkage was
+checked separately through actual shared signature chunks. Peak witness counts
+include malformed length regressions; a normal three-slot gate has 30 signature
+items. These totals exclude transaction framing, control blocks and assertion
+signatures from the Script sum, and are not transaction weights or fees.
+
+The coherent wrong-middle session re-witnessed the consumer from a flipped first
+middle bit. Only producer ordinal **8002** was false; its actual signed Script
+disproof succeeded and passed membership in the complete malicious catalogue
+tree. Both honest and malicious complete trees were built, with matching byte
+totals and separate test keys/roots. Neither root is production assertion
+authority.
+
+The honest catalogue ID is
+`8ab3993cb532afa83c95c955c27db66ace1a9d6120435e69c5275af3b9718261`.
+Its leaf-stream SHA-256, using u32 LE Script lengths followed by exact Script
+bytes in ordinal order, is
+`9584830c6944aa783df73159999cc3bba5a1081657cc2f76dd89c10c2516553d`.
+
+The signed run took **133.105726144 seconds** and `/usr/bin/time` recorded
+**201,456 KiB (206,290,944 bytes) peak RSS**, within the stated hosted cap.
+Python generation took **3.642235014 seconds**, with **68,841,472 bytes peak RSS**.
+Its five-case corpus was **18,688,602 bytes**, SHA-256
+`db0799faa0c65aabdd53a0607b83db2f0496764efe01c68dc7fe5957264bf478`.
+No full pair, WOTS signing, native build or graph execution ran on the local PC.
+
+The earlier arithmetic, sumcheck and retained mathematical composition workflows
+also passed unchanged. No interpreter panic or cap failure was counted as a
+successful rejection. Full permutation/hash/transcript/proof and production
+binding flags remain false; twelve pairs do not yet constitute an authenticated
+24-round graph.

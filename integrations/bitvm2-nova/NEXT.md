@@ -175,14 +175,37 @@ isolated additions or native terminal checks do not supply those graphs.
 freshly building its child programs and merging exactly 1,600 producer-output /
 consumer-input slots. It preserves each child's injective word mapping and every
 leaf's occurrence/alias partition, commits the complete source topology, and
-retains both current Program and registry caps. Two rounds 0/1 have 19,206 leaves /
-20,806 global words; actual Script costs and complete-pair execution await hosted
-CI. The native helper checks all 3,200 shared opening comparisons separately
-from the selected honest Script executions.
+retains both current Program and registry caps. Code commit
+`f85621920ca8598d2397f4d516353eee5293b501` passed all nine workflows / 258 Python
+tests. Two rounds 0/1 have 19,206 leaves / 20,806 global words and cost 90,256,702
+actual authenticated disproof Script bytes. The native helper checked all 3,200
+shared opening comparisons separately from 24 selected honest leaf executions;
+five signed cases passed 116 Script vectors / 86 rejections, including a coherent
+wrong-middle disproof and complete-tree membership. The native run used
+133.105726144 seconds and 201,456 KiB peak RSS on the hosted runner.
 This would close one internal boundary only. Twelve such pairs still leave
 eleven inter-pair boundaries, absorption/padding/squeeze and the complete Nova
 transcript framing to authenticate. Registry/key and Taproot commitment order
 must remain acyclic; a resulting root cannot be its own input context.
+
+Read-only full-permutation design gives 230,510 total leaves, 249,710 summed
+pair-local words and 232,110 unique global words after the 17,600 inter-pair
+joins. Keep twelve bounded registries, not one oversized flat registry. A global
+topology/key catalogue must enforce injective local maps, exact adjacent
+intersections, disjoint nonadjacent maps, global key uniqueness and a single
+fixture signature/value per global word. Production signer equivocation is
+still open; fixture reuse alone does not supply assertion authority.
+
+A hierarchical Taproot constructor can combine twelve raw pair Merkle roots
+using mature `NodeInfo` APIs, retaining only the selected Script/path. It needs
+a separate combined-depth verifier; the existing local verifier must remain
+strict. Calculated global controls are 577..641 bytes. From the measured pair
+and source gate counts, all 24 rounds project to `1,083,080,424 + 38*L_NOT`
+Script bytes, at most 1,083,269,474 using the measured largest leaf as a bound,
+assuming unchanged compiler/key encodings. This is an unexecuted projection,
+not a full-24 measurement or runtime estimate. Any future orchestration needs
+an explicit global streaming budget while preserving per-pair caps, and must
+measure key/signature work, compilation and selected execution separately.
 
 Integrate authenticated assertions using the existing BitVM2 commitment
 mechanism. Define a static chunk graph and prove complete dispute coverage
