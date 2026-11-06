@@ -187,16 +187,41 @@ insufficient. A whole-file digest is an additional transport check. Keep bulk
 files on the hosted runner; retain the small collection, hashes, timings and
 evaluation evidence instead of downloading or uploading bulk files by default.
 
-## Independent real-proof evaluation remains future work
+## Export evidence and independent real-proof replay
+
+The optional exporter at `eb082648d19c2f33a38404b1e699415ab5d3875d` passed
+[native run42143751249](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42143751249),
+including25 replay-bin tests. It wrote119,674,848 bytes across six files in
+0.6657seconds without duplicating matrices in memory. The independent hosted
+checker matched all six file hashes,24 section hashes and24 headers/footers in
+0.1797seconds at28.8MB peak RSS. Export integrity does not establish polynomial
+or proof validity. No raw matrix file was downloaded or retained in artifacts.
+
+The5672-byte canonical collection is now independently pinned in
+`fixtures/nht4-genesis-0-2020-k5.matrix-collection.json` by
+`fb7dc2a6a27d366a742a97928dffa2209dfdb961f27190164e51494e7a6746e0`.
+Adjacent provenance records the authenticated source, completed job and
+independent integrity evidence. The full original VK, dimensions, key bindings,
+trace and Poseidon parameter pins remain unchanged.
 
 `matrix_reference.py` implements the bounded independent reader and polynomial
 evaluation. Twelve small tests cover both fields, ordinary and duplicate row
 entries, implicit zeros, malformed CSR data, exact arithmetic-section hashes,
 evaluation-point binding and zero assignment evaluation. Its default equality
 table budget is only1MiB. No real payload or large table was used locally.
-Real-proof integration still requires independently pinned actual collection
-data and hosted execution. The export-conformance CLI is hosted-only and reports
-all matrix/proof/Script verification flags false.
+`replay_production` optionally accepts that typed, separately pinned collection
+and a matrix directory. It reconstructs r_x, the full r_y, rho and eval_Z from
+the proof-bound transcript, computes all A/B/C evaluations and checks both inner
+terminal equations directly, including eval_Z=0. Results bind immutable points,
+roles and collection identities. Missing matrix parameters retain the earlier
+partial replay with a false matrix flag. Independent proof, IPA generator MSM
+and Script flags remain false in both modes.
+
+The real positive still requires the corresponding hosted execution. The CLI
+accepts `--matrix-dir results/native-matrices` only in the hosted environment,
+using an explicit64MiB equality-table budget and512MiB/300CPU-second/360wall-second
+process limits. Local code/tests use the1MiB default and no actual payloads.
+The separate export-conformance CLI reports all matrix/proof/Script flags false.
 
 Before using contents, validate initial/monotone/bounded pointer values, terminal
 pointer equality with entry count, equal data/index counts, canonical field

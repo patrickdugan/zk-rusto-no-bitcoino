@@ -6,10 +6,13 @@ import json
 from pathlib import Path
 import random
 import unittest
+from unittest.mock import patch
 
 from ipa_algebra import PALLAS, VESTA, test_generator, weights
+from matrix_reference import (COLLECTION_SCHEMA, ENCODING, MAX_TABLE_BYTES,
+    MatrixCollection, MatrixProfile)
 from nht4 import HEADER_BYTES, load_expected_json
-from proof_codec import decode_proof, load_dimensions_json
+from proof_codec import VerifierDimensions, decode_proof, load_dimensions_json
 from poseidon_reference import load_parameters_json
 from production_transcript import NovaTranscript
 from production_replay import (KEY_SCHEMA, TRACE_SCHEMA, ReplayKeyBindings,
@@ -22,6 +25,44 @@ DIMENSION_PIN = bytes.fromhex('de6333df2e41b5f5bae1c103fab862f8d6022fd54abeb80ba
 KEY_BINDINGS_PIN = bytes.fromhex('c8b117ea587c80bfdbdfc0cc262cdf68b1b4c07b3b45ba871413c7768aa62b9a')
 TRACE_PIN = bytes.fromhex('394d90b302b2fe6b8f5c0a65ada372d820996f3230770a816961a75cefec59b8')
 POSEIDON_PIN = bytes.fromhex('b55fa125133315243cb299ee7603c5f0508d68abf64f0dab43ecba4a0d09fa67')
+MATRIX_PROFILE_PIN = bytes.fromhex('7a69cdd0c39601c988c39719bbfc67386762d516eea8a3fcfc0e23c7938ac921')
+
+
+def diagnostic_matrix_collection(expected, dimensions, *, replacement_dimensions=False):
+    """TEST ONLY shape metadata; invented hashes never authenticate payloads.
+
+    Used exclusively to reach early policy and memory guards. No file exists,
+    no matrix is evaluated, and no production collection pin is synthesized.
+    """
+    data = json.loads((FIXTURES/'nht4-genesis-0-2020-k5.matrix-profile.json').read_bytes())
+    if replacement_dimensions:
+        descriptor = dimensions.json()
+        descriptor['primary']['ck_v_generators'] += 1
+        dimensions = VerifierDimensions.from_json(descriptor, expected,
+            expected_descriptor_sha256=canonical_sha256(descriptor))
+        data['verifier_dimensions_sha256'] = dimensions.descriptor_sha256.hex()
+    profile = MatrixProfile.from_json(data, expected, dimensions,
+        expected_profile_sha256=canonical_sha256(data) if replacement_dimensions else MATRIX_PROFILE_PIN)
+    collection = {k: v for k, v in data.items() if k not in ('scope', 'primary', 'secondary')}
+    collection.update(schema=COLLECTION_SCHEMA, encoding=ENCODING,
+                      matrix_profile_sha256=profile.profile_sha256.hex())
+    files = []
+    for role, engine in (('primary', 'pallas'), ('secondary', 'vesta')):
+        for matrix in ('A', 'B', 'C'):
+            shape, metadata = data[role]['matrices'][matrix], data[role]
+            offset, segments = 0, []
+            for name, size in zip(('data', 'indices', 'indptr', 'cols'),
+                    (8+32*shape['data_len'], 8+8*shape['indices_len'],
+                     8+8*shape['indptr_len'], 8), strict=True):
+                segments.append(dict(name=name, offset=offset, bytes=size, sha256='00'*32))
+                offset += size
+            files.append(dict(role=role, engine=engine, field_role=engine+'_scalar',
+                matrix=matrix, filename=f'{role}-{matrix}.csr.bin', **shape,
+                **{k: metadata[k] for k in ('num_cons', 'num_vars', 'num_io')},
+                bytes=offset, sha256='00'*32, segments=segments))
+    collection.update(files=files, total_bytes=sum(item['bytes'] for item in files))
+    return MatrixCollection.from_json(collection, expected, profile,
+        expected_collection_sha256=canonical_sha256(collection))
 
 
 def synthetic_keccak(engine, operations):
@@ -348,9 +389,51 @@ class ActualRetainedProductionReplay(unittest.TestCase):
             self.assertTrue(engine['outer_terminal_checked'])
             self.assertTrue(engine['batch_terminal_checked'])
             self.assertFalse(engine['matrix_evaluations_verified'])
+            self.assertIsNone(engine['matrices'])
+            self.assertEqual(len(engine['inner_rho_le']), 64)
             self.assertFalse(engine['ipa']['generator_msm_verified'])
         for name in ('proof_verified', 'bitvm2_script_verified', 'ipa_generator_msm_verified'):
             self.assertFalse(self.result[name])
+        self.assertFalse(self.result['matrix_evaluations_verified'])
+        self.assertIsNone(self.result['matrix_collection_sha256'])
+        self.assertIsNone(self.result['matrix_profile_sha256'])
+        for name in ('matrix_files_checked', 'matrix_inner_terminals_checked',
+                     'matrix_entries_checked', 'matrix_bytes_checked'):
+            self.assertEqual(self.result[name], 0)
+
+    def test_matrix_optional_inputs_are_typed_bound_and_reject_unused_directory(self):
+        def guarded(**kwargs):
+            # None trace proves these are early guards, before trace processing,
+            # matrix IO, or any possible large-table allocation.
+            return replay_production(self.decoded, self.expected, self.bindings, None,
+                expected_trace_sha256=TRACE_PIN, poseidon_parameters=self.parameters, **kwargs)
+        for directory in ('unused', Path('unused'), False, {}):
+            with self.subTest(directory=directory), self.assertRaisesRegex(ValueError, 'directory requires'):
+                guarded(matrix_directory=directory)
+        for value in (False, True, {}, self.parameters):
+            with self.subTest(type=type(value)), self.assertRaisesRegex(ValueError, 'typed matrix collection'):
+                guarded(matrix_collection=value, matrix_directory='unused')
+        wrong = diagnostic_matrix_collection(self.expected, self.dimensions,
+                                              replacement_dimensions=True)
+        with self.assertRaisesRegex(ValueError, 'matching dimensions'):
+            guarded(matrix_collection=wrong, matrix_directory='unused')
+        collection = diagnostic_matrix_collection(self.expected, self.dimensions)
+        for directory in (None, False, {}, [], 0):
+            with self.subTest(directory=directory), self.assertRaisesRegex(ValueError, 'directory path required'):
+                guarded(matrix_collection=collection, matrix_directory=directory)
+        for budget in (False, True, 31, MAX_TABLE_BYTES+1, 1.5):
+            with self.subTest(budget=budget), self.assertRaisesRegex(ValueError, 'memory budget'):
+                guarded(max_table_bytes=budget)
+
+    def test_matrix_real_dimension_memory_guard_precedes_io_without_allocating_tables(self):
+        # This is shape-valid test metadata with invented file hashes. It cannot
+        # verify any payload and is used only to reach the explicit memory guard.
+        collection = diagnostic_matrix_collection(self.expected, self.dimensions)
+        with patch('matrix_reference._open', side_effect=AssertionError('unexpected matrix IO')):
+            with self.assertRaisesRegex(ValueError, 'exceed explicit memory budget'):
+                replay_production(self.decoded, self.expected, self.bindings, self.trace,
+                    expected_trace_sha256=TRACE_PIN, poseidon_parameters=self.parameters,
+                    matrix_collection=collection, matrix_directory='unused')
 
     def test_capture_pin_is_independent_of_edited_trace_metadata(self):
         changed = deepcopy(self.trace)

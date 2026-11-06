@@ -1,9 +1,11 @@
 """Malformed report transport checks; these are not native proof receipts."""
 from copy import deepcopy
 import json
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 from bench_replay import DIMENSION_PIN, KEY_PIN, POSEIDON_PIN, run
 from nht4 import load_expected_json
@@ -68,6 +70,11 @@ class ReplayReportTransport(unittest.TestCase):
         value = deepcopy(self.base)
         value['poseidon_parameters']['primary']['wide']['capacity'] = True
         self.rejected(value, 'unsupported Poseidon profile identity')
+
+    def test_actual_matrix_replay_is_blocked_before_local_input_io(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(ValueError, 'hosted-GitHub-Actions-only'):
+                run(Path('not-read-native-report.json'), matrix_dir=Path('not-read-matrices'))
 
 
 if __name__ == '__main__':

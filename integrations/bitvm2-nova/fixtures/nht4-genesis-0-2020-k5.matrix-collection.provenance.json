@@ -1,0 +1,17 @@
+{
+  "schema": "bitvm2-nova-matrix-collection-provenance/v1",
+  "source_commit": "eb082648d19c2f33a38404b1e699415ab5d3875d",
+  "workflow_run": 42143751249,
+  "job_id": 127650112093,
+  "source_evidence": "Completed hosted job stdout after original VK authentication and independent full-file/section hashing. Bulk matrix files were neither downloaded nor uploaded.",
+  "matrix_collection_sha256": "fb7dc2a6a27d366a742a97928dffa2209dfdb961f27190164e51494e7a6746e0",
+  "canonical_bytes": 5672,
+  "canonicalization": "Sorted compact ASCII-escaped UTF8 JSON, no trailing LF.",
+  "capture_sha256": "373556f56df9eb374eb9858f5de6ecf505d22e60c9790febe7e3f7ae71da716b",
+  "source_native_report_sha256": "587c3f7dec11ebd7bc794502e013b9617ab80934d7abf4cd78c16fc3a5969424",
+  "matrix_profile_sha256": "7a69cdd0c39601c988c39719bbfc67386762d516eea8a3fcfc0e23c7938ac921",
+  "actual_payload_bytes": 119674848,
+  "whole_file_hashes_checked": 6,
+  "segment_hashes_checked": 24,
+  "scope": "Authenticated collection pins for later independent polynomial evaluation; export integrity alone is not matrix or proof verification."
+}

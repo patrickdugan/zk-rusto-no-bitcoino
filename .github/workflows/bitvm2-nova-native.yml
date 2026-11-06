@@ -275,9 +275,28 @@ jobs:
       - name: Independently replay proof-bound production transcript events
         run: |
           set -euo pipefail
-          python bench_replay.py --native-report results/native-replay-execution.json \
+          /usr/bin/time -v -o results/native-production-python-replay-time.txt \
+            timeout --signal=KILL 360s prlimit --as=536870912 --cpu=300 -- \
+            python bench_replay.py --native-report results/native-replay-execution.json \
+            --matrix-dir results/native-matrices \
             --output results/native-production-python-replay.json \
             | tee results/native-production-python-replay-summary.json
+          cat results/native-production-python-replay-time.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          replay = json.loads(Path('results/native-production-python-replay.json').read_bytes())['replay']
+          if (replay.get('matrix_evaluations_verified') is not True
+                  or replay.get('matrix_files_checked') != 6
+                  or replay.get('matrix_inner_terminals_checked') != 2
+                  or replay.get('matrix_entries_checked') != 2667462
+                  or replay.get('matrix_bytes_checked') != 119674848
+                  or replay.get('matrix_collection_sha256') != 'fb7dc2a6a27d366a742a97928dffa2209dfdb961f27190164e51494e7a6746e0'):
+              raise SystemExit('independent actual matrix replay coverage mismatch')
+          if any(replay.get(flag) is not False for flag in
+                 ('ipa_generator_msm_verified', 'proof_verified', 'bitvm2_script_verified')):
+              raise SystemExit('matrix replay overclaimed an unimplemented verification stage')
+          PY
       - name: Compare genuine proof coefficients in explicit synthetic transcript states
         run: |
           set -euo pipefail

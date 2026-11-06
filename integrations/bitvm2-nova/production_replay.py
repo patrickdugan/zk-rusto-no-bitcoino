@@ -3,17 +3,21 @@
 This reconstructs production absorption objects/order from an admitted proof,
 independently pinned key metadata/parameters, and caller-owned NHT4 expectations.
 Keccak states/challenges, Poseidon sponge hashes, tiny NIFS folds, batching and
-IPA scalar factors are computed here. Matrix evaluations and the large generator
-MSM are NOT independently evaluated. Explicit native-only Poseidon diagnostics
-remain available with a false verification flag. This is conformance evidence,
-not standalone proof verification.
+IPA scalar factors are computed here. Optional separately pinned matrix streams
+enable independent A/B/C evaluations and direct inner sumcheck terminal checks.
+The large generator MSM remains unevaluated. Explicit native-only Poseidon
+diagnostics remain available with a false verification flag. This is conformance
+evidence, not standalone proof verification.
 """
 from dataclasses import dataclass
 from hashlib import sha256
 from hmac import compare_digest
 import json
+from pathlib import Path
 
 from ipa_algebra import PALLAS, VESTA
+from matrix_reference import (DEFAULT_TABLE_BYTES, MAX_TABLE_BYTES,
+    MatrixCollection, check_inner_terminal, evaluate_role)
 from nht4 import ExpectedBundle, HEADER_REVISION
 from poseidon_reference import PoseidonParameters, PoseidonProfile, sponge_hash
 from proof_codec import (BASE_MODULI, SCALAR_MODULI, DecodedProof,
@@ -456,7 +460,8 @@ def _sumcheck(te, value, initial, rounds, degree):
     return claim, tuple(challenges)
 
 
-def _spartan_replay(instance, proof, key, shape, events):
+def _spartan_replay(instance, proof, key, shape, events, *, matrix_collection=None,
+                    matrix_directory=None, max_table_bytes=DEFAULT_TABLE_BYTES):
     engine, q, curve = instance.engine, SCALAR_MODULI[instance.engine], CURVES[instance.engine]
     te = _KeccakReplay(engine, events)
     te.scalars(b'vk', (key.spartan_vk_digest,))
@@ -477,7 +482,26 @@ def _spartan_replay(instance, proof, key, shape, events):
     if eval_z == 0 and inner_claim != 0:
         raise ValueError('zero inner assignment evaluation has nonzero claim')
     required_matrix = None if not eval_z else inner_claim*pow(eval_z, -1, q) % q
-    # Computing the actual key's A/B/C evaluations is intentionally separate.
+    matrix_diagnostics = None
+    if matrix_collection is not None:
+        role = 'primary' if engine == 'pallas' else 'secondary'
+        matrix_results = evaluate_role(matrix_collection, role, r_x, r_y,
+            directory=matrix_directory, max_table_bytes=max_table_bytes)
+        # Compare the direct equation even when eval_Z==0; a divided required
+        # value is diagnostic data and never stands in for matrix evaluation.
+        combination = check_inner_terminal(matrix_results, inner_rho, eval_z, inner_claim)
+        if any(result.r_x != r_x or result.r_y != r_y for result in matrix_results):
+            raise ValueError('matrix evaluations differ from reconstructed transcript points')
+        matrix_diagnostics = {
+            'role': role, 'field_role': engine+'_scalar',
+            'collection_sha256': matrix_collection.collection_sha256.hex(),
+            'matrix_profile_sha256': matrix_collection.profile.profile_sha256.hex(),
+            'source': 'independently pinned original VK CSR matrix streams',
+            'combination_le': _le(combination), 'inner_terminal_checked': True,
+            'evaluations': [{'matrix': result.matrix, 'value_le': _le(result.value),
+                'entries_checked': result.entries_checked, 'bytes_checked': result.bytes_checked,
+                'arithmetic_segments_authenticated': result.arithmetic_segments_authenticated}
+                for result in matrix_results]}
     te.scalars(b'w', (eval_w,))
     batch_rho = te.squeeze(b'r')
     counts = (len(r_y)-1, len(r_x))
@@ -527,9 +551,10 @@ def _spartan_replay(instance, proof, key, shape, events):
         'instance': _instance_json(instance), 'tau_le': [_le(x) for x in tau],
         'r_x_le': [_le(x) for x in r_x], 'outer_final_le': _le(outer_claim),
         'outer_terminal_checked': True, 'r_y_le': [_le(x) for x in r_y],
-        'inner_final_le': _le(inner_claim), 'eval_z_le': _le(eval_z),
+        'inner_rho_le': _le(inner_rho), 'inner_final_le': _le(inner_claim), 'eval_z_le': _le(eval_z),
         'required_matrix_combination_le': None if required_matrix is None else _le(required_matrix),
-        'matrix_evaluations_verified': False, 'batch_rho_le': _le(batch_rho),
+        'matrix_evaluations_verified': matrix_diagnostics is not None,
+        'matrices': matrix_diagnostics, 'batch_rho_le': _le(batch_rho),
         'batch_challenges_le': [_le(x) for x in r_batch],
         'batch_final_le': _le(batch_claim), 'batch_terminal_checked': True,
         'joint_challenge_le': _le(joint_challenge), 'joint_commitment': _point_hex(joint_comm),
@@ -548,13 +573,18 @@ def _spartan_replay(instance, proof, key, shape, events):
 
 
 def replay_production(decoded, expected, bindings, native_trace, *, expected_trace_sha256,
-                      poseidon_parameters=None, allow_native_poseidon=False):
+                      poseidon_parameters=None, allow_native_poseidon=False,
+                      matrix_collection=None, matrix_directory=None,
+                      max_table_bytes=DEFAULT_TABLE_BYTES):
     """Check a separately pinned native capture against proof/key-derived events.
 
     The default requires independently pinned Poseidon parameters and computes
     every full hash. Omitting them requires an explicit diagnostic opt-in, which
     retains a false independent-Poseidon flag. Captures and metadata require
-    separate caller-owned pins. Replay never returns ``proof_verified=True``.
+    separate caller-owned pins. Optional matrix checking requires an independently
+    authenticated collection and its payload directory. Its default1MiB table
+    budget prevents accidental large allocations on the local PC; hosted callers
+    must explicitly raise it. Replay never returns ``proof_verified=True``.
     """
     if (type(decoded) is not DecodedProof or type(expected) is not ExpectedBundle
             or type(bindings) is not ReplayKeyBindings):
@@ -567,6 +597,17 @@ def replay_production(decoded, expected, bindings, native_trace, *, expected_tra
         raise ValueError('replay policy identity mismatch')
     if not compare_digest(decoded.proof_sha256, expected.proof_sha256) or decoded.proof_bytes != expected.proof_bytes:
         raise ValueError('replay proof differs from verifier-owned proof identity')
+    _integer(max_table_bytes, 32, MAX_TABLE_BYTES, 'matrix equality table memory budget')
+    if matrix_collection is None:
+        if matrix_directory is not None:
+            raise ValueError('matrix directory requires an authenticated collection')
+    else:
+        if (type(matrix_collection) is not MatrixCollection
+                or matrix_collection.profile.dimensions != decoded.dimensions):
+            raise ValueError('typed matrix collection with matching dimensions required')
+        if (matrix_directory is None
+                or (type(matrix_directory) is not str and not isinstance(matrix_directory, Path))):
+            raise ValueError('matrix directory path required with authenticated collection')
     if type(allow_native_poseidon) is not bool:
         raise ValueError('native-only diagnostic opt-in must be boolean')
     if poseidon_parameters is None:
@@ -628,11 +669,18 @@ def replay_production(decoded, expected, bindings, native_trace, *, expected_tra
             _scalar(proof[f'wit_blind_r_Wn_{role}'], q),
             _scalar(proof[f'err_blind_r_Wn_{role}'], q)))
     primary = _spartan_replay(unblinded[0], proof['snark_primary'], bindings.primary,
-        decoded.dimensions.primary, streams['keccak', 'pallas', 0])
+        decoded.dimensions.primary, streams['keccak', 'pallas', 0],
+        matrix_collection=matrix_collection, matrix_directory=matrix_directory,
+        max_table_bytes=max_table_bytes)
     secondary = _spartan_replay(unblinded[1], proof['snark_secondary'], bindings.secondary,
-        decoded.dimensions.secondary, streams['keccak', 'vesta', 0])
+        decoded.dimensions.secondary, streams['keccak', 'vesta', 0],
+        matrix_collection=matrix_collection, matrix_directory=matrix_directory,
+        max_table_bytes=max_table_bytes)
+    independent_matrices = all(result['matrix_evaluations_verified'] for result in (primary, secondary))
     scope = ('proof-bound independently computed Keccak and Poseidon replay' if independent_poseidon
              else 'diagnostic proof-bound Keccak replay with native-only Poseidon results')
+    if independent_matrices:
+        scope += ' with authenticated CSR matrix evaluations and inner terminals'
     return {'passed': True, 'scope': scope,
         'proof_sha256': decoded.proof_sha256.hex(), 'native_trace_sha256': capture_sha.hex(),
         'key_bindings_sha256': bindings.metadata_sha256.hex(),
@@ -644,6 +692,14 @@ def replay_production(decoded, expected, bindings, native_trace, *, expected_tra
         'poseidon_return_truncations_checked': True,
         'nifs_challenges_le': {'secondary_ordinary': _le(challenge_f),
             'secondary_relaxed': _le(challenge_s), 'primary_relaxed': _le(challenge_p)},
-        'engines': [primary, secondary], 'matrix_evaluations_verified': False,
+        'engines': [primary, secondary], 'matrix_evaluations_verified': independent_matrices,
+        'matrix_collection_sha256': matrix_collection.collection_sha256.hex() if independent_matrices else None,
+        'matrix_profile_sha256': matrix_collection.profile.profile_sha256.hex() if independent_matrices else None,
+        'matrix_files_checked': 6 if independent_matrices else 0,
+        'matrix_inner_terminals_checked': 2 if independent_matrices else 0,
+        'matrix_entries_checked': sum(item['entries_checked'] for result in (primary, secondary)
+            for item in result['matrices']['evaluations']) if independent_matrices else 0,
+        'matrix_bytes_checked': sum(item['bytes_checked'] for result in (primary, secondary)
+            for item in result['matrices']['evaluations']) if independent_matrices else 0,
         'ipa_generator_msm_verified': False, 'proof_verified': False,
         'bitvm2_script_verified': False, 'transactions_broadcast': 0}
