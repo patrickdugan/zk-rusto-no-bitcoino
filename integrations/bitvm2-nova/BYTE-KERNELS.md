@@ -81,7 +81,7 @@ authentication and all baseline conversion bridges:
 Thus fewer byte leaves do not by themselves establish lower Script cost.
 Rotation bodies for r=1-7 are 143, 243, 343, 439, 535, 631 and 727 bytes;
 public-mask bodies for 0, 1, 128, 129 and 255 are 23, 321, 83, 337 and 31 bytes.
-Their authenticated costs still require actual registry construction.
+Their measured authenticated costs are recorded below.
 
 ## Verification boundary
 
@@ -98,8 +98,82 @@ catalogue/key/JSON mutations and records malformed/authentication guards.
 Independent integer references and bare exhaustive XOR/AND checks are counted
 separately from WOTS vectors. Inputs are freshly generated and hashed before a
 direct resource-capped configured worker is launched; imported result receipts
-are not accepted. Actual costs and runtime coverage are recorded only after
-that execution succeeds.
+are not accepted.
+
+## Executed hosted measurements
+
+The [byte-kernel run](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42217850012)
+passed on source commit `17e687831aaaf1c16a96aa1f2c868440f3438114`.
+All 16 focused Python tests passed, including the 1,912 bounded Script calls in
+the nine kernel tests. Nine native registry tests and five worker tests also
+passed. All fourteen workflows passed on that source commit, including the
+primitive workflow's 351 Python tests.
+
+The complete isolated statements measured identically in both Pasta scalar
+roles. All byte-to-bit conversions are included in the Boolean baseline:
+
+| Operation | Byte candidate | Complete Boolean baseline | Reduction |
+| --- | ---: | ---: | ---: |
+| XOR | 5,610 | 95,018 | 89,408 bytes (94.10%) |
+| AND | 5,594 | 94,954 | 89,360 bytes (94.11%) |
+| NOT | 3,336 | 63,476 | 60,140 bytes (94.74%) |
+
+All figures are actual compiled authenticated disproof Script bytes. The binary
+baselines comprise 55,218 conversion bytes plus 39,800 XOR or 39,736 AND gate
+bytes. The unary baseline comprises 36,812 conversion bytes plus 26,664 NOT gate
+bytes. Each preserved bridge pair is 14,882 bytes for `bits(8)` plus 3,524 for
+`conv_reconstruct(8)`. The gate-only diagnostic excludes conversions and is not
+an alternative complete byte-port baseline.
+
+| Cross-byte shift r | Authenticated join bytes |
+| --- | ---: |
+| 1 | 5,079 |
+| 2 | 5,179 |
+| 3 | 5,279 |
+| 4 | 5,375 |
+| 5 | 5,471 |
+| 6 | 5,567 |
+| 7 | 5,663 |
+
+Public-mask leaf costs were 3,328 bytes for mask 0, 3,626 for 1, 3,388 for 128,
+3,642 for 129 and 3,336 for 255. An already-bit-encoded one-bit mask may need
+only one measured Boolean NOT leaf, 3,333 bytes. Thus mask 1 and mask 128 have
+higher gate-only costs in this comparison; rotations also add work where a
+bit-level graph could route wires for free. These negative cases reinforce why
+the table does not establish whole-permutation savings.
+
+The worker measured all 398 leaves in 60 tiny catalogues containing 672 words,
+creating each test signature once per wire. Every leaf executed in correctness
+and disproof mode. It passed **3,232 WOTS Script vectors**, including **2,834
+expected rejections**, of which 2,436 were malformed/authentication guards over
+174 authenticated layouts. It also rejected 1,432 native catalogue/API
+mutations, compared 416 distinct baseline bit-opening links and 52 auxiliary
+opening links, and checked all 544 formal bit uses including aliases. All 21
+actual byte kind/parameter/alias body shapes matched across P and Q.
+
+Separate bare checks exhaustively covered all 65,536 byte-input pairs for each
+of XOR and AND: **131,072 pairs**. These plus 512 ordinary-false inverse probes
+and 512 correctness inverse probes used 132,608 engine executions. Another 78
+malformed/range probes used 156 executions and required both modes to fail;
+these numeric aborts were not counted as successful disproofs or WOTS vectors.
+No native panic was counted as rejection.
+
+Maximum WOTS vector Script size was 14,882 bytes, maximum stack 95 items and
+maximum observed witness 91 items including malformed tests, with 1,800 payload
+bytes. Bare checks peaked at 24 stack items. The native worker took
+4.302114341 seconds; generation plus execution took 4.35903158 seconds. Parent
+peak RSS and the outer `time -v` maximum were both 24,195,072 bytes (23,628 KiB);
+these are the same observed peak and are not added together. The original
+512-MiB worker cap remained in force. These are small-kernel conformance
+measurements, not prover timings or Bitcoin transaction costs.
+
+Exact input corpus: 231,223 bytes, SHA-256
+`528540befdec842433e1fee0d3de385fa970ed93e95936ce9b5962123493f46c`.
+The WOTS vector stream was hashed without writing a raw vector file:
+40,438,918 bytes, SHA-256
+`ddbf1faf870724dbf3508b693c8c8bc4fd7623aeb5c0b45071591352b2cc8076`.
+All hash, full-permutation, transcript, proof and production authority flags
+remain false.
 
 No byte Keccak permutation, full hash, transcript or Nova/Spartan verifier is
 implemented by this kernel experiment. Production WOTS lifecycle, assertions
@@ -107,3 +181,10 @@ and the Bitcoin transaction graph remain open. Existing Boolean graphs,
 framed-LO conformance, header provers and k-sized proving profiles are retained.
 Script accounting excludes transaction framing, control blocks and assertion
 signature payloads.
+
+The next bounded backend step is a sealed byte round with 200 ordered BYTE
+inputs and 200 distinct terminal outputs, each tied to one actual producer.
+Public Rho/Pi routing may alias references; output identities must not depend
+on claim values. Differential and authenticated one-round measurements are
+required before composing multiple rounds or claiming that two branches fit
+the current forest budget.

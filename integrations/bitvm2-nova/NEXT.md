@@ -5,6 +5,12 @@ byte operations and a conversion-complete Boolean comparison before any byte
 permutation is built. Existing Boolean/convolution compilers and graphs remain
 the baselines. Authenticated measurements, rather than leaf-count projections,
 determine the next footprint decision.
+Its hosted run passed 3,232 WOTS vectors with 2,834 expected rejections, separate
+exhaustive XOR/AND checks and explicit numeric-abort probes. Complete isolated
+byte-port XOR/AND/NOT statements measured 5,610/5,594/3,336 Script bytes versus
+95,018/94,954/63,476 for conversion-complete Boolean baselines in either scalar
+role. These are kernel results, not full-permutation savings. The next step is
+a sealed one-round byte graph with authenticated producer-linked output ports.
 
 [The framed LO endpoint composition](KECCAK-ENDPOINT.md) adds a separate
 thirteen-component experiment: one streamed permutation, its 256 LO output
