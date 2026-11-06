@@ -699,16 +699,17 @@ mod tests {
         G::AffineGroupElement,
         Vec<G::AffineGroupElement>,
     ) {
-        let challenges = vec![G::Scalar::from(2), G::Scalar::from(3), G::Scalar::from(5)];
-        let inverses = challenges
+        let challenges: Vec<G::Scalar> =
+            vec![G::Scalar::from(2), G::Scalar::from(3), G::Scalar::from(5)];
+        let inverses: Vec<G::Scalar> = challenges
             .iter()
             .map(|u| Option::<G::Scalar>::from(u.invert()).unwrap())
             .collect::<Vec<_>>();
-        let bases = (1..=8)
+        let bases: Vec<G::AffineGroupElement> = (1..=8)
             .map(|i| (G::gen() * G::Scalar::from(i)).affine())
             .collect::<Vec<_>>();
-        let u0 = (G::gen() * G::Scalar::from(37)).affine();
-        let mut statement = Statement {
+        let u0: G::AffineGroupElement = (G::gen() * G::Scalar::from(37)).affine();
+        let mut statement: Statement<G> = Statement {
             commitment: G::zero().affine(),
             evaluation: G::Scalar::from(23),
             point: vec![G::Scalar::from(7), G::Scalar::from(11), G::Scalar::from(13)],
@@ -729,7 +730,7 @@ mod tests {
             python_residual: G::zero().affine(),
         };
         // Independent explicit MSB-order tensor products and naive small MSM.
-        let mut target = G::zero();
+        let mut target: G = G::zero();
         for (index, base) in bases.iter().enumerate() {
             let mut weight = G::Scalar::ONE;
             for j in 0..3 {
@@ -742,8 +743,9 @@ mod tests {
             target += G::group(base) * weight;
         }
         target = target * statement.a_hat;
-        let offset = small_side(&statement, &u0);
-        statement.commitment = (target - offset).affine();
+        let offset: G = small_side::<G>(&statement, &u0);
+        let committed: G = target - offset;
+        statement.commitment = committed.affine();
         statement.python_residual = target.affine();
         (statement, u0, bases)
     }
@@ -761,7 +763,7 @@ mod tests {
             );
             bases.swap(0, 1);
             statement.a_hat += G::Scalar::ONE;
-            statement.python_residual = small_side(&statement, &u0).affine();
+            statement.python_residual = small_side::<G>(&statement, &u0).affine();
             assert_eq!(
                 relation(&statement, &u0, &bases).unwrap()["relation_holds"],
                 false
