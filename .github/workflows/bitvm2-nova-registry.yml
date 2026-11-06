@@ -33,10 +33,10 @@ jobs:
           rustup update stable --no-self-update
           rustup default stable
           rustc --version | tee results/registry-ci-rust-version.txt
-          rustfmt --edition 2021 --check rust-oracle/src/lib.rs rust-oracle/src/registry.rs rust-oracle/src/engine.rs rust-oracle/src/bin/registry.rs
+          rustfmt --edition 2021 --check rust-oracle/src/lib.rs rust-oracle/src/registry.rs rust-oracle/src/engine.rs rust-oracle/src/bin/registry.rs rust-oracle/src/taproot_commitment.rs rust-oracle/src/bin/taproot.rs
           cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
           cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/registry-ci-dependencies.txt
-          cargo build --locked --manifest-path rust-oracle/Cargo.toml --bin registry
+          cargo build --locked --manifest-path rust-oracle/Cargo.toml --bin registry --bin taproot
       - name: Execute linked assertions and measure complete catalogues
         run: |
           set -o pipefail
@@ -95,6 +95,46 @@ jobs:
           Path('results/convolution-wots-comparison.json').write_text(json.dumps(report, indent=2)+'\n')
           print(json.dumps(report))
           PY
+      - name: Check streamed Taproot trees against ordinary small trees
+        run: |
+          set -euo pipefail
+          cargo test --locked --jobs 2 --manifest-path rust-oracle/Cargo.toml --lib taproot_commitment::tests \
+            2>&1 | tee results/taproot-unit-tests.txt
+          cargo test --locked --jobs 2 --manifest-path rust-oracle/Cargo.toml --bin taproot \
+            2>&1 | tee results/taproot-bin-unit-tests.txt
+      - name: Commit complete convolution catalogues and check selected openings
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/taproot-registry-time.txt \
+            timeout --signal=KILL 300s prlimit --as=536870912 --cpu=300 -- \
+            rust-oracle/target/debug/taproot results/convolution-registry-inputs.json \
+            results/taproot-registry-execution.json \
+            | tee results/taproot-registry-stdout.json
+          cat results/taproot-registry-time.txt
+          sha256sum results/taproot-registry-execution.json > results/taproot-registry-sha256.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('results/taproot-registry-execution.json').read_bytes())
+          if report.get('schema') != 'bitvm2-nova-offline-taproot-commitments/v1' or report.get('passed') is not True:
+              raise SystemExit('actual offline commitment result required')
+          if (report['measured_cases'], report['tree_constructions'],
+              report['unique_catalogue_script_bytes'], report['compiled_script_bytes_over_tree_constructions']) != (4, 8, 191269294, 382538588):
+              raise SystemExit('complete catalogue accounting changed')
+          counts = report['native_negative_counts']
+          if len(counts) != 14 or counts.get('constructor_ordinal') != 4 or sum(counts.values()) != 108:
+              raise SystemExit('membership negative coverage changed')
+          if len(report['ledger']) != 8 or any(row['control_membership_verified'] is not True or row['script_execution_verified'] is not False for row in report['ledger']):
+              raise SystemExit('selected opening evidence missing')
+          for flag in ('taproot_roots_independently_pinned', 'script_execution_verified',
+                       'wots_witness_verified', 'bitcoin_script_verified', 'assertion_utxo_binding',
+                       'bitcoin_transaction_binding', 'bitcoin_transaction_graph',
+                       'complete_nova_verifier', 'complete_bitvm2_verifier'):
+              if report.get(flag) is not False:
+                  raise SystemExit('offline membership scope exceeded: '+flag)
+          if report.get('assertion_signatures_created') != 0 or report.get('transactions_broadcast') != 0:
+              raise SystemExit('offline commitment performed a prohibited action')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -102,4 +142,5 @@ jobs:
           path: |
             integrations/bitvm2-nova/results/registry-*
             integrations/bitvm2-nova/results/convolution-*
+            integrations/bitvm2-nova/results/taproot-*
             integrations/bitvm2-nova/rust-oracle/Cargo.lock

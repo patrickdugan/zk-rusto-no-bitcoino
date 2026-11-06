@@ -85,7 +85,9 @@ computes all five full hashes from separately pinned actual-key parameters.
 [Authenticated matrix streams](nova-oracle/MATRIX-PROFILE.md) now support the
 independent evaluation of all six actual matrices and both inner sumcheck
 terminals on the retained proof. The full generator MSM remains unchecked by
-Python; the complete authenticated Script verifier is still unfinished.
+Python, but both native library IPA terminal checks now pass over the complete
+generator vectors through direct trusted helper execution as recorded below.
+The complete authenticated Script verifier is still unfinished.
 
 Instrument the pinned Nova implementation rather than substitute the
 TEST-ONLY transcript. Account for its challenge reduction and byte encodings.
@@ -98,17 +100,45 @@ variants. Compare against the real NHT4 fixtures on the pinned header branch.
 The k=5 dimension is now measured; k=1 remains unmeasured here. Stream generator
 access and coefficient computation. Include cold parameter generation and
 verification in the RAM measurement. The native upstream IPA implementation
-still needs a generator MSM whose length depends on circuit width.
+uses a generator MSM whose length depends on circuit width; the retained run
+below measures its actual k=5 dimension.
 
-The next bounded IPA step is an authenticated export of the actual ordered
-`vk_ee.ck_v.ck` generators, preserving canonical compressed points and rejecting
-the identity-sign alias. The known counts are524,288 and16,384; their calculated
-vector payload is17,301,520 bytes, not measured export evidence. Reuse the
-released mature CPU MSM APIs on hosted runners and bind the complete tensor
-weights and resulting point to the proof-derived transcript/residual. A native
-JSON receipt or sampled generator weights cannot authorize proof acceptance.
+The actual ordered `vk_ee.ck_v.ck` generator export and the next bounded native
+IPA execution step have now passed. Main
+`024802628267d2fa1f55e8e73e91c17398fb019f` completed the
+[hosted native job](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42150230495/job/127671408410)
+with **524,288 primary generators / 19 rounds** and **16,384 secondary generators /
+14 rounds**, authenticating **17,301,520 serialized bytes**. The independently
+pinned collection SHA-256 is
+`db1f7cc9a47e0523635f7c52476f784e9c1cfe4e3686c98a54636c1d1a4134d4`.
+All weights, factorized `b_hat` and small-side terms were recomputed from sealed
+proof-derived requests before the released mature CPU MSM results were compared
+to their required residuals. Seven native toy test groups also passed in
+0.07 seconds.
+
+Primary native MSM time was 1.308729368 s, native wall 16.415079313 s and direct
+execution 16.456441837 s; secondary was 0.066018545 s, 0.556989169 s and 0.575105887 s.
+The overall IPA benchmark took 18.684226907 s with 31,440,896 bytes of parent peak
+RSS. A separate `/usr/bin/time` measurement for the wrapper and children recorded
+157,904 KiB (161,693,696 bytes) peak RSS; the parent figure alone does not measure
+worker or combined pipeline memory. Exact request digests, execution limits and
+result scope are recorded in
+[NATIVE-CONFORMANCE.md](NATIVE-CONFORMANCE.md#executed-native-ipa-terminals).
+No raw generator payload, native helper or large MSM ran on the local PC.
+
+This enables only `ipa_native_msm_executed` and `ipa_native_relation_checked`.
+Independent Python MSM, full IPA verification, general proof acceptance and
+BitVM2 Script verification remain false. Next, compose the independently replayed
+transcript/matrix checks and this directly executed native terminal boundary
+without treating a stored JSON receipt as authority, then bind the production
+computation into the complete authenticated dispute graph. A native result or
+sampled generator weights cannot authorize proof acceptance.
 
 ## M4: BitVM2 graph adapter
+
+[TAPROOT-COMMITMENT.md](TAPROOT-COMMITMENT.md) records the implemented offline
+commitment to actual registry Scripts using mature BIP341 APIs. Hosted validation
+is pending. It creates no assertion UTXO or Bitcoin transaction binding.
 
 Integrate authenticated assertions using the existing BitVM2 commitment
 mechanism. Define a static chunk graph and prove complete dispute coverage

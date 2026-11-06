@@ -20,9 +20,13 @@ verification.
 
 The later [real-proof replay](nova-oracle/REAL-PROOF-REPLAY.md) captures actual
 positive verification and independently reconstructs proof-bound Keccak events.
-It keeps Poseidon hash computation, matrix evaluation and the generator MSM
-outside its independent verification claim; native complete-proof verification
-remains a separate upstream check.
+Subsequent stages independently compute all five full
+[Poseidon hashes](nova-oracle/POSEIDON.md) and all six authenticated
+[matrix evaluations](nova-oracle/MATRIX-PROFILE.md) for the retained proof.
+The hosted native IPA terminal check described below now executes the mature
+library MSM over both complete original generator vectors. This remains distinct
+from an independently computed Python MSM or complete proof acceptance; native
+complete-proof verification remains a separate upstream check.
 
 ## Authoritative implementation
 
@@ -211,6 +215,66 @@ signature-inclusive WOTS or bridge transaction costs. Existing full arithmetic
 baseline/comparison measurements remain in `M2-CI-NOTES.md`, `M2-COMPACT.md`
 and `WOTS-REGISTRY.md`.
 
+## Executed native IPA terminals
+
+Main `024802628267d2fa1f55e8e73e91c17398fb019f` passed the
+[hosted native job](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42150230495/job/127671408410)
+with both actual retained-proof IPA terminal relations satisfied. Seven native
+toy test groups also passed in 0.07 seconds. The independently pinned generator
+collection is
+`db1f7cc9a47e0523635f7c52476f784e9c1cfe4e3686c98a54636c1d1a4134d4`;
+the complete authenticated serialized payload is **17,301,520 bytes**, including
+both vector count prefixes. These are actual ordered original-key generators,
+not regenerated defaults or sampled weights.
+
+[`ipa_statement.py`](ipa_statement.py) reconstructs the strict production
+transcript internally from the admitted proof, verifier-owned policy and
+separately pinned key, trace and Poseidon metadata. It creates immutable requests
+containing the proof-derived joint commitment/evaluation, batch point, ordered
+L/R commitments and challenges, final scalar and required generator residual.
+It accepts no replay receipt as request authority.
+[`ipa_runtime.py`](ipa_runtime.py) directly executes the trusted configured
+[`ipa_msm`](nova-oracle/src/bin/ipa_msm.rs) binary with the sealed request digest
+as a separate command argument. The native helper authenticates the exact
+ordered generator bytes it consumes, loads the scalar generator from the pinned
+actual key bindings, recomputes all tensor weights, factorized `b_hat` and the
+small side, and calls the released mature CPU MSM API. The wrapper requires the
+returned relation to hold and both returned residual points to equal the sealed
+Python-derived residual. An imported JSON result cannot create an execution
+object or enable a verification flag.
+
+| Role | Generators | IPA rounds | Native MSM seconds | Native wall seconds | Direct execution seconds |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Primary / Pallas | 524,288 | 19 | 1.308729368 | 16.415079313 | 16.456441837 |
+| Secondary / Vesta | 16,384 | 14 | 0.066018545 | 0.556989169 | 0.575105887 |
+
+The exact request SHA-256 values are:
+
+- Primary: `d500e3b66e7beba1a10132516018e0b4140ab522311565efe80ebcc289c1236c`.
+- Secondary: `484777fa774632ec012b2a63c4c0e7fcd30aede621fe828d3bc4e7374f34cf78`.
+
+The [IPA benchmark](bench_ipa_msm.py) took **18.684226907 seconds** overall and
+measured **31,440,896 bytes of parent peak RSS**. A separate `/usr/bin/time`
+measurement for the wrapper and children recorded **157,904 KiB
+(161,693,696 bytes) peak RSS**. The parent figure alone does not measure worker
+or combined pipeline memory. Roles ran sequentially,
+each under a 512 MiB address-space cap, 300 CPU seconds, 360 wall seconds and
+32 KiB stdout/stderr file caps, with two Rayon threads. The GitHub/Linux check
+is a resource guard; it does not authenticate the caller-configured compiled
+helper. Actual generator payloads and native execution stayed on the hosted
+runner. No raw generator payload or large MSM ran on the local PC.
+
+The result sets `ipa_native_msm_executed=true` and
+`ipa_native_relation_checked=true`. It retains
+`ipa_python_msm_independently_computed=false`,
+`ipa_generator_msm_verified=false`, `ipa_complete_verification=false`,
+`proof_verified=false` and `bitvm2_script_verified=false`. This command verified
+zero complete Nova proofs; its source native report separately records one
+upstream retained-fixture verification. Previously replayed Keccak/Poseidon and
+matrix checks are independent Python computations, while this final large MSM
+is a directly executed native library terminal check. It is not a complete
+general IPA verifier, proof-acceptance API or Bitcoin Script verifier.
+
 ## Reproduce reference checks
 
 Python 3.10+ and the pinned mature hash dependency are required for the new
@@ -262,14 +326,15 @@ The production path still requires a complete authenticated composition:
 
 - Enforce the verifier-owned dimensions and bounded parsing conditions in
   [ARBITRARY-PROOF-PREFLIGHT.md](ARBITRARY-PROOF-PREFLIGHT.md) before removing the
-  retained-fixture gate. Nova's outer hash/NIFS stages also require Poseidon;
-  the Keccak transcript implementation covers the Spartan/IPA transcript only.
-- Replay the entire compressed Nova/Spartan verifier transcript from the real
-  proof and verifier key, with exact labels, object order and both curve roles;
-  bind external network/circuit/key/`k`/step/state expectations to that execution.
-- Bind sumcheck initial claims, round shapes, matrix evaluations and terminal
-  claims to actual instances and IPA openings. Complete production IPA
-  verification, generator derivation/access and its real dimension/RAM ledger.
+  retained-fixture gate. Preserve the independently checked outer Poseidon/NIFS
+  hashes and key/context bindings when generalizing beyond the retained proof.
+- Compose the retained proof's exact compressed Nova/Spartan transcript replay
+  and both curve roles into a complete verifier, preserving external
+  network/circuit/key/`k`/step/state expectations at that boundary.
+- Preserve actual-instance sumcheck initial claims, round shapes, authenticated
+  matrix evaluations and direct terminal equations in complete IPA/proof
+  composition. The executed native generator MSM supplies a retained mathematical
+  terminal check, not independent Python MSM or final Script verification.
 - Compose all 24 Keccak rounds with shared authenticated boundaries, correct
   absorption, padding, squeeze and Nova transcript framing. Equal wire names
   in independently committed round programs do not authenticate their linkage.
