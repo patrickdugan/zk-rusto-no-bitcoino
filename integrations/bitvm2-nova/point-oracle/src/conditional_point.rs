@@ -953,7 +953,14 @@ fn affine<A: CurveAffine>(flag: u32, x: &BigUint, y: &BigUint, p: &BigUint) -> O
         repr.as_mut()[..bytes.len()].copy_from_slice(&bytes);
         Option::<A::Base>::from(A::Base::from_repr(repr))
     };
-    Option::<A>::from(A::from_xy(decode(x)?, decode(y)?))
+    let decoded = Option::<A>::from(A::from_xy(decode(x)?, decode(y)?))?;
+    // Halo2 accepts (0,0) as its affine identity sentinel. The finite flag
+    // must reject that sentinel; only flag1 with zero coordinates encodes O.
+    if bool::from(decoded.is_identity()) {
+        None
+    } else {
+        Some(decoded)
+    }
 }
 
 fn native_point<A: CurveAffine>(
