@@ -28,5 +28,6 @@ results/sumcheck-*
 results/keccak-pair-*
 results/keccak-full-*
 results/uniform-*
+results/digest-*
 results/proving-*
 proving-fixtures/

@@ -5,6 +5,12 @@
 reducer, using existing predicates and all original arithmetic guards. Its
 373-leaf graph closes this encoding boundary. Authenticated Keccak provenance,
 sponge framing and whole-transcript Script composition remain open.
+Its dedicated hosted run passed 10,048 Script vectors, including 5,248 expected
+rejections, ten mature field reductions and six complete coherent disproof
+studies. Complete graph sizes were 3,321,743 Pallas-scalar and 3,313,620
+Vesta-scalar Script bytes: 1,177,984 bytes above each unchanged child baseline.
+The next bounded source link is one streamed permutation's 256 LO output bits;
+HI and proof-derived message origins remain separate obligations.
 
 [Actual proving under k-sized folds and aligned shards](ACTUAL-PROVING.md) now
 has a separate optional Windows coordinator, using the unchanged transparent
