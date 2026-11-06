@@ -862,7 +862,7 @@ fn prepare(
         value
     } else if index == 5 {
         let a = absorb::check(&case.spec, &run.context, &g.role, &d.operation_id, &maps)?;
-        if case.words != absorb::assignment_reference(&refs.full_outputs[&4], &refs.rho_raw)? {
+        if case.words != absorb::assignment_reference(&refs.full_outputs[&4], &refs.rho_raw) {
             return Err("actual rate-XOR/selector/padding assignment differs".into());
         }
         let (lo, hi) = absorb::route_states(&refs.full_outputs[&4], &case.words)?;
@@ -1042,7 +1042,6 @@ fn registry_for(
     let mut public = Vec::with_capacity(prepared.case.words.len());
     let mut signatures = Vec::with_capacity(prepared.case.words.len());
     for ((id, word), value) in prepared
-        .facts
         .global_ids
         .iter()
         .zip(&prepared.case.spec.words)
@@ -2050,7 +2049,7 @@ fn probe_run(
             "absorb-end-mask" => 7,
             _ => return Err("closed standalone absorption fault".into()),
         };
-        let mut values = absorb::assignment_reference(&refs.full_outputs[&4], &refs.rho_raw)?;
+        let mut values = absorb::assignment_reference(&refs.full_outputs[&4], &refs.rho_raw);
         let word = *absorb
             .output_indices
             .get(ordinal)
