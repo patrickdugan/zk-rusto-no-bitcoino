@@ -32,5 +32,6 @@ results/uniform-*
 results/digest-*
 results/byte-kernel-*
 results/byte-round-*
+results/byte-block-*
 results/proving-*
 proving-fixtures/

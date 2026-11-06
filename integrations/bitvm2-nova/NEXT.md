@@ -1,5 +1,14 @@
 # Next implementation boundary
 
+[The opt-in four-round BYTE component](BYTE-KECCAK-BLOCK.md) composes four fresh
+sealed child rounds under one actual Program and one authenticated registry.
+It preserves the child predicate bodies and aliases, merges exactly three
+ordered 200-byte states, and records each actual producer and both next-round
+consumer occurrences. Hosted parent execution and measured costs are pending;
+independent one-round receipts do not establish these joins. The next complete
+permutation boundary would connect six such components with all five remaining
+state joins and actual global commitment/disproof checks.
+
 [The opt-in byte Keccak round](BYTE-KECCAK-ROUND.md) uses natural terminal
 outputs tied to actual SSA producers, a conversion-complete unchanged Boolean
 baseline and a separate cached-signature consumer probe. This is a one-round
@@ -11,8 +20,8 @@ measured 6,304,498-6,314,561 source Script bytes versus 52,487,418-52,500,750 fo
 the conversion-complete Boolean BYTE-port baselines in either scalar role.
 The 665,600-byte copy probe is accounted separately for each case. All 24 rounds
 ran independently; no whole-permutation savings or cross-round binding is
-claimed. The next step is a sealed four-round component with all three complete
-authenticated BYTE joins and fresh measured parent Script costs.
+claimed. The separate four-round component above implements the next bounded
+topology and requires its own authenticated join execution and parent costs.
 
 [The opt-in byte-kernel experiment](BYTE-KERNELS.md) adds internally derived
 byte operations and a conversion-complete Boolean comparison before any byte
@@ -304,12 +313,13 @@ purported disproof of the valid proof must fail. Neither security property
 has been established for a complete Nova graph by M1.
 
 
-The next unchanged-kernel linkage can use `bits(width=8)` to reconstruct one
+The earlier unchanged-kernel linkage design used `bits(width=8)` to reconstruct one
 BASE-bound auxiliary word from eight MSB-first Boolean ports, followed by
 `conv_reconstruct((8,))` to equate it to a BYTE-bound word. Connecting two
 256-bit digests to the uniform input therefore needs 128 leaves and 64 auxiliary
 words. Keccak bits are lane-major/LSB-first, so each byte's bit list must be
 reversed for the existing `bits` predicate. Global bit, byte and auxiliary IDs
-must retain their distinct declared bounds and actual shared opening checks.
-A separate optional bytewise Keccak backend could later reduce this overhead;
-no Script savings have been measured for either design.
+retain their distinct declared bounds and actual shared opening checks in the
+implemented digest-reduction bridge. The byte kernels and isolated BYTE round
+measurements above now evaluate a separate backend. Their isolated savings do
+not establish a composed full-permutation footprint.
