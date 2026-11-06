@@ -172,15 +172,16 @@ transaction broadcast occurred in this round measurement.
 
 ## Remaining composition boundary
 
-The next bounded step is a sealed four-round BYTE component. It must preserve
-the child predicate bodies and exact global BYTE identities, merge exactly
-200 words at each adjacent boundary, and compare all 1,200 actual opening
+The subsequent [four-round BYTE component](BYTE-KECCAK-BLOCK.md) preserves
+the child predicate bodies and exact global BYTE identities, merges exactly
+200 words at each adjacent boundary, and compares all 1,200 actual opening
 occurrences across the three joins while reusing 600 boundary signatures.
 Producer locations come from the sealed maps, never a final-word suffix.
-The parent needs fresh catalogue/registry identities and measured Script costs;
-equal values or independent one-round receipts cannot establish these joins.
+The parent has fresh catalogue/registry identities and its own measured Script
+costs. Equal values or independent one-round receipts cannot establish these
+joins; its separate hosted evidence covers them.
 
 Existing full-permutation and framed-LO Boolean evidence, header provers and
-real k-sized proving profiles remain separate. Four-round blocks, a complete
-byte permutation, both hash branches, proof-derived message origins, full
+real k-sized proving profiles remain separate. A complete byte permutation,
+both hash branches, proof-derived message origins, full
 verifier composition and production assertions/transactions remain future work.

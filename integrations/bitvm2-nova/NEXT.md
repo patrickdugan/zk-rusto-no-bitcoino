@@ -4,10 +4,15 @@
 sealed child rounds under one actual Program and one authenticated registry.
 It preserves the child predicate bodies and aliases, merges exactly three
 ordered 200-byte states, and records each actual producer and both next-round
-consumer occurrences. Hosted parent execution and measured costs are pending;
-independent one-round receipts do not establish these joins. The next complete
-permutation boundary would connect six such components with all five remaining
-state joins and actual global commitment/disproof checks.
+consumer occurrences. Its hosted run passed 318,248 Script executions with
+162,274 expected rejections and 38,400 actual opening comparisons across 32
+parents. The six aligned ranges measured 25,228,060-25,248,161 Script bytes per
+parent in either scalar role. All 16 workflows and 391 Python tests passed.
+The next full-permutation boundary can flatten six sealed blocks into one
+29,245-leaf GraphSpec, using an explicit manifest program identity because a
+29,245-constraint Program is forbidden. Its five additional state joins, all
+23 round boundaries, actual full Script cost, memory and tree/disproof checks
+remain to be measured. Independent four-round receipts are not that evidence.
 
 [The opt-in byte Keccak round](BYTE-KECCAK-ROUND.md) uses natural terminal
 outputs tied to actual SSA producers, a conversion-complete unchanged Boolean
@@ -20,8 +25,8 @@ measured 6,304,498-6,314,561 source Script bytes versus 52,487,418-52,500,750 fo
 the conversion-complete Boolean BYTE-port baselines in either scalar role.
 The 665,600-byte copy probe is accounted separately for each case. All 24 rounds
 ran independently; no whole-permutation savings or cross-round binding is
-claimed. The separate four-round component above implements the next bounded
-topology and requires its own authenticated join execution and parent costs.
+claimed. The separate four-round component above now measures its own
+authenticated joins and parent costs.
 
 [The opt-in byte-kernel experiment](BYTE-KERNELS.md) adds internally derived
 byte operations and a conversion-complete Boolean comparison before any byte

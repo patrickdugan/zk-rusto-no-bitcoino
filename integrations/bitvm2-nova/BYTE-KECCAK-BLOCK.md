@@ -60,14 +60,80 @@ payloads. Compact execution-record hashes are diagnostic evidence, not proofs.
 The existing Program, graph, Script, file, record-stream and process limits
 remain in force. Construction and execution stay on the hosted runner; local
 checks are limited to pure routing, guards, syntax and synthetic transport.
-Actual hosted costs, checks and resource observations will be recorded after
-the run succeeds.
+## Measured hosted result
+
+Source commit `7d2b53dbc25286700f33387637feacd90f0b6f09` passed the dedicated
+[hosted run](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42229474862)
+on its first attempt. Every parent leaf of every case executed in both modes.
+The six honest aligned ranges measured the following disproof Script sums;
+both scalar roles gave exactly these costs.
+
+| Rounds | Parent leaves | Unique words | Parent Script bytes |
+| --- | ---: | ---: | ---: |
+| 0-3 | 4,873 | 5,073 | 25,234,673 |
+| 4-7 | 4,875 | 5,075 | 25,241,779 |
+| 8-11 | 4,871 | 5,071 | 25,228,060 |
+| 12-15 | 4,875 | 5,075 | 25,241,834 |
+| 16-19 | 4,874 | 5,074 | 25,238,009 |
+| 20-23 | 4,877 | 5,077 | 25,248,161 |
+
+These are measured four-round parent costs. The six independent registries
+have not been composed into a full permutation, and this run does not measure
+an isolated-child savings ratio or a complete permutation footprint.
+
+The 32 cases contain 155,974 parent leaves. Both modes account for 311,948
+ordinary executions; another 6,300 malformed/authentication vectors produce
+**318,248 Script executions, with 162,274 expected rejections**. All 19,200
+middle-word cache entries reused their original parent key/value/bound/signature
+and actual producer opening, with **38,400 actual producer/consumer opening
+comparisons**. The worker created 162,374 fresh signature entries. Projected
+child declarations total 181,574 word occurrences; their difference is exactly
+the 19,200 shared entries, which are not additional signatures.
+
+Each coherent middle/final corruption refuted only the selected original
+producer. All later child predicates remained consistent with the claimed
+state. The two signed oversized-input profiles in both roles refuted exactly
+parent leaves 0 and 240. Empty, truncated, prepended and appended witnesses
+aborted both modes, and interpreter panics remained fatal. Separate admission
+checks rejected 768 catalogue/API mutations, 256 map mutations, 384 source
+mutations and 576 cache mutations; these are not additional Script executions.
+
+Maximum observed Script size was 5,663 bytes, stack size 35 items, witness size
+31 items and witness payload 600 bytes. Native execution took 154.590 seconds;
+the parent took 178.158 seconds. External `time -v` recorded 59,604 KiB peak
+RSS; the parent's own observation was 46,702,592 bytes. These are separate
+observations, not a combined-memory measurement. Resource caps were unchanged.
+
+All 16 workflows passed on the source commit. The dedicated job passed 16
+Python tests, nine registry Rust tests and eight worker Rust tests. The complete
+M2 Python suite passed 391 tests. No actual full graph, native worker, proving
+job or GPU job ran on the local PC for this component.
+
+The [CI artifact](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42229474862/artifacts/13507472594)
+contains reports, dependency lock, test logs and resource logs. Its downloaded
+ZIP matched GitHub's digest, and its raw report matched the job stdout report.
+
+- Artifact ZIP: 83,643 bytes; SHA-256 `ff9e6a59160bf6551fb3a6a2dcdace4395d3c9ba0521c0103e70409e27511600`.
+- Report: 111,951 bytes; SHA-256 `5b7531f588602a048bca1ab3a5c0c90026ad252f0a7916945ec7e23a2da5ac54`.
+- Input manifest: 215,340 bytes; SHA-256 `db700c18f893e888c08d471989990d6e8a90b3188fbc7c302a7281d53947d0c2`.
+- Actual compact execution-record stream: 80,313,846 bytes; SHA-256 `34a2ce0ca62b25a954a1383382f1f87de395297606a6e4f40890425c5e3cd6f7`.
+
+The compact stream was hashed during execution and was not uploaded as a raw
+vector file. Test keys only were used. No setup, proving, GPU job or transaction
+broadcast occurred in this component measurement. Full-permutation, hash,
+transcript, proof and production verification flags remain false.
 
 ## Remaining boundary
 
-A complete BYTE permutation using these components would connect six blocks,
-bind all five inter-component states, and check full permutation references
-and actual global commitment/disproof paths. Both hash branches also need absorption,
+A complete BYTE permutation can flatten six sealed blocks into one GraphSpec
+without raising its 30,000-leaf cap: the analytical census is 29,245 leaves and
+29,445 words. This cannot be an oversized Program; it needs an explicit
+manifest-based program identity and independent source binding. All five
+inter-block states must be joined, preserving the 18 existing internal joins,
+for 4,600 shared state words and 9,200 actual opening comparisons. Compiled
+Script bytes, process memory, full references and actual full-tree/disproof
+checks must be measured for that parent. The four-round sums are not that
+measurement. Both hash branches also need absorption,
 padding, squeeze and proof-derived message origins. Full transcript and IPA
 Script verification, production assertion authority and Bitcoin transactions
 remain separate obligations. Existing real sharded proving profiles and header
