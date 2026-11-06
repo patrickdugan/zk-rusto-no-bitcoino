@@ -1,0 +1,29 @@
+{
+  "schema": "transparent-snarks-plan/v1",
+  "profile": "nova-spartan-ipa",
+  "stages": ["nova-pallas-vesta-pedersen", "spartan-ipa"],
+  "trusted_setup": "forbidden",
+  "post_quantum_claim": false,
+  "zero_knowledge_claim": false,
+  "source": {
+    "repository": "patrickdugan/zk-rusto-no-bitcoino",
+    "revision": "de607d3db17d400dd6c2923d357f1d4a7bf233c7",
+    "integration_path": "integrations/nova-header-chain",
+    "nova_snark_version": "0.76.0"
+  },
+  "workload": {
+    "unit": "headers",
+    "network": "testnet4",
+    "statement": "btc_header_chain_testnet4_v1",
+    "anchor_mode": "genesis",
+    "start_height": 0,
+    "checkpoint_state_sha256": null,
+    "fixture_sha256": null,
+    "headers_per_step": [1, 4, 8, 16],
+    "total_headers": [64, 128, 1024]
+  },
+  "budget": {
+    "memory_max_bytes": 13958643712,
+    "memory_swap_max_bytes": 0
+  }
+}
