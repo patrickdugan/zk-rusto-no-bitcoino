@@ -171,12 +171,14 @@ Fiat-Shamir Script binding remains a separate obligation. Whole-hash chunk
 composition and curve scalar multiplication/MSM lowering also remain open;
 isolated additions or native terminal checks do not supply those graphs.
 
-A bounded next hash-composition step is a sealed two-round Keccak catalogue,
+[KECCAK-PAIR.md](KECCAK-PAIR.md) implements a sealed two-round Keccak catalogue,
 freshly building its child programs and merging exactly 1,600 producer-output /
-consumer-input slots. It must preserve each child's injective word mapping and
-every leaf's occurrence/alias partition, commit the complete source topology,
-and retain both current Program and registry caps. Two rounds 0/1 have a
-calculated 19,206 leaves / 20,806 global words; Script costs are unmeasured.
+consumer-input slots. It preserves each child's injective word mapping and every
+leaf's occurrence/alias partition, commits the complete source topology, and
+retains both current Program and registry caps. Two rounds 0/1 have 19,206 leaves /
+20,806 global words; actual Script costs and complete-pair execution await hosted
+CI. The native helper checks all 3,200 shared opening comparisons separately
+from the selected honest Script executions.
 This would close one internal boundary only. Twelve such pairs still leave
 eleven inter-pair boundaries, absorption/padding/squeeze and the complete Nova
 transcript framing to authenticate. Registry/key and Taproot commitment order

@@ -70,7 +70,12 @@ fn native_checks(
     x.leaves[18].wires.swap(0, 1);
     variants.push(x);
     let mut x = spec.clone();
-    x.leaves.retain(|l| l.kind != "field_valid");
+    if x.leaves.iter().any(|leaf| leaf.kind == "field_valid") {
+        x.leaves.retain(|leaf| leaf.kind != "field_valid");
+    } else {
+        // Boolean catalogues have no Fr validity leaf; remove a real predicate.
+        x.leaves.remove(0);
+    }
     variants.push(x);
     let mut x = spec.clone();
     x.bodies
@@ -334,6 +339,190 @@ fn sumcheck_fragment_checks(
     ))
 }
 
+fn keccak_pair_checks(
+    case: &Case,
+    registry: &Registry,
+    keys: &[PublicKey],
+    signatures: &[Signature],
+    out: &mut impl Write,
+    metrics: &mut Metrics,
+) -> Result<(usize, serde_json::Value)> {
+    const FIRST_LEAVES: usize = 9602;
+    const BOUNDARY_BITS: usize = 1600;
+    if case.name != "keccak/pair-0-1"
+        || !case.measure_all
+        || case.spec.field_role != "pallas_scalar"
+        || case.spec.words.len() != 20806
+        || case.spec.leaves.len() != 19206
+        || case.spec.words.iter().any(|word| word.bound != 2)
+        || case.checks.iter().any(|check| !check.expected_correct)
+    {
+        return Err("exact Boolean Keccak round0/1 catalogue required".into());
+    }
+    let names: std::collections::HashMap<_, _> = case
+        .spec
+        .words
+        .iter()
+        .enumerate()
+        .map(|(index, word)| (word.name.as_str(), index))
+        .collect();
+    let mut shared = Vec::with_capacity(BOUNDARY_BITS);
+    for lane in 0..25 {
+        for bit in 0..64 {
+            let name = format!("boundary/middle/l{lane}/b{bit}");
+            shared.push(
+                *names
+                    .get(name.as_str())
+                    .ok_or("missing ordered Keccak boundary bit")?,
+            );
+        }
+    }
+    let boundary: HashSet<_> = shared.iter().copied().collect();
+    if boundary.len() != BOUNDARY_BITS {
+        return Err("duplicate Keccak boundary slot".into());
+    }
+    let mut consumers: std::collections::HashMap<usize, Vec<usize>> = shared
+        .iter()
+        .copied()
+        .map(|word| (word, Vec::new()))
+        .collect();
+    for (ordinal, leaf) in case.spec.leaves.iter().enumerate().skip(FIRST_LEAVES) {
+        let arity = match leaf.kind.as_str() {
+            "bool_xor" | "bool_and" => 2,
+            "bool_not" => 1,
+            "const" => 0,
+            _ => return Err("unexpected Keccak Boolean predicate".into()),
+        };
+        if leaf.wires.len() != arity + 1 {
+            return Err("Keccak predicate arity mismatch".into());
+        }
+        for word in &leaf.wires[..arity] {
+            if let Some(uses) = consumers.get_mut(word) {
+                uses.push(ordinal);
+            }
+        }
+        if boundary.contains(&leaf.wires[arity]) {
+            return Err("consumer round rewrites shared input word".into());
+        }
+    }
+    let width = Wots4::TOTAL_DIGIT_LEN as usize;
+    let mut links = 0;
+    for (bit, wire) in shared.iter().enumerate() {
+        let producer = FIRST_LEAVES - BOUNDARY_BITS + bit;
+        let leaf = &case.spec.leaves[producer];
+        if leaf.kind != "bool_xor" || leaf.wires.len() != 3 || leaf.wires[2] != *wire {
+            return Err("ordered Keccak output is not the shared global input".into());
+        }
+        let slots = registry.unique_slots(producer)?;
+        let source_position = slots
+            .iter()
+            .position(|slot| slot == wire)
+            .ok_or("producer bit slot")?;
+        let source = registry.witness(producer, signatures)?;
+        let uses = &consumers[wire];
+        // Each state bit occurs once in theta's parity and once in theta's state.
+        if uses.len() != 2 {
+            return Err("Keccak state input coverage differs from exact round".into());
+        }
+        for ordinal in uses {
+            let target_slots = registry.unique_slots(*ordinal)?;
+            let target_position = target_slots
+                .iter()
+                .position(|slot| slot == wire)
+                .ok_or("consumer bit slot")?;
+            let target = registry.witness(*ordinal, signatures)?;
+            if source[source_position * width..(source_position + 1) * width]
+                != target[target_position * width..(target_position + 1) * width]
+            {
+                return Err("shared Keccak state bit has different WOTS opening".into());
+            }
+            links += 1;
+        }
+    }
+    let mut rejected = native_checks(
+        &case.spec,
+        keys,
+        id32(&case.expected_spec_id)?,
+        registry.identity(),
+    )?;
+    if registry
+        .witness(0, &signatures[..signatures.len() - 1])
+        .is_ok()
+        || registry.script(usize::MAX, true).is_ok()
+    {
+        return Err("Keccak signature-count/ordinal guard failed".into());
+    }
+    rejected += 2;
+    let mut kinds = HashSet::new();
+    for (ordinal, leaf) in case.spec.leaves.iter().enumerate() {
+        if !kinds.insert(leaf.kind.as_str()) {
+            continue;
+        }
+        let witness = registry.witness(ordinal, signatures)?;
+        for disprove in [false, true] {
+            let code = registry.script(ordinal, disprove)?;
+            let lengths = [
+                vec![],
+                witness[..witness.len() - 1].to_vec(),
+                [vec![vec![]], witness.clone()].concat(),
+                [witness.clone(), vec![vec![]]].concat(),
+            ];
+            for (index, bad) in lengths.iter().enumerate() {
+                emit(
+                    out,
+                    metrics,
+                    &code,
+                    bad,
+                    false,
+                    &format!("{}/length/{ordinal}/{index}/{disprove}", case.name),
+                )?;
+            }
+            for position in [0, witness.len() - 1] {
+                let mut forged = witness.clone();
+                *forged[position]
+                    .first_mut()
+                    .ok_or("empty Keccak signature digit")? ^= 1;
+                emit(
+                    out,
+                    metrics,
+                    &code,
+                    &forged,
+                    false,
+                    &format!("{}/forgery/{ordinal}/{position}/{disprove}", case.name),
+                )?;
+            }
+            let slot = registry.unique_slots(ordinal)?[0];
+            let mut substituted = signatures.to_vec();
+            substituted[slot] = signatures[(slot + 1) % signatures.len()];
+            emit(
+                out,
+                metrics,
+                &code,
+                &registry.witness(ordinal, &substituted)?,
+                false,
+                &format!("{}/cross-wire/{ordinal}/{disprove}", case.name),
+            )?;
+        }
+    }
+    let selected = FIRST_LEAVES - BOUNDARY_BITS;
+    let tree = TaprootCommitment::new(registry, selected)?;
+    tree.verify_member(registry, tree.merkle_root(), tree.output_key(), selected)?;
+    Ok((
+        rejected,
+        serde_json::json!({"case":case.name,"boundary_words_checked":shared.len(),
+        "boundary_signature_links_checked":links,"producer_first_ordinal":selected,
+        "consumer_round_first_ordinal":FIRST_LEAVES,
+        "taproot_selected_ordinal":selected,"taproot_control_block_bytes":tree.control_block_bytes().len(),
+        "taproot_merkle_root":tree.merkle_root().to_string(),"taproot_output_key":tree.output_key().to_string(),
+        "taproot_compiled_script_bytes":tree.compiled_script_bytes(),
+        "taproot_leaf_stream_sha256":hex::encode(tree.compiled_stream_sha256()),
+        "offline_taproot_membership_verified":true,"taproot_roots_independently_pinned":false,
+        "complete_keccak_permutation":false,"complete_hash_verified":false,
+        "nova_transcript_verified_in_script":false,"complete_nova_verifier":false,
+        "production_assertion_binding":false,"bitcoin_transaction_binding":false}),
+    ))
+}
+
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 3 {
@@ -356,6 +545,8 @@ fn main() -> Result<()> {
     let mut assertion_signatures = 0;
     let mut sumcheck_fragments = Vec::new();
     let mut sumcheck_disproofs = Vec::new();
+    let mut keccak_pair_fragments = Vec::new();
+    let mut keccak_pair_disproofs = Vec::new();
     let mut out = BufWriter::new(fs::File::create(&args[2])?);
     for case in &cases {
         if case.name.len() > 192
@@ -593,6 +784,46 @@ fn main() -> Result<()> {
                 convolution_carry_links += 1;
             }
         }
+        if case.name == "keccak/pair-0-1" {
+            let (rejections, fragment) =
+                keccak_pair_checks(case, &registry, &keys, &signatures, &mut out, &mut metrics)?;
+            native_rejections += rejections;
+            let measured = ledger
+                .last()
+                .ok_or("missing complete Keccak catalogue ledger")?;
+            if measured["all_disproof_script_bytes"] != fragment["taproot_compiled_script_bytes"]
+                || measured["leaf_stream_sha256"] != fragment["taproot_leaf_stream_sha256"]
+            {
+                return Err("Keccak Taproot differs from exact compiled catalogue".into());
+            }
+            keccak_pair_fragments.push(fragment);
+        }
+        if case.name == "keccak/pair-coherent-middle" {
+            let failed: Vec<_> = case
+                .checks
+                .iter()
+                .filter(|check| !check.expected_correct)
+                .collect();
+            if case.measure_all || failed.len() != 1 || failed[0].ordinal != 8002 {
+                return Err(
+                    "coherent Keccak attack must refute first shared output bit only".into(),
+                );
+            }
+            let tree = TaprootCommitment::new(&registry, 8002)?;
+            tree.verify_member(&registry, tree.merkle_root(), tree.output_key(), 8002)?;
+            keccak_pair_disproofs.push(serde_json::json!({"case":case.name,
+                "catalogue_id":case.expected_spec_id,"registry_id":hex::encode(id),
+                "selected_ordinal":8002,"script_disproof_executed":true,
+                "offline_taproot_membership_verified":true,
+                "taproot_control_block_bytes":tree.control_block_bytes().len(),
+                "taproot_merkle_root":tree.merkle_root().to_string(),"taproot_output_key":tree.output_key().to_string(),
+                "taproot_compiled_script_bytes":tree.compiled_script_bytes(),
+                "taproot_leaf_stream_sha256":hex::encode(tree.compiled_stream_sha256()),
+                "test_keys_only":true,"taproot_roots_independently_pinned":false,
+                "complete_keccak_permutation":false,"complete_hash_verified":false,
+                "nova_transcript_verified_in_script":false,"complete_nova_verifier":false,
+                "production_assertion_binding":false,"bitcoin_transaction_binding":false}));
+        }
         if case.name.ends_with("/sumcheck-two-outer-rounds") {
             let (rejections, fragment) = sumcheck_fragment_checks(
                 case,
@@ -758,6 +989,12 @@ fn main() -> Result<()> {
     }
     if !sumcheck_disproofs.is_empty() {
         report["sumcheck_disproofs"] = serde_json::Value::Array(sumcheck_disproofs);
+    }
+    if !keccak_pair_fragments.is_empty() {
+        report["keccak_pair_fragments"] = serde_json::Value::Array(keccak_pair_fragments);
+    }
+    if !keccak_pair_disproofs.is_empty() {
+        report["keccak_pair_disproofs"] = serde_json::Value::Array(keccak_pair_disproofs);
     }
     println!("{report}");
     Ok(())

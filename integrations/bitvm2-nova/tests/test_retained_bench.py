@@ -53,7 +53,8 @@ class RetainedBench(unittest.TestCase):
             retained_math_checks_composed=True,matrix_files_checked=6,
             matrix_inner_terminals_checked=2,ipa_native_msm_executions=2,generator_count=540672,
             matrix_bytes_checked=119674848,generator_payload_bytes=17301520,
-            matrix_entries_checked=2667462,transactions_broadcast=0,
+            matrix_entries_checked=2667462,transactions_broadcast=0,native_proofs_verified=0,
+            container_framing_checked_by_this_call=False,
             expected_policy_sha256=sha256(policy).hexdigest(),proof_sha256=expected.proof_sha256.hex(),
             bundle_sha256=expected.bundle_sha256.hex(),end_state_sha256=expected.end_state_sha256.hex(),
             verifier_key_sha256=expected.verifier_key_sha256.hex(),verifier_dimensions_sha256=bench.DIMENSION_PIN,
@@ -66,6 +67,7 @@ class RetainedBench(unittest.TestCase):
         for name,value in [('retained_math_checks_composed',1),('matrix_files_checked',True),
                 ('ipa_native_msm_executions',1),('generator_count',True),('matrix_bytes_checked',0),
                 ('transactions_broadcast',False),('proof_verified',True),('complete_verifier',True),
+                ('native_proofs_verified',True),('container_framing_checked_by_this_call',True),
                 ('ipa_complete_verification',True),('native_trace_sha256','00'*32),
                 ('expected_policy_sha256','00'*32),('roles',[{'role':'secondary'},{'role':'primary'}])]:
             changed=deepcopy(summary);changed[name]=value

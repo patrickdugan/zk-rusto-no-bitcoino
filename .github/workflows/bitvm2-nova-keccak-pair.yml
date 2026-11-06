@@ -1,0 +1,109 @@
+name: BitVM2 Nova linked Keccak pair checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-keccak-pair.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-keccak-pair.yml']
+permissions:
+  contents: read
+jobs:
+  linked-rounds-and-authenticated-disproofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check complete pair mappings and tiny malformed-map regressions
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          /usr/bin/time -v -o results/keccak-pair-python-time.txt \
+            timeout --signal=KILL 180s prlimit --as=268435456 --cpu=180 -- \
+            python -m unittest discover -s tests -p 'test_keccak_pair*.py' -v \
+            2>&1 | tee results/keccak-pair-python-tests.txt
+      - name: Generate complete pair catalogue and five bounded signed-assertion cases
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/keccak-pair-generation-time.txt \
+            timeout --signal=KILL 180s prlimit --as=268435456 --cpu=180 -- \
+            python bench_keccak_pair.py --inputs results/keccak-pair-registry-inputs.json \
+            --output results/keccak-pair-generation.json | tee results/keccak-pair-generation-stdout.json
+          cat results/keccak-pair-generation-time.txt
+      - name: Build pinned Script and WOTS registry oracle
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/keccak-pair-rust-version.txt
+          rustfmt --edition 2021 --check rust-oracle/src/bin/registry.rs
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/keccak-pair-dependencies.txt
+          cargo build --locked --manifest-path rust-oracle/Cargo.toml --bin registry
+      - name: Verify all shared openings, signed predicates and complete Taproot catalogues
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/keccak-pair-registry-time.txt \
+            timeout --signal=KILL 300s prlimit --as=536870912 --cpu=300 -- \
+            rust-oracle/target/debug/registry results/keccak-pair-registry-inputs.json \
+            results/keccak-pair-registry-vectors.jsonl | tee results/keccak-pair-registry-execution.json
+          cat results/keccak-pair-registry-time.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('results')
+          generation = json.loads((p/'keccak-pair-generation.json').read_bytes())
+          execution = json.loads((p/'keccak-pair-registry-execution.json').read_bytes())
+          if execution.get('passed') is not True or execution['cases'] != generation['cases'] or execution['cases'] != 5:
+              raise SystemExit('five actual pair assertion cases required')
+          expected = {'native_rejections': generation['expected_native_catalogue_rejections'],
+              'signatures_generated_once_per_wire': generation['expected_assertion_signatures']}
+          if any(type(execution.get(k)) is not int or execution[k] != v for k, v in expected.items()):
+              raise SystemExit('pair native admission/signature coverage changed')
+          if execution['metrics']['vectors'] != generation['expected_registry_vectors'] or execution['metrics']['expected_rejections'] != generation['expected_script_rejections']:
+              raise SystemExit('pair Script coverage differs from generated cases')
+          if len(execution['ledger']) != 1 or generation['expected_measured_ledger_entries'] != 1:
+              raise SystemExit('one complete pair catalogue must be measured')
+          measured = execution['ledger'][0]
+          if measured['catalogue_id'] != generation['catalogue_sha256'] or measured['case'] != 'keccak/pair-0-1':
+              raise SystemExit('native pair detached from live sealed-factory catalogue identity')
+          if measured['words'] != 20806 or measured['leaves'] != 19206 or measured['all_disproof_script_bytes'] <= 0:
+              raise SystemExit('pair catalogue shape/measurement changed')
+          fragments, disproofs = execution['keccak_pair_fragments'], execution['keccak_pair_disproofs']
+          if len(fragments) != 1 or len(disproofs) != 1:
+              raise SystemExit('honest and coherent-malicious pair commitments required')
+          fragment, disproof = fragments[0], disproofs[0]
+          if fragment['boundary_words_checked'] != generation['expected_pair_boundary_words'] or fragment['boundary_words_checked'] != 1600 or fragment['boundary_signature_links_checked'] != generation['expected_pair_boundary_signature_links'] or fragment['boundary_signature_links_checked'] != 3200:
+              raise SystemExit('all ordered shared state words/openings must be linked')
+          if fragment['taproot_leaf_stream_sha256'] != measured['leaf_stream_sha256'] or disproof['catalogue_id'] != measured['catalogue_id']:
+              raise SystemExit('pair commitments detached from complete measured catalogue')
+          if disproof['selected_ordinal'] != 8002 or disproof.get('script_disproof_executed') is not True:
+              raise SystemExit('coherent wrong middle must expose the actual first producer disproof')
+          for row in (fragment, disproof):
+              if row.get('offline_taproot_membership_verified') is not True or row['taproot_compiled_script_bytes'] != measured['all_disproof_script_bytes']:
+                  raise SystemExit('complete actual Script commitment membership missing')
+              for flag in ('taproot_roots_independently_pinned', 'complete_keccak_permutation',
+                           'complete_hash_verified', 'nova_transcript_verified_in_script',
+                           'complete_nova_verifier', 'production_assertion_binding', 'bitcoin_transaction_binding'):
+                  if row.get(flag) is not False:
+                      raise SystemExit('two-round scope exceeded: '+flag)
+          if execution.get('stack_limit_enabled') is not True or execution.get('op_cat_enabled') is not False or execution.get('complete_nova_verifier') is not False or execution.get('bitcoin_transaction_graph') is not False or execution.get('transactions_broadcast') != 0:
+              raise SystemExit('pair Script scope/limits changed')
+          PY
+          sha256sum results/keccak-pair-registry-inputs.json results/keccak-pair-registry-vectors.jsonl > results/keccak-pair-corpus-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-linked-keccak-pair-evidence
+          path: |
+            integrations/bitvm2-nova/results/keccak-pair-*
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock
