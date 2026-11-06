@@ -4,7 +4,10 @@
 has a separate optional Windows coordinator, using the unchanged transparent
 header prover and mandatory cold verification/full-state joins. Its explicit
 resource budget is independent of the retained low-RAM conformance profiles.
-Fresh-proof measurements are reported only after the real run completes.
+The actual k=10 run generated and cold-verified two 12,976-byte proofs spanning
+genesis through height 40, with the full 17-scalar join checked. Peak export Job
+commit was 2.23 GiB. The current total proving budget is 16 GiB, with configurable
+parallelism and per-child ceilings; complete Script verification remains open.
 
 [The streamed full-permutation graph](KECCAK-PERMUTATION.md) extends the linked
 Keccak pair to twelve bounded components with globally reused state signatures

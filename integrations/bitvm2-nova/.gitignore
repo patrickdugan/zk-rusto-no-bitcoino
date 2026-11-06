@@ -29,3 +29,4 @@ results/keccak-pair-*
 results/keccak-full-*
 results/uniform-*
 results/proving-*
+proving-fixtures/

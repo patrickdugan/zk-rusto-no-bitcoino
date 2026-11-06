@@ -46,7 +46,8 @@ not remote attestation that an arbitrary executable was compiled from it.
 python proving_shards.py --source-root C:\your-workspace\nova-source `
   --bin-dir C:\your-workspace\nova-target\release `
   --out results\proving-k10-example --k 10 --to 40 --shards 2 `
-  --parallel 1 --export-parallel 1 --threads 2 --memory-mib 6144
+  --parallel 2 --export-parallel 2 --threads 2 --memory-mib 6144 `
+  --total-memory-mib 16384 --reserve-memory-mib 2048
 ```
 
 This uses the committed testnet4 headers from genesis. It produces shards
@@ -63,12 +64,15 @@ committed-memory ceilings are enforced; closing the job kills descendants.
 Wall time and combined stdout/stderr byte budgets are enforced too. Shared
 cancellation stops active and queued tasks on errors or interruption.
 
-The initial available-memory check requires all concurrent job ceilings plus
-a six-GiB host reserve. It refuses insufficient capacity before starting a child;
+The total proving budget defaults to **16 GiB**, as authorized for this host.
+Two concurrent six-GiB Job ceilings reserve at most 12 GiB inside that budget.
+The initial available-memory check also requires a configurable two-GiB host
+reserve. It refuses insufficient capacity before starting a child;
 it never silently changes k. Reduce concurrency explicitly when other programs
 consume available RAM. This is a preflight capacity check, not a reservation
 against memory use by unrelated applications. Job commit limits and queried
-working-set peaks are distinct metrics.
+working-set peaks are distinct metrics. `--plan-only` validates and prints the
+source, shard plan and live budget without starting a child or creating output.
 
 ## What is actually verified
 
@@ -101,11 +105,51 @@ observer retains process handles promptly and still fails closed if accounting
 cannot be completed. Accumulators contain witness material and are not published
 as zero-knowledge artifacts. Raw keys/continuations/logs remain in ignored outputs.
 
+## Actual k=10 pilot
+
+A fresh Windows run completed two actual compressed proofs covering testnet4
+headers `(0,20]` and `(20,40]`. Both used k=10, two folds and two Rayon threads.
+Each proof was 12,976 bytes; each complete NHT4 bundle was 13,532 bytes.
+Both cold native verifications passed against the existing k=10 key pin
+`2495da9bf5965030e45fa2cef1a43ade78e099ca844b5d3a9abf56400447eabe`.
+The initial state was the pinned genesis state; all 17 canonical scalars at the
+height-20 boundary matched exactly. The Core fixture differential check also
+passed at every height 0–40. The total run took 1,304.8303272 seconds
+(21 minutes 44.83 seconds), excluding the earlier source build.
+
+| Phase | Maximum Job commit | Maximum queried process working-set peak |
+| --- | ---: | ---: |
+| Folding/resume | 1,382.54 MiB (1.35 GiB) | 1,186.18 MiB (1.16 GiB) |
+| Transparent compression/export | 2,284.18 MiB (2.23 GiB) | 2,076.99 MiB (2.03 GiB) |
+| Cold native verification | 983.43 MiB (0.96 GiB) | 873.68 MiB (0.85 GiB) |
+
+These are maxima across separate child jobs, not simultaneous aggregate peaks.
+All ten child invocations had complete accounting and zero exit codes for both
+the native executable and its short-lived console host. The six-GiB per-job
+ceiling was never raised. Native `/proc` memory fields are unavailable on Windows;
+the table uses the actual Job Object and queried working-set measurements.
+
+The measured pilot was sequential: an earlier conservative six-GiB host reserve
+refused parallel launch when available RAM fell to about 15 GiB. After the
+16-GiB authorization, the coordinator gained the explicit total budget and
+two-GiB reserve above. A live plan check admitted two six-GiB jobs with about
+17.6 GiB available. The completed proof work was preserved; a full parallel
+k=10 throughput run was not repeated or claimed.
+
+The original fast genesis preflight exposed a console-host observation race.
+It failed closed and was not counted as proof rejection. The dedicated observer
+fix passed nine generic Windows Job tests and five actual genesis-command
+regressions before the successful proving run. Proofs, keys, raw logs and the
+complete verification report remain in local ignored output directories.
+Automatic approval review rejected public binary proof upload; no binary proof
+publication is claimed.
+
 ## Limits of this milestone
 
-The actual run's measurements must be recorded after successful completion.
 No live Bitcoin node, active-chain selection, wallet, transaction, signature,
 broadcast or deployment is part of this fixture-based proving experiment.
+The statement remains the pinned header circuit's rules and cumulative work,
+not full-block transaction validity or best-chain selection.
 Native Nova proof validity does not complete the BitVM2 Script verifier:
 authenticated sponge/proof-byte linkage, remaining verifier composition,
 production assertion/key lifecycle and the Bitcoin transaction graph stay open.

@@ -75,6 +75,27 @@ def _available_memory():
     return state.total, state.available
 
 
+def admit_memory_budget(*,memory_mib,parallel,export_parallel,total_memory_mib,
+                        reserve_memory_mib,available_bytes):
+    """Pure scheduler admission; the child Job Objects enforce the ceilings."""
+    for name,value in (('child memory',memory_mib),('fold concurrency',parallel),
+                       ('export concurrency',export_parallel),('total memory',total_memory_mib)):
+        if type(value) is not int or value <= 0:
+            raise ValueError('positive integer '+name+' required')
+    if (type(reserve_memory_mib) is not int or reserve_memory_mib < 0
+            or type(available_bytes) is not int or available_bytes < 0):
+        raise ValueError('invalid memory reserve or available-byte observation')
+    aggregate = max(parallel,export_parallel)*memory_mib*(1 << 20)
+    budget = total_memory_mib*(1 << 20)
+    reserve = reserve_memory_mib*(1 << 20)
+    if aggregate > budget:
+        raise ValueError('concurrent child Job ceilings exceed the explicit total proving budget')
+    if aggregate+reserve > available_bytes:
+        raise ValueError('available RAM cannot cover admitted Job ceilings plus the host reserve')
+    return dict(total_proving_memory_mib=total_memory_mib,host_reserve_memory_mib=reserve_memory_mib,
+                maximum_concurrent_job_limit_bytes=aggregate,observed_available_bytes=available_bytes)
+
+
 def prove(args):
     started = time.perf_counter()
     if any((Path(args.source_root)/name).exists() for name in
@@ -93,9 +114,15 @@ def prove(args):
     if not math.isfinite(args.wall_seconds) or args.wall_seconds <= 0:
         raise ValueError('positive child wall-time budget required')
     total_ram, free_ram = _available_memory()
-    required = args.parallel*args.memory_mib*(1 << 20)+(6 << 30)
-    if free_ram < required:
-        raise ValueError('available RAM cannot cover all child job ceilings plus six GiB reserve')
+    memory_budget = admit_memory_budget(memory_mib=args.memory_mib,parallel=args.parallel,
+        export_parallel=args.export_parallel,total_memory_mib=args.total_memory_mib,
+        reserve_memory_mib=args.reserve_memory_mib,available_bytes=free_ram)
+    if args.plan_only:
+        report = dict(schema='bitvm2-nova-proving-plan/v1',k=args.k,
+            ranges=[shard.json() for shard in plan.ranges],memory_budget=memory_budget,
+            real_proving_executed=False,source=source.summary())
+        print(json.dumps(report))
+        return report
     binaries = Path(args.bin_dir).resolve()
     chain, verifier = binaries/'nova-chain.exe', binaries/'btc-header-fold.exe'
     for exe in (chain, verifier):
@@ -258,6 +285,7 @@ def prove(args):
             source_revision=SOURCE_REV,source_package=source.summary(),k=args.k,
             to_height=args.to,shards=args.shards,parallel=args.parallel,threads=args.threads,
             export_parallel=args.export_parallel,process_memory_mib=args.memory_mib,
+            memory_budget=memory_budget,
             initial_total_physical_bytes=total_ram,initial_available_physical_bytes=free_ram,
             headers_sha256=header_sha,binary_sha256=binary_hashes,artifacts=list(artifacts),
             continuity=continuity.summary(),processes=processes,real_proving_executed=True,
@@ -294,6 +322,9 @@ def main():
     parser.add_argument('--export-parallel',type=int,default=2)
     parser.add_argument('--threads',type=int,default=2)
     parser.add_argument('--memory-mib',type=int,default=6144)
+    parser.add_argument('--total-memory-mib',type=int,default=16384)
+    parser.add_argument('--reserve-memory-mib',type=int,default=2048)
+    parser.add_argument('--plan-only',action='store_true')
     parser.add_argument('--wall-seconds',type=float,default=1800)
     prove(parser.parse_args())
 

@@ -2,9 +2,9 @@ name: BitVM2 Nova bounded proving coordinator checks
 on:
   push:
     branches: ['main']
-    paths: ['integrations/bitvm2-nova/proving_*.py', 'integrations/bitvm2-nova/prepare_proving.py', 'integrations/bitvm2-nova/tests/test_proving_policy.py', 'integrations/bitvm2-nova/tests/test_prepare_proving.py', '.github/workflows/bitvm2-nova-proving.yml']
+    paths: ['integrations/bitvm2-nova/proving_*.py', 'integrations/bitvm2-nova/prepare_proving.py', 'integrations/bitvm2-nova/tests/test_proving_*.py', 'integrations/bitvm2-nova/tests/test_prepare_proving.py', '.github/workflows/bitvm2-nova-proving.yml']
   pull_request:
-    paths: ['integrations/bitvm2-nova/proving_*.py', 'integrations/bitvm2-nova/prepare_proving.py', 'integrations/bitvm2-nova/tests/test_proving_policy.py', 'integrations/bitvm2-nova/tests/test_prepare_proving.py', '.github/workflows/bitvm2-nova-proving.yml']
+    paths: ['integrations/bitvm2-nova/proving_*.py', 'integrations/bitvm2-nova/prepare_proving.py', 'integrations/bitvm2-nova/tests/test_proving_*.py', 'integrations/bitvm2-nova/tests/test_prepare_proving.py', '.github/workflows/bitvm2-nova-proving.yml']
 permissions:
   contents: read
 jobs:
@@ -24,7 +24,7 @@ jobs:
         run: |
           python -m py_compile proving_shards.py proving_process.py proving_policy.py prepare_proving.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m unittest discover -s tests -p test_proving_policy.py -v
+          python -m unittest discover -s tests -p 'test_proving_*.py' -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m unittest discover -s tests -p test_prepare_proving.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
