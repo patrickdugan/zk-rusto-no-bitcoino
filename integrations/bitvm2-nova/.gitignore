@@ -31,5 +31,6 @@ results/keccak-endpoint-*
 results/uniform-*
 results/digest-*
 results/byte-kernel-*
+results/byte-round-*
 results/proving-*
 proving-fixtures/

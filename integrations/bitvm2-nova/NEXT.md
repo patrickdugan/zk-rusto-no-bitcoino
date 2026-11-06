@@ -1,5 +1,11 @@
 # Next implementation boundary
 
+[The opt-in byte Keccak round](BYTE-KECCAK-ROUND.md) uses natural terminal
+outputs tied to actual SSA producers, a conversion-complete unchanged Boolean
+baseline and a separate cached-signature consumer probe. This is a one-round
+measurement boundary; complete byte permutations and both hash branches remain
+unimplemented.
+
 [The opt-in byte-kernel experiment](BYTE-KERNELS.md) adds internally derived
 byte operations and a conversion-complete Boolean comparison before any byte
 permutation is built. Existing Boolean/convolution compilers and graphs remain
