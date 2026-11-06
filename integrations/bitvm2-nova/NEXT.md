@@ -1,5 +1,12 @@
 # Next implementation boundary
 
+[The retained scalar-source extension](RETAINED-SCALAR-SOURCES.md) is being
+integrated as a separate thirteen-component experiment. It adds an asserted
+112-byte block and canonical eval_W encoding to the measured relation below.
+Native reference admission does not authenticate asserted proof bytes in Script;
+whole-proof origins and EOF remain open. New hosted costs and execution evidence
+are pending. The complete existing experiment remains the verified baseline.
+
 [The challenge-bit/conditional-point extension](BYTE-C-BIT-POINT.md) now binds
 the actual canonical sumcheck scalar to one fixed bit and `R=A+bP`, retaining
 the complete `E=A+P` relation even when the bit is zero. Hosted execution on

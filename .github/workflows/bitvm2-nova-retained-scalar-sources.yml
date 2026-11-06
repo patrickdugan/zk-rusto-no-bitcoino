@@ -1,0 +1,74 @@
+name: BitVM2 Nova retained proof scalar source checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-retained-scalar-sources.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-retained-scalar-sources.yml']
+permissions:
+  contents: read
+jobs:
+  retained-scalar-source-conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CUDA_VISIBLE_DEVICES: ''
+      BITVM2_NOVA_SCALAR_SOURCE_TESTS: '1'
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check bounded proof admission and scalar encoding under existing limits
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m pip install -r transcript-requirements.txt
+          timeout --signal=KILL 60s prlimit --as=268435456 --cpu=60 -- \
+            python point_body_pins.py --check | tee results/retained-scalar-sources-body-pins.json
+          /usr/bin/time -v -o results/retained-scalar-sources-python-time.txt \
+            timeout --signal=KILL 480s prlimit --as=268435456 --cpu=480 -- \
+            python -m unittest discover -s tests -p 'test_retained_scalar_sources.py' -v \
+            2>&1 | tee results/retained-scalar-sources-python-tests.txt
+      - name: Build isolated pinned scalar source worker and check component and forest rules
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/retained-scalar-sources-rust-version.txt
+          rustfmt --edition 2021 --check scalar-source-oracle/src/*.rs
+          cargo generate-lockfile --manifest-path scalar-source-oracle/Cargo.toml
+          cargo generate-lockfile --manifest-path point-oracle/Cargo.toml
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path scalar-source-oracle/Cargo.toml > results/retained-scalar-sources-dependencies.txt
+          cargo test --release --locked --manifest-path scalar-source-oracle/Cargo.toml -- --nocapture
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --lib registry::tests -- --nocapture
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --lib taproot_forest::tests -- --nocapture
+          cargo build --release --locked --manifest-path scalar-source-oracle/Cargo.toml --bin retained_scalar_sources
+      - name: Execute linked honest and coherent substitutions with closed private probes
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/retained-scalar-sources-execution-time.txt \
+            timeout --signal=KILL 1500s prlimit --as=536870912 --cpu=1500 -- \
+            python bench_retained_scalar_sources.py --cases-dir results/retained-scalar-sources-cases \
+            --native-worker scalar-source-oracle/target/release/retained_scalar_sources \
+            --output results/retained-scalar-sources-conformance.json | tee results/retained-scalar-sources-stdout.json
+          cat results/retained-scalar-sources-execution-time.txt
+          cp results/retained-scalar-sources-cases/manifest.json results/retained-scalar-sources-manifest.json
+          sha256sum results/retained-scalar-sources-manifest.json results/retained-scalar-sources-conformance.json > results/retained-scalar-sources-report-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-retained-scalar-sources-evidence
+          path: |
+            integrations/bitvm2-nova/results/retained-scalar-sources-*.json
+            integrations/bitvm2-nova/results/retained-scalar-sources-*.txt
+            integrations/bitvm2-nova/scalar-source-oracle/Cargo.lock
+            integrations/bitvm2-nova/point-oracle/Cargo.lock
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock
