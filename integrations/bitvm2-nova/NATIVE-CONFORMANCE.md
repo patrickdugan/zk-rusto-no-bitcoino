@@ -275,6 +275,13 @@ matrix checks are independent Python computations, while this final large MSM
 is a directly executed native library terminal check. It is not a complete
 general IPA verifier, proof-acceptance API or Bitcoin Script verifier.
 
+The same sealed request digests and both full-size native relations passed again
+on `5a82788780bf9b4c3f17777cf5367ad1edd0250e` in the
+[current native job](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42152203615/job/127677852711).
+All seven workflows passed on that code commit. The subsequent offline
+[Taproot membership stage](TAPROOT-COMMITMENT.md) commits the unchanged arithmetic
+catalogues; it does not turn this native terminal check into Script verification.
+
 ## Reproduce reference checks
 
 Python 3.10+ and the pinned mature hash dependency are required for the new

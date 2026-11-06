@@ -137,8 +137,20 @@ sampled generator weights cannot authorize proof acceptance.
 ## M4: BitVM2 graph adapter
 
 [TAPROOT-COMMITMENT.md](TAPROOT-COMMITMENT.md) records the implemented offline
-commitment to actual registry Scripts using mature BIP341 APIs. Hosted validation
-is pending. It creates no assertion UTXO or Bitcoin transaction binding.
+commitment to actual registry Scripts using mature BIP341 APIs. Code commit
+`5a82788780bf9b4c3f17777cf5367ad1edd0250e` passed all seven workflows, including
+eight complete tree constructions, 108 membership negatives and unchanged
+Script-stream goldens. The hosted Taproot run took 44.503489095 seconds and
+69,420 KiB peak RSS. It creates no assertion UTXO or Bitcoin transaction binding.
+
+The next bounded arithmetic composition should lower two proof-derived outer
+sumcheck rounds into one global WOTS graph, sharing the first output wire with
+the next prior claim. Only the initial zero claim is an anchor; coefficients and
+challenges need canonical ports and explicit source identities. This establishes
+arithmetic given authenticated ports. Their proof-byte and Fiat-Shamir Script
+binding remains a separate obligation. Whole-hash chunk composition and curve
+scalar multiplication/MSM lowering also remain open; isolated additions or native
+terminal checks do not supply those graphs.
 
 Integrate authenticated assertions using the existing BitVM2 commitment
 mechanism. Define a static chunk graph and prove complete dispute coverage
