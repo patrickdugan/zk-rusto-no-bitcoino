@@ -1,0 +1,68 @@
+name: BitVM2 Nova linked byte rho sumcheck challenge checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-byte-rho-chain.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-byte-rho-chain.yml']
+permissions:
+  contents: read
+jobs:
+  linked-challenges-and-absorption-conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CUDA_VISIBLE_DEVICES: ''
+      BITVM2_NOVA_CHAIN_TESTS: '1'
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check retained challenge links and source admission under existing limits
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m pip install -r transcript-requirements.txt
+          /usr/bin/time -v -o results/byte-rho-chain-python-time.txt \
+            timeout --signal=KILL 480s prlimit --as=268435456 --cpu=480 -- \
+            python -m unittest discover -s tests -p 'test_byte_rho_chain*.py' -v \
+            2>&1 | tee results/byte-rho-chain-python-tests.txt
+      - name: Build pinned chain worker and check independent component and forest rules
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/byte-rho-chain-rust-version.txt
+          rustfmt --edition 2021 --check rust-oracle/src/byte_sumcheck_frame.rs rust-oracle/src/byte_sumcheck_absorb.rs rust-oracle/src/byte_rho_chain_keys.rs rust-oracle/src/byte_rho_chain_source.rs rust-oracle/src/byte_rho_chain_openings.rs rust-oracle/src/byte_rho_chain_probe.rs rust-oracle/src/bin/byte_rho_chain.rs
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/byte-rho-chain-dependencies.txt
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --lib registry::tests -- --nocapture
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --lib taproot_forest::tests -- --nocapture
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --bin byte_rho_chain -- --nocapture
+          cargo build --release --locked --manifest-path rust-oracle/Cargo.toml --bin byte_rho_chain
+      - name: Execute linked honest and coherent fault chains with separately accounted small probes
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/byte-rho-chain-execution-time.txt \
+            timeout --signal=KILL 1500s prlimit --as=536870912 --cpu=1500 -- \
+            python bench_byte_rho_chain.py --cases-dir results/byte-rho-chain-cases \
+            --native-worker rust-oracle/target/release/byte_rho_chain \
+            --output results/byte-rho-chain-conformance.json | tee results/byte-rho-chain-stdout.json
+          cat results/byte-rho-chain-execution-time.txt
+          cp results/byte-rho-chain-cases/manifest.json results/byte-rho-chain-manifest.json
+          sha256sum results/byte-rho-chain-manifest.json results/byte-rho-chain-conformance.json > results/byte-rho-chain-report-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-byte-rho-chain-evidence
+          path: |
+            integrations/bitvm2-nova/results/byte-rho-chain-*.json
+            integrations/bitvm2-nova/results/byte-rho-chain-*.txt
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock

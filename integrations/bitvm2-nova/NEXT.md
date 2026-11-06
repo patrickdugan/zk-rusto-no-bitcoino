@@ -1,5 +1,14 @@
 # Next implementation boundary
 
+[The linked rho/sumcheck challenge source](BYTE-RHO-CHAIN.md) now targets the
+next actual transcript boundary: rho's 64 raw digest producer bytes feed the
+following two-block challenge. The shared prefix, canonical `c0,c2` encodings,
+rate absorption and unchanged-capacity forwarding form nine components with
+five full permutations. Its analytical census is 147,043 leaves and 147,355
+unique words. Hosted cost, memory, record and complete disproof conformance
+remain pending under the unchanged limits. This source does not complete the
+transcript or IPA verifier.
+
 [The framed BYTE rho composition](BYTE-RHO.md) connects both LO/HI permutations
 to the unchanged uniform reducer through a three-component source. It shares
 exactly 96 external message-byte origins, anchors 208 branch-private framing
