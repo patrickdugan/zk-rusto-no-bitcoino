@@ -2,6 +2,8 @@
 //! This is a verification-only hosted oracle, not a Bitcoin Script verifier.
 #[path = "../dimensions.rs"]
 mod dimensions;
+#[path = "../ipa_generators.rs"]
+mod ipa_generators;
 #[path = "../key_bindings.rs"]
 mod key_bindings;
 #[path = "../matrix_profile.rs"]
@@ -78,6 +80,37 @@ fn check(ok: bool, message: &str) -> Result<()> {
     } else {
         Err(message.to_owned())
     }
+}
+#[derive(Default)]
+struct ExportOptions<'a> {
+    matrix_output: Option<&'a str>,
+    ipa_output: Option<&'a str>,
+}
+fn export_options(args: &[String]) -> Result<ExportOptions<'_>> {
+    check(args.len() % 2 == 0, "export flag requires a directory")?;
+    let mut options = ExportOptions::default();
+    for pair in args.chunks_exact(2) {
+        let slot = match pair[0].as_str() {
+            "--matrix-output" => &mut options.matrix_output,
+            "--ipa-output" => &mut options.ipa_output,
+            _ => return Err("unknown replay export flag".into()),
+        };
+        check(slot.is_none(), "duplicate replay export flag")?;
+        check(
+            !pair[1].is_empty() && !pair[1].starts_with("--"),
+            "export flag requires a directory value",
+        )?;
+        *slot = Some(pair[1].as_str());
+    }
+    if let (Some(matrix), Some(ipa)) = (options.matrix_output, options.ipa_output) {
+        let matrix = Path::new(matrix);
+        let ipa = Path::new(ipa);
+        check(
+            !matrix.starts_with(ipa) && !ipa.starts_with(matrix),
+            "export directories must be distinct and disjoint",
+        )?;
+    }
+    Ok(options)
 }
 fn sha(bytes: &[u8]) -> String {
     hex::encode(Sha256::digest(bytes))
@@ -189,9 +222,12 @@ fn key() -> Result<Vk> {
 fn run() -> Result<Value> {
     let args: Vec<_> = std::env::args().collect();
     check(
-        args.len() == 4 || (args.len() == 6 && args[4] == "--matrix-output"),
-        "usage: replay RETAINED.nht4 EXPECTED.json PINNED_DIMENSIONS.json [--matrix-output NEW_DIR]",
+        args.len() >= 4,
+        "usage: replay RETAINED.nht4 EXPECTED.json PINNED_DIMENSIONS.json [--matrix-output NEW_DIR] [--ipa-output NEW_DIR]",
     )?;
+    // Unknown, duplicate and incomplete optional flags fail before input reads,
+    // proof decoding, key reconstruction or any filesystem export.
+    let options = export_options(&args[4..])?;
     let raw = read(&args[1], 1 << 20)?;
     let expected: Expected =
         serde_json::from_slice(&read(&args[2], 1 << 14)?).map_err(|e| e.to_string())?;
@@ -257,7 +293,7 @@ fn run() -> Result<Value> {
         matrix_collection_sha256,
         matrix_payload_export,
         matrix_payload_export_seconds,
-    ) = if let Some(directory) = args.get(5) {
+    ) = if let Some(directory) = options.matrix_output {
         let started = Instant::now();
         let (collection, stats) =
             matrix_stream::export_authenticated_vk(&vk, &matrix_profile, Path::new(directory))?;
@@ -271,6 +307,21 @@ fn run() -> Result<Value> {
     } else {
         (None, None, None, None)
     };
+    let (ipa_generators, ipa_generators_sha256, ipa_generator_export, ipa_generator_export_seconds) =
+        if let Some(directory) = options.ipa_output {
+            let started = Instant::now();
+            let (collection, stats) =
+                ipa_generators::export_authenticated_vk(&vk, &dim_expected, Path::new(directory))?;
+            let digest = ipa_generators::canonical_sha256(&collection)?;
+            (
+                Some(collection),
+                Some(digest),
+                Some(stats),
+                Some(started.elapsed().as_secs_f64()),
+            )
+        } else {
+            (None, None, None, None)
+        };
 
     // Never capture setup, metadata hashing or negative-verification loops.
     tracing::begin_capture()?;
@@ -297,6 +348,8 @@ fn run() -> Result<Value> {
         "matrix_profile_export":matrix_profile_export,
         "matrix_collection":matrix_collection,"matrix_collection_sha256":matrix_collection_sha256,
         "matrix_payload_export":matrix_payload_export,"matrix_payload_export_seconds":matrix_payload_export_seconds,
+        "ipa_generators":ipa_generators,"ipa_generators_sha256":ipa_generators_sha256,
+        "ipa_generator_export":ipa_generator_export,"ipa_generator_export_seconds":ipa_generator_export_seconds,
         "trace":trace,"end_state_sha256":END_SHA,"end_height":final_state.height,
         "key_reconstruction_seconds":key_reconstruction_seconds,"metadata_export_seconds":metadata_export_seconds,
         "verify_seconds":verify_seconds,"setup_calls":1,"proving_jobs":0,"transactions_broadcast":0,
@@ -310,6 +363,61 @@ fn main() {
         Err(error) => {
             eprintln!("native production replay failed: {error}");
             std::process::exit(1);
+        }
+    }
+}
+
+#[cfg(test)]
+mod cli_tests {
+    use super::*;
+    fn args(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| (*value).to_owned()).collect()
+    }
+    #[test]
+    fn optional_exports_accept_either_order_and_reject_duplicate_unknown_or_incomplete_flags() {
+        let default = export_options(&[]).unwrap();
+        assert!(default.matrix_output.is_none() && default.ipa_output.is_none());
+        for values in [
+            [
+                "--matrix-output",
+                "results/matrices",
+                "--ipa-output",
+                "results/ipa",
+            ],
+            [
+                "--ipa-output",
+                "results/ipa",
+                "--matrix-output",
+                "results/matrices",
+            ],
+        ] {
+            let values = args(&values);
+            let parsed = export_options(&values).unwrap();
+            assert_eq!(parsed.matrix_output, Some("results/matrices"));
+            assert_eq!(parsed.ipa_output, Some("results/ipa"));
+        }
+        for values in [
+            vec!["--matrix-output"],
+            vec!["--ipa-output"],
+            vec!["--unknown", "results/ipa"],
+            vec!["--matrix-output", "--ipa-output"],
+            vec!["--ipa-output", ""],
+            vec!["--ipa-output", "results/a", "--ipa-output", "results/b"],
+            vec![
+                "--matrix-output",
+                "results/a",
+                "--matrix-output",
+                "results/b",
+            ],
+            vec!["--matrix-output", "results/a", "--ipa-output", "results/a"],
+            vec![
+                "--matrix-output",
+                "results/a",
+                "--ipa-output",
+                "results/a/b",
+            ],
+        ] {
+            assert!(export_options(&args(&values)).is_err());
         }
     }
 }

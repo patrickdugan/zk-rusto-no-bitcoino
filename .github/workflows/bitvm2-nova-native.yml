@@ -44,6 +44,7 @@ jobs:
             python -m unittest discover -s tests -p test_poseidon_generation.py -v
             python -m unittest discover -s tests -p test_matrix_reference.py -v
             python -m unittest discover -s tests -p test_matrix_export.py -v
+            python -m unittest discover -s tests -p test_ipa_export.py -v
             python -m unittest discover -s tests -p test_production_replay.py -v
             python -m unittest discover -s tests -p test_replay_cli.py -v
           } 2>&1 | tee results/native-python-tests.txt
@@ -92,8 +93,8 @@ jobs:
           data = json.loads(Path('results/native-cargo-metadata.json').read_text())
           ids = {p['id'] for p in data['packages'] if p['name'] == 'nova-snark'}
           nodes = [n for n in data['resolve']['nodes'] if n['id'] in ids]
-          if len(nodes) != 1 or {'evm', 'test-utils'} & set(nodes[0]['features']):
-              raise SystemExit('unsupported EVM/test-utils Nova feature activation')
+          if len(nodes) != 1 or {'evm', 'test-utils', 'blitzar'} & set(nodes[0]['features']):
+              raise SystemExit('unsupported EVM/test-utils/GPU Nova feature activation')
           PY
       - name: Build native conformance binaries on the hosted runner
         timeout-minutes: 16
@@ -185,6 +186,7 @@ jobs:
             fixtures/nht4-genesis-0-2020-k5.expected.json \
             fixtures/nht4-genesis-0-2020-k5.dimensions.json \
             --matrix-output results/native-matrices \
+            --ipa-output results/native-ipa-generators \
             > results/native-replay-execution.json 2> results/native-replay-stderr.txt
           python - <<'PY'
           import hashlib
@@ -232,6 +234,19 @@ jobs:
           if any(type(payload_stats.get(k)) is not type(v) or payload_stats[k] != v
                  for k, v in expected_payload_stats.items()):
               raise SystemExit('matrix payload export budget or materialization mismatch')
+          ipa_generators = report['ipa_generators']
+          if (type(ipa_generators) is not dict or len(ipa_generators.get('files', [])) != 2
+                  or digest(ipa_generators) != report['ipa_generators_sha256']
+                  or ipa_generators.get('total_bytes') != 17301520):
+              raise SystemExit('IPA generator projection is incomplete or inconsistent')
+          ipa_stats = report['ipa_generator_export']
+          expected_ipa_stats = {'files_written': 2, 'selected_generator_fields': 2,
+              'total_bytes': 17301520, 'per_file_cap_bytes': 33554432,
+              'total_cap_bytes': 33554432, 'writer_buffer_bytes': 65536,
+              'full_key_materialized': False, 'generator_vectors_materialized': False}
+          if any(type(ipa_stats.get(k)) is not type(v) or ipa_stats[k] != v
+                 for k, v in expected_ipa_stats.items()):
+              raise SystemExit('IPA generator export budget or materialization mismatch')
           profiles = [{key: profile[key] for key in ('arity', 'width', 'rate', 'capacity', 'rf', 'rp', 's', 'ht')}
                       | {'engine': parameters[role]['engine'], 'mode': mode,
                          'compressed_constants': len(profile['crc']), 'sparse_matrices': len(profile['sm'])}
@@ -260,6 +275,9 @@ jobs:
               'matrix_collection': collection, 'matrix_collection_sha256': report['matrix_collection_sha256'],
               'matrix_payload_export': payload_stats,
               'matrix_payload_export_seconds': report['matrix_payload_export_seconds'],
+              'ipa_generators': ipa_generators, 'ipa_generators_sha256': report['ipa_generators_sha256'],
+              'ipa_generator_export': ipa_stats,
+              'ipa_generator_export_seconds': report['ipa_generator_export_seconds'],
               'poseidon_profiles': profiles}))
           PY
           cat results/native-replay-time.txt
@@ -297,6 +315,14 @@ jobs:
                  ('ipa_generator_msm_verified', 'proof_verified', 'bitvm2_script_verified')):
               raise SystemExit('matrix replay overclaimed an unimplemented verification stage')
           PY
+      - name: Independently hash the optional authenticated IPA generator export
+        run: |
+          set -euo pipefail
+          timeout --signal=KILL 120s prlimit --as=268435456 --cpu=90 -- \
+            python bench_ipa_export.py --native-report results/native-replay-execution.json \
+            --generator-dir results/native-ipa-generators --output results/native-ipa-export.json \
+            | tee results/native-ipa-export-summary.json
+          cp -- results/native-ipa-generators/collection.json results/native-ipa-generator-collection.json
       - name: Compare genuine proof coefficients in explicit synthetic transcript states
         run: |
           set -euo pipefail
@@ -334,3 +360,4 @@ jobs:
             integrations/bitvm2-nova/results/nht4-inputs.json
             integrations/bitvm2-nova/results/nht4-summary.json
             !integrations/bitvm2-nova/results/native-matrices/**
+            !integrations/bitvm2-nova/results/native-ipa-generators/**

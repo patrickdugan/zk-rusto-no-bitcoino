@@ -22,3 +22,5 @@ results/native-poseidon-*
 results/convolution-*
 results/native-matrices/
 results/native-matrix-*
+results/native-ipa-generators/
+results/native-ipa-*
