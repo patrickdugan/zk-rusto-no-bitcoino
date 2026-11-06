@@ -82,10 +82,14 @@ fn run<C: ConstraintSynthesizer<Fr> + Clone>(
     let t = Instant::now();
     let ok = Groth16::<Bn254>::verify_with_processed_vk(&pvk, &inputs, &proof).unwrap();
     let verify_ms = t.elapsed().as_secs_f64() * 1e3;
-    let mut wrong = inputs.clone();
-    wrong[0] += Fr::from(1u64);
-    let rejects_wrong_input =
-        !Groth16::<Bn254>::verify_with_processed_vk(&pvk, &wrong, &proof).unwrap();
+    // Check every public-input field against the same proof and verifying
+    // key, including both limbs of each byte-array commitment. Setup and
+    // proving are performed only once.
+    let rejects_wrong_input = (0..inputs.len()).all(|i| {
+        let mut wrong = inputs.clone();
+        wrong[i] += Fr::from(1u64);
+        !Groth16::<Bn254>::verify_with_processed_vk(&pvk, &wrong, &proof).unwrap()
+    });
     let size = |x: &dyn Fn(&mut Vec<u8>)| {
         let mut v = Vec::new();
         x(&mut v);
