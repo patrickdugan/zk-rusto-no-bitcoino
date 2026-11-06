@@ -59,6 +59,13 @@ def _name(role, r, profile):
         'byte-wrong-output': 'wrong-output', 'byte-oversized': 'oversized'}[profile]
 
 
+def _source_operations(r, boolean):
+    """Caller prefix and actual round-bound Program identity are distinct."""
+    kind = 'boolean' if boolean else 'byte'
+    caller = f'{OPERATION}/{kind}/r{r}'
+    return caller, caller if boolean else f'{caller}/round/{r}'
+
+
 def _canonical(value):
     return json.dumps(value, sort_keys=True, separators=(',', ':'),
                       ensure_ascii=True, allow_nan=False).encode('utf-8')
@@ -157,12 +164,13 @@ def _one(index, role, r, profile, directory):
     if profile == 'byte-wrong-output':
         expected_output[0 if r == 0 else 8] ^= 1
     expected_output = bytes(expected_output)
-    plan = factory(r, context=CONTEXT, role=role, operation_id=f'{OPERATION}/{kind}/r{r}')
+    caller_operation, program_operation = _source_operations(r, boolean)
+    plan = factory(r, context=CONTEXT, role=role, operation_id=caller_operation)
     binding = plan.bind(initial, claimed_output=expected_output if profile == 'byte-wrong-output' else None)
     spec, values = binding.spec, binding.assignment
     if (binding.initial_state != initial or binding.reference_output != reference
             or binding.output_state != expected_output or spec.context != CONTEXT.hex()
-            or spec.field_role != role or spec.operation_id != f'{OPERATION}/{kind}/r{r}'):
+            or spec.field_role != role or spec.operation_id != program_operation):
         raise ValueError('fresh sealed one-round fixture identity/reference mismatch')
     inputs, outputs, producers, ids = _ports(plan, spec, r, boolean)
     if profile == 'byte-oversized':

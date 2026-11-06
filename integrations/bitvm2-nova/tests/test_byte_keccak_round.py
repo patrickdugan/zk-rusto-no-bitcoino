@@ -107,6 +107,10 @@ class ByteRoundPureRoutingAndGuards(unittest.TestCase):
         from keccak_trace import ROUND_CONSTANTS
         constants=_round_constants()
         self.assertEqual(constants,ROUND_CONSTANTS)
+        # Keccak repeats these RCs: round identity cannot rely on Iota masks.
+        for first,second,value in ((5,22,0x0000000080000001),(6,20,0x8000000080008081)):
+            self.assertEqual(constants[first],constants[second])
+            self.assertEqual(constants[first],value)
         for round_index,value in enumerate(constants):
             expected=value.to_bytes(8,'little')
             actual=module.round_constant_bytes(round_index)
@@ -173,7 +177,7 @@ class ByteRoundPureRoutingAndGuards(unittest.TestCase):
             with self.assertRaises(TypeError):cls()
             self.assertFalse(hasattr(cls,'from_json'))
         for keyword in ('program','spec','source_maps','receipt','manifest','assignment',
-                        'inputs','outputs','producer_ordinals','global_ids','version'):
+                        'inputs','outputs','producer_ordinals','global_ids','version','program_operation_id'):
             with self.assertRaises(TypeError):
                 module.build_byte_keccak_round(0,context=CONTEXT,role='pallas_scalar',
                                                **{keyword:{'passed':True}})
@@ -196,7 +200,11 @@ class HostedByteKeccakRoundTests(unittest.TestCase):
         self.assertEqual((len(program.words),len(program.constraints),len(spec.leaves)),
                          (1416+nonzero,1216+nonzero,1216+nonzero))
         self.assertEqual((program.field_role,program.context,program.fields),(role,CONTEXT,()))
-        self.assertEqual(program.operation_id,'tests/byte-keccak/round')
+        self.assertEqual(plan.operation_id,'tests/byte-keccak/round')
+        expected_operation=f'tests/byte-keccak/round/round/{round_index}'
+        self.assertEqual(program.operation_id,expected_operation)
+        self.assertEqual((plan.program_operation_id,spec.operation_id),(expected_operation,)*2)
+        self.assertEqual(plan.manifest['program_operation_id'],expected_operation)
         self.assertEqual(spec.words,program.words)
         self.assertEqual(spec.field_leaves,())
         self.assertEqual(tuple(name for name,_ in program.words[:200]),plan.inputs)
@@ -316,6 +324,46 @@ class HostedByteKeccakRoundTests(unittest.TestCase):
                 del bound,binding
             del plan
 
+    def test_repeated_rc_rounds_reject_foreign_expected_program_and_claim_identities(self):
+        initial=_state_patterns()[2]
+        for role in ROLES:
+            for first,second in ((5,22),(6,20)):
+                early=self.build(first,role);late=self.build(second,role)
+                self.assertEqual(_round_constants()[first],_round_constants()[second])
+                self.assertEqual(early.program.words,late.program.words)
+                self.assertEqual(early.program.constraints,late.program.constraints)
+                self.assertEqual((early.operation_id,late.operation_id),('tests/byte-keccak/round',)*2)
+                self.assertEqual(early.program.operation_id,f'tests/byte-keccak/round/round/{first}')
+                self.assertEqual(late.program.operation_id,f'tests/byte-keccak/round/round/{second}')
+                self.assertNotEqual(early.program.digest(),late.program.digest())
+                self.assertNotEqual(early.spec.digest(),late.spec.digest())
+                self.assertNotEqual(early.source_sha256,late.source_sha256)
+                self.assertTrue(set(early.global_ids).isdisjoint(late.global_ids))
+                early_binding=early.bind(initial);late_binding=late.bind(initial)
+                self.assertEqual(early_binding.output_state,late_binding.output_state)
+                self.assertEqual(early_binding.assignment,late_binding.assignment)
+                early_bound=early_binding.program.bind(early_binding.assignment)
+                late_bound=late_binding.program.bind(late_binding.assignment)
+                self.assertNotEqual(early_bound.claim_digest,late_bound.claim_digest)
+                ordinal=early.producer_ordinals[0]
+                self.assertEqual(ordinal,late.producer_ordinals[0])
+                # Plain numeric operands may legitimately be equal for equal
+                # functions. Foreign admission must reject the EXPECTED source
+                # Program/claim, rather than pretending equal plaintext fails
+                # the arithmetic. Actual foreign WOTS signatures are checked
+                # by the native registry harness under its distinct key domains.
+                self.assertEqual(early_bound.witness(ordinal),late_bound.witness(ordinal))
+                for disprove in (False,True):
+                    self.assertNotEqual(early_bound.script(ordinal,disprove=disprove),
+                                        late_bound.script(ordinal,disprove=disprove))
+                    with self.assertRaises(ValueError):
+                        late_bound.require_identity(early_bound.program_digest,early_bound.claim_digest)
+                    with self.assertRaises(ValueError):
+                        early_bound.require_identity(late_bound.program_digest,late_bound.claim_digest)
+                    with self.assertRaises(ValueError):
+                        late_bound.require_identity(late_bound.program_digest,early_bound.claim_digest)
+                del early_bound,late_bound,early_binding,late_binding,early,late
+
     def test_sealed_snapshots_and_context_role_operation_round_identities(self):
         plan=self.build(0)
         binding=plan.bind(_state_patterns()[3])
@@ -357,12 +405,19 @@ class HostedByteKeccakRoundTests(unittest.TestCase):
             self.assertNotEqual(other.source_sha256,plan.source_sha256)
             with self.assertRaises(ValueError):committed.require_identity(other.program.digest(),committed.claim_digest)
             del other
+        explicit_none=plan.bind(binding.initial_state,claimed_output=None)
+        self.assertEqual(explicit_none.assignment,binding.assignment)
+        self.assertEqual((explicit_none.reference_output,explicit_none.output_state),
+                         (binding.reference_output,binding.output_state))
+        del explicit_none
         for bad in (bytes(199),bytes(201),bytearray(200),None,True):
             with self.assertRaises(ValueError):plan.bind(bad)
+        for bad in (bytes(199),bytes(201),bytearray(200),True):
             with self.assertRaises(ValueError):plan.bind(bytes(200),claimed_output=bad)
         for options in (dict(round_index=True),dict(round_index=-1),dict(round_index=24),
                         dict(role=True),dict(role='unknown'),dict(context=bytes(31)),
-                        dict(context=bytearray(32)),dict(operation='bad operation')):
+                        dict(context=bytearray(32)),dict(operation='bad operation'),
+                        dict(round_index=23,operation='x'*184)):
             parameters=dict(round_index=0,role='pallas_scalar',context=CONTEXT,
                             operation='tests/byte-keccak/round')
             parameters.update(options)

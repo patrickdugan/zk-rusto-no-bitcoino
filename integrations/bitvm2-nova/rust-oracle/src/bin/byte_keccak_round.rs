@@ -867,12 +867,14 @@ fn validate_case(case: &Case, manifest: &Manifest, d: &Descriptor, probe: bool) 
             if boolean { "boolean" } else { "byte" },
             d.round
         )
+    } else if boolean {
+        format!("{}/boolean/r{}", manifest.operation_id, d.round)
     } else {
+        // Some round constants repeat (notably rounds5/22). The actual BYTE
+        // Program identity must bind the explicit round even for one caller ID.
         format!(
-            "{}/{}/r{}",
-            manifest.operation_id,
-            if boolean { "boolean" } else { "byte" },
-            d.round
+            "{}/byte/r{}/round/{}",
+            manifest.operation_id, d.round, d.round
         )
     };
     let (catalogue, program, words, leaves) = if probe {

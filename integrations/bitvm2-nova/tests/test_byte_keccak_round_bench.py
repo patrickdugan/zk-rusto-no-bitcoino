@@ -85,6 +85,13 @@ class ByteKeccakRoundBenchTests(unittest.TestCase):
             self.assertEqual([r for r, profile in selected if profile == 'boolean-honest'], [0, 1, 2, 23])
         self.assertEqual(bench._initial(0)[:4], bytes((11, 48, 85, 122)))
         self.assertEqual(len(bench._initial(23)), 200)
+        self.assertEqual(ROUND_CONSTANTS[5], ROUND_CONSTANTS[22])
+        for r in (5, 22):
+            caller, actual = bench._source_operations(r, False)
+            self.assertEqual(caller, f'{bench.OPERATION}/byte/r{r}')
+            self.assertEqual(actual, caller+f'/round/{r}')
+            caller, actual = bench._source_operations(r, True)
+            self.assertEqual(actual, caller)  # Existing composite baseline identity.
         with self.assertRaises(ValueError):
             bench._initial(True)
 

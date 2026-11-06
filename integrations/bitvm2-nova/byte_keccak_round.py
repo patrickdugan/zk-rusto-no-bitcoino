@@ -135,7 +135,8 @@ def _parameters(round_index, context, role, operation_id):
     _round(round_index)
     if (type(context) is not bytes or len(context) != 32
             or type(role) is not str or role not in ROLES
-            or type(operation_id) is not str or not ID.fullmatch(operation_id)):
+            or type(operation_id) is not str or not ID.fullmatch(operation_id)
+            or not ID.fullmatch(f'{operation_id}/round/{round_index}')):
         raise ValueError('explicit round role/operation/32-byte immutable context required')
 
 
@@ -177,7 +178,11 @@ def _build(round_index, initial_state, *, context, role, operation_id, claimed_o
     initial = _state_bytes(initial_state, 'initial state')
     if claimed_output is not None:
         _state_bytes(claimed_output, 'claimed output')
-    builder = ByteTraceBuilder(role, operation_id, context)
+    # Standard Keccak RCs repeat (notably rounds5 and22), so the RC arguments
+    # alone cannot bind the public Program/fixed-opening identity to its round.
+    # Keep the caller prefix separate and include the explicit round below.
+    program_operation_id = f'{operation_id}/round/{round_index}'
+    builder = ByteTraceBuilder(role, program_operation_id, context)
     inputs = input_wire_names()
     a = [[builder.byte(inputs[8*lane+j], initial[8*lane+j]) for j in range(8)]
          for lane in range(25)]
@@ -252,7 +257,8 @@ def _build(round_index, initial_state, *, context, role, operation_id, claimed_o
             theta_mix=200, rho=176, chi_not=200, chi_and=200, chi_xor=200,
             iota=sum(mask != 0 for mask in masks)))
     manifest = dict(schema=SCHEMA, round_index=round_index, context=context.hex(), role=role,
-        operation_id=operation_id, program_sha256=program.digest().hex(),
+        operation_id=operation_id, program_operation_id=program_operation_id,
+        program_sha256=program.digest().hex(),
         catalogue_id=spec.digest().hex(), round_constant_le=masks.hex(),
         input_encoding='25lanes(x+5*y),8bytesLEperlane',
         output_encoding='natural terminal Chi/Iota producer words; no copies',
@@ -288,6 +294,7 @@ class ByteKeccakRoundBinding:
     def summary(self):
         result = dict(round_index=self.round.round_index,
             source_sha256=self.round.source_sha256.hex(),
+            program_operation_id=self.program.operation_id,
             round_binding_constructed=True, reference_matches=self.output_state == self.reference_output,
             words=len(self.program.words), leaves=len(self.spec.leaves))
         result.update({flag: False for flag in FALSE_FLAGS})
@@ -325,6 +332,10 @@ class ByteKeccakRound:
     def ports(self):
         return MappingProxyType({'inputs': self.inputs, 'outputs': self.outputs})
 
+    @property
+    def program_operation_id(self):
+        return self.program.operation_id
+
     def bind(self, initial_state, claimed_output=None):
         _hosted_guard()  # Before regeneration/Script/reference allocation.
         _state_bytes(initial_state, 'initial state')
@@ -346,6 +357,7 @@ class ByteKeccakRound:
     def summary(self):
         result = dict(schema=SCHEMA, round_index=self.round_index, context=self.context.hex(),
             role=self.role, operation_id=self.operation_id, source_sha256=self.source_sha256.hex(),
+            program_operation_id=self.program.operation_id,
             program_sha256=self.program.digest().hex(), catalogue_id=self.spec.digest().hex(),
             words=len(self.program.words), leaves=len(self.spec.leaves),
             input_bytes=STATE_BYTES, output_bytes=STATE_BYTES,

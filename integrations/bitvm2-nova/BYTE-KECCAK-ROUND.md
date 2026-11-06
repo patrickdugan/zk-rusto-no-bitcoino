@@ -21,6 +21,14 @@ later gate in this round. Every post-input word has exactly one preceding
 producer. The sealed source map identifies each terminal's actual producer
 ordinal and operand occurrence; outputs are not the last 200 allocated words.
 
+The Program operation identity includes the explicit round index after the
+caller prefix. Round constants alone are insufficient: rounds 5/22 and 6/20
+repeat constants. The sealed manifest records both operation identities and
+binds the round-specific source maps. Numeric openings for equal values remain
+equal; expected Program/catalogue identity admission and registry-specific WOTS
+keys provide their respective domain boundaries. This does not supply the
+future production assertion binding.
+
 This avoids an output-copy layer and its zero wire in the new byte backend.
 The existing Boolean backend's zero anchor and 1,600 output-copy gates remain
 unchanged. BYTE boundaries use distinct `byte-state` identities so they cannot
