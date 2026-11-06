@@ -182,6 +182,7 @@ costs. Equal values or independent one-round receipts cannot establish these
 joins; its separate hosted evidence covers them.
 
 Existing full-permutation and framed-LO Boolean evidence, header provers and
-real k-sized proving profiles remain separate. A complete byte permutation,
-both hash branches, proof-derived message origins, full
-verifier composition and production assertions/transactions remain future work.
+real k-sized proving profiles remain separate. The complete BYTE permutation
+now has its [own evidence](BYTE-KECCAK-PERMUTATION.md). Both framed hash branches,
+proof-derived message origins, full verifier composition and production
+assertions/transactions remain future work.

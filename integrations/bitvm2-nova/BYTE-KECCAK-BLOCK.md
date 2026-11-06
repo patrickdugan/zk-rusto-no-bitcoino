@@ -125,15 +125,13 @@ transcript, proof and production verification flags remain false.
 
 ## Remaining boundary
 
-A complete BYTE permutation can flatten six sealed blocks into one GraphSpec
-without raising its 30,000-leaf cap: the analytical census is 29,245 leaves and
-29,445 words. This cannot be an oversized Program; it needs an explicit
-manifest-based program identity and independent source binding. All five
-inter-block states must be joined, preserving the 18 existing internal joins,
-for 4,600 shared state words and 9,200 actual opening comparisons. Compiled
-Script bytes, process memory, full references and actual full-tree/disproof
-checks must be measured for that parent. The four-round sums are not that
-measurement. Both hash branches also need absorption,
+The subsequent [full BYTE permutation](BYTE-KECCAK-PERMUTATION.md) flattens six
+sealed blocks into a 29,245-leaf, 29,445-word GraphSpec without raising the
+30,000-leaf cap or creating an oversized Program. Its separate manifest identity
+and source binding cover all 23 states, 4,600 shared words and 9,200 actual
+opening comparisons. It directly measures the full Script cost, memory and
+tree/disproof checks; the four-round sums alone do not supply that evidence.
+Both hash branches still need absorption,
 padding, squeeze and proof-derived message origins. Full transcript and IPA
 Script verification, production assertion authority and Bitcoin transactions
 remain separate obligations. Existing real sharded proving profiles and header

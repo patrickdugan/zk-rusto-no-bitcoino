@@ -5,11 +5,17 @@ fresh sealed blocks into one 29,245-leaf, 29,445-word GraphSpec. Its program
 identity is explicitly a versioned manifest hash, while every small child
 retains its actual Program digest. The factory preserves all 23 round states,
 4,600 shared entries and 9,200 actual consumer coordinates, with a separate
-source hash after the parent catalogue. Full parent Script execution, its
-256-MiB compiled-byte fit, 512-MiB worker fit and actual component Taproot
-checks are pending hosted measurement. This is a permutation on external byte
-states; both framed hash branches and proof/transcript/IPA Script binding remain
-open.
+source hash after the parent catalogue. The hosted run measured 151,432,516
+Script bytes per full parent, passed 470,512 executions with 236,544 expected
+rejections, and checked 73,600 actual opening links across eight cases. Its
+complete component trees and 481/513-byte selected controls passed under the
+existing 256-MiB Script and 512-MiB worker caps; the complete Python suite passed
+407 tests. The kernel-only workflow retains its 180-second budget without
+accidentally running full-graph tests. This remains a permutation on external
+byte states. Both framed LO/HI branches must now share their 96 message bytes,
+anchor all 208 fixed input BYTEs and feed 64 actual digest bytes into the
+unchanged uniform reducer. Proof/message origins, full transcript and IPA
+Script binding remain open.
 
 [The opt-in four-round BYTE component](BYTE-KECCAK-BLOCK.md) composes four fresh
 sealed child rounds under one actual Program and one authenticated registry.
@@ -21,15 +27,15 @@ parents. The six aligned ranges measured 25,228,060-25,248,161 Script bytes per
 parent in either scalar role. All 16 workflows and 391 Python tests passed.
 The separate full-permutation boundary above flattens six sealed blocks into one
 29,245-leaf GraphSpec, using an explicit manifest program identity because a
-29,245-constraint Program is forbidden. Its five additional state joins, all
-23 round boundaries, actual full Script cost, memory and tree/disproof checks
-remain to be measured. Independent four-round receipts are not that evidence.
+29,245-constraint Program is forbidden. Its five additional state joins and all
+23 round boundaries now have full execution, memory and tree/disproof evidence
+above. Independent four-round receipts are not that evidence.
 
 [The opt-in byte Keccak round](BYTE-KECCAK-ROUND.md) uses natural terminal
 outputs tied to actual SSA producers, a conversion-complete unchanged Boolean
 baseline and a separate cached-signature consumer probe. This is a one-round
-measurement boundary; complete byte permutations and both hash branches remain
-unimplemented.
+measurement boundary. The complete BYTE permutation now has its separate
+evidence above; both framed hash branches remain to be composed.
 Its hosted run passed 339,296 Script executions with 175,024 expected rejections
 and 12,800 actual producer/consumer opening links. Four directly compared rounds
 measured 6,304,498-6,314,561 source Script bytes versus 52,487,418-52,500,750 for
