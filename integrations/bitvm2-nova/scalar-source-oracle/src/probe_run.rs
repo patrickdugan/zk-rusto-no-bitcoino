@@ -10,7 +10,7 @@ use crate::{
         Basis, RecordSink,
     },
     conditional_point::{self, CheckedPoint, CurveVerdict},
-    transport::{PointInputs, PointValue},
+    legacy_transport::{PointInputs, PointValue},
     Group, Probe, Run,
 };
 use bitvm2_nova_script_oracle::{engine::Metrics, registry::GraphSpec, wots::Result};
@@ -762,7 +762,7 @@ pub(crate) fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transport::fixed_hex;
+    use crate::legacy_transport::fixed_hex;
     #[test]
     fn closed_probe_names_do_not_accept_aliases_or_new_categories() {
         assert_eq!(
