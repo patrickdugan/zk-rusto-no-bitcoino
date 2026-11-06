@@ -1,5 +1,15 @@
 # Next implementation boundary
 
+[The framed BYTE rho composition](BYTE-RHO.md) connects both LO/HI permutations
+to the unchanged uniform reducer through a three-component source. It shares
+exactly 96 external message-byte origins, anchors 208 branch-private framing
+bytes and links all 64 digest producers directly to the original reducer
+adapters. Its analytical source has 58,943 leaves and 59,109 unique words;
+whole-composition Script costs, memory and forest/disproof conformance remain
+pending. Full and targeted execution profiles are reported separately. Script
+eval_W canonicality, proof/message origins and prior-state provenance remain
+open; this composition does not complete transcript, IPA or proof verification.
+
 [The opt-in full BYTE permutation](BYTE-KECCAK-PERMUTATION.md) flattens six
 fresh sealed blocks into one 29,245-leaf, 29,445-word GraphSpec. Its program
 identity is explicitly a versioned manifest hash, while every small child
