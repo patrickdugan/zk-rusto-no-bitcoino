@@ -1,5 +1,11 @@
 # Next implementation boundary
 
+[Actual proving under k-sized folds and aligned shards](ACTUAL-PROVING.md) now
+has a separate optional Windows coordinator, using the unchanged transparent
+header prover and mandatory cold verification/full-state joins. Its explicit
+resource budget is independent of the retained low-RAM conformance profiles.
+Fresh-proof measurements are reported only after the real run completes.
+
 [The streamed full-permutation graph](KECCAK-PERMUTATION.md) extends the linked
 Keccak pair to twelve bounded components with globally reused state signatures
 and hierarchical offline Taproot membership. All ten workflows passed on source

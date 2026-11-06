@@ -1,0 +1,34 @@
+name: BitVM2 Nova bounded proving coordinator checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/proving_*.py', 'integrations/bitvm2-nova/prepare_proving.py', 'integrations/bitvm2-nova/tests/test_proving_policy.py', '.github/workflows/bitvm2-nova-proving.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/proving_*.py', 'integrations/bitvm2-nova/prepare_proving.py', 'integrations/bitvm2-nova/tests/test_proving_policy.py', '.github/workflows/bitvm2-nova-proving.yml']
+permissions:
+  contents: read
+jobs:
+  windows-job-and-proof-policy:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile coordinator and validate source, budgets and full-state joins
+        run: |
+          python -m py_compile proving_shards.py proving_process.py proving_policy.py prepare_proving.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s tests -p test_proving_policy.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test actual Job Object cleanup and limits with tiny Python children
+        run: |
+          python proving_process.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      # Real proving is explicit through proving_shards.py. This push workflow
+      # runs small process/policy tests and never starts a proving workload.
