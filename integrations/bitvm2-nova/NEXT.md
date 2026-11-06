@@ -1,5 +1,15 @@
 # Next implementation boundary
 
+[The challenge-bit/conditional-point extension](BYTE-C-BIT-POINT.md) now binds
+the actual canonical sumcheck scalar to one fixed bit and `R=A+bP`, retaining
+the complete `E=A+P` relation even when the bit is zero. Hosted execution on
+`9ebd0cfc451801a15cf37c72e63c86aa6600d390` passes all twenty workflows and
+680,120 Script calls, including 366,674 expected rejections. Its eleven
+components measure 851,477,668 Pallas / 851,563,810 Vesta Script bytes under
+unchanged limits. Two honest cases execute fully; four coherent main faults
+and the private point probes have explicitly targeted coverage. Complete
+scalar multiplication, IPA, proof origins and the full transcript remain open.
+
 [The linked rho/sumcheck challenge](BYTE-RHO-CHAIN.md) closes the
 next actual transcript boundary: rho's 64 raw digest producer bytes feed the
 following two-block challenge. The shared prefix, canonical `c0,c2` encodings,
@@ -69,36 +79,64 @@ proof verification can be claimed.
 
 ## Next curve boundary
 
-[The challenge-bit/conditional-point extension](BYTE-C-BIT-POINT.md) is being
-implemented as a separate eleven-component source. Its new hosted evidence is
-pending; the source-derived census below is not a measurement. The complete
-nine-component chain and its measured evidence above remain the baseline.
+[The challenge-bit/conditional-point extension](BYTE-C-BIT-POINT.md) has passed
+its separate eleven-component hosted experiment. The complete nine-component
+chain and the original point-addition backends remain unchanged baselines.
 
-The smallest useful scalar-action extension is `R = A + bP`: compute `E = A+P`
+The implemented scalar-action boundary is `R = A + bP`: compute `E = A+P`
 with one unchanged complete convolution point-add child, then select `R = b?E:A`.
 This still checks `P` when `b=0`. The measured 219,498,908-byte "Horner point"
 component is affine addition using thirteen Horner field products; it is not a
 scalar-bit point transition. The existing convolution alternative contributes
 88,586,200 Pallas / 88,688,588 Vesta bytes before any new selector or bridge.
 
-Nine canonical challenge limbs can feed nine unchanged reconstruction leaves
-with 255 bound-2 bits, widths `29*8,23`: 264 words and nine leaves analytically.
-The scalar-role bridge must retain the actual Uniform canonical guard, use its
-real reconstruction openings and expose a verifier-fixed bit index. Only that
-chosen bound-2 bit may cross to the curve base-role selector. Point-coordinate
-openings must not be described as new SSA producers. Existing point dispatch,
-on-curve, infinity form, canonicality and witness guards must remain intact.
+Nine actual challenge limbs now feed nine unchanged reconstruction leaves
+with 255 bound-2 bits, widths `29*8,23`: 264 words and nine leaves. The bridge
+retains the actual Uniform canonical guard and real reconstruction/guard
+openings, with a verifier-fixed bit index. Only that chosen bound-2 bit crosses
+to the corresponding curve base role, selected by role name. Point-coordinate
+openings remain asserted ports, not new SSA producers. Existing point dispatch,
+on-curve, infinity form, canonicality and witness guards remain intact.
 
-A fresh point/selector Program is analytically 7,498 words and 6,161 leaves,
+A fresh point/selector Program has 7,498 words and 6,161 leaves,
 with explicit projection of all original arithmetic and relocated canonical
-guards. A new mixed-role wrapper could extend this chain to eleven components,
-153,213 leaves and 155,107 unique words. These are source-derived counts, not
-new execution or cost measurements. The current scalar-only chain factory and
-its exact fixed-count key helper must remain unchanged. Adversarial tests need
-both bit values, invalid2, index/endianness swaps, coherent changed-bit witnesses,
-invalid points even on the unselected branch, infinity/dispatch cases and actual
-opening comparisons. Authenticated doubling would then give `R=2A+bP`; complete
-scalar multiplication, MSM, generator/proof origins and IPA remain open.
+guards. The mixed-role wrapper extends the chain to eleven components,
+153,213 leaves and 155,107 unique words; all three profiles per role have the
+same complete measured cost. The scalar-only chain factory and exact fixed-count
+key helper remain unchanged. Conformance covers both bits, signed invalid2,
+index/endianness boundaries, coherent changed-bit and scalar-modulus aliases,
+invalid unused points, infinity/dispatch cases and 138 new actual opening
+comparisons across the six main profiles. The bit bridge costs 435,945 bytes;
+the selector adds 201,985 bytes to either unchanged complete-add baseline.
+Authenticated doubling would next give `R=2A+bP`; full-width scalar action and
+MSM still require their own cost experiment. Generator/proof origins and the
+complete IPA remain open.
+
+## Route to an end-to-end Nova SNARK verifier
+
+1. Bind bounded proof decoding to the source graph: exact spans, lengths and
+   EOF, network/k/key identity, canonical scalars and compressed points, and
+   actual transcript message origins. Use the corrected native verifier from
+   `feat/testnet4-recursive-chain` (`de607d3`) and the existing real NHT4/NHC1
+   proofs as the differential baseline. No new proving is needed for this gate.
+2. Extend the authenticated bit/point boundary into measured scalar action and
+   MSM. Preserve the complete curve checks, scalar canonicality and real opening
+   links. Compare implementations before repeating point steps at full width;
+   a count projection is insufficient evidence that the source fits its limits.
+3. Implement the complete IPA and Nova/Spartan algebra with authenticated
+   proof/key/generator origins, every round's commitments and challenge uses,
+   and independently tested adversarial folding and equation cases.
+4. Compose the complete transcript and proof source, then compare actual Script
+   outcomes with native verification on real valid and invalid proofs. This is
+   the experimental end-to-end verification gate. Separately verified fragments
+   and successful native verification cannot substitute for this composition.
+
+Cost work must intervene wherever the unchanged limits fail. The roughly
+70-GiB prefix-sharing transcript projection above prevents straightforward
+replication of the present backend; more host RAM does not reduce that Script
+footprint. It is not a measured complete verifier or a lower bound on future
+designs. Production assertion/key-lifecycle binding and the Bitcoin transaction
+graph remain separate later gates, with no deployment claim from these steps.
 
 [The opt-in full BYTE permutation](BYTE-KECCAK-PERMUTATION.md) flattens six
 fresh sealed blocks into one 29,245-leaf, 29,445-word GraphSpec. Its program
