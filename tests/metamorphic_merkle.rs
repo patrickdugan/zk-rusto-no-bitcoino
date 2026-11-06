@@ -100,13 +100,7 @@ fn full_tree_oracle_metamorphisms_cover_every_position_to_width_32() {
                 .map(|sibling| TxMerkleNode::from_byte_array(sibling.to_byte_array()))
                 .collect();
             assert_eq!(
-                verify_tx_merkle_root(
-                    renamed_id,
-                    position,
-                    count,
-                    &renamed_path,
-                    renamed_root,
-                ),
+                verify_tx_merkle_root(renamed_id, position, count, &renamed_path, renamed_root,),
                 Ok(()),
                 "re-encoded witness: width={width}, index={index}"
             );
@@ -146,14 +140,8 @@ fn full_tree_oracle_metamorphisms_cover_every_position_to_width_32() {
                 let mut changed_branch = branch.clone();
                 changed_branch[0] = flipped(changed_branch[0]);
                 assert!(
-                    verify_tx_merkle_root(
-                        original_id,
-                        position,
-                        count,
-                        &changed_branch,
-                        root,
-                    )
-                    .is_err(),
+                    verify_tx_merkle_root(original_id, position, count, &changed_branch, root,)
+                        .is_err(),
                     "mutated Merkle sibling accepted: width={width}, index={index}"
                 );
                 assert_eq!(
@@ -171,13 +159,7 @@ fn full_tree_oracle_metamorphisms_cover_every_position_to_width_32() {
             let mut trailing_branch = branch.clone();
             trailing_branch.push(node(txid_for(width + 1)));
             assert_eq!(
-                verify_tx_merkle_root(
-                    original_id,
-                    position,
-                    count,
-                    &trailing_branch,
-                    root,
-                ),
+                verify_tx_merkle_root(original_id, position, count, &trailing_branch, root,),
                 Err(MerkleError::ExtraSibling)
             );
             assert_eq!(
