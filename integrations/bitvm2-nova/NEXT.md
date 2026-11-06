@@ -5,6 +5,14 @@ thirteen-component experiment: one streamed permutation, its 256 LO output
 links to the reduction tail, and 832 fixed framing/padding/capacity anchors at
 the actual input. HI, eval_W canonicality/proof origins and prior-state
 transcript validity remain open. No existing graph or resource limit changes.
+Its hosted run passed 8,952 Script vectors, including 4,833 expected rejections,
+with actual wrong-output and wrong-padding hierarchical disproofs. Each of the
+three complete scenarios measured 231,715 leaves and 1,087,930,741 Script bytes;
+the 1,205-leaf tail accounts for 4,723,663 bytes. This added source boundary is
+not a footprint reduction. Two existing full Boolean permutations exceed both
+the current component count and global Script budget. The next footprint
+experiment is a separate byte-kernel backend with authenticated cost
+measurements before binding HI.
 
 [The claimed digest-bit reduction bridge](DIGEST-REDUCTION.md) connects two
 256-bit LO/HI bit strings to the exact BYTE ports of a fresh unsigned 512-bit
