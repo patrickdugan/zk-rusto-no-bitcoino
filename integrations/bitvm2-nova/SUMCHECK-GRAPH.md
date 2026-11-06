@@ -75,6 +75,18 @@ exercises this stronger attack as well as a wrong final result, isolated source
 changes, a nonzero initial anchor, noncanonical p/p+1 fields and oversized signed
 limbs. Existing exact witness guards are retained.
 
+The benchmark distinguishes a false predicate from an aborted predicate.
+Addition's canonical-input checks use `VERIFY`, so an input equal to p aborts
+both correctness and disproof modes; a noncanonical output with canonical inputs
+is an ordinary false equality. The original modular native relation assumes
+canonical admission and cannot classify those malformed inputs by itself. The
+first hosted corpus exposed that reference mismatch. The corrected reference
+records such aborting arithmetic leaves as inapplicable to a Boolean-mode check,
+while retaining p/p+1 cases and their explicit `field_valid` disproofs. Validly
+signed oversized words remain disputable through the registry decoder's validity
+flag; forged signatures instead fail authentication in both modes. No Script or
+witness guard changes are made for these distinctions.
+
 `source_ports_script_bound`, challenge/proof-parser Script binding, complete
 proof verification and complete BitVM2 verification remain false. Full proof-byte
 decoding, exact hash/sponge and transcript composition, remaining sumcheck rounds

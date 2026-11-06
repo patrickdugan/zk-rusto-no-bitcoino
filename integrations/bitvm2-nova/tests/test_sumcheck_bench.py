@@ -8,7 +8,9 @@ import unittest
 from unittest.mock import patch
 
 import bench_sumcheck_graph as bench
+from script import OPS, execute, num
 from trace import TraceBuilder
+from trace_kernels import compile_predicate
 from wots_graph import GraphSpec
 
 
@@ -67,6 +69,43 @@ class SumcheckBench(unittest.TestCase):
         oversized=dict(values);oversized[wires[0]]=0xffffffff
         self.assertFalse(bench._truth(program,spec,oversized,0))
         self.assertFalse(bench._truth(program,spec,oversized,canonical))
+
+    def test_add_noncanonical_input_aborts_both_modes_output_is_plain_false(self):
+        for role in ('pallas_scalar','vesta_scalar'):
+            builder=TraceBuilder(role,'test/tiny-add-domain',bytes(32))
+            x=builder.field('x',0)
+            y=builder.field('y',0)
+            z=builder.field('z',0)
+            builder.check('add',x+y+z)
+            program,values=builder.finish()
+            spec=GraphSpec.from_program(program)
+            code=compile_predicate(program.p,'add')
+            inverted=code+bytes([OPS['NOT']])
+            witness=lambda changed:[num(changed[word]) for word in x+y+z]
+            self.assertIs(bench._truth(program,spec,values,0),True)
+            self.assertTrue(execute(code,witness(values)).success)
+            for wires in (x,y):
+                bad=bench._set_field(values,wires,program.p)
+                # The modular relation alone is true. Actual Script has an
+                # additional canonical INPUT VERIFY, so neither mode succeeds.
+                self.assertTrue(program.constraints[0].native(bad,program.p))
+                self.assertIsNone(bench._truth(program,spec,bad,0))
+                for script in (code,inverted):
+                    result=execute(script,witness(bad))
+                    self.assertFalse(result.success)
+                    self.assertEqual(result.error,'VERIFY')
+                valid=bench._field_ordinal(program,spec,wires)
+                self.assertIs(bench._truth(program,spec,bad,valid),False)
+                body=bytes.fromhex(dict(spec.bodies)[spec.leaves[valid].body_sha256])
+                field_disproof=execute(body+bytes([OPS['NOT']]),[num(bad[word]) for word in wires])
+                self.assertTrue(field_disproof.success)
+                self.assertIsNone(field_disproof.error)
+            bad_output=bench._set_field(values,z,program.p)
+            self.assertIs(bench._truth(program,spec,bad_output,0),False)
+            comparison=execute(code,witness(bad_output))
+            self.assertFalse(comparison.success)
+            self.assertIsNone(comparison.error)
+            self.assertTrue(execute(inverted,witness(bad_output)).success)
 
 
 if __name__=='__main__':

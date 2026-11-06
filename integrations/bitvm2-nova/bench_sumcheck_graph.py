@@ -66,14 +66,26 @@ def _set_field(values, wires, value):
 
 
 def _truth(program, spec, values, ordinal):
-    """Reference truth including every authenticated decoder's range check."""
+    """True/False predicate result, or None for a kernel VERIFY precondition.
+
+    WOTS bounds produce a false validity flag before entering a predicate.
+    In contrast, add/mul_bit require canonical x/y with VERIFY inside their
+    bodies: an out-of-domain operand aborts correctness AND disproof Scripts.
+    The existing Rust boolean Check format cannot encode that third outcome.
+    """
     leaf = spec.leaves[ordinal]
     if any(type(values[spec.words[index][0]]) is not int
            or not 0 <= values[spec.words[index][0]] < spec.words[index][1]
            for index in leaf.wires):
         return False
     if ordinal < len(program.constraints):
-        return program.constraints[ordinal].native(values, program.p)
+        constraint = program.constraints[ordinal]
+        if constraint.kind in ('add','mul_bit'):
+            # script.kernel validates canonical INPUTS, not its output field.
+            if any(_value(values,constraint.wires[start:start+9]) >= program.p
+                   for start in (0,9)):
+                return None
+        return constraint.native(values, program.p)
     if leaf.kind == 'field_valid':
         return _value(values, tuple(spec.words[index][0] for index in leaf.wires)) < program.p
     if leaf.kind == 'word_valid':
@@ -183,7 +195,7 @@ def _cases_for_graph(graph, census, diagnostics):
     if _value(honest,initial) != 0:
         raise ValueError('outer initial claim must be anchored to zero')
 
-    def emit(suffix,values,checks,reason,measure=False):
+    def emit(suffix,values,checks,reason,measure=False,excluded_aborts=()):
         if len({item['ordinal'] for item in checks}) != len(checks):
             raise ValueError('duplicate native execution check')
         for item in checks:
@@ -197,7 +209,8 @@ def _cases_for_graph(graph, census, diagnostics):
         name = f'{graph.role}/{suffix}'
         diagnostics.append({'name':name,'reason':reason,'expected_false_ordinals':
             [item['ordinal'] for item in checks if not item['expected_correct']],
-            'expected_true_ordinals':[item['ordinal'] for item in checks if item['expected_correct']]})
+            'expected_true_ordinals':[item['ordinal'] for item in checks if item['expected_correct']],
+            'kernel_verify_abort_ordinals_excluded':list(excluded_aborts)})
         return {'name':name,'spec':shape,'expected_spec_id':digest,'words':words,
                 'checks':checks,'measure_all':measure}
 
@@ -246,9 +259,11 @@ def _cases_for_graph(graph, census, diagnostics):
         'unsigned32 WOTS word exceeds its declared29-bit bound', (source_valid,),(),False,True))
 
     for suffix,values,reason,required_false,required_true,single,require_original in mutations:
-        false = [i for i in range(len(spec.leaves)) if not _truth(program,spec,values,i)]
+        statuses = [_truth(program,spec,values,i) for i in range(len(spec.leaves))]
+        false = [i for i,status in enumerate(statuses) if status is False]
+        aborted = [i for i,status in enumerate(statuses) if status is None]
         original_false = [i for i in false if i < len(program.constraints)]
-        if (not false or (require_original and not original_false)
+        if (not false or (require_original and (not original_false or aborted))
                 or any(i not in false for i in required_false)):
             raise ValueError('negative assignment has no required real refuting constraint')
         if single and original_false != list(required_false):
@@ -256,12 +271,13 @@ def _cases_for_graph(graph, census, diagnostics):
         checks = [{'ordinal':i,'expected_correct':False} for i in false]
         checks += [{'ordinal':i,'expected_correct':True} for i in required_true]
         if not original_false:
-            # A noncanonical value congruent to the honest source can satisfy
-            # every modular relation. Explicitly exercise original shapes as
-            # true alongside the essential appended field-validity refutation.
+            # Canonical-input kernel VERIFY failures are outside the boolean
+            # Check domain. Preserve their metadata, and execute unaffected
+            # original shapes alongside the actual field-validity disproof.
             checks += [{'ordinal':i,'expected_correct':True}
-                       for i in coverage['shape_ordinals'] if i < len(program.constraints)]
-        yield emit(suffix,values,checks,reason)
+                       for i in coverage['shape_ordinals']
+                       if i < len(program.constraints) and statuses[i] is True]
+        yield emit(suffix,values,checks,reason,excluded_aborts=aborted)
 
 
 def _write_cases(cases,path):
