@@ -1,5 +1,11 @@
 # Next implementation boundary
 
+[The framed LO endpoint composition](KECCAK-ENDPOINT.md) adds a separate
+thirteen-component experiment: one streamed permutation, its 256 LO output
+links to the reduction tail, and 832 fixed framing/padding/capacity anchors at
+the actual input. HI, eval_W canonicality/proof origins and prior-state
+transcript validity remain open. No existing graph or resource limit changes.
+
 [The claimed digest-bit reduction bridge](DIGEST-REDUCTION.md) connects two
 256-bit LO/HI bit strings to the exact BYTE ports of a fresh unsigned 512-bit
 reducer, using existing predicates and all original arithmetic guards. Its

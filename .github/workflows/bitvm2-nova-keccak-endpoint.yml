@@ -1,0 +1,66 @@
+name: BitVM2 Nova framed Keccak LO endpoint checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-keccak-endpoint.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-keccak-endpoint.yml']
+permissions:
+  contents: read
+jobs:
+  framed-lo-endpoint-and-hierarchical-membership:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CUDA_VISIBLE_DEVICES: ''
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check sealed LO endpoint maps, framing and coherent substitutions
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m pip install -r transcript-requirements.txt
+          /usr/bin/time -v -o results/keccak-endpoint-python-time.txt \
+            timeout --signal=KILL 480s prlimit --as=268435456 --cpu=480 -- \
+            python -m unittest discover -s tests -p 'test_keccak_endpoint*.py' -v \
+            2>&1 | tee results/keccak-endpoint-python-tests.txt
+      - name: Build pinned worker and run tiny native forest/admission unit tests
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/keccak-endpoint-rust-version.txt
+          rustfmt --edition 2021 --check rust-oracle/src/taproot_forest.rs rust-oracle/src/bin/keccak_endpoint.rs
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/keccak-endpoint-dependencies.txt
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --lib taproot_forest::tests -- --nocapture
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --bin keccak_endpoint -- --nocapture
+          cargo build --release --locked --manifest-path rust-oracle/Cargo.toml --bin keccak_endpoint
+      - name: Compile all thirteen components and execute linked LO and framing disproofs
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/keccak-endpoint-execution-time.txt \
+            timeout --signal=KILL 1500s prlimit --as=536870912 --cpu=1500 -- \
+            python bench_keccak_endpoint.py --cases-dir results/keccak-endpoint-cases \
+            --native-worker rust-oracle/target/release/keccak_endpoint \
+            --output results/keccak-endpoint-conformance.json | tee results/keccak-endpoint-stdout.json
+          cat results/keccak-endpoint-execution-time.txt
+          cp results/keccak-endpoint-cases/manifest.json results/keccak-endpoint-manifest.json
+          sha256sum results/keccak-endpoint-manifest.json results/keccak-endpoint-conformance.json > results/keccak-endpoint-report-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-framed-keccak-lo-endpoint-evidence
+          path: |
+            integrations/bitvm2-nova/results/keccak-endpoint-*.json
+            integrations/bitvm2-nova/results/keccak-endpoint-*.txt
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock

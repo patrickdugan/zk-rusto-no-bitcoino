@@ -27,6 +27,7 @@ results/native-ipa-*
 results/sumcheck-*
 results/keccak-pair-*
 results/keccak-full-*
+results/keccak-endpoint-*
 results/uniform-*
 results/digest-*
 results/proving-*
