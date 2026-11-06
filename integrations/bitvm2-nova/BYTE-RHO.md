@@ -102,9 +102,76 @@ Case, map, compact manifest and result files keep their bounded limits. The
 record budget includes full/targeted, guard and selected-tree calls; no cap is
 increased or bypassed by splitting workers. No proving or GPU work runs here.
 
-Actual costs, execution totals, tree paths and resource observations will be
-recorded after successful hosted conformance. Script accounting excludes
-transaction framing, control blocks and assertion signature payloads.
+## Measured hosted result
+
+Source commit `ece1e54e6afe9554aef7eca22b58ac438fce5583` passed the
+[hosted composition run](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42250750468),
+job `128004860359`. The 17 Python tests passed in 197.761 seconds under the
+unchanged 256-MiB address-space cap. Nine registry tests, five forest tests and
+all 19 new native tests passed before actual Script execution.
+All 18 workflows for this source commit passed; the complete M2 Python suite
+passed 424 tests in 650.487 seconds.
+
+| Scalar role | HI bytes | LO bytes | Tail bytes | Complete forest Script bytes |
+| --- | ---: | ---: | ---: | ---: |
+| Pallas | 151,432,516 | 151,432,516 | 2,494,673 | 305,359,705 |
+| Vesta | 151,432,516 | 151,432,516 | 2,486,550 | 305,351,582 |
+
+Every profile in a role has the same complete measured cost. Each live component
+tree's count and stream hash match its complete independently measured Script
+stream; each live forest sums all three components. The same raw-Script
+accounting as the isolated permutation is used. It excludes transaction framing,
+control blocks and assertion signature payloads. This experiment does not supply
+a conversion-complete Boolean full-rho baseline or establish a full-verifier
+savings ratio.
+
+Actual execution passed 487,176 Script calls, including 249,580 expected
+rejections. These are 475,176 ordinary C/D calls, 11,984 malformed-authentication
+and witness-length guard calls, and 16 selected-forest C/D rechecks. Four groups
+execute the complete statement; four execute the targeted subsets described
+above. All 471,544 case/predicate pairs received independent native truth checks;
+this is coverage, separate from the Script call count or the number of repeated
+native truth evaluations. The canonical wrong-result cases fail exactly the first
+reducer column, ordinal 85; the controlled HI digest fault fails ordinal 29,241,
+and the controlled LO delimiter fault fails tail anchor 363.
+
+Across eight groups, the worker checked 147,200 internal state producer/consumer
+openings, 3,072 shared-message consumer occurrences, 3,328 frame-anchor links and
+512 digest-to-reducer links. It created 472,872 scenario-global signatures and
+reused 2,944 component declarations. The 576 native-admission, 64 map, 96 source,
+240 cache and 104 forest negative controls are non-Script checks and are not
+added to the Script rejection count.
+
+Selected global controls are 321 bytes for the honest tail field-valid leaf,
+545 for the bad HI producer, and 353 for either tail counterexample. All 13
+forest mutation classes reject in every group. These roots are freshly built
+from actual compiled components; they are not externally pinned production
+assertion roots. Maximum observed Script size is 18,509 bytes, stack occupancy
+95 items, and witness size 91 items / 1,800 payload bytes.
+
+Native execution took 255.362551059 seconds; the complete parent benchmark took
+368.894601329 seconds. Parent-reported peak RSS is 114,028,544 bytes. External
+`/usr/bin/time` reported 288,308 KiB (295,227,392 bytes) for the benchmark command.
+These are distinct observations, not a simultaneous sum or a direct native-only
+peak. The unchanged native 512-MiB address-space, CPU, forest and record caps
+passed. The 102,652,964-byte compact execution stream stays below its original
+128-MiB cap and has SHA-256
+`048a8711ecf30669af9a79e10a6f378d090b64ec80d6ebfa84b88c36c2caa8c7`.
+It commits records only after actual engine outcomes match; no raw vector file
+or proof-verification receipt is substituted for execution.
+
+Artifact `13520308353` contains the report, raw manifest, timing/test logs and
+resolved dependency lock:
+
+| Evidence | Bytes | SHA-256 |
+| --- | ---: | --- |
+| ZIP | 46,714 | `9a6cecf8e9bfd82b2a53aa554b8813fabff2f21dd920a1d0044b9e3210d5559c` |
+| `byte-rho-conformance.json` | 50,803 | `b563594c5b1d953ce4174a770b4fbaf8dcc2b6d9eb0ed50ebdbbdfbb248fb7e7` |
+| `byte-rho-manifest.json` | 154,254 | `0af2f8dd11942bd8e99614694851d46480e6b7ec6391f523217cddebeb61ca3a` |
+
+The downloaded ZIP, report and manifest were hash-checked locally. Native
+compilation, graph construction and Script execution ran on hosted Linux; this
+milestone performed no local proving, GPU or native graph job.
 
 This is a framed rho-hash/reduction relation given external message origins.
 Script eval_W canonicality and proof-span provenance, full prior-state

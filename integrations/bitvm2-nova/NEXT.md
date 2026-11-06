@@ -4,9 +4,12 @@
 to the unchanged uniform reducer through a three-component source. It shares
 exactly 96 external message-byte origins, anchors 208 branch-private framing
 bytes and links all 64 digest producers directly to the original reducer
-adapters. Its analytical source has 58,943 leaves and 59,109 unique words;
-whole-composition Script costs, memory and forest/disproof conformance remain
-pending. Full and targeted execution profiles are reported separately. Script
+adapters. Its source has 58,943 leaves and 59,109 unique words. Hosted execution
+passed 487,176 Script calls with 249,580 expected rejections, and measured
+305,359,705 complete Script bytes for Pallas scalar and 305,351,582 for Vesta
+scalar. All live component/forest streams, shared openings and selected
+disproofs passed within the unchanged caps. Full and targeted execution profiles
+are reported separately. Script
 eval_W canonicality, proof/message origins and prior-state provenance remain
 open; this composition does not complete transcript, IPA or proof verification.
 
@@ -65,9 +68,9 @@ complete component trees and 481/513-byte selected controls passed under the
 existing 256-MiB Script and 512-MiB worker caps; the complete Python suite passed
 407 tests. The kernel-only workflow retains its 180-second budget without
 accidentally running full-graph tests. This remains a permutation on external
-byte states. Both framed LO/HI branches must now share their 96 message bytes,
-anchor all 208 fixed input BYTEs and feed 64 actual digest bytes into the
-unchanged uniform reducer. Proof/message origins, full transcript and IPA
+byte states. The separate rho composition above now shares the framed LO/HI
+message bytes, anchors the fixed BYTEs and feeds actual digest producers into
+the unchanged uniform reducer. Proof/message origins, full transcript and IPA
 Script binding remain open.
 
 [The opt-in four-round BYTE component](BYTE-KECCAK-BLOCK.md) composes four fresh
