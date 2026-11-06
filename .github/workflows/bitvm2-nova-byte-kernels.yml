@@ -1,0 +1,66 @@
+name: BitVM2 Nova byte kernel checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-byte-kernels.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-byte-kernels.yml']
+permissions:
+  contents: read
+jobs:
+  byte-kernel-and-authenticated-cost-conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CUDA_VISIBLE_DEVICES: ''
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check byte predicates, aliases, guards and unchanged baseline bodies
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m pip install -r transcript-requirements.txt
+          /usr/bin/time -v -o results/byte-kernel-python-time.txt \
+            timeout --signal=KILL 180s prlimit --as=268435456 --cpu=180 -- \
+            python -m unittest discover -s tests -p 'test_byte*.py' -v \
+            2>&1 | tee results/byte-kernel-python-tests.txt
+      - name: Build pinned worker and run strict byte-shape admission tests
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/byte-kernel-rust-version.txt
+          rustfmt --edition 2021 --check rust-oracle/src/registry.rs rust-oracle/src/bin/byte_kernels.rs
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/byte-kernel-dependencies.txt
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --lib registry::tests -- --nocapture
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --bin byte_kernels -- --nocapture
+          cargo build --release --locked --manifest-path rust-oracle/Cargo.toml --bin byte_kernels
+      - name: Measure byte and reconstructed Boolean kernels with authenticated disproofs
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/byte-kernel-execution-time.txt \
+            timeout --signal=KILL 420s prlimit --as=536870912 --cpu=420 -- \
+            python bench_byte_kernels.py --cases-dir results/byte-kernel-cases \
+            --native-worker rust-oracle/target/release/byte_kernels \
+            --output results/byte-kernel-conformance.json | tee results/byte-kernel-stdout.json
+          cat results/byte-kernel-execution-time.txt
+          cp results/byte-kernel-cases/inputs.json results/byte-kernel-inputs.json
+          sha256sum results/byte-kernel-inputs.json results/byte-kernel-conformance.json > results/byte-kernel-report-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-byte-kernel-evidence
+          path: |
+            integrations/bitvm2-nova/results/byte-kernel-*.json
+            integrations/bitvm2-nova/results/byte-kernel-*.txt
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock

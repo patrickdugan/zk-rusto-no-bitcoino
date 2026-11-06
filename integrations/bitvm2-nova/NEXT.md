@@ -1,5 +1,11 @@
 # Next implementation boundary
 
+[The opt-in byte-kernel experiment](BYTE-KERNELS.md) adds internally derived
+byte operations and a conversion-complete Boolean comparison before any byte
+permutation is built. Existing Boolean/convolution compilers and graphs remain
+the baselines. Authenticated measurements, rather than leaf-count projections,
+determine the next footprint decision.
+
 [The framed LO endpoint composition](KECCAK-ENDPOINT.md) adds a separate
 thirteen-component experiment: one streamed permutation, its 256 LO output
 links to the reduction tail, and 832 fixed framing/padding/capacity anchors at

@@ -67,6 +67,18 @@ impl GraphSpec {
             && leaf.argument.iter().all(|x| (0..5).contains(x))
             && leaf.argument.iter().collect::<HashSet<_>>().len() == leaf.argument.len();
         match leaf.kind.as_str() {
+            "byte_xor" | "byte_and" => empty && bounds == [256, 256, 256],
+            "byte_not" => empty && bounds == [256, 256],
+            "byte_rol" => {
+                leaf.argument.len() == 1
+                    && (1..=7).contains(&leaf.argument[0])
+                    && bounds == [256, 256, 256]
+            }
+            "byte_xor_const" => {
+                leaf.argument.len() == 1
+                    && (0..=255).contains(&leaf.argument[0])
+                    && bounds == [256, 256]
+            }
             "conv_split" => {
                 if leaf.argument.len() != 1 || !(1..=7).contains(&leaf.argument[0]) {
                     false
@@ -326,6 +338,121 @@ mod tests {
     }
     fn shaped(spec: &GraphSpec) -> bool {
         spec.shape(&spec.leaves[0])
+    }
+
+    #[test]
+    fn byte_shapes_accept_only_exact_byte_bounds_and_public_parameter_domains() {
+        for kind in ["byte_xor", "byte_and"] {
+            assert!(graph(kind, &[], &[256, 256, 256]).identity().is_ok());
+        }
+        assert!(graph("byte_not", &[], &[256, 256]).identity().is_ok());
+        for rotation in 1..=7 {
+            assert!(graph("byte_rol", &[rotation], &[256, 256, 256])
+                .identity()
+                .is_ok());
+        }
+        for mask in 0..=255 {
+            assert!(graph("byte_xor_const", &[mask], &[256, 256])
+                .identity()
+                .is_ok());
+        }
+    }
+    #[test]
+    fn byte_shapes_reject_negative_oversized_missing_and_surplus_arguments() {
+        for kind in ["byte_xor", "byte_and", "byte_not"] {
+            let bounds = if kind == "byte_not" {
+                vec![256; 2]
+            } else {
+                vec![256; 3]
+            };
+            for args in [vec![-1], vec![0], vec![1], vec![i64::MAX], vec![0, 0]] {
+                assert!(graph(kind, &args, &bounds).identity().is_err());
+            }
+        }
+        for args in [
+            vec![],
+            vec![-1],
+            vec![0],
+            vec![8],
+            vec![256],
+            vec![i64::MAX],
+            vec![1, 1],
+        ] {
+            assert!(graph("byte_rol", &args, &[256; 3]).identity().is_err());
+        }
+        for args in [vec![], vec![-1], vec![256], vec![i64::MAX], vec![1, 1]] {
+            assert!(graph("byte_xor_const", &args, &[256; 2])
+                .identity()
+                .is_err());
+        }
+    }
+    #[test]
+    fn byte_formal_arities_and_each_operand_decoder_bound_are_exact() {
+        for (kind, args, n) in [
+            ("byte_xor", vec![], 3),
+            ("byte_and", vec![], 3),
+            ("byte_not", vec![], 2),
+            ("byte_rol", vec![7], 3),
+            ("byte_xor_const", vec![255], 2),
+        ] {
+            let valid = graph(kind, &args, &vec![256; n]);
+            for i in 0..n {
+                for bound in [1, 2, 255, 257, BASE] {
+                    let mut bad = valid.clone();
+                    bad.words[i].bound = bound;
+                    assert!(
+                        bad.identity().is_err(),
+                        "{kind} accepted bound {bound} at {i}"
+                    );
+                }
+            }
+            let mut bad = valid.clone();
+            bad.leaves[0].wires.pop();
+            assert!(bad.identity().is_err());
+            let mut bad = valid.clone();
+            bad.leaves[0].wires.push(0);
+            assert!(bad.identity().is_err());
+        }
+    }
+    #[test]
+    fn byte_aliases_keep_all_formal_occurrences_and_identity_binding() {
+        for (kind, args, n) in [
+            ("byte_xor", vec![], 3),
+            ("byte_and", vec![], 3),
+            ("byte_not", vec![], 2),
+            ("byte_rol", vec![1], 3),
+            ("byte_xor_const", vec![0], 2),
+        ] {
+            let mut aliased = graph(kind, &args, &[256]);
+            aliased.leaves[0].wires = vec![0; n];
+            assert!(aliased.identity().is_ok());
+            let mut collapsed = aliased.clone();
+            collapsed.leaves[0].wires.pop();
+            assert!(collapsed.identity().is_err());
+            let mut changed = aliased.clone();
+            changed.words[0].bound = BASE;
+            assert!(changed.identity().is_err());
+        }
+        let mut left = graph("byte_xor", &[], &[256, 256]);
+        left.leaves[0].wires = vec![0, 0, 1];
+        let mut right = left.clone();
+        right.leaves[0].wires = vec![0, 1, 0];
+        assert_ne!(left.identity().unwrap(), right.identity().unwrap());
+    }
+    #[test]
+    fn byte_argument_transport_rejects_boolean_float_string_and_unknown_json_fields() {
+        for argument in ["true", "false", "1.0", "\"1\"", "null"] {
+            let raw = format!(
+                r#"{{"kind":"byte_rol","argument":[{argument}],"wires":[0,1,2],"body_sha256":"{}"}}"#,
+                "00".repeat(32)
+            );
+            assert!(serde_json::from_str::<Leaf>(&raw).is_err());
+        }
+        let raw = format!(
+            r#"{{"kind":"byte_not","argument":[],"wires":[0,1],"body_sha256":"{}","extra":1}}"#,
+            "00".repeat(32)
+        );
+        assert!(serde_json::from_str::<Leaf>(&raw).is_err());
     }
 
     #[test]

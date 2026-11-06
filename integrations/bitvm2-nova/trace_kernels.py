@@ -36,6 +36,9 @@ def gate(b: Builder, selector, cases):
 
 
 def compile_predicate(p: int, kind: str, argument: tuple[int, ...] = ()) -> bytes:
+    if kind in ('byte_xor', 'byte_and', 'byte_not', 'byte_rol', 'byte_xor_const'):
+        from byte_kernels import compile_byte_predicate
+        return compile_byte_predicate(p, kind, argument)
     # The optional backend validates types before its private cache, so a bool
     # cannot alias an integer shape that was compiled earlier.
     if kind in ('conv_split', 'conv_reconstruct', 'conv_ab', 'conv_pq', 'conv_column'):
