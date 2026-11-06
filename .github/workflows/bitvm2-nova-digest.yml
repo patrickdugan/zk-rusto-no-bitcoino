@@ -1,0 +1,102 @@
+name: BitVM2 Nova digest reduction boundary checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-digest.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-digest.yml']
+permissions:
+  contents: read
+jobs:
+  digest-bit-byte-and-mature-field-conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+      CUDA_VISIBLE_DEVICES: ''
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check ordered digest bits, bytes and preserved arithmetic guards
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m pip install -r transcript-requirements.txt
+          /usr/bin/time -v -o results/digest-python-time.txt \
+            timeout --signal=KILL 180s prlimit --as=268435456 --cpu=180 -- \
+            python -m unittest discover -s tests -p 'test_digest*.py' -v \
+            2>&1 | tee results/digest-python-tests.txt
+      - name: Generate both-modulus digest bridges and unchanged uniform baselines
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/digest-generation-time.txt \
+            timeout --signal=KILL 120s prlimit --as=268435456 --cpu=120 -- \
+            python bench_digest_reduce.py --inputs results/digest-registry-inputs.json \
+            --oracle-inputs results/digest-oracle-inputs.json \
+            --output results/digest-generation.json | tee results/digest-generation-stdout.json
+      - name: Build existing Script adapter and pinned mature field oracle
+        timeout-minutes: 17
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/digest-rust-version.txt
+          rustfmt --edition 2021 --check rust-oracle/src/bin/registry.rs nova-oracle/src/bin/uniform_reduce.rs
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo build --release --locked --manifest-path rust-oracle/Cargo.toml --bin registry
+          cargo generate-lockfile --manifest-path nova-oracle/Cargo.toml
+          cargo metadata --locked --format-version 1 --manifest-path nova-oracle/Cargo.toml > results/digest-cargo-metadata.json
+          python - <<'PY'
+          import json, tomllib
+          from pathlib import Path
+          packages = tomllib.loads(Path('nova-oracle/Cargo.lock').read_text())['package']
+          nova = [p for p in packages if p['name'] == 'nova-snark']
+          if len(nova) != 1 or nova[0]['version'] != '0.76.0' or nova[0]['checksum'] != 'c9bb3809a6c70057ea722c1c4fe5097cf29a3479d0b4671f3cddb1d81043bb31':
+              raise SystemExit('published Nova source pin changed')
+          header = [p for p in packages if p['name'] == 'nova-header-chain']
+          if len(header) != 1 or not header[0]['source'].endswith('#de607d3db17d400dd6c2923d357f1d4a7bf233c7'):
+              raise SystemExit('header source pin changed')
+          data = json.loads(Path('results/digest-cargo-metadata.json').read_bytes())
+          ids = {p['id'] for p in data['packages'] if p['name'] == 'nova-snark'}
+          nodes = [n for n in data['resolve']['nodes'] if n['id'] in ids]
+          if len(nodes) != 1 or {'evm','test-utils','blitzar'} & set(nodes[0]['features']):
+              raise SystemExit('unsupported EVM/test-utils/GPU Nova feature activation')
+          PY
+          cargo tree --locked --manifest-path nova-oracle/Cargo.toml > results/digest-mature-dependencies.txt
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/digest-script-dependencies.txt
+          timeout --signal=KILL 900s cargo test --release --locked --manifest-path nova-oracle/Cargo.toml --bin uniform_reduce -- --test-threads=1
+          cargo build --release --locked --manifest-path nova-oracle/Cargo.toml --bin uniform_reduce
+      - name: Execute mature differential reductions and authenticated disproofs
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/digest-oracle-time.txt \
+            timeout --signal=KILL 120s prlimit --as=536870912 --cpu=120 -- \
+            nova-oracle/target/release/uniform_reduce results/digest-oracle-inputs.json \
+            | tee results/digest-oracle-execution.json
+          /usr/bin/time -v -o results/digest-registry-time.txt \
+            timeout --signal=KILL 180s prlimit --as=536870912 --cpu=180 -- \
+            rust-oracle/target/release/registry results/digest-registry-inputs.json \
+            results/digest-registry-vectors.jsonl | tee results/digest-registry-execution.json
+          python check_digest_evidence.py
+          sha256sum results/digest-registry-inputs.json results/digest-registry-vectors.jsonl results/digest-oracle-inputs.json > results/digest-corpus-sha256.txt
+          cat results/digest-registry-time.txt results/digest-oracle-time.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-digest-reduction-boundary-evidence
+          path: |
+            integrations/bitvm2-nova/results/digest-generation.json
+            integrations/bitvm2-nova/results/digest-oracle-inputs.json
+            integrations/bitvm2-nova/results/digest-oracle-execution.json
+            integrations/bitvm2-nova/results/digest-registry-execution.json
+            integrations/bitvm2-nova/results/digest-*.txt
+            integrations/bitvm2-nova/nova-oracle/Cargo.lock
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock

@@ -523,6 +523,197 @@ fn keccak_pair_checks(
     ))
 }
 
+// These checks establish the claimed digest-bit encoding boundary, not the
+// provenance of a Keccak output. Predicate bytes remain pinned by the expected
+// catalogue identity; this independent layout check also rejects rewired ports.
+#[derive(Clone, Copy)]
+struct DigestLink {
+    bits: usize,
+    reconstruct: usize,
+    adapter: usize,
+    aux: usize,
+    byte: usize,
+}
+
+fn digest_reduction_layout(spec: &GraphSpec) -> Result<Vec<DigestLink>> {
+    if spec.words.len() != 955
+        || spec.leaves.len() != 373
+        || !matches!(spec.field_role.as_str(), "pallas_scalar" | "vesta_scalar")
+        || spec.leaves[0].kind != "const"
+        || spec.leaves[0].argument != [1]
+        || spec.leaves[372].kind != "field_valid"
+        || spec
+            .leaves
+            .iter()
+            .filter(|leaf| leaf.kind == "field_valid")
+            .count()
+            != 1
+    {
+        return Err("exact digest-bit/reduction catalogue required".into());
+    }
+    let word = |name: &str, bound: u32| -> Result<usize> {
+        spec.words
+            .iter()
+            .position(|word| word.name == name && word.bound == bound)
+            .ok_or_else(|| format!("missing exact digest/reduction word {name}").into())
+    };
+    let unit = word("constant/byte-one", 256)?;
+    if spec.leaves[0].wires != [unit] {
+        return Err("digest input unit anchor disconnected".into());
+    }
+    let mut links = Vec::with_capacity(64);
+    for i in 0..64 {
+        let half = if i < 32 { "lo" } else { "hi" };
+        let mut bits = Vec::with_capacity(8);
+        for j in 0..8 {
+            let name = format!("digest/{half}/l{}/b{}", (i % 32) / 8, 8 * (i % 8) + j);
+            let index = word(&name, 2)?;
+            if index != 379 + 9 * i + j {
+                return Err(
+                    "digest bits must be distinct ordered LO/HI lane-major LSB ports".into(),
+                );
+            }
+            bits.push(index);
+        }
+        let aux = word(&format!("digest/byte/{i}/aux"), 1 << 29)?;
+        let byte = word(&format!("input/byte/{i}"), 256)?;
+        let subtotal = word(&format!("input/subtotal/{i}"), 1 << 18)?;
+        if aux != 379 + 9 * i + 8 || byte >= 379 || subtotal >= 379 {
+            return Err("digest auxiliary or uniform source word map differs".into());
+        }
+        let producer = 244 + 2 * i;
+        let consumer = producer + 1;
+        let mut expected_bits = vec![aux];
+        expected_bits.extend(bits.into_iter().rev());
+        if spec.leaves[producer].kind != "bits"
+            || spec.leaves[producer].argument != [8]
+            || spec.leaves[producer].wires != expected_bits
+            || spec.leaves[consumer].kind != "conv_reconstruct"
+            || spec.leaves[consumer].argument != [8]
+            || spec.leaves[consumer].wires != [aux, byte]
+            || spec.leaves[1 + i].kind != "conv_ab"
+            || spec.leaves[1 + i].argument != [1]
+            || spec.leaves[1 + i].wires != [byte, unit, subtotal]
+        {
+            return Err("digest bit/aux/byte producer-consumer layout differs".into());
+        }
+        links.push(DigestLink {
+            bits: producer,
+            reconstruct: consumer,
+            adapter: 1 + i,
+            aux,
+            byte,
+        });
+    }
+    Ok(links)
+}
+
+fn digest_layout_rejections(spec: &GraphSpec) -> Result<usize> {
+    let mut variants = Vec::new();
+    let mut x = spec.clone();
+    x.leaves.pop();
+    variants.push(x);
+    let mut x = spec.clone();
+    x.words.pop();
+    variants.push(x);
+    let mut x = spec.clone();
+    x.words[379].name = "digest/wrong/l0/b0".into();
+    variants.push(x);
+    let mut x = spec.clone();
+    x.words[379].bound = 256;
+    variants.push(x);
+    let mut x = spec.clone();
+    x.words[387].bound = 256;
+    variants.push(x);
+    let mut x = spec.clone();
+    x.leaves[244].wires[1] = x.leaves[244].wires[2];
+    variants.push(x);
+    let mut x = spec.clone();
+    x.leaves[244].wires.swap(1, 2);
+    variants.push(x);
+    let mut x = spec.clone();
+    x.leaves[244].wires[1] = 379 + 9 * 32 + 7;
+    variants.push(x);
+    let mut x = spec.clone();
+    x.leaves[245].wires[0] = 396;
+    variants.push(x);
+    let mut x = spec.clone();
+    x.leaves[245].wires[1] = x.leaves[247].wires[1];
+    variants.push(x);
+    let mut x = spec.clone();
+    x.leaves[244].argument[0] = 7;
+    variants.push(x);
+    let mut x = spec.clone();
+    x.leaves[245].argument[0] = 7;
+    variants.push(x);
+    for other in &variants {
+        if digest_reduction_layout(other).is_ok() {
+            return Err("digest source-port substitution accepted".into());
+        }
+    }
+    Ok(variants.len())
+}
+
+fn digest_reduction_checks(
+    case: &Case,
+    registry: &Registry,
+    signatures: &[Signature],
+) -> Result<(usize, usize, serde_json::Value)> {
+    let links = digest_reduction_layout(&case.spec)?;
+    if !case.measure_all
+        || case.checks.len() != 373
+        || case
+            .checks
+            .iter()
+            .enumerate()
+            .any(|(ordinal, check)| check.ordinal != ordinal || !check.expected_correct)
+    {
+        return Err("honest digest catalogue must execute and measure every leaf".into());
+    }
+    let width = Wots4::TOTAL_DIGIT_LEN as usize;
+    let same_opening = |a, b, wire| -> Result<()> {
+        let left = registry.unique_slots(a)?;
+        let right = registry.unique_slots(b)?;
+        let ai = left
+            .iter()
+            .position(|slot| *slot == wire)
+            .ok_or("digest producer slot")?;
+        let bi = right
+            .iter()
+            .position(|slot| *slot == wire)
+            .ok_or("digest consumer slot")?;
+        let aw = registry.witness(a, signatures)?;
+        let bw = registry.witness(b, signatures)?;
+        if aw[ai * width..(ai + 1) * width] != bw[bi * width..(bi + 1) * width] {
+            return Err("digest bridge did not reuse the exact WOTS opening".into());
+        }
+        Ok(())
+    };
+    for link in &links {
+        same_opening(link.bits, link.reconstruct, link.aux)?;
+        same_opening(link.reconstruct, link.adapter, link.byte)?;
+    }
+    let selected = links[0].reconstruct;
+    let tree = TaprootCommitment::new(registry, selected)?;
+    tree.verify_member(registry, tree.merkle_root(), tree.output_key(), selected)?;
+    Ok((
+        digest_layout_rejections(&case.spec)?,
+        2 * links.len(),
+        serde_json::json!({"case":case.name,"claimed_digest_bits":512,"byte_bridge_pairs":64,
+        "shared_auxiliary_and_input_byte_opening_links_checked":2*links.len(),
+        "taproot_selected_ordinal":selected,"taproot_merkle_root":tree.merkle_root().to_string(),
+        "taproot_output_key":tree.output_key().to_string(),
+        "taproot_control_block_bytes":tree.control_block_bytes().len(),
+        "taproot_compiled_script_bytes":tree.compiled_script_bytes(),
+        "taproot_leaf_stream_sha256":hex::encode(tree.compiled_stream_sha256()),
+        "offline_taproot_membership_verified":true,"taproot_roots_independently_pinned":false,
+        "claimed_digest_bits_to_reduction_inputs_linked":true,
+        "keccak_output_source_authenticated":false,"full_hash_verified":false,
+        "transcript_verified":false,"proof_verified":false,"complete_nova_verifier":false,
+        "production_assertion_binding":false,"bitcoin_transaction_graph":false}),
+    ))
+}
+
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 3 {
@@ -547,6 +738,10 @@ fn main() -> Result<()> {
     let mut sumcheck_disproofs = Vec::new();
     let mut keccak_pair_fragments = Vec::new();
     let mut keccak_pair_disproofs = Vec::new();
+    let mut digest_reduction_fragments = Vec::new();
+    let mut digest_reduction_disproofs = Vec::new();
+    let mut digest_byte_links = 0;
+    let mut digest_layout_rejected = 0;
     let mut out = BufWriter::new(fs::File::create(&args[2])?);
     for case in &cases {
         if case.name.len() > 192
@@ -681,7 +876,10 @@ fn main() -> Result<()> {
                 )?;
             }
         }
-        if case.name.ends_with("/convolution-mul") || case.name.ends_with("/uniform-reduce512") {
+        if case.name.ends_with("/convolution-mul")
+            || case.name.ends_with("/uniform-reduce512")
+            || case.name.ends_with("/digest-reduce512")
+        {
             native_rejections += native_checks(&case.spec, &keys, expected, id)?;
             if registry
                 .witness(0, &signatures[..signatures.len() - 1])
@@ -695,7 +893,10 @@ fn main() -> Result<()> {
             // through the same authenticated boundary as the baseline.
             let mut kinds = HashSet::new();
             for (ordinal, leaf) in case.spec.leaves.iter().enumerate() {
-                if !kinds.insert(leaf.kind.as_str()) {
+                // The bridge's (BASE,BYTE) reconstruct(8) is a new decoder
+                // shape despite sharing a kind with limb reconstruction.
+                let byte_bridge = case.name.ends_with("/digest-reduce512") && ordinal == 245;
+                if !kinds.insert(leaf.kind.as_str()) && !byte_bridge {
                     continue;
                 }
                 let witness = registry.witness(ordinal, &signatures)?;
@@ -751,7 +952,9 @@ fn main() -> Result<()> {
                 .enumerate()
                 .filter(|(_, leaf)| leaf.kind == "conv_column")
                 .collect();
-            let expected_columns = if case.name.ends_with("/uniform-reduce512") {
+            let expected_columns = if case.name.ends_with("/uniform-reduce512")
+                || case.name.ends_with("/digest-reduce512")
+            {
                 65
             } else {
                 64
@@ -788,6 +991,64 @@ fn main() -> Result<()> {
                 }
                 convolution_carry_links += 1;
             }
+        }
+        if case.name.ends_with("/digest-reduce512") {
+            let (rejected, links, fragment) =
+                digest_reduction_checks(case, &registry, &signatures)?;
+            let measured = ledger
+                .last()
+                .ok_or("missing complete digest catalogue ledger")?;
+            if measured["all_disproof_script_bytes"] != fragment["taproot_compiled_script_bytes"]
+                || measured["leaf_stream_sha256"] != fragment["taproot_leaf_stream_sha256"]
+            {
+                return Err("digest Taproot differs from exact compiled catalogue".into());
+            }
+            native_rejections += rejected;
+            digest_layout_rejected += rejected;
+            digest_byte_links += links;
+            digest_reduction_fragments.push(fragment);
+        }
+        let digest_attack = if case.name.ends_with("/digest-attack-coherent-low") {
+            Some(245)
+        } else if case.name.ends_with("/digest-attack-coherent-high") {
+            Some(309)
+        } else if case.name.ends_with("/digest-attack-coherent-producer") {
+            Some(244)
+        } else {
+            None
+        };
+        if let Some(selected) = digest_attack {
+            digest_reduction_layout(&case.spec)?;
+            let failed: Vec<_> = checks
+                .iter()
+                .filter(|check| !check.expected_correct)
+                .collect();
+            if case.measure_all
+                || checks.len() != 373
+                || checks
+                    .iter()
+                    .enumerate()
+                    .any(|(ordinal, check)| check.ordinal != ordinal)
+                || failed.len() != 1
+                || failed[0].ordinal != selected
+            {
+                return Err(
+                    "coherent digest attack must expose only its exact bridge predicate".into(),
+                );
+            }
+            let tree = TaprootCommitment::new(&registry, selected)?;
+            tree.verify_member(&registry, tree.merkle_root(), tree.output_key(), selected)?;
+            digest_reduction_disproofs.push(serde_json::json!({"case":case.name,
+                "false_predicate_ordinal":selected,"actual_selected_disproof_executed":true,
+                "executed_leaves":checks.len(),"only_false_predicate":true,
+                "taproot_selected_ordinal":selected,"taproot_control_block_bytes":tree.control_block_bytes().len(),
+                "taproot_merkle_root":tree.merkle_root().to_string(),"taproot_output_key":tree.output_key().to_string(),
+                "taproot_compiled_script_bytes":tree.compiled_script_bytes(),
+                "taproot_leaf_stream_sha256":hex::encode(tree.compiled_stream_sha256()),
+                "offline_taproot_membership_verified":true,"taproot_roots_independently_pinned":false,
+                "keccak_output_source_authenticated":false,"full_hash_verified":false,
+                "transcript_verified":false,"proof_verified":false,"complete_nova_verifier":false,
+                "production_assertion_binding":false,"bitcoin_transaction_graph":false}));
         }
         if case.name == "keccak/pair-0-1" {
             let (rejections, fragment) =
@@ -1000,6 +1261,14 @@ fn main() -> Result<()> {
     }
     if !keccak_pair_disproofs.is_empty() {
         report["keccak_pair_disproofs"] = serde_json::Value::Array(keccak_pair_disproofs);
+    }
+    if !digest_reduction_fragments.is_empty() {
+        report["digest_reduction_fragments"] = serde_json::Value::Array(digest_reduction_fragments);
+        report["shared_digest_byte_links_checked"] = serde_json::json!(digest_byte_links);
+        report["digest_layout_rejections"] = serde_json::json!(digest_layout_rejected);
+    }
+    if !digest_reduction_disproofs.is_empty() {
+        report["digest_reduction_disproofs"] = serde_json::Value::Array(digest_reduction_disproofs);
     }
     println!("{report}");
     Ok(())

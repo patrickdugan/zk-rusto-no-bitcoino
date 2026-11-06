@@ -1,5 +1,11 @@
 # Next implementation boundary
 
+[The claimed digest-bit reduction bridge](DIGEST-REDUCTION.md) connects two
+256-bit LO/HI bit strings to the exact BYTE ports of a fresh unsigned 512-bit
+reducer, using existing predicates and all original arithmetic guards. Its
+373-leaf graph closes this encoding boundary. Authenticated Keccak provenance,
+sponge framing and whole-transcript Script composition remain open.
+
 [Actual proving under k-sized folds and aligned shards](ACTUAL-PROVING.md) now
 has a separate optional Windows coordinator, using the unchanged transparent
 header prover and mandatory cold verification/full-state joins. Its explicit
