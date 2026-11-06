@@ -41,16 +41,16 @@ jobs:
           rustfmt --edition 2021 --check rust-oracle/src/taproot_forest.rs rust-oracle/src/bin/keccak_full.rs
           cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
           cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/keccak-full-dependencies.txt
-          cargo test --locked --manifest-path rust-oracle/Cargo.toml --lib taproot_forest::tests -- --nocapture
-          cargo test --locked --manifest-path rust-oracle/Cargo.toml --bin keccak_full -- --nocapture
-          cargo build --locked --manifest-path rust-oracle/Cargo.toml --bin keccak_full
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --lib taproot_forest::tests -- --nocapture
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --bin keccak_full -- --nocapture
+          cargo build --release --locked --manifest-path rust-oracle/Cargo.toml --bin keccak_full
       - name: Compile every leaf, reuse global signatures and execute hierarchical disproofs
         run: |
           set -euo pipefail
           /usr/bin/time -v -o results/keccak-full-execution-time.txt \
             timeout --signal=KILL 1500s prlimit --as=536870912 --cpu=1500 -- \
             python bench_keccak_permutation.py --cases-dir results/keccak-full-cases \
-            --native-worker rust-oracle/target/debug/keccak_full \
+            --native-worker rust-oracle/target/release/keccak_full \
             --output results/keccak-full-conformance.json | tee results/keccak-full-stdout.json
           cat results/keccak-full-execution-time.txt
           cp results/keccak-full-cases/manifest.json results/keccak-full-manifest.json
