@@ -50,6 +50,7 @@ jobs:
             python -m unittest discover -s tests -p test_ipa_msm_benchmark.py -v
             python -m unittest discover -s tests -p test_production_replay.py -v
             python -m unittest discover -s tests -p test_replay_cli.py -v
+            python -m unittest discover -s tests -p 'test_retained*.py' -v
           } 2>&1 | tee results/native-python-tests.txt
       - name: Generate bounded transcript, sumcheck and retained-proof inputs
         run: |
@@ -356,6 +357,38 @@ jobs:
                  ('ipa_python_msm_independently_computed', 'ipa_generator_msm_verified',
                   'ipa_complete_verification', 'proof_verified', 'bitvm2_script_verified')):
               raise SystemExit('native IPA terminal conformance overclaimed proof/Script verification')
+          PY
+      - name: Compose every retained-profile mathematical check without imported receipts
+        timeout-minutes: 16
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/native-retained-math-time.txt \
+            timeout --signal=KILL 900s prlimit --as=536870912 --cpu=840 -- \
+            python bench_retained_verifier.py --matrix-dir results/native-matrices \
+            --generator-dir results/native-ipa-generators --native-msm nova-oracle/target/release/ipa_msm \
+            --output results/native-retained-math-composition.json \
+            | tee results/native-retained-math-summary.json
+          cat results/native-retained-math-time.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('results/native-retained-math-composition.json').read_bytes())
+          if result.get('schema') != 'bitvm2-nova-retained-math-composition/v1' or result.get('retained_math_checks_composed') is not True:
+              raise SystemExit('direct retained-profile mathematical composition required')
+          expected = {'matrix_files_checked': 6, 'matrix_inner_terminals_checked': 2,
+              'ipa_native_executions': 2, 'generators_consumed': 540672,
+              'matrix_payload_bytes': 119674848, 'generator_payload_bytes': 17301520}
+          if any(type(result.get(k)) is not int or result[k] != v for k, v in expected.items()):
+              raise SystemExit('mandatory matrix/IPA coverage incomplete')
+          for flag in ('external_native_report_loaded', 'replay_receipt_loaded',
+                       'proof_verified', 'bitvm2_script_verified', 'ipa_complete_verification',
+                       'ipa_python_msm_independently_computed', 'complete_bitvm2_verifier'):
+              if result.get(flag) is not False:
+                  raise SystemExit('retained composition scope exceeded: '+flag)
+          for count in ('native_proofs_verified_by_this_command', 'native_complete_proofs_verified',
+                        'setup_calls', 'proving_jobs', 'transactions_broadcast'):
+              if type(result.get(count)) is not int or result[count] != 0:
+                  raise SystemExit('unexpected full proof/proving/transaction action: '+count)
           PY
       - name: Compare genuine proof coefficients in explicit synthetic transcript states
         run: |

@@ -282,6 +282,12 @@ All seven workflows passed on that code commit. The subsequent offline
 [Taproot membership stage](TAPROOT-COMMITMENT.md) commits the unchanged arithmetic
 catalogues; it does not turn this native terminal check into Script verification.
 
+[Mandatory retained-profile composition](MATH-COMPOSITION.md) now provides a
+single call requiring actual matrix replay and both directly executed IPA
+terminals under the same admitted inputs. Its new hosted execution is pending;
+only its dedicated composition flag may become true. Existing general proof,
+complete IPA and complete Script verification flags remain false.
+
 ## Reproduce reference checks
 
 Python 3.10+ and the pinned mature hash dependency are required for the new

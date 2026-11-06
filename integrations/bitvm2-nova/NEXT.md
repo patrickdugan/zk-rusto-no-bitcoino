@@ -134,6 +134,13 @@ without treating a stored JSON receipt as authority, then bind the production
 computation into the complete authenticated dispute graph. A native result or
 sampled generator weights cannot authorize proof acceptance.
 
+[MATH-COMPOSITION.md](MATH-COMPOSITION.md) introduces the mandatory retained-profile
+composition call: fresh replay with all six authenticated matrices and both
+inner equations, matched sealed requests, then both direct native IPA executions.
+It accepts no imported result receipt and preserves every general proof/Script
+verification flag as false. Literal policy preflight precedes bulk work; hosted
+execution of this new composition is pending.
+
 ## M4: BitVM2 graph adapter
 
 [TAPROOT-COMMITMENT.md](TAPROOT-COMMITMENT.md) records the implemented offline
