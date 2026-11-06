@@ -1,0 +1,71 @@
+name: BitVM2 Nova challenge bit and conditional point checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-byte-c-bit-point.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-byte-c-bit-point.yml']
+permissions:
+  contents: read
+jobs:
+  challenge-bit-and-conditional-point-conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CUDA_VISIBLE_DEVICES: ''
+      BITVM2_NOVA_BIT_POINT_TESTS: '1'
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check scalar reconstruction, point edges and source admission under existing limits
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m pip install -r transcript-requirements.txt
+          timeout --signal=KILL 60s prlimit --as=268435456 --cpu=60 -- \
+            python point_body_pins.py --check | tee results/byte-c-bit-point-body-pins.json
+          /usr/bin/time -v -o results/byte-c-bit-point-python-time.txt \
+            timeout --signal=KILL 480s prlimit --as=268435456 --cpu=480 -- \
+            python -m unittest discover -s tests -p 'test_byte_c_bit_point*.py' -v \
+            2>&1 | tee results/byte-c-bit-point-python-tests.txt
+      - name: Build isolated pinned point worker and check independent component and forest rules
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/byte-c-bit-point-rust-version.txt
+          rustfmt --edition 2021 --check point-oracle/src/*.rs
+          cargo generate-lockfile --manifest-path point-oracle/Cargo.toml
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo tree --locked --manifest-path point-oracle/Cargo.toml > results/byte-c-bit-point-dependencies.txt
+          cargo test --release --locked --manifest-path point-oracle/Cargo.toml -- --nocapture
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --lib registry::tests -- --nocapture
+          cargo test --release --locked --manifest-path rust-oracle/Cargo.toml --lib taproot_forest::tests -- --nocapture
+          cargo build --release --locked --manifest-path point-oracle/Cargo.toml --bin byte_c_bit_point
+      - name: Execute linked honest and coherent faults with separately accounted private probes
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/byte-c-bit-point-execution-time.txt \
+            timeout --signal=KILL 1500s prlimit --as=536870912 --cpu=1500 -- \
+            python bench_byte_c_bit_point.py --cases-dir results/byte-c-bit-point-cases \
+            --native-worker point-oracle/target/release/byte_c_bit_point \
+            --output results/byte-c-bit-point-conformance.json | tee results/byte-c-bit-point-stdout.json
+          cat results/byte-c-bit-point-execution-time.txt
+          cp results/byte-c-bit-point-cases/manifest.json results/byte-c-bit-point-manifest.json
+          sha256sum results/byte-c-bit-point-manifest.json results/byte-c-bit-point-conformance.json > results/byte-c-bit-point-report-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-byte-c-bit-point-evidence
+          path: |
+            integrations/bitvm2-nova/results/byte-c-bit-point-*.json
+            integrations/bitvm2-nova/results/byte-c-bit-point-*.txt
+            integrations/bitvm2-nova/point-oracle/Cargo.lock

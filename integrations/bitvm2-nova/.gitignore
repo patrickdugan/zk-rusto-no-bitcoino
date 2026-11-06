@@ -37,3 +37,6 @@ results/byte-permutation-*
 results/byte-rho-*
 results/proving-*
 proving-fixtures/
+point-oracle/target/
+point-oracle/Cargo.lock
+results/byte-c-bit-point-*

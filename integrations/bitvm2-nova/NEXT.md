@@ -69,6 +69,11 @@ proof verification can be claimed.
 
 ## Next curve boundary
 
+[The challenge-bit/conditional-point extension](BYTE-C-BIT-POINT.md) is being
+implemented as a separate eleven-component source. Its new hosted evidence is
+pending; the source-derived census below is not a measurement. The complete
+nine-component chain and its measured evidence above remain the baseline.
+
 The smallest useful scalar-action extension is `R = A + bP`: compute `E = A+P`
 with one unchanged complete convolution point-add child, then select `R = b?E:A`.
 This still checks `P` when `b=0`. The measured 219,498,908-byte "Horner point"
