@@ -31,7 +31,7 @@ jobs:
           python -m pip install -r transcript-requirements.txt
           /usr/bin/time -v -o results/byte-kernel-python-time.txt \
             timeout --signal=KILL 180s prlimit --as=268435456 --cpu=180 -- \
-            python -m unittest discover -s tests -p 'test_byte*.py' -v \
+            python -m unittest discover -s tests -p 'test_byte_kernel*.py' -v \
             2>&1 | tee results/byte-kernel-python-tests.txt
       - name: Build pinned worker and run strict byte-shape admission tests
         run: |
