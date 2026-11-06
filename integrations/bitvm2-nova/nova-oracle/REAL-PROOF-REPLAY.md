@@ -4,8 +4,9 @@ This records the exact non-EVM Nova 0.76.0 verifier sequence needed to connect
 the retained NHT4 proof to the arithmetic/Script components. A native forwarding
 engine and an independent Python replay are implemented. The native capture
 passed hosted CI at `f630555`, with the initial Python integration passing at
-`8ed66d3`. The independent Poseidon extension requires its corresponding
-current-head hosted run. A trace or partial replay does not establish a
+`8ed66d3`. Independent Poseidon passed at `6662020`; the matrix extension passed
+[native run42144928984](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42144928984)
+at `c4cb8a0`. A trace or partial replay does not establish a
 complete authenticated BitVM2 verifier or general proof validity.
 
 Fixture paths below are relative to `integrations/bitvm2-nova/`.
@@ -37,9 +38,12 @@ five Poseidon absorption/state/truncation streams against actual proof inputs
 and independently computes their complete hashes using the actual-key parameter
 fixture documented in [POSEIDON.md](POSEIDON.md). Missing parameters reject by
 default. Explicit `allow_native_poseidon=True` permits the older native-only
-diagnostic mode with a false independent-Poseidon flag. It does not evaluate
-the large verifier-key matrices or generator MSM. The proof/Script, matrix and
-generator-verification limitations remain explicit false flags.
+diagnostic mode with a false independent-Poseidon flag. With a separately pinned
+matrix collection and explicit hosted directory, it also computes all six
+matrix evaluations and checks both inner terminal equations. That actual run
+checked2,667,462 coefficients/119,674,848 bytes in12.09seconds at80.6MB peak RSS.
+Without matrix inputs the earlier partial mode retains a false matrix flag.
+The generator MSM, independent full-proof and Script limitations remain false.
 
 Local checking passed 138 reference tests in 108.497 seconds, then three added
 CLI transport regressions in 0.148 seconds. Thirteen replay tests include the

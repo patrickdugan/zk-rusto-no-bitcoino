@@ -82,8 +82,10 @@ the actual verifier with forwarding engines and reconstructs proof-bound Keccak
 events independently. It replaces synthetic transcript states for this retained
 conformance path. [Independent Poseidon hashing](nova-oracle/POSEIDON.md) now
 computes all five full hashes from separately pinned actual-key parameters.
-Matrix evaluations and the full generator MSM remain unchecked by Python; the
-complete authenticated Script verifier is still unfinished.
+[Authenticated matrix streams](nova-oracle/MATRIX-PROFILE.md) now support the
+independent evaluation of all six actual matrices and both inner sumcheck
+terminals on the retained proof. The full generator MSM remains unchecked by
+Python; the complete authenticated Script verifier is still unfinished.
 
 Instrument the pinned Nova implementation rather than substitute the
 TEST-ONLY transcript. Account for its challenge reduction and byte encodings.
@@ -97,6 +99,14 @@ The k=5 dimension is now measured; k=1 remains unmeasured here. Stream generator
 access and coefficient computation. Include cold parameter generation and
 verification in the RAM measurement. The native upstream IPA implementation
 still needs a generator MSM whose length depends on circuit width.
+
+The next bounded IPA step is an authenticated export of the actual ordered
+`vk_ee.ck_v.ck` generators, preserving canonical compressed points and rejecting
+the identity-sign alias. The known counts are524,288 and16,384; their calculated
+vector payload is17,301,520 bytes, not measured export evidence. Reuse the
+released mature CPU MSM APIs on hosted runners and bind the complete tensor
+weights and resulting point to the proof-derived transcript/residual. A native
+JSON receipt or sampled generator weights cannot authorize proof acceptance.
 
 ## M4: BitVM2 graph adapter
 

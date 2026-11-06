@@ -2,7 +2,7 @@
 
 The default oracle exports **metadata only** for the six CSR matrices in the
 retained Nova verifier key. An explicit `--matrix-output NEW_DIR` option enables
-bounded native serialization to ephemeral hosted files. Neither mode validates
+bounded native serialization to ephemeral hosted files. Neither native export mode validates
 CSR contents, evaluates matrix polynomials or closes the independent
 matrix-verification flag. No matrix payload is downloaded or evaluated on the
 RAM-constrained host.
@@ -217,7 +217,17 @@ roles and collection identities. Missing matrix parameters retain the earlier
 partial replay with a false matrix flag. Independent proof, IPA generator MSM
 and Script flags remain false in both modes.
 
-The real positive still requires the corresponding hosted execution. The CLI
+The real positive passed at `c4cb8a0e24a14d76520c739bdb4462fb694c45c3` in
+[native run42144928984](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42144928984).
+The independent replay evaluated all2,667,462 coefficients from six authenticated
+files and matched both inner terminal equations. It took12.0929seconds and
+80,617,472 bytes peak RSS (the external runner measured78,728KiB), including
+Keccak, Poseidon, NIFS, sumcheck and partial IPA replay. The matrix flag is now
+true in that explicit mode; generator-MSM, independent full-proof and Script
+flags remain false. No native matrix-evaluation output was used as the Python
+answer or supplied as its expected A/B/C values.
+
+The CLI
 accepts `--matrix-dir results/native-matrices` only in the hosted environment,
 using an explicit64MiB equality-table budget and512MiB/300CPU-second/360wall-second
 process limits. Local code/tests use the1MiB default and no actual payloads.
