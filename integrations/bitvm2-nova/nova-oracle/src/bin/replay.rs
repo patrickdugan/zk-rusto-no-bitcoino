@@ -6,6 +6,8 @@ mod dimensions;
 mod key_bindings;
 #[path = "../matrix_profile.rs"]
 mod matrix_profile;
+#[path = "../matrix_stream.rs"]
+mod matrix_stream;
 #[path = "../poseidon_parameters.rs"]
 mod poseidon_parameters;
 #[path = "../tracing.rs"]
@@ -29,6 +31,7 @@ use sha2::{Digest, Sha256};
 use std::{
     fs::File,
     io::{Read, Write},
+    path::Path,
     time::Instant,
 };
 use tracing::{TracePallas as E1, TraceVesta as E2};
@@ -46,6 +49,7 @@ const BUNDLE_SHA: &str = "c3143d5627ef7291ab6a858b866a4ba19e356a168dea992d3e572e
 const PROOF_SHA: &str = "2137c6e8621cedb7423e0ef7f9ff7c27b2c6fdf3ceb227e644b3d9660d056617";
 const VK_SHA: &str = "1ae88a7bcfdc5f14d030d0baafa06ec17fe904a5ebed42f9bd6fa6105fdc8c24";
 const DIM_SHA: &str = "de6333df2e41b5f5bae1c103fab862f8d6022fd54abeb80ba61920bc9f360edc";
+const MATRIX_PROFILE_SHA: &str = "7a69cdd0c39601c988c39719bbfc67386762d516eea8a3fcfc0e23c7938ac921";
 const END_SHA: &str = "9c2c618540f1c52e25974c19e9ca6835a2336cc0debb35bf95b087087561a81c";
 const REVISION: &str = "de607d3db17d400dd6c2923d357f1d4a7bf233c7";
 
@@ -185,8 +189,8 @@ fn key() -> Result<Vk> {
 fn run() -> Result<Value> {
     let args: Vec<_> = std::env::args().collect();
     check(
-        args.len() == 4,
-        "usage: replay RETAINED.nht4 EXPECTED.json PINNED_DIMENSIONS.json",
+        args.len() == 4 || (args.len() == 6 && args[4] == "--matrix-output"),
+        "usage: replay RETAINED.nht4 EXPECTED.json PINNED_DIMENSIONS.json [--matrix-output NEW_DIR]",
     )?;
     let raw = read(&args[1], 1 << 20)?;
     let expected: Expected =
@@ -243,7 +247,30 @@ fn run() -> Result<Value> {
         }
     }
     let matrix_profile_sha256 = matrix_profile::canonical_sha256(&matrix_profile)?;
+    check(
+        matrix_profile_sha256 == MATRIX_PROFILE_SHA,
+        "actual matrix profile differs from independent hosted pin",
+    )?;
     let metadata_export_seconds = started.elapsed().as_secs_f64();
+    let (
+        matrix_collection,
+        matrix_collection_sha256,
+        matrix_payload_export,
+        matrix_payload_export_seconds,
+    ) = if let Some(directory) = args.get(5) {
+        let started = Instant::now();
+        let (collection, stats) =
+            matrix_stream::export_authenticated_vk(&vk, &matrix_profile, Path::new(directory))?;
+        let digest = matrix_stream::canonical_sha256(&collection)?;
+        (
+            Some(collection),
+            Some(digest),
+            Some(stats),
+            Some(started.elapsed().as_secs_f64()),
+        )
+    } else {
+        (None, None, None, None)
+    };
 
     // Never capture setup, metadata hashing or negative-verification loops.
     tracing::begin_capture()?;
@@ -268,6 +295,8 @@ fn run() -> Result<Value> {
         "poseidon_parameter_export":poseidon_parameter_export,
         "matrix_profile":matrix_profile,"matrix_profile_sha256":matrix_profile_sha256,
         "matrix_profile_export":matrix_profile_export,
+        "matrix_collection":matrix_collection,"matrix_collection_sha256":matrix_collection_sha256,
+        "matrix_payload_export":matrix_payload_export,"matrix_payload_export_seconds":matrix_payload_export_seconds,
         "trace":trace,"end_state_sha256":END_SHA,"end_height":final_state.height,
         "key_reconstruction_seconds":key_reconstruction_seconds,"metadata_export_seconds":metadata_export_seconds,
         "verify_seconds":verify_seconds,"setup_calls":1,"proving_jobs":0,"transactions_broadcast":0,

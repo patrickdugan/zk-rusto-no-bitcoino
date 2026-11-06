@@ -1,0 +1,13 @@
+{
+  "schema": "bitvm2-nova-matrix-profile-provenance/v1",
+  "source_commit": "7ce3b0d94aa2dabc8e596f0873a3f6db359ce674",
+  "workflow_run": 42140056093,
+  "job_id": 127637849653,
+  "source_evidence": "Completed hosted workflow stdout; Rust and independent Python canonical digests matched. No matrix payload is represented by this profile.",
+  "matrix_profile_sha256": "7a69cdd0c39601c988c39719bbfc67386762d516eea8a3fcfc0e23c7938ac921",
+  "canonical_bytes": 1376,
+  "canonicalization": "Sorted compact ASCII-escaped UTF8 JSON, no trailing LF.",
+  "capture_sha256": "07bd8a9f265827ff87f67b49ede3e43a61e2fa68553000558039360c8358e052",
+  "matrix_elements_read_by_exporter": 0,
+  "scope": "Authenticated metadata only; not coefficient, pointer/index validation or matrix polynomial verification."
+}

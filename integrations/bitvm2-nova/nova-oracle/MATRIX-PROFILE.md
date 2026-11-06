@@ -1,9 +1,11 @@
 # Authenticated matrix length profile
 
-This stage exports **metadata only** for the six CSR matrices in the retained
-Nova verifier key. It does not export any matrix elements, validate CSR contents,
-evaluate matrix polynomials or close the independent matrix-verification flag.
-No matrix payload is downloaded or evaluated on the RAM-constrained host.
+The default oracle exports **metadata only** for the six CSR matrices in the
+retained Nova verifier key. An explicit `--matrix-output NEW_DIR` option enables
+bounded native serialization to ephemeral hosted files. Neither mode validates
+CSR contents, evaluates matrix polynomials or closes the independent
+matrix-verification flag. No matrix payload is downloaded or evaluated on the
+RAM-constrained host.
 
 The native replay oracle first reconstructs the original transparent key, streams
 its complete SHA-256 and checks the existing pinned identity. It also checks the
@@ -32,8 +34,10 @@ at that selected vector field. Other errors fail the export; no panic is caught
 or classified as proof rejection. Matrix coefficients, column indices and pointer
 values are not serialized. Other key subtrees are skipped entirely. The report
 records 12 numeric fields and 18 vector lengths for all six matrices, plus skip
-and no-payload statistics. These counts require successful current-head CI before
-being treated as execution evidence.
+and no-payload statistics. Hosted run `42140056093`, job `127637849653`, passed
+20 replay tests and the actual authenticated-key export. The canonical 1,376-byte
+profile has SHA-256
+`7a69cdd0c39601c988c39719bbfc67386762d516eea8a3fcfc0e23c7938ac921`.
 
 Logical dimensions must remain positive powers of two, at most `2^24`, with
 two public IO elements and at least eight variables. Pointer-vector lengths must
@@ -47,10 +51,14 @@ for a later payload export. The exporter additionally requires:
 - `cols <= 2 * logical num_vars`, with checked arithmetic;
 - stored-entry count no greater than `csr_rows * cols`.
 
-The last check is consistent with matrices constructed by the pinned
-`SparseMatrix::new`, which requires strictly increasing column indices in each
-row. It does not demonstrate that ordering for the actual contents. Explicitly
-stored zero coefficients are not inspected or removed.
+The last check is a metadata density ceiling, not an ordering check. The public
+`SparseMatrix::new` constructor requires strictly increasing columns, but the
+actual frontend constructs CSR rows directly from its linear-combination
+iterator. That iterator emits public-input terms before auxiliary terms, so a
+mixed row can legitimately descend from the public-input half to witness
+columns. Consumers must preserve those entries and the native polynomial-sum
+semantics rather than imposing global within-row sorting. Explicitly stored zero
+coefficients are not inspected or removed.
 
 ## Stored shape and polynomial domain differ
 
@@ -73,9 +81,23 @@ The independently authenticated retained dimensions already establish:
 | Pallas | 524,288 | 524,288 | 1,048,576 |
 | Vesta | 16,384 | 16,384 | 32,768 |
 
-Actual stored rows, declared columns and entry counts are deliberately left to
-the hosted metadata export. They are not inferred from proof round counts or
-from the logical dimensions above.
+The actual hosted census, independently pinned in
+`../fixtures/nht4-genesis-0-2020-k5.matrix-profile.json`, established:
+
+| Curve | Matrix | Stored rows | Declared columns | Stored entries |
+| --- | --- | ---: | ---: | ---: |
+| Pallas | A | 524,288 | 524,291 | 1,153,172 |
+| Pallas | B | 524,288 | 524,291 | 527,234 |
+| Pallas | C | 524,288 | 524,291 | 860,569 |
+| Vesta | A | 16,384 | 16,387 | 72,548 |
+| Vesta | B | 16,384 | 16,387 | 44,127 |
+| Vesta | C | 16,384 | 16,387 | 9,812 |
+
+The six matrices contain 2,667,462 stored entries. These are key-derived counts,
+not values inferred from proof round counts. The lengths imply 119,674,848 raw
+serialized bytes for the optional format below, with maximum file size
+50,321,224 bytes. Actual file hashes and successful payload export still require
+the new hosted execution; these size calculations are not export evidence.
 
 ## Source and public APIs
 
@@ -90,6 +112,8 @@ Relevant paths at recorded VCS revision
 - `src/r1cs/mod.rs`: shape dimensions, public `A()`/`B()`/`C()` getters and padding.
 - `src/r1cs/sparse.rs`: public CSR fields and serde order
   `data`, `indices`, `indptr`, `cols`; public `iter()` and `get_row_unchecked()`.
+- `src/frontend/r1cs.rs` and `src/frontend/lc.rs`: actual CSR row construction
+  and input-before-auxiliary linear-combination iteration.
 - `src/spartan/polys/eq.rs`: equality-polynomial index convention.
 
 Typed public shape/matrix APIs exist, but the complete verifier key has no public
@@ -98,21 +122,86 @@ bridge here; no Debug parsing, unsafe cast or private memory-layout access is
 used. CSR iterators index data under structural assumptions and should not be
 called on an unvalidated arbitrary deserialized matrix.
 
-## Possible later hosted stage
+## Explicit optional hosted payload export
 
-First read the actual census and choose explicit entry/disk/time/memory limits.
-Then, if within those limits, stream authenticated CSR sections or canonical
-row/column/coefficient records to **ephemeral hosted files**, with a separately
-pinned manifest of counts and hashes. Do not put large matrices in local fixtures
-or upload large payloads by default; retain small metadata, hashes, timings and
-evaluation evidence instead.
+`replay RETAINED.nht4 EXPECTED.json PINNED_DIMENSIONS.json --matrix-output NEW_DIR`
+first authenticates the complete original VK, the independent dimensions and the
+actual profile digest above. The output directory must be a relative child under
+the existing working-directory `results` tree, such as `results/native-matrices`.
+Absolute paths, `..`, non-normal components and existing targets are rejected;
+the existing parent is canonicalized and must remain inside both the canonical
+results root and the current workspace. `matrix_stream.rs` selects only
+`vk_primary.S.A/B/C` and
+`vk_secondary.S.A/B/C`, borrows each actual field and calls the original
+`bincode 1.3.3` legacy fixed-integer, little-endian serializer. It never clones a
+matrix or the full key and never creates a serialized payload Vec. An outer
+64 KiB buffer coalesces small scalar writes; the inner writer checks exact sizes
+and headers and hashes only bytes successfully accepted by the underlying file.
+Flush, write, selection and format errors fail the export and the oracle; no
+panic is caught or classified as a successful proof rejection.
 
-A streaming implementation can preserve the original serde vector order in
-three file sections, avoiding a full JSON matrix or another complete key copy.
+All six expected file lengths are checked before creating the directory. Each
+file is limited to 64 MiB and their sum to 160 MiB. Files use `create_new`, with
+these fixed names and order:
+
+1. `primary-A.csr.bin`, `primary-B.csr.bin`, `primary-C.csr.bin`;
+2. `secondary-A.csr.bin`, `secondary-B.csr.bin`, `secondary-C.csr.bin`.
+
+Each file has four contiguous, separately SHA-256-hashed sections:
+
+| Section | Encoding | Length in bytes |
+| --- | --- | ---: |
+| `data` | u64 LE entry count, then original 32-byte LE field encodings | `8 + 32*data_len` |
+| `indices` | u64 LE count, then u64 LE column indices | `8 + 8*indices_len` |
+| `indptr` | u64 LE count, then u64 LE pointers | `8 + 8*indptr_len` |
+| `cols` | original u64 LE declared column count | `8` |
+
+Thus each complete file has `32 + 40*data_len + 8*indptr_len` bytes. Vec length
+prefixes are **included** in their section hashes. The writer checks every
+prefix and the final `cols` word against the authenticated profile, including
+headers split across writes. Small no-key tests compare the original public
+`SparseMatrix` serializer against independently assembled field/usize bytes;
+other tests exercise malformed headers, extra/truncated data, caps, short writes,
+injected I/O errors, selected paths and overwrite prevention. Hosted compilation
+and execution remain required; these tests were not run locally.
+
+After all six files complete, `collection.json` contains sorted compact ASCII
+JSON without a newline. Its schema is `bitvm2-nova-matrix-collection/v1`, binding
+the release/crate/header/network/k, complete VK, dimensions and actual profile
+identities. Its ordered `files` records include role, engine, scalar-field role,
+matrix, fixed filename, logical dimensions, CSR counts, exact byte length,
+whole-file SHA and ordered `segments` records `{name, offset, bytes, sha256}`.
+The oracle reports `matrix_collection`, `matrix_collection_sha256`,
+`matrix_payload_export`, and `matrix_payload_export_seconds`; all four are null
+when the option is absent. An error can leave incomplete files or a partial
+manifest in the new directory, and returns no successful report. Such a
+directory must not be reused as a completed export.
+
+The collection digest must be pinned independently after successful hosted
+export and integrity checks. A self-reported digest or embedded VK label does
+not authenticate edited files. A future evaluator uses three independent file
+cursors because coefficients, indices and pointers occupy separate sections.
+It must hash the **same bytes consumed for arithmetic** against the pinned
+section digests, so hashing a file and then rereading unchecked data is
+insufficient. A whole-file digest is an additional transport check. Keep bulk
+files on the hosted runner; retain the small collection, hashes, timings and
+evaluation evidence instead of downloading or uploading bulk files by default.
+
+## Independent real-proof evaluation remains future work
+
+`matrix_reference.py` implements the bounded independent reader and polynomial
+evaluation. Twelve small tests cover both fields, ordinary and duplicate row
+entries, implicit zeros, malformed CSR data, exact arithmetic-section hashes,
+evaluation-point binding and zero assignment evaluation. Its default equality
+table budget is only1MiB. No real payload or large table was used locally.
+Real-proof integration still requires independently pinned actual collection
+data and hosted execution. The export-conformance CLI is hosted-only and reports
+all matrix/proof/Script verification flags false.
+
 Before using contents, validate initial/monotone/bounded pointer values, terminal
 pointer equality with entry count, equal data/index counts, canonical field
-coefficients and index bounds. Length-only metadata cannot establish any of these
-content properties.
+coefficients and index bounds. Neither metadata nor opaque native serialization
+establishes any of these content properties for a consumer.
 
 For real proof challenges, independent Python should compute
 `sum(value * eq(r_x,row) * eq(r_y,col))` for each matrix. Use the full `r_y`, not
@@ -122,4 +211,4 @@ The resulting A/B/C evaluations can bind the actual inner-sumcheck terminal
 equation. Streaming rows and caching only a bounded column-weight table is a
 candidate strategy; resource use and practical caps remain to be measured on a
 hosted runner. No timing, memory, transaction-size or deployability claim follows
-from this metadata stage.
+from this export stage.
