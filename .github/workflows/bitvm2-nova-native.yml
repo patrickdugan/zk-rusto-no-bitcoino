@@ -45,6 +45,9 @@ jobs:
             python -m unittest discover -s tests -p test_matrix_reference.py -v
             python -m unittest discover -s tests -p test_matrix_export.py -v
             python -m unittest discover -s tests -p test_ipa_export.py -v
+            python -m unittest discover -s tests -p test_ipa_statement.py -v
+            python -m unittest discover -s tests -p test_ipa_runtime.py -v
+            python -m unittest discover -s tests -p test_ipa_msm_benchmark.py -v
             python -m unittest discover -s tests -p test_production_replay.py -v
             python -m unittest discover -s tests -p test_replay_cli.py -v
           } 2>&1 | tee results/native-python-tests.txt
@@ -175,6 +178,12 @@ jobs:
           print(json.dumps({'verifier_dimensions_canonical_sha256': hashlib.sha256(encoded).hexdigest()}))
           PY
           cat results/native-nht4-time.txt
+      - name: Test the mature CPU IPA terminal checker on tiny curves
+        run: |
+          set -euo pipefail
+          timeout --signal=KILL 90s cargo test --release --locked --jobs 2 \
+            --manifest-path nova-oracle/Cargo.toml --bin ipa_msm -- --test-threads=1 \
+            2>&1 | tee results/native-ipa-msm-unit-tests.txt
       - name: Capture actual retained-proof verification with forwarding engines
         timeout-minutes: 11
         run: |
@@ -323,6 +332,31 @@ jobs:
             --generator-dir results/native-ipa-generators --output results/native-ipa-export.json \
             | tee results/native-ipa-export-summary.json
           cp -- results/native-ipa-generators/collection.json results/native-ipa-generator-collection.json
+      - name: Directly execute both proof-derived IPA terminal relations on CPU
+        timeout-minutes: 14
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/native-ipa-msm-time.txt \
+            timeout --signal=KILL 800s prlimit --as=536870912 --cpu=780 -- \
+            python bench_ipa_msm.py --native-report results/native-replay-execution.json \
+            --generator-dir results/native-ipa-generators --native-msm nova-oracle/target/release/ipa_msm \
+            --output results/native-ipa-msm-execution.json | tee results/native-ipa-msm-summary.json
+          cat results/native-ipa-msm-time.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('results/native-ipa-msm-execution.json').read_bytes())
+          if (result.get('ipa_native_msm_executed') is not True
+                  or result.get('ipa_native_relation_checked') is not True
+                  or result.get('native_msm_executions') != 2
+                  or result.get('generator_count') != 540672
+                  or result.get('generator_payload_bytes') != 17301520):
+              raise SystemExit('both actual IPA terminal executions must complete')
+          if any(result.get(flag) is not False for flag in
+                 ('ipa_python_msm_independently_computed', 'ipa_generator_msm_verified',
+                  'ipa_complete_verification', 'proof_verified', 'bitvm2_script_verified')):
+              raise SystemExit('native IPA terminal conformance overclaimed proof/Script verification')
+          PY
       - name: Compare genuine proof coefficients in explicit synthetic transcript states
         run: |
           set -euo pipefail

@@ -1,0 +1,16 @@
+{
+  "schema": "bitvm2-nova-ipa-generator-provenance/v1",
+  "source_commit": "6eaa9741a57c66ce8e806e5a5e7ce0c9220299cc",
+  "workflow_run": 42147838335,
+  "job_id": 127663527790,
+  "source_evidence": "Completed hosted job stdout after original VK authentication and independent full-file/section hashing. No generator payload was downloaded or retained in artifacts.",
+  "ipa_generators_sha256": "db1f7cc9a47e0523635f7c52476f784e9c1cfe4e3686c98a54636c1d1a4134d4",
+  "canonical_bytes": 1505,
+  "canonicalization": "Sorted compact ASCII-escaped UTF8 JSON, no trailing LF.",
+  "capture_sha256": "d6883c9489a43cfba00fa6e2c4b835ac695cc7e517df43d2d5a3b02bc4ea13ae",
+  "source_native_report_sha256": "e58f1ec620648feca6701ba7f3b241722ebdfeaa3b50727325f9135f015139d7",
+  "actual_payload_bytes": 17301520,
+  "whole_file_hashes_checked": 2,
+  "segment_hashes_checked": 4,
+  "scope": "Authenticated ordered generator projection; not generator derivation, MSM or proof verification."
+}

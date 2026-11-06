@@ -123,16 +123,28 @@ curve/field decoding. Hashing and later rereading unchecked bytes is insufficien
 In particular, the released decoder can accept an `x=0, sign=1` identity alias;
 preserve canonical re-encoding checks and any explicit finite-generator policy.
 
-## Remaining IPA boundary
+## Executed export and remaining IPA boundary
+
+Hosted run42147838335 at `6eaa9741a57c66ce8e806e5a5e7ce0c9220299cc` passed31
+replay tests, exported17,301,520 bytes, and independently matched both file hashes,
+four section hashes and both count prefixes. Export took0.138seconds; independent
+hashing took0.038seconds at27.9MB peak RSS. The canonical1505-byte collection is
+now independently pinned by
+`db1f7cc9a47e0523635f7c52476f784e9c1cfe4e3686c98a54636c1d1a4134d4`.
+No raw generator payload was downloaded or retained in artifacts. The first
+build had stopped before export on a report-macro recursion limit; splitting
+the unchanged44 fields into bounded groups resolved it.
 
 `provider/ipa_pc.rs` derives source-ordered tensor weights from replayed folding
 challenges, computes the vector-generator MSM and compares the complete terminal
 equation. The current independent replay reconstructs scalar weights, the joint
 opening, proof L/R contributions and residual, but this export stage does not
-evaluate the missing large MSM. A future bounded hosted helper may reuse public
-`DlogGroupExt::vartime_multiscalar_mul` or `provider::msm::msm`; a native JSON
-receipt alone remains insufficient proof authority. Resource budgets and timings
-for that next computation must be measured rather than inferred from file size.
+evaluate the missing large MSM. [IPA-TERMINAL.md](IPA-TERMINAL.md) describes the
+bounded direct-process checker using public `DlogGroupExt::vartime_multiscalar_mul`.
+Its source and tiny transport tests are implemented; actual native unit/MSM
+execution requires corresponding hosted evidence. A native JSON receipt alone
+remains insufficient proof authority. Resource use must be measured rather than
+inferred from file size.
 
 The authoritative Nova source is release `0.76.0`, crate SHA-256
 `c9bb3809a6c70057ea722c1c4fe5097cf29a3479d0b4671f3cddb1d81043bb31`.
