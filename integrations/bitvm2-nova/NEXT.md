@@ -7,6 +7,12 @@ commit `46448d9`; each full scenario measured 230,510 leaves and 1,083,207,078
 Script bytes. Authenticated sponge endpoints and the complete verifier remain
 unfinished.
 
+[The separate unsigned 512-bit reduction graph](UNIFORM-REDUCTION.md) addresses
+Nova's 258-bit quotient requirement while preserving the existing multiplication
+path. Hosted conformance and measurements are required before reporting its
+actual costs; Keccak/proof-byte input origins remain unbound by this arithmetic
+adapter.
+
 M2 and the subsequent arithmetic/WOTS milestones are integrated on main. The
 opt-in M2.1 footprint comparison is documented
 in [M2-COMPACT.md](M2-COMPACT.md); `m2` remains the default compiler. Its complete

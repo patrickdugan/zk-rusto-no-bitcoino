@@ -1,0 +1,138 @@
+name: BitVM2 Nova wide uniform reduction checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-uniform.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '.github/workflows/bitvm2-nova-uniform.yml']
+permissions:
+  contents: read
+jobs:
+  wide-integer-and-mature-field-conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+      CUDA_VISIBLE_DEVICES: ''
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check independent carry arguments, anchors and complete bounded graph
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          /usr/bin/time -v -o results/uniform-python-time.txt \
+            timeout --signal=KILL 180s prlimit --as=268435456 --cpu=180 -- \
+            python -m unittest discover -s tests -p 'test_uniform*.py' -v \
+            2>&1 | tee results/uniform-python-tests.txt
+      - name: Generate both-modulus integer and differential field fixtures
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/uniform-generation-time.txt \
+            timeout --signal=KILL 120s prlimit --as=268435456 --cpu=120 -- \
+            python bench_uniform_reduce.py --inputs results/uniform-registry-inputs.json \
+            --oracle-inputs results/uniform-oracle-inputs.json \
+            --output results/uniform-generation.json | tee results/uniform-generation-stdout.json
+      - name: Build existing Script adapter and pinned mature field oracle
+        timeout-minutes: 17
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/uniform-rust-version.txt
+          rustfmt --edition 2021 --check rust-oracle/src/bin/registry.rs nova-oracle/src/bin/uniform_reduce.rs
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo build --release --locked --manifest-path rust-oracle/Cargo.toml --bin registry
+          cargo generate-lockfile --manifest-path nova-oracle/Cargo.toml
+          cargo metadata --locked --format-version 1 --manifest-path nova-oracle/Cargo.toml > results/uniform-cargo-metadata.json
+          python - <<'PY'
+          import json, tomllib
+          from pathlib import Path
+          packages = tomllib.loads(Path('nova-oracle/Cargo.lock').read_text())['package']
+          nova = [p for p in packages if p['name'] == 'nova-snark']
+          if len(nova) != 1 or nova[0]['version'] != '0.76.0' or nova[0]['checksum'] != 'c9bb3809a6c70057ea722c1c4fe5097cf29a3479d0b4671f3cddb1d81043bb31':
+              raise SystemExit('published Nova source pin changed')
+          header = [p for p in packages if p['name'] == 'nova-header-chain']
+          if len(header) != 1 or not header[0]['source'].endswith('#de607d3db17d400dd6c2923d357f1d4a7bf233c7'):
+              raise SystemExit('header source pin changed')
+          data = json.loads(Path('results/uniform-cargo-metadata.json').read_bytes())
+          ids = {p['id'] for p in data['packages'] if p['name'] == 'nova-snark'}
+          nodes = [n for n in data['resolve']['nodes'] if n['id'] in ids]
+          if len(nodes) != 1 or {'evm','test-utils','blitzar'} & set(nodes[0]['features']):
+              raise SystemExit('unsupported EVM/test-utils/GPU Nova feature activation')
+          PY
+          cargo tree --locked --manifest-path nova-oracle/Cargo.toml > results/uniform-mature-dependencies.txt
+          cargo tree --locked --manifest-path rust-oracle/Cargo.toml > results/uniform-script-dependencies.txt
+          timeout --signal=KILL 900s cargo test --release --locked --manifest-path nova-oracle/Cargo.toml --bin uniform_reduce -- --test-threads=1
+          cargo build --release --locked --manifest-path nova-oracle/Cargo.toml --bin uniform_reduce
+      - name: Execute mature differential reductions and authenticated disproofs
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/uniform-oracle-time.txt \
+            timeout --signal=KILL 120s prlimit --as=536870912 --cpu=120 -- \
+            nova-oracle/target/release/uniform_reduce results/uniform-oracle-inputs.json \
+            | tee results/uniform-oracle-execution.json
+          /usr/bin/time -v -o results/uniform-registry-time.txt \
+            timeout --signal=KILL 180s prlimit --as=536870912 --cpu=180 -- \
+            rust-oracle/target/release/registry results/uniform-registry-inputs.json \
+            results/uniform-registry-vectors.jsonl | tee results/uniform-registry-execution.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('results')
+          generation = json.loads((p/'uniform-generation.json').read_bytes())
+          inputs = json.loads((p/'uniform-oracle-inputs.json').read_bytes())
+          mature = json.loads((p/'uniform-oracle-execution.json').read_bytes())
+          native = json.loads((p/'uniform-registry-execution.json').read_bytes())
+          if generation['cases'] != 20 or generation['mature_oracle_cases'] != 12:
+              raise SystemExit('bounded uniform fixture census changed')
+          if mature.get('passed') is not True or mature['case_count'] != 12 or mature['native_reductions'] != 12 or len(mature['results']) != 12:
+              raise SystemExit('twelve mature uniform reductions must execute')
+          if mature['op_endian'] != 'unsigned-little-endian-512-to-canonical-little-endian-32' or mature['fields_checked'] != {'Fp':6,'Fq':6}:
+              raise SystemExit('uniform modulus or byte-order coverage changed')
+          for actual, expected in zip(mature['results'], inputs['cases']):
+              if any(actual[k] != expected[k] for k in ('name','field_role','input_le','expected_le')) or actual['reduced_le'] != expected['expected_le'] or actual.get('matched') is not True:
+                  raise SystemExit('mature result detached from generated byte input')
+          for flag in ('proof_verified','bitvm2_script_verified','production_assertion_binding','complete_nova_verifier','bitcoin_transaction_graph','trusted_acceptance_receipt','panic_is_rejection'):
+              if mature.get(flag) is not False:
+                  raise SystemExit('mature uniform oracle scope exceeded: '+flag)
+          for count in ('native_proofs_verified','setup_calls','proving_jobs','matrix_jobs','msm_jobs','gpu_jobs','transactions_broadcast'):
+              if type(mature.get(count)) is not int or mature[count] != 0:
+                  raise SystemExit('unexpected setup/proof/bulk work: '+count)
+          expected = {'cases':generation['cases'],'native_rejections':generation['expected_native_rejections'],
+              'signatures_generated_once_per_wire':generation['expected_signatures'],
+              'shared_convolution_carry_links_checked':generation['expected_shared_carry_links']}
+          if native.get('passed') is not True or any(type(native.get(k)) is not int or native[k] != value for k,value in expected.items()):
+              raise SystemExit('uniform native admission/signature/link coverage mismatch')
+          if native['metrics']['vectors'] != generation['expected_vectors'] or native['metrics']['expected_rejections'] != generation['expected_rejections']:
+              raise SystemExit('uniform actual Script coverage mismatch')
+          if len(native['ledger']) != 2:
+              raise SystemExit('two complete uniform Script catalogues must be measured')
+          for measured, source in zip(native['ledger'], generation['measured']):
+              if any(measured[k] != source[k] for k in ('case','catalogue_id','words','leaves')) or measured['words'] != 379 or measured['leaves'] != 245 or measured['all_disproof_script_bytes'] <= 0:
+                  raise SystemExit('uniform measured catalogue detached from sealed source')
+          if native.get('stack_limit_enabled') is not True or native.get('op_cat_enabled') is not False or native.get('complete_nova_verifier') is not False or native.get('bitcoin_transaction_graph') is not False or native.get('transactions_broadcast') != 0:
+              raise SystemExit('uniform Script scope or execution flags changed')
+          PY
+          sha256sum results/uniform-registry-inputs.json results/uniform-registry-vectors.jsonl results/uniform-oracle-inputs.json > results/uniform-corpus-sha256.txt
+          cat results/uniform-registry-time.txt results/uniform-oracle-time.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-wide-uniform-reduction-evidence
+          path: |
+            integrations/bitvm2-nova/results/uniform-generation.json
+            integrations/bitvm2-nova/results/uniform-oracle-inputs.json
+            integrations/bitvm2-nova/results/uniform-oracle-execution.json
+            integrations/bitvm2-nova/results/uniform-registry-execution.json
+            integrations/bitvm2-nova/results/uniform-*.txt
+            integrations/bitvm2-nova/nova-oracle/Cargo.lock
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock

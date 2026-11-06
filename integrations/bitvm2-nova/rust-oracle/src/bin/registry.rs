@@ -681,7 +681,7 @@ fn main() -> Result<()> {
                 )?;
             }
         }
-        if case.name.ends_with("/convolution-mul") {
+        if case.name.ends_with("/convolution-mul") || case.name.ends_with("/uniform-reduce512") {
             native_rejections += native_checks(&case.spec, &keys, expected, id)?;
             if registry
                 .witness(0, &signatures[..signatures.len() - 1])
@@ -751,8 +751,13 @@ fn main() -> Result<()> {
                 .enumerate()
                 .filter(|(_, leaf)| leaf.kind == "conv_column")
                 .collect();
-            if columns.len() != 64 {
-                return Err("convolution column coverage".into());
+            let expected_columns = if case.name.ends_with("/uniform-reduce512") {
+                65
+            } else {
+                64
+            };
+            if columns.len() != expected_columns {
+                return Err("integer convolution column coverage".into());
             }
             for pair in columns.windows(2) {
                 let (left_ordinal, left) = pair[0];
