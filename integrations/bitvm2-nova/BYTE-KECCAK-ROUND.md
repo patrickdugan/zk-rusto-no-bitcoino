@@ -96,10 +96,91 @@ of Script processed. Fresh case snapshots and the manifest are hashed before
 the direct configured resource-capped worker runs. No external result receipt
 is loaded as verification authority.
 
-Actual hosted costs and execution counts are recorded after the run succeeds.
+## Measured hosted result
+
+Source commit `d17bdcb7659cb6d625988b9c1784e3c6893fe673` passed the dedicated
+[hosted run](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42224687519).
+Every leaf of all 64 sources and all 64 probes executed in both correctness and
+disproof modes. The four directly compared rounds measured the following
+ordered disproof Script byte sums; both scalar roles gave exactly these costs.
+
+| Round | BYTE source leaves | BYTE source bytes | Complete Boolean BYTE-port source leaves | Complete Boolean source bytes |
+| --- | ---: | ---: | ---: | ---: |
+| 0 | 1,217 | 6,304,498 | 10,402 | 52,487,418 |
+| 1 | 1,218 | 6,307,869 | 10,404 | 52,494,084 |
+| 2 | 1,219 | 6,311,270 | 10,406 | 52,500,750 |
+| 23 | 1,220 | 6,314,561 | 10,405 | 52,497,417 |
+
+These isolated BYTE-port round sources are about 88% smaller than the complete
+Boolean baselines. Each separate 200-leaf output-consumer probe costs 665,600
+bytes for either backend. Across all 24 independently executed honest BYTE
+rounds, source costs range from 6,304,413 to 6,314,678 bytes. This is not a
+measurement of connected rounds or a full permutation. In particular, the
+Boolean full permutation does not convert every intermediate boundary to bytes.
 Script accounting excludes transaction framing, control blocks and assertion
-signature payloads. Existing full-permutation and framed-LO Boolean evidence,
-header provers and real k-sized proving profiles remain separate. Four-round
-blocks, a complete byte permutation, both hash branches, proof-derived message
-origins, full verifier composition and production assertions/transactions remain
-future work.
+signature payloads.
+
+The run executed 151,472 source leaves and 12,800 probe leaves: 164,272
+predicates in each mode. Another 10,752 malformed/authentication guard vectors
+bring the total to **339,296 Script executions, with 175,024 expected
+rejections**. Empty, truncated, prepended and appended witnesses remained
+rejections in both modes; interpreter panics were fatal failures. The separate
+native admission checks rejected 3,072 mutations across source and probe
+catalogues, 512 port mutations and 768 signature-cache mutations; these are not
+additional Script executions.
+
+All 12,800 output producer/consumer opening comparisons matched actual source
+openings and reused signatures. The eight Boolean baselines also checked
+38,400 bit opening occurrences (25,600 input and 12,800 output), plus 3,200
+auxiliary links. Wrong round-0 Iota output bytes refuted only source leaf 1,216;
+wrong round-23 Chi output bytes refuted only leaf 1,024. Signed oversized input
+words refuted exactly their two consumers, leaves 0 and 240. These outcomes held
+in both scalar roles while all corresponding probe predicates remained true.
+
+The worker created 188,272 fresh signature entries and reused 12,800 source
+output entries. Maximum observed Script size was 14,882 bytes, stack size 95
+items, witness size 91 items and witness payload 1,800 bytes. Native execution
+took 131.973 seconds; total parent time was 143.111 seconds. External
+`time -v` recorded 85,756 KiB peak RSS, while the parent's own peak was
+47,833,088 bytes; these are distinct observations, not an aggregate memory
+measurement. The existing resource caps, old kernels and baseline guards were
+unchanged. The dedicated job passed 24 Python tests, nine registry Rust tests
+and six worker Rust tests. All 15 workflows passed on the source commit; the M2
+workflow's complete Python suite passed 375 tests.
+
+The first hosted attempt at `489989a` failed before native execution: it exposed
+the repeated-constant Program identity gap above, and a test incorrectly
+rejected the valid `claimed_output=None` default. The correction preserves
+all-round Program uniqueness and explicitly tests both repeated-constant pairs,
+foreign expected identity admission and the honest default. No measurements
+from the failed attempt count as successful evidence.
+
+The [CI artifact](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42224687519/artifacts/13505037697)
+contains the report, manifest, dependency lock, test logs and resource logs.
+Its downloaded ZIP was independently checked against the GitHub artifact
+digest, and its report matched the job's stdout report.
+
+- Artifact ZIP: 114,184 bytes; SHA-256 `96e6144159564a4ec98588cda06075d109782a2884a7a9d28cddf9f978499226`.
+- Report: 145,627 bytes; SHA-256 `1998742a20c67b3940e15edfe5f0740bc5162128569826393f66b1973ea48e98`.
+- Input manifest: 127,384 bytes; SHA-256 `bd2aae010b096ff1b94c796656835540e4581c947a7d8914d9584ca51dc259f1`.
+- Actual compact execution-record stream: 83,568,880 bytes; SHA-256 `af5aa95cc36e87af5fdd601c303de9de31a5c04321c84825b1b058b5e4c8601d`.
+
+The compact stream is hashed during execution, not uploaded as a raw vector
+file. Its digest and length do not represent a full verifier, proof or
+transaction artifact. Test keys only were used; no setup, proving, GPU job or
+transaction broadcast occurred in this round measurement.
+
+## Remaining composition boundary
+
+The next bounded step is a sealed four-round BYTE component. It must preserve
+the child predicate bodies and exact global BYTE identities, merge exactly
+200 words at each adjacent boundary, and compare all 1,200 actual opening
+occurrences across the three joins while reusing 600 boundary signatures.
+Producer locations come from the sealed maps, never a final-word suffix.
+The parent needs fresh catalogue/registry identities and measured Script costs;
+equal values or independent one-round receipts cannot establish these joins.
+
+Existing full-permutation and framed-LO Boolean evidence, header provers and
+real k-sized proving profiles remain separate. Four-round blocks, a complete
+byte permutation, both hash branches, proof-derived message origins, full
+verifier composition and production assertions/transactions remain future work.

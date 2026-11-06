@@ -5,6 +5,14 @@ outputs tied to actual SSA producers, a conversion-complete unchanged Boolean
 baseline and a separate cached-signature consumer probe. This is a one-round
 measurement boundary; complete byte permutations and both hash branches remain
 unimplemented.
+Its hosted run passed 339,296 Script executions with 175,024 expected rejections
+and 12,800 actual producer/consumer opening links. Four directly compared rounds
+measured 6,304,498-6,314,561 source Script bytes versus 52,487,418-52,500,750 for
+the conversion-complete Boolean BYTE-port baselines in either scalar role.
+The 665,600-byte copy probe is accounted separately for each case. All 24 rounds
+ran independently; no whole-permutation savings or cross-round binding is
+claimed. The next step is a sealed four-round component with all three complete
+authenticated BYTE joins and fresh measured parent Script costs.
 
 [The opt-in byte-kernel experiment](BYTE-KERNELS.md) adds internally derived
 byte operations and a conversion-complete Boolean comparison before any byte
@@ -15,8 +23,8 @@ Its hosted run passed 3,232 WOTS vectors with 2,834 expected rejections, separat
 exhaustive XOR/AND checks and explicit numeric-abort probes. Complete isolated
 byte-port XOR/AND/NOT statements measured 5,610/5,594/3,336 Script bytes versus
 95,018/94,954/63,476 for conversion-complete Boolean baselines in either scalar
-role. These are kernel results, not full-permutation savings. The next step is
-a sealed one-round byte graph with authenticated producer-linked output ports.
+role. These are kernel results, not full-permutation savings. The sealed
+one-round experiment above now measures authenticated producer-linked outputs.
 
 [The framed LO endpoint composition](KECCAK-ENDPOINT.md) adds a separate
 thirteen-component experiment: one streamed permutation, its 256 LO output
