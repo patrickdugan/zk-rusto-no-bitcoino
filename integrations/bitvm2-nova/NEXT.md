@@ -1,12 +1,21 @@
 # Next implementation boundary
 
 [The retained proof-payload scalar-origin experiment](PROOF-PAYLOAD-ORIGINS.md)
-is implemented in an isolated legacy-only worker, with hosted execution and
-actual costs pending. Its asserted payload tape joins all 288 scalar encodings
-under the retained maximum-width serialization profile. General variable-width
-decoding, opaque commitments, blob/EOF authentication, public-header-to-zn
-binding and complete proof verification remain open. The reviewed
-[design note](PROOF-PAYLOAD-ORIGINS-PLAN.md) separates those obligations.
+passed its isolated legacy-only hosted worker on
+`aa221e66bbb7e18316000aaff5a44b871769c1dc`
+([run 42340933774](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42340933774)).
+Its complete honest 17,560-leaf source measures 61,598,099 disproof Script bytes:
+21,240,083 for the payload tape, 23,682,308 for Pallas scalar encoders and
+16,675,708 for Vesta scalar encoders. All 51,978 Script calls match expected
+outcomes, including 33,402 expected rejections; one case executes fully and
+thirteen have explicitly targeted coverage. Every case checks the complete
+35,128-opening material pass. The dedicated workflow passes 18 Python and 19
+Rust tests; root and independent actual-artifact reconciliation pass.
+The asserted tape joins all 288 scalar encodings under the retained maximum-width
+profile. General variable-width decoding, opaque commitments, blob/EOF
+authentication, public-header-to-zn binding and complete proof verification remain
+open. No tree, full transcript, IPA, production or Bitcoin result follows.
+The reviewed [design note](PROOF-PAYLOAD-ORIGINS-PLAN.md) separates those obligations.
 
 [The full-width WOTS cost comparison](AUTH-COST.md) passed its separate hosted
 experiment on `d70edde33ba0d5d585713f9d8b279a94c19ca9c2`
