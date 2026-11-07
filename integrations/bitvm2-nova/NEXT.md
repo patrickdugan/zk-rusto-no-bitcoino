@@ -1,5 +1,13 @@
 # Next implementation boundary
 
+[The full-width WOTS cost comparison](AUTH-COST.md) is implemented in a separate
+candidate worker and is awaiting hosted execution. It compares identical signed
+u32 messages and predicate sources on a tiny mixed component and one BYTE round
+per role. Candidate mode/packet identities, canonical hints and the isolated
+OP_MIN executor require actual authentication/stack/cost validation. The measured
+scalar-source experiment below remains the baseline; no new savings or candidate
+Taproot/production-binding result is claimed yet.
+
 [The retained scalar-source extension](RETAINED-SCALAR-SOURCES.md) passes its
 separate thirteen-component hosted experiment on
 `3c55e4c31748661b8c157fd14406186490653cd1`, with all twenty-one workflows green.
@@ -154,8 +162,9 @@ packet also needs explicit witness/combined-stack admission and measured peaks.
 Stop on any soundness/binding mismatch, accepted forgery, panic, limit failure or
 honest negative result. Independent implementation review and actual hosted
 execution are required before claiming savings or applying it to larger graphs.
-No candidate has been implemented or measured yet, and no whole-verifier fit or
-70-GiB solution follows from static opcode counts.
+The isolated [candidate implementation](AUTH-COST.md) is now awaiting hosted
+execution. It has no measured savings yet; no whole-verifier fit or 70-GiB
+solution follows from static opcode counts.
 
 ## Route to an end-to-end Nova SNARK verifier
 
