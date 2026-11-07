@@ -157,7 +157,8 @@ the 703,704-byte derived bound and unchanged 1,048,576-byte cap.
 The dedicated hosted workflow passes all 18 Python tests (6.200 seconds), all
 19 Rust tests (0.01 seconds), compiler body pins and rustfmt. The broad primitive
 workflow also passes: 497 Python tests collected, 485 passed and 12 explicitly
-skipped, in 723.496 seconds. Two earlier attempts
+skipped, in 723.496 seconds. All 23 workflows for the tested code commit
+`aa221e66bbb7e18316000aaff5a44b871769c1dc` passed. Two earlier attempts
 stopped before Script execution: the first exposed an ambiguous Rust loop index,
 fixed to usize; the second exposed a snapshot assumption about an absent optional
 requirements.txt, fixed without inventing a dependency input. Mandatory transcript
