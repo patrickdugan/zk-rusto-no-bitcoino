@@ -287,6 +287,13 @@ statement. Candidate routes, none implemented here:
 
 Choosing among them is the owner's decision.
 
+**Decision (2026-11-07): the transparent STARK final-compression route.**
+[STARK-ROUTE.md](STARK-ROUTE.md) records its M24 measurement: one 64-byte
+upstream BitVM BLAKE3 block costs 76,695 Script bytes. Its projection for the
+counted SP1 compressed shape is at least 3.05 × 10^9 Script bytes of hashing
+and 63.6 MB of proof-byte assertions, so final-proof size is the next
+binding constraint. M25 targets a final layer of at most about 80 KB.
+
 ## Route to an end-to-end Nova SNARK verifier
 
 1. Bind bounded proof decoding to the source graph: exact spans, lengths and

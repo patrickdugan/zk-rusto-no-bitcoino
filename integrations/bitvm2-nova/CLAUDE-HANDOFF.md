@@ -33,6 +33,17 @@ BitVM2 by backend optimization alone. The owner has to choose one of:
 Components 3-5 below are worth building only under a route that removes the
 linear MSM.
 
+**Route chosen (2026-11-07): transparent STARK final compression.**
+[STARK-ROUTE.md](STARK-ROUTE.md) has the argument, the measured M24 BLAKE3
+cost (76,695 Script bytes per block; run 42377941685) and the milestone
+order:
+* M25: a size-targeted final layer of at most about 80 KB;
+* M26: Script Merkle-path chunking;
+* M27: the outer prover with a pinned affine key.
+
+Proof-byte assertion (63.6 MB for the 1.27-MB SP1 proof) is now the binding
+constraint.
+
 ## M22 deliverable
 
 Start from tested main `6697b7ffb20dadc3c7e0639baabad8adefc3bbb5`
