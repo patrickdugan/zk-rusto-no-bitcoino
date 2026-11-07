@@ -1,5 +1,24 @@
 # Next implementation boundary
 
+[The grouped point/forest integration](GROUPED-POINT-FOREST.md) is now a tested
+M22 deliverable at `6697b7ffb20dadc3c7e0639baabad8adefc3bbb5`
+([hosted run 42353843912](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42353843912)).
+It places the grouped conditional-point source in actual eleven-component live
+commitment forests. Complete Script-only costs are 824,415,257 Pallas /
+824,501,399 Vesta bytes, 27,062,411 fewer per role (about 3.178% of the forest).
+All ten other component totals match the historical measured baseline.
+Both roles and paired accounting pass: 668,076 Script calls / 360,190 expected
+rejections, with full/targeted, guards, tree calls and private roots kept separate.
+Each role job passes the same 14 Python and 89 Rust tests; all 24 existing
+workflows pass implementation commit `0422b29bfb4f07d2c25f736295e335c7d655c7c8`.
+Root and independent actual-artifact audits pass. Code, hashes, controls, costs,
+resource observations and the first setup-only failure are documented.
+This remains a one-bit scalar/point relation with test-only assertions. Whole
+proof origins, full transcript, scalar multiplication/MSM/IPA, production root
+binding and the Bitcoin transaction graph are open.
+[CLAUDE-HANDOFF.md](CLAUDE-HANDOFF.md) gives the remaining components, proof-fixture
+locations and a bounded next task. M22 is closed; further feature work is deferred.
+
 [The grouped convolution arithmetic experiment](GROUPED-CONVOLUTION.md)
 passed its first isolated hosted run on
 `df6c6f377ba88525ae0659451d521cde662d6f2c`
