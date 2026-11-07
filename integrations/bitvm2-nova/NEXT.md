@@ -9,7 +9,7 @@ both roles. The round's normal combined-stack/witness-item/payload peaks rise
 from 35/30/600 to 69/60/612; guard-inclusive peaks are separately 62/60/612 and
 69/61/617. All 54,888 Script calls match expected outcomes, including 45,080
 expected rejections. Root and independent artifact reconciliation passed. The
-dedicated M18 workflow passed; broader current-head CI is still pending. No
+dedicated M18 workflow and all twenty-two tested-code workflows passed. No
 candidate Taproot/forest, complete permutation, proof or production result follows.
 
 [The retained scalar-source extension](RETAINED-SCALAR-SOURCES.md) passes its

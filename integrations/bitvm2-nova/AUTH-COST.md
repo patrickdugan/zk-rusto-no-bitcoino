@@ -11,7 +11,7 @@ peaks increased. These results do not establish larger-composition fit, runtime
 improvement or a complete verifier. The completed
 [scalar-source relation](RETAINED-SCALAR-SOURCES.md) and every old worker remain
 unchanged baselines.
-The dedicated M18 workflow passed; broader current-head CI is still pending.
+All twenty-two workflows at the tested code commit passed.
 
 ## Identical signed messages and explicit packet modes
 
