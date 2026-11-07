@@ -1,0 +1,130 @@
+name: BitVM2 Nova grouped challenge bit and live forest checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-grouped-byte-c-bit-point.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-grouped-byte-c-bit-point.yml']
+permissions:
+  contents: read
+jobs:
+  grouped-role:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        role: [pallas_scalar, vesta_scalar]
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CUDA_VISIBLE_DEVICES: ''
+      BITVM2_NOVA_GROUPED_POINT_TESTS: '1'
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Set the native toolchain before checking frozen body pins
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m pip install -r transcript-requirements.txt
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/m22-rust-version-${{ matrix.role }}.txt
+          timeout --signal=KILL 60s prlimit --as=268435456 --cpu=60 -- \
+            python point_body_pins.py --check | tee results/m22-point-pins-${{ matrix.role }}.json
+          timeout --signal=KILL 60s prlimit --as=268435456 --cpu=60 -- \
+            python grouped_body_pins.py --check | tee results/m22-grouped-pins-${{ matrix.role }}.json
+      - name: Check fresh projections, fixed source policy and accounting contradictions
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/m22-python-time-${{ matrix.role }}.txt \
+            timeout --signal=KILL 480s prlimit --as=268435456 --cpu=480 -- \
+            python -m unittest discover -s tests -p 'test_grouped_conditional_point*.py' -v \
+            2>&1 | tee results/m22-point-tests-${{ matrix.role }}.txt
+          /usr/bin/time -v -o results/m22-wrapper-python-time-${{ matrix.role }}.txt \
+            timeout --signal=KILL 480s prlimit --as=268435456 --cpu=480 -- \
+            python -m unittest discover -s tests -p 'test_grouped_byte_c_bit_point*.py' -v \
+            2>&1 | tee results/m22-wrapper-tests-${{ matrix.role }}.txt
+      - name: Build the isolated worker with all configured source locks
+        run: |
+          set -euo pipefail
+          for crate in rust-oracle point-oracle scalar-source-oracle auth-cost-oracle proof-payload-origins-oracle grouped-convolution-oracle grouped-point-oracle; do
+            cargo generate-lockfile --manifest-path "$crate/Cargo.toml"
+          done
+          rustfmt --edition 2021 --config skip_children=true --check grouped-point-oracle/src/*.rs
+          cargo tree --locked --manifest-path grouped-point-oracle/Cargo.toml > results/m22-dependencies-${{ matrix.role }}.txt
+          cargo test --release --locked --manifest-path grouped-point-oracle/Cargo.toml -- --nocapture
+          cargo build --release --locked --manifest-path grouped-point-oracle/Cargo.toml --bin grouped_byte_c_bit_point
+      - name: Execute exactly one complete role corpus under the unchanged worker caps
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/m22-execution-time-${{ matrix.role }}.txt \
+            timeout --signal=KILL 1500s prlimit --as=536870912 --cpu=1500 -- \
+            python bench_grouped_byte_c_bit_point.py --role '${{ matrix.role }}' \
+            --cases-dir results/m22-cases-${{ matrix.role }} \
+            --native-worker grouped-point-oracle/target/release/grouped_byte_c_bit_point \
+            --output results/m22-report-${{ matrix.role }}.json \
+            | tee results/m22-stdout-${{ matrix.role }}.json
+          cp results/m22-cases-${{ matrix.role }}/manifest.json results/m22-manifest-${{ matrix.role }}.json
+          sha256sum results/m22-report-${{ matrix.role }}.json results/m22-manifest-${{ matrix.role }}.json > results/m22-pins-${{ matrix.role }}.txt
+          cat results/m22-execution-time-${{ matrix.role }}.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-m22-${{ matrix.role }}
+          path: |
+            integrations/bitvm2-nova/results/m22-*-${{ matrix.role }}.json
+            integrations/bitvm2-nova/results/m22-*-${{ matrix.role }}.txt
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock
+            integrations/bitvm2-nova/point-oracle/Cargo.lock
+            integrations/bitvm2-nova/scalar-source-oracle/Cargo.lock
+            integrations/bitvm2-nova/auth-cost-oracle/Cargo.lock
+            integrations/bitvm2-nova/proof-payload-origins-oracle/Cargo.lock
+            integrations/bitvm2-nova/grouped-convolution-oracle/Cargo.lock
+            integrations/bitvm2-nova/grouped-point-oracle/Cargo.lock
+  account-both-roles:
+    needs: grouped-role
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: bitvm2-nova-m22-pallas_scalar
+          path: integrations/bitvm2-nova/results/m22-role-artifacts/pallas_scalar
+      - uses: actions/download-artifact@v4
+        with:
+          name: bitvm2-nova-m22-vesta_scalar
+          path: integrations/bitvm2-nova/results/m22-role-artifacts/vesta_scalar
+      - name: Reconcile both source-bound observations under one shared record budget
+        run: |
+          set -euo pipefail
+          python -m pip install -r transcript-requirements.txt
+          timeout --signal=KILL 120s prlimit --as=268435456 --cpu=120 -- \
+            python bench_grouped_byte_c_bit_point.py --aggregate --expected-commit "$GITHUB_SHA" \
+            --pallas-report results/m22-role-artifacts/pallas_scalar/results/m22-report-pallas_scalar.json \
+            --pallas-manifest results/m22-role-artifacts/pallas_scalar/results/m22-manifest-pallas_scalar.json \
+            --vesta-report results/m22-role-artifacts/vesta_scalar/results/m22-report-vesta_scalar.json \
+            --vesta-manifest results/m22-role-artifacts/vesta_scalar/results/m22-manifest-vesta_scalar.json \
+            --output results/m22-accounting.json | tee results/m22-accounting-stdout.json
+          sha256sum results/m22-accounting.json > results/m22-accounting-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-m22-accounting
+          path: |
+            integrations/bitvm2-nova/results/m22-accounting*.json
+            integrations/bitvm2-nova/results/m22-accounting*.txt

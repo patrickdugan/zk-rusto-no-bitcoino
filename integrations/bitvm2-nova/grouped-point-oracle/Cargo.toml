@@ -1,0 +1,23 @@
+[package]
+name = "bitvm2-nova-grouped-point-oracle"
+version = "0.1.0"
+edition = "2021"
+publish = false
+default-run = "grouped_byte_c_bit_point"
+
+[workspace]
+
+[[bin]]
+name = "grouped_byte_c_bit_point"
+path = "src/main.rs"
+
+[dependencies]
+bitvm2-nova-script-oracle = { path = "../rust-oracle" }
+bitvm = { git = "https://github.com/BitVM/BitVM", rev = "c620dbfaacebdf778e765a6681985350389973b1" }
+bitcoin = "0.32.5"
+halo2curves = { version = "=0.9.0", default-features = false, features = ["std"] }
+ff = "0.13"
+num-bigint = "=0.4.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hex = "0.4"
