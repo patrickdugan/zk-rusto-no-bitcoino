@@ -1,16 +1,23 @@
 # Next implementation boundary
 
-[The grouped convolution arithmetic experiment](GROUPED-CONVOLUTION.md) is
-implemented in a new isolated worker and passed static source review. Fourteen
-local pure tests pass; two hosted-only tests remain pending. Frozen row bodies
-are composed into conjunctions that retain every old subtotal, carry link and
-canonical guard under the legacy full-width WOTS adapter. The largest bounded
-alias-expanded body is 12,826 bytes below the unchanged 20,000-byte cap.
-The source expects complete point graphs to retain 7,476 words and 35 field
-guards while reducing leaves from 6,151 to 3,447. Matched complete Script costs,
-actual opening/guard executions and stack/resource peaks remain unmeasured.
-The forty-case hosted comparison must pass before any byte-saving claim.
-No full verifier, transcript, IPA, production or Bitcoin result follows.
+[The grouped convolution arithmetic experiment](GROUPED-CONVOLUTION.md)
+passed its first isolated hosted run on
+`df6c6f377ba88525ae0659451d521cde662d6f2c`
+([run 42346318825](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42346318825)).
+Complete Pallas/Vesta point costs fall from 88,586,200/88,688,588 to
+61,523,789/61,626,177 Script bytes: 27,062,411 fewer bytes per role
+(-30.5492%/-30.5140%). All 394,416 Script calls match expected outcomes,
+including 369,766 expected rejections; eight pairs execute fully and thirty-two
+have explicit targeted coverage. Root and independent actual-artifact audits pass.
+Standalone multiplication's largest leaf grows 22,639 to 37,333 bytes and normal
+stack/witness peaks grow 135/130/2,600 to 155/150/3,000; point peaks remain
+79,381 bytes / 485 stack / 480 witness items / 9,600 payload bytes.
+The dedicated workflow passes sixteen Python and twenty-four Rust tests.
+All old words, fields, columns, anchors and the full-width legacy WOTS adapter
+remain; a new arithmetic kind conjoins the original AB equations.
+No candidate tree/forest, complete transcript, IPA, proof or production result
+follows. Integration into existing complete sources requires its own identity,
+opening, tree and cost checks.
 
 [The retained proof-payload scalar-origin experiment](PROOF-PAYLOAD-ORIGINS.md)
 passed its isolated legacy-only hosted worker on
