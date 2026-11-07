@@ -102,7 +102,10 @@ fn blake3_case(length: usize) -> Result<Value> {
     ]))?;
     require(
         accepted && !rejected,
-        &format!("BLAKE3 {length}-byte reference digest check"),
+        &format!(
+            "BLAKE3 {length}-byte reference check: accepted={accepted} changed_accepted={rejected} max_stack={stack} script={}",
+            compute.len()
+        ),
     )?;
     Ok(
         json!({"hash":"blake3","message_bytes":length,"blocks":length.div_ceil(64),
@@ -148,7 +151,10 @@ fn sha256_case(length: usize) -> Result<Value> {
     let (rejected, _) = execute(&concat(&[&push, &compute, &verify(wrong)]))?;
     require(
         accepted && !rejected,
-        &format!("SHA-256 {length}-byte reference digest check"),
+        &format!(
+            "SHA-256 {length}-byte reference check: accepted={accepted} changed_accepted={rejected} max_stack={stack} script={}",
+            compute.len()
+        ),
     )?;
     Ok(
         json!({"hash":"sha256","message_bytes":length,"blocks":(length+9).div_ceil(64),
@@ -161,13 +167,31 @@ fn sha256_case(length: usize) -> Result<Value> {
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     require(args.len() == 2, "usage: stark_hash_cost OUTPUT_JSON")?;
+    // A size that fails its reference check (for example under the stack
+    // limit) is recorded as a failed row, never as a measured cost. The
+    // 64-byte BLAKE3 block, one Merkle 2-to-1 node, must pass.
     let mut cases = Vec::new();
+    let mut record = |hash: &str, length: usize, row: Result<Value>| match row {
+        Ok(row) => cases.push(row),
+        Err(error) => cases.push(
+            json!({"hash":hash,"message_bytes":length,"error":error.to_string(),
+            "correct_digest_accepted":false,"changed_digest_rejected":false}),
+        ),
+    };
     for length in BLAKE3_LENGTHS {
-        cases.push(blake3_case(length)?);
+        record("blake3", length, blake3_case(length));
     }
     for length in SHA256_LENGTHS {
-        cases.push(sha256_case(length)?);
+        record("sha256", length, sha256_case(length));
     }
+    require(
+        cases.iter().any(|c| {
+            c["hash"] == "blake3"
+                && c["message_bytes"] == 64
+                && c["correct_digest_accepted"] == true
+        }),
+        "the 64-byte BLAKE3 node must pass its reference check",
+    )?;
     let report = json!({"schema":"bitvm2-nova-stark-hash-cost/v1",
         "bitvm_revision":"c620dbfaacebdf778e765a6681985350389973b1",
         "interpreter_revision":"ba96bc2bd76774c9d1b011461cb79d983c2c43a1",

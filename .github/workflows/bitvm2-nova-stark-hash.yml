@@ -41,16 +41,24 @@ jobs:
       - name: Measure upstream BLAKE3 and SHA-256 Script costs
         run: |
           set -euo pipefail
+          status=0
           /usr/bin/time -v -o results/m24-time.txt \
             timeout --signal=KILL 600s prlimit --as=4294967296 --cpu=600 -- \
-            stark-hash-oracle/target/release/stark_hash_cost results/m24-hash-cost.json > /dev/null
+            stark-hash-oracle/target/release/stark_hash_cost results/m24-hash-cost.json \
+            > /dev/null 2> results/m24-stderr.txt || status=$?
+          if [ "$status" -ne 0 ]; then
+            cat results/m24-stderr.txt results/m24-time.txt
+            echo "::error title=M24 measurement::status $status; $(tail -c 3000 results/m24-stderr.txt | tr '\r\n' '  ' | sed 's/%/%25/g'); $(grep -E 'Maximum resident|Elapsed|Exit status' results/m24-time.txt | tr '\n' ';')"
+            exit "$status"
+          fi
           sha256sum results/m24-hash-cost.json stark-hash-oracle/Cargo.lock > results/m24-pins.txt
           python3 - <<'PY'
           import json
           report = json.load(open('results/m24-hash-cost.json'))
-          rows = [[c['hash'], c['message_bytes'], c['blocks'], c['compute_script_bytes'],
-                   c.get('unoptimized_compute_script_bytes'), c['max_stack_items'],
-                   c['correct_digest_accepted'], c['changed_digest_rejected']] for c in report['cases']]
+          rows = [[c['hash'], c['message_bytes'], c.get('blocks'), c.get('compute_script_bytes'),
+                   c.get('unoptimized_compute_script_bytes'), c.get('max_stack_items'),
+                   c['correct_digest_accepted'], c['changed_digest_rejected'], c.get('error')]
+                  for c in report['cases']]
           print('::notice title=M24 hash rows::' + json.dumps(rows, separators=(',', ':')))
           PY
           echo "::notice title=M24 pins::$(tr '\n' ';' < results/m24-pins.txt)"
