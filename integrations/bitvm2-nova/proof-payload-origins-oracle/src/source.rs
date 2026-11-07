@@ -509,7 +509,7 @@ fn encoding_template() -> Result<(Vec<u32>, Vec<Template>)> {
             wires: vec![9 + byte, 41 + 2 * i, 42 + 2 * i],
         });
     }
-    for limb in 0..9 {
+    for limb in 0usize..9 {
         let (start, end) = (29 * limb, (29 * limb + 29).min(256));
         let mut wires = vec![limb];
         let mut widths = Vec::new();
