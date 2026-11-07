@@ -1,11 +1,12 @@
 # Next implementation boundary
 
-[The retained proof-payload scalar-origin plan](PROOF-PAYLOAD-ORIGINS-PLAN.md)
-describes an independent legacy-only path: an asserted payload tape joined to
-all 288 scalar encodings. It is unimplemented and restricted to the retained
-maximum-width serialization profile. General variable-width decoding, opaque
-commitment decoding, whole-blob origins and complete proof verification remain
-open. Its analytical counts do not establish Script or resource fit.
+[The retained proof-payload scalar-origin experiment](PROOF-PAYLOAD-ORIGINS.md)
+is implemented in an isolated legacy-only worker, with hosted execution and
+actual costs pending. Its asserted payload tape joins all 288 scalar encodings
+under the retained maximum-width serialization profile. General variable-width
+decoding, opaque commitments, blob/EOF authentication, public-header-to-zn
+binding and complete proof verification remain open. The reviewed
+[design note](PROOF-PAYLOAD-ORIGINS-PLAN.md) separates those obligations.
 
 [The full-width WOTS cost comparison](AUTH-COST.md) passed its separate hosted
 experiment on `d70edde33ba0d5d585713f9d8b279a94c19ca9c2`
