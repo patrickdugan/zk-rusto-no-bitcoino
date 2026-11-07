@@ -76,14 +76,63 @@ intermediate digest. Chip constraint evaluation, the jagged evaluation and
 extension-field arithmetic are excluded, so these figures are lower bounds,
 not a fit.
 
+## M25a: final-layer size model
+
+[final_layer_model.py](final_layer_model.py) models a FRI-based final STARK:
+* KoalaBear base field, with degree-4 extension elements of 16 bytes;
+* 32-byte BLAKE3 Merkle digests and a Merkle cap;
+* one main, one auxiliary and one quotient tree;
+* FRI with folding arity 2^a.
+
+For each assumed final trace it searches blowup, grinding, arity,
+final-polynomial length and cap for the smallest proof meeting a
+conjectured-security target. The low-degree extension must stay within the
+16-GiB proving budget. Script and assertion use the measured M24 and M23
+prices. The trace of the in-circuit verifier for the SP1 compressed proof has
+not been built, so its height and width are swept as assumptions.
+
+| Final trace (rows x base columns) | Proof bytes, 100 bits | Standard txs | Hash Script | Proof bytes, 128 bits |
+| --- | ---: | ---: | ---: | ---: |
+| 2^16 x 64 | 46,088 | 6 | 79.7 MiB | 59,528 |
+| 2^16 x 128 | 53,256 | 7 | 87.0 MiB | 66,888 |
+| 2^16 x 256 | 65,416 | 9 | 97.4 MiB | 84,872 |
+| 2^18 x 64 | 55,816 | 7 | 97.4 MiB | 73,736 |
+| 2^18 x 128 | 67,656 | 9 | 113.2 MiB | 89,992 |
+| 2^18 x 256 | 90,504 | 12 | 141.6 MiB | 113,864 |
+| 2^20 x 64 | 84,616 | 11 | 152.1 MiB | 107,976 |
+| 2^20 x 128 | 101,288 | 13 | 166.8 MiB | 134,216 |
+| 2^22 x 128 | 190,088 | 24 | 314.1 MiB | 252,808 |
+
+Every selected shape uses 20–24 grinding bits and FRI arity 16. Blowup falls
+from 2^9 to 2^1 as the trace grows, because the 16-GiB low-degree extension
+budget binds.
+
+* **80 KB is reachable** for a final trace of at most 2^18 rows and 128
+  columns at 100 conjectured bits, or 2^16 x 128 at 128 bits.
+* **It is out of reach** at 2^20 rows or more under the prover budget.
+* **Hash Script for such a final layer** is 80–170 MiB, inside the 1.25-GiB
+  policy, versus at least 2.84 GiB for the SP1 compressed shape.
+* **Security assumption:** conjectured security is queries × log blowup plus
+  grinding. A Johnson-bound estimate needs about twice the queries (reported
+  per shape as `proven_queries_for_100_bits`), which roughly doubles the
+  proof bytes.
+
+The model excludes:
+* transcript hashing;
+* Merkle multi-proof deduplication, which would shrink the proofs;
+* chip constraint evaluation in Script.
+
+So M25a decides which trace size must be hit, not whether the verifier fits.
+
 ## Next milestones
 
-1. **M25: a size-targeted final layer.** Specify a transparent recursion layer
-   over the SP1 compressed proof, for example a Plonky3 STARK with a BLAKE3
-   MMCS. Choose its blowup, grinding and query count for a proof of at most
-   about 80 KB (10 standard transactions). Count its exact shape (queries,
-   Merkle depth, leaf widths, field operations) natively, without proving, and
-   rerun this projection on it, assertion and chunk-boundary words included.
+1. **M25b: measure the real final trace.** Build or instrument the transparent
+   recursion layer that verifies the SP1 compressed proof, for example SP1's
+   shrink stage or a Plonky3 STARK with a BLAKE3 MMCS. Record its actual chip
+   heights and widths, and feed them to `final_layer_model.py`. If the trace
+   exceeds 2^18 x 128, add one more shrinking recursion step before the
+   BLAKE3 layer. This is the first step that needs a proving run, against the
+   16-GiB budget.
 2. **M26: Script Merkle-path chunking.** Measure BLAKE3 Merkle-path leaves
    under the actual chunking, with digests asserted only at the chosen
    boundaries, and the extension-field fold arithmetic, under unchanged caps.
