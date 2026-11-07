@@ -77,6 +77,53 @@ jobs:
           sha256sum results/m23-report-${{ matrix.engine }}.json results/m23-manifest-${{ matrix.engine }}.json \
             > results/m23-pins-${{ matrix.engine }}.txt
           cat results/m23-execution-time-${{ matrix.engine }}.txt
+      - name: Publish compact measured observations as annotations
+        run: |
+          set -euo pipefail
+          python - "${{ matrix.engine }}" <<'PY'
+          import json, sys
+          engine = sys.argv[1]
+          with open(f'results/m23-report-{engine}.json', encoding='ascii') as stream:
+              report = json.load(stream)
+          native = report['native']
+          honest = native['cases'][0]
+          kinds = {}
+          for part in honest['components']:
+              for kind, (count, total, peak) in part['kind_costs'].items():
+                  row = kinds.setdefault(kind, [0, 0, 0])
+                  row[0] += count
+                  row[1] += total
+                  row[2] = max(row[2], peak)
+          decoders = report['actual_measurements'][0]['decoder_bytes']
+          summary = dict(engine=engine, honest_bytes=report['complete_honest_disproof_script_bytes'],
+              decoder_bytes=sum(decoders.values()), decoder_min=min(decoders.values()),
+              decoder_max=max(decoders.values()), tape_bytes=honest['components'][0]['compiled_script_bytes'],
+              metrics=native['metrics'], normal=native['normal_metrics'], native_wall=native['wall_seconds'],
+              records=native['compact_execution_records_bytes'], budget=native['closed_call_budget'],
+              wall=report['wall_seconds'], rss=report['parent_peak_rss_bytes'],
+              global_words=honest['global_words'], local_words=honest['local_words'],
+              openings=honest['actual_opening_occurrences'], signatures=native['signature_entries_created'])
+          def notice(title, value):
+              text = json.dumps(value, separators=(',', ':')).replace('%', '%25')
+              print(f'::notice title={title}::{text}')
+          notice(f'M23 {engine} summary', summary)
+          notice(f'M23 {engine} honest kinds', kinds)
+          notice(f'M23 {engine} honest components', [[p['name'], p['leaves'], p['compiled_script_bytes'],
+              p['largest_disproof_leaf_bytes'], p['guarded_leaves'], p['metrics']['max_stack_items'],
+              p['metrics']['max_witness_items']] for p in honest['components']])
+          notice(f'M23 {engine} cases', [[c['profile'], sum(p['measured_leaves'] for p in c['components']),
+              sum(len(p['false_predicates']) for p in c['components']), c['native_rejected_decoders'],
+              sum(p['metrics']['vectors'] for p in c['components']),
+              sum(p['metrics']['expected_rejections'] for p in c['components']),
+              c['measured_disproof_script_bytes']] for c in native['cases']])
+          notice(f'M23 {engine} decoders', decoders)
+          notice(f'M23 {engine} pins', dict(report_manifest=report['manifest'],
+              snapshot=report['source_snapshot']['source_snapshot_sha256'],
+              files=len(report['source_snapshot']['files']), worker=report['source_snapshot']['worker_executable'],
+              records_sha256=native['compact_execution_records_sha256']))
+          PY
+          echo "::notice title=M23 ${{ matrix.engine }} GNU time::$(grep -E 'Maximum resident|Elapsed|User time|System time' results/m23-execution-time-${{ matrix.engine }}.txt | tr '\n' ';')"
+          echo "::notice title=M23 ${{ matrix.engine }} report sha256::$(tr '\n' ';' < results/m23-pins-${{ matrix.engine }}.txt)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -117,6 +164,8 @@ jobs:
             --vesta-report results/m23-role/vesta/results/m23-report-vesta.json \
             --output results/m23-accounting.json | tee results/m23-accounting-stdout.json
           sha256sum results/m23-accounting.json > results/m23-accounting-sha256.txt
+          echo "::notice title=M23 accounting::$(tr -d '\n' < results/m23-accounting.json | sed 's/%/%25/g')"
+          echo "::notice title=M23 accounting sha256::$(tr '\n' ';' < results/m23-accounting-sha256.txt)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
