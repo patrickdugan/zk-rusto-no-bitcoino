@@ -2,10 +2,16 @@
 
 This isolated experiment compares the existing CompactWots4/Bruteforce
 verification format with mature full-width Wots4/Listpick verification for BYTE
-ports. Implementation and source review are in progress; hosted execution and
-measured costs are pending. The completed [scalar-source relation](RETAINED-SCALAR-SOURCES.md)
-and every old worker remain unchanged baselines. No savings, complete verifier
-or Bitcoin deployment result is claimed by the new code before execution.
+ports. The hosted experiment passed on
+[`d70edde33ba0d5d585713f9d8b279a94c19ca9c2`](https://github.com/patrickdugan/zk-rusto-no-bitcoino/commit/d70edde33ba0d5d585713f9d8b279a94c19ca9c2),
+in [run 42317646563, job 128234128732](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42317646563/job/128234128732).
+Measured complete disproof Script bytes decreased by 15.6613% for the mixed
+component and 31.6845% for one BYTE round. Normal witness and combined-stack
+peaks increased. These results do not establish larger-composition fit, runtime
+improvement or a complete verifier. The completed
+[scalar-source relation](RETAINED-SCALAR-SOURCES.md) and every old worker remain
+unchanged baselines.
+The dedicated M18 workflow passed; broader current-head CI is still pending.
 
 ## Identical signed messages and explicit packet modes
 
@@ -113,6 +119,60 @@ substitute. Twenty-six bounded compiler-body pins cover both roles and exact
 alias shapes. Their provenance pins the existing compiler; it is not an
 independent compiler-semantics proof.
 
+## Measured Script and resource costs
+
+All 22 cases execute every source leaf in correctness and disproof modes under
+both adapters. Both roles give the following complete-catalogue costs; the round
+values are identical for its honest and producer-fault bindings, and all nine
+mixed profiles retain the same Script costs.
+
+| Source | Compact bytes | Hinted bytes | Hinted minus compact | Reduction |
+| --- | ---: | ---: | ---: | ---: |
+| Mixed: 3 words, 2 leaves | 7,394 | 6,236 | -1,158 | 15.6613% |
+| BYTE round: 1,417 words, 1,217 leaves | 6,304,498 | 4,306,948 | -1,997,550 | 31.6845% |
+
+These sums count actual complete disproof scripts with identical source
+predicates and full-width signatures. They exclude assertion signatures, witness
+payload, transaction framing and control blocks. No new Taproot tree was constructed.
+
+The round's normal and all-execution peaks are separate observations. Combined
+stack means the interpreter's combined main/alt-stack counter. Payload counts
+initial witness bytes.
+
+| Round phase | Adapter | Peak combined stack | Max witness items | Max witness payload bytes |
+| --- | --- | ---: | ---: | ---: |
+| Normal C/D only | Compact | 35 | 30 | 600 |
+| Normal C/D only | Hinted | 69 | 60 | 612 |
+| Normal plus all guards | Compact | 62 | 60 | 612 |
+| Normal plus all guards | Hinted | 69 | 61 | 617 |
+
+The compact guard phase deliberately receives the larger opposite-mode witness
+during replay tests. Its 60-item all-execution peak is not its normal 30-item
+witness cost. Each adapter's six-field normal snapshot is checked against every
+leaf's C/D Script and witness measurements; all-execution snapshots fold exactly
+into the global metrics. The largest normal disproof leaf is 5,663 compact bytes
+or 3,926 hinted bytes.
+Across the mixed profiles, normal combined-stack peaks are 25 compact and 39
+hinted, with 20 versus 30 witness items. Normal payload is 400 compact bytes or
+402-408 hinted bytes, depending on the full unsigned message.
+
+The run contains 19,616 normal calls and 35,272 guard calls: 2,240 standard,
+320 mode-replay, 32,000 malformed-hint, 640 hint/hash-mutation and 72 special
+authentication calls. All 54,888 calls match their expected outcomes, including
+45,080 expected rejections. There are 27,744 actual opening captures, 16,300
+repeated-word opening comparisons, 36 formal alias reuses, 396 native admission
+rejections and 308 cache-mutation rejections. Forty independently recomputed
+per-digit hash chains provide native evidence for the checksum-isolating
+attacks; they add zero isolated Script calls. The complete authenticated leaves
+execute the actual attack rejections.
+
+Hosted checks passed 11 Python tests in 1.430 seconds and 25 native unit tests.
+Native execution took 15.045053436 seconds; the Python parent reported
+15.642742569 seconds and peak RSS 28,827,648 bytes. GNU time measured 28,152 KiB
+peak RSS for the timed wrapper/children. These are different measurement scopes,
+even though the RSS values convert to the same number. Timings are observations,
+not evidence that one adapter runs faster.
+
 ## Authentication attacks and measurement gates
 
 Both adapters execute all normal leaves and retain the standard empty,
@@ -131,11 +191,12 @@ own key/signature, not borrowed from a different case.
 
 Before any graphs/keys, closed accounting bounds 71,392 calls at 220 record bytes
 each: 15,706,240 bytes, under the unchanged 134,217,728-byte hard limit. Normal
-accounting is 4,904 leaves across both adapters and both modes, 19,616 calls.
-The current source-derived full prediction is 54,888 calls with 45,080 expected
-rejections; these are not measured results. Actual census must match after direct
-execution. Compact per-leaf rows retain ordinal, C/D Script sizes, witness items
-and payload bytes within the unchanged one-MiB summary cap.
+accounting is 4,904 source leaves, each executed under two adapters in two modes:
+19,616 calls.
+The actual run matches 54,888 calls with 45,080 expected rejections. Its compact
+execution-record stream is 10,610,588 bytes, below both that closed upper bound
+and the hard cap. Compact per-leaf rows retain ordinal, C/D Script sizes, witness
+items and payload bytes within the unchanged one-MiB summary cap.
 
 The hosted job retains 256-MiB Python-test and 512-MiB execution address-space
 limits, bounded CPU/wall time, two build threads, 100,000 Script bytes, 1,000
@@ -147,15 +208,39 @@ or raw execution streams. Local checks are limited to syntax/format, pure closed
 recipes and bounded body hashing; no local full graphs, native builds, signing,
 Script execution or proving are required.
 
+## Reproduction and evidence pins
+
+The measured report is 310,266 bytes; the manifest is 13,593 bytes. The artifact
+archive is 149,975 bytes. Exact SHA-256 pins are:
+
+| Evidence | SHA-256 |
+| --- | --- |
+| Artifact archive | `12deef842d80f136237bf065a8e74a7079883c20bc3fc0998c55ac040c39c145` |
+| `auth-cost-conformance.json` | `6cfe83c8f7f72e4016ce7f091cc8ee5fb06ecb594f505365236386acf259b9c6` |
+| `auth-cost-manifest.json` | `410eaffe7496a38c534384ca3602cb1170b6b94c08d0a1343cea6b560244f106` |
+| Compact execution records | `67f88976666bc85153419e5210c777fcc3dc70a95351a4015a7887012d42e911` |
+| Canonical source-snapshot list | `30ae7711d222ef07626308cf962efc4802bd2dc3d94e34e0ed8b334e463727ea` |
+| Configured worker binary | `9cf1ae067cfe4e126279aad7221e9a281eef10550d643286d7d4b4f11791ecc9` |
+
+The source snapshot covers 154 files totaling 4,119,717 bytes. The configured
+worker binary is 3,028,504 bytes. Source and binary snapshots match before and
+after execution; they remain observations rather than a binary/source-equivalence
+attestation. Root and independent artifact reconciliation passed: source and lock
+observations, job/artifact stdout, all 22 ledgers, execution counts and metric
+folds match the pinned evidence.
+
 This cost-only experiment measures actual authenticated leaf scripts, their
 complete disproof streams and actual opening comparisons. It constructs no new
 Taproot forest and makes no candidate membership/production-binding claim. All
-such flags remain false, with zero tree calls. Applying the adapter to larger
-compositions requires actual tree integration and another review.
+such flags remain false, with zero tree calls. A candidate forest or membership
+claim on a larger composition requires actual tree integration and another review.
 
-Report Script, witness and stack costs separately under identical before/after
-accounting. Do not infer a runtime improvement from hosted timing noise, or whole
-permutation/verifier fit from one round. Stop on any accepted forgery, source or
+The next bounded application is a matched comparison on the unchanged complete
+Pallas/Vesta point-addition graphs, under separate source admission. Only 1,152
+of their 7,476 words are BYTE words; their new costs and stack fit are unmeasured.
+The one-round percentage cannot be extrapolated to those graphs, a full
+permutation or the complete verifier. Stop on any accepted forgery, source or
 opening mismatch, unexpected abort, panic, cap failure or honest negative result.
-Full proof decoding, scalar/MSM/IPA, the complete Nova/Spartan transcript/equations,
-production assertion binding and the Bitcoin transaction graph remain open.
+Complete Script proof decoding, scalar/MSM/IPA lowering, the complete
+Nova/Spartan transcript/equation binding, production assertion binding and the
+Bitcoin transaction graph remain open.

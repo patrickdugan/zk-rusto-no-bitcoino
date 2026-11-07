@@ -1,12 +1,16 @@
 # Next implementation boundary
 
-[The full-width WOTS cost comparison](AUTH-COST.md) is implemented in a separate
-candidate worker and is awaiting hosted execution. It compares identical signed
-u32 messages and predicate sources on a tiny mixed component and one BYTE round
-per role. Candidate mode/packet identities, canonical hints and the isolated
-OP_MIN executor require actual authentication/stack/cost validation. The measured
-scalar-source experiment below remains the baseline; no new savings or candidate
-Taproot/production-binding result is claimed yet.
+[The full-width WOTS cost comparison](AUTH-COST.md) passed its separate hosted
+experiment on `d70edde33ba0d5d585713f9d8b279a94c19ca9c2`
+([run 42317646563](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42317646563)).
+Complete disproof Script costs are 7,394 to 6,236 bytes for the mixed component
+(-15.6613%) and 6,304,498 to 4,306,948 bytes for one BYTE round (-31.6845%), in
+both roles. The round's normal combined-stack/witness-item/payload peaks rise
+from 35/30/600 to 69/60/612; guard-inclusive peaks are separately 62/60/612 and
+69/61/617. All 54,888 Script calls match expected outcomes, including 45,080
+expected rejections. Root and independent artifact reconciliation passed. The
+dedicated M18 workflow passed; broader current-head CI is still pending. No
+candidate Taproot/forest, complete permutation, proof or production result follows.
 
 [The retained scalar-source extension](RETAINED-SCALAR-SOURCES.md) passes its
 separate thirteen-component hosted experiment on
@@ -134,37 +138,28 @@ complete IPA remain open.
 
 ## Next bounded cost experiment
 
-Compare the current full-width CompactWots4 verifier with the mature full-width
-hinted Wots4/Listpick verifier. Keep four-byte signed messages, all eight message
-digits and both checksum digits; do not shorten BYTE messages or cast away signed
-256/u32::MAX diagnostics. Use a new isolated registry/witness format and source
-identity, with verifier-owned mode choices from declared bounds. Preserve the
-existing implementation as the measured baseline.
+M19 is a proposed comparison of both adapters on the unchanged complete
+Pallas/Vesta point-addition graphs: 7,476 words and 6,151 leaves per role, under
+new isolated source admission. Executing every normal leaf in C/D modes under
+both adapters gives 49,208 normal calls across the two roles; targeted adversarial
+and authentication checks require their own bounded inventory.
 
-Start with one tiny mixed/aliased convolution component, then one unchanged BYTE
-round in both roles. Measure actual Script bytes, witness items/payload and
-combined stack peaks with identical accounting. Actual opening captures must
-bind mode, packet boundaries, key, value and authenticated signature chunks;
-unused host-side metadata is not authenticated data. Exact witness-length guards
-remain mandatory before indexed reads.
+Historical compact measurements are 88,586,200 Pallas and 88,688,588 Vesta Script
+bytes. Remeasure the matched baselines alongside the candidate under identical
+accounting. Only 1,152 words in either graph have BYTE bounds, so M18's one-round
+31.6845% reduction cannot be projected onto this mixture of BYTE, limb, product,
+carry and selector bounds. New point-graph costs are unmeasured, and neither
+witness nor combined-stack fit is guaranteed by the round result.
 
-Every hinted digit needs canonical empty-zero or one-byte 1-15 checks before
-upstream clipping. Forged hash/hint/checksum packets must reject both modes even
-when another word is legitimately out of bounds. Test checksum-isolating forward
-hash-chain mutations and the 15-to-16 clamp aliases. Signed 256 and u32::MAX remain
-ordinary semantic disproofs with authentic full-width signatures. Raw upstream
-parsers that assert/unwrap must not turn adversarial inputs into rejection credit.
-
-The hinted verifier emits standard OP_MIN, absent from the frozen executor's
-allowlist. Any candidate therefore needs a separately reviewed isolated executor;
-the original executor and all resource limits remain unchanged. The larger hinted
-packet also needs explicit witness/combined-stack admission and measured peaks.
-Stop on any soundness/binding mismatch, accepted forgery, panic, limit failure or
-honest negative result. Independent implementation review and actual hosted
-execution are required before claiming savings or applying it to larger graphs.
-The isolated [candidate implementation](AUTH-COST.md) is now awaiting hosted
-execution. It has no measured savings yet; no whole-verifier fit or 70-GiB
-solution follows from static opcode counts.
+Preserve every complete curve/field constraint and actual shared opening,
+full-u32 signatures, canonical ten-digit hints, bound-only mode selection and
+exact witness-length guards before indexed reads. Keep the old implementation
+and executor intact. Authentication forgeries must fail both modes even beside
+authentic out-of-bound values; raw parser failures and panics never earn
+rejection credit. Measure normal and guard-inclusive peaks separately and stop
+on an accepted forgery, binding mismatch, unexpected abort, cap failure or honest
+negative result. No whole-verifier fit or solution to the transcript footprint
+follows from M18's isolated round.
 
 ## Route to an end-to-end Nova SNARK verifier
 
