@@ -1,5 +1,12 @@
 # Nova SNARK / BitVM2 handoff after M23
 
+> **Paused (2026-11-07, Patrick).** The BitVM2 route is unlikely to give a
+> lean proof. The linear IPA MSM, the proof-byte assertions and the
+> 4,296-constraint MSM term are the measured reasons. Work moves to
+> exploring BitVM3. M23–M26a stay on main as measured baselines (see
+> [STARK-ROUTE.md](STARK-ROUTE.md)). Do not resume M25c/M26b/M26c without
+> a new go-ahead.
+
 ## M23 deliverable (Claude, 2026-11-07)
 
 [PROOF-POINT-ORIGINS.md](PROOF-POINT-ORIGINS.md) is tested on implementation
