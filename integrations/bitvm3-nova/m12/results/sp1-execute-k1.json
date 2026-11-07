@@ -1,0 +1,22 @@
+{
+  "bundle_sha256": "ffa1fdbc8a7ef712941434db51c2c780232f5a2190f225bca640ab5a4d6c5f3c",
+  "cycle_tracker": {
+    "decode_proof": 26024411,
+    "decode_vk": 51625243796,
+    "nova_verify": 18139334251,
+    "parse_and_pin": 365,
+    "sha256_vk": 2506507858
+  },
+  "elf_sha256": "2db52978545be814d9a57de44c150ff36258c507377d28fe98aabbe8e72babca",
+  "execute_seconds": 1268.420736809,
+  "instruction_count": 72298156913,
+  "public_statement_bytes": 1164,
+  "public_statement_sha256": "d3b478b0ed0055bbd43a59775729c990a33d1df07bd0a66ee728a3573c832fa0",
+  "status": "executed_unproved",
+  "syscall_count": 0,
+  "vk_sha256": "6894f4903a9ff9713111bb1076b61663ac3592ad3d51b697d58125403fc5c12a",
+  "wall_clock": "21:09.70",
+  "peak_rss_kib": 7891964,
+  "sdk": "sp1-sdk 6.9.0 (profiling feature) light client execute, no proof; WSL2 Ubuntu 24.04 on the same host",
+  "program": "nova-bitvm3/m12/sp1/program (riscv64im-succinct-zkvm-elf)"
+}

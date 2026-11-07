@@ -1,0 +1,26 @@
+{
+  "note": "Pins of the M13 final layer. wrap_vk_sha256 and recursion_vk_root are the same for every guest (checked on two guests); program_vk_digest pins one guest.",
+  "sp1_version": "6.9.0",
+  "wrap_vk_sha256": "d42c63e3c873b35576b4c95fa8c41770a8c6b8a9f16ba74732c5b52a43b0b0d7",
+  "recursion_vk_root": "7487c2175bd3256619ca0118094b8150d6df0246a1b41979a081642e5253f257",
+  "sp1_shipped_bn254_wrap_vk_sha256": "fce924068aa5a610ee676d210b5ac5ca8b1ec305f5ffe4524fc9dc990d2dfb78",
+  "wrap_parameters": {
+    "log_blowup": 3,
+    "queries": 94,
+    "proof_of_work_bits": 22,
+    "log_stacking_height": 21,
+    "max_log_row_count": 21
+  },
+  "transcript_domain": "garbled-snark-verifier/nova-bitvm3/m13/blake3-koalabear/v1",
+  "programs": {
+    "control_c_direct_headers": {
+      "elf_sha256": "2d49248d63942a2748183933b0d73674b21098eec2826afe0056004151cb9005",
+      "program_vk_digest": "4686663fefd26e0a8f980305c73da04d37980952b6fb87385776986da62ecd57"
+    },
+    "architecture_a_nova_verifier": {
+      "elf_sha256": "2db52978545be814d9a57de44c150ff36258c507377d28fe98aabbe8e72babca",
+      "k1_testnet4_statement_sha256": "d3b478b0ed0055bbd43a59775729c990a33d1df07bd0a66ee728a3573c832fa0",
+      "program_vk_digest": "5df3760fed1620671151183a73c9407d528b2239a5cd243b14cf5c7b4d4af46b"
+    }
+  }
+}

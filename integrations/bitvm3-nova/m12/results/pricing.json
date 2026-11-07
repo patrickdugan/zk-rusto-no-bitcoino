@@ -1,0 +1,154 @@
+{
+  "prices": {
+    "measured_gates": {
+      "keccak_f1600": 38400,
+      "sha256_compress": 22573,
+      "blake3_compress": 10410,
+      "koalabear_mul_mod": 2068,
+      "babybear_mul_mod": 2161,
+      "koalabear_add_mod": 94,
+      "babybear_add_mod": 94,
+      "koalabear_mul_by_3": 159,
+      "babybear_mul_by_3": 159,
+      "koalabear_mul_by_11": 328,
+      "babybear_mul_by_11": 328,
+      "koalabear_ext4_mul": 34693,
+      "babybear_ext4_mul": 36688
+    },
+    "pasta_mul_predicate": 360963,
+    "pasta_point_add_predicate": 4340269,
+    "poseidon2_koalabear_w16_derived": {
+      "total": 846808,
+      "total_upper": 1403608,
+      "sbox_muls": 612128,
+      "round_constants": 13912,
+      "external_layers": 57528,
+      "internal_layers": 163240,
+      "internal_layers_upper": 720040,
+      "status": "derived from measured mul/add/constant prices; not built. total prices diagonal entries as the measured x11 constant multiplication; total_upper as full multiplications"
+    },
+    "ciphertext_bytes_per_gate": 16
+  },
+  "direct_garbled_nova_verifier": {
+    "k1": {
+      "field_muls": 2263254,
+      "msm_terms": 147456,
+      "muls_priced_as_pasta_mul_predicate": {
+        "non_free_gates": 816950953602,
+        "ciphertext_bytes": 13071215257632,
+        "ciphertext_tb": 13.0712
+      },
+      "msm_sensitivity_12_point_adds_per_term": {
+        "non_free_gates": 7679984467968,
+        "ciphertext_bytes": 122879751487488,
+        "ciphertext_tb": 122.8798
+      },
+      "vk_bytes": 42270392
+    },
+    "k20": {
+      "field_muls": 27525706,
+      "msm_terms": 2113536,
+      "muls_priced_as_pasta_mul_predicate": {
+        "non_free_gates": 9935761414878,
+        "ciphertext_bytes": 158972182638048,
+        "ciphertext_tb": 158.9722
+      },
+      "msm_sensitivity_12_point_adds_per_term": {
+        "non_free_gates": 110079777374208,
+        "ciphertext_bytes": 1761276437987328,
+        "ciphertext_tb": 1761.2764
+      },
+      "vk_bytes": 500333512
+    }
+  },
+  "b_relation_ops": {
+    "k1": {
+      "field_muls": 1279084,
+      "msm_terms": 147458
+    },
+    "k20": {
+      "field_muls": 15876390,
+      "msm_terms": 2113538
+    }
+  },
+  "architecture_a_sp1": {
+    "k1_measured_instructions": 72298156913,
+    "k1_cycle_tracker": {
+      "decode_proof": 26024411,
+      "decode_vk": 51625243796,
+      "nova_verify": 18139334251,
+      "parse_and_pin": 365,
+      "sha256_vk": 2506507858
+    },
+    "k20_extrapolated_instructions": 900754695613,
+    "verify_only_floor": {
+      "k1_measured": 18139334251,
+      "k20_extrapolated": 259997124264
+    },
+    "scaling": {
+      "msm_terms": 14.333333333333334,
+      "field_muls": 12.162004794866153,
+      "vk_bytes": 11.83650040434922,
+      "rule": "nova_verify x max(msm, mul ratio) + (decode_vk + sha256_vk) x vk-bytes ratio + rest"
+    }
+  },
+  "control_c_direct": {
+    "instructions_per_header_measured": 31820.27975609756,
+    "measured_over_headers": 4100,
+    "chain_heights_source": "testnet4 158,970 = end of the genesis-anchored whole-chain k=5 Nova proof (zk-rusto-no-bitcoino e1a2c18); mainnet 974,264 = Bitcoin-BitVM tip record of 2026-11-02",
+    "whole_chain_instructions": {
+      "testnet4_158970": 5058469872,
+      "mainnet_974264": 31001353036
+    },
+    "a_k1_over_whole_chain": {
+      "testnet4_158970": 14.29,
+      "mainnet_974264": 2.33
+    },
+    "a_k20_over_whole_chain": {
+      "testnet4_158970": 178.07,
+      "mainnet_974264": 29.06
+    },
+    "a_verify_only_k1_measured_over_whole_chain": {
+      "testnet4_158970": 3.59,
+      "mainnet_974264": 0.59
+    },
+    "a_verify_only_k20_extrapolated_over_whole_chain": {
+      "testnet4_158970": 51.4,
+      "mainnet_974264": 8.39
+    }
+  },
+  "final_verifier": {
+    "counts_file": "results/final-verifier-counts.json",
+    "hash_permutations_poseidon2": 39727,
+    "byte_hash_compressions": 38216,
+    "ext_muls_lower_bound": 3656,
+    "ext_mul_gates_lower_bound": 126837608,
+    "lower_bounds_note": "hash work counted from the proof; extension work is a lower bound (chip constraint evaluation and jagged evaluation not counted)",
+    "as_proved_poseidon2_koalabear": {
+      "non_free_gates": 33767979024,
+      "ciphertext_bytes": 540287664384,
+      "ciphertext_tb": 0.5403
+    },
+    "as_proved_poseidon2_koalabear_upper": {
+      "non_free_gates": 55887972624,
+      "ciphertext_bytes": 894207561984,
+      "ciphertext_tb": 0.8942
+    },
+    "same_shape_blake3_compress": {
+      "non_free_gates": 524666168,
+      "ciphertext_bytes": 8394658688,
+      "ciphertext_tb": 0.0084
+    },
+    "same_shape_sha256_compress": {
+      "non_free_gates": 989487376,
+      "ciphertext_bytes": 15831798016,
+      "ciphertext_tb": 0.0158
+    },
+    "same_shape_keccak_f1600": {
+      "non_free_gates": 1594332008,
+      "ciphertext_bytes": 25509312128,
+      "ciphertext_tb": 0.0255
+    },
+    "reference_upstream_groth16_garbled_total_gates": 11200000000
+  }
+}

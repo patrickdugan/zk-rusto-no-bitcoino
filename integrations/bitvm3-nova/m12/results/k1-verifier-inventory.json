@@ -1,0 +1,78 @@
+{
+  "F_arity": 17,
+  "decode_seconds": 13.4641734,
+  "engines": [
+    {
+      "engine": "primary (Pallas scalar field, Pallas curve commitments)",
+      "ipa_ck_s_generators": 1,
+      "ipa_ck_v_generators": 131072,
+      "ipa_opening_length_n": 131072,
+      "ipa_rounds": 17,
+      "nnz": {
+        "A": 352402,
+        "B": 174054,
+        "C": 183773,
+        "total": 710229
+      },
+      "num_cons": 131072,
+      "num_io": 2,
+      "num_vars": 131072,
+      "padded_rows": 131072,
+      "padded_vars": 131072,
+      "verify_ops": {
+        "ipa_msm_terms": 131072,
+        "ipa_s_vector_field_muls": 131071,
+        "matrix_eval_breakdown": {
+          "eq_tables": 393216,
+          "per_nonzero": 1420458
+        },
+        "matrix_eval_field_muls": 1813674
+      },
+      "z_columns": 262144
+    },
+    {
+      "engine": "secondary (Vesta scalar field, Vesta curve commitments)",
+      "ipa_ck_s_generators": 1,
+      "ipa_ck_v_generators": 16384,
+      "ipa_opening_length_n": 16384,
+      "ipa_rounds": 14,
+      "nnz": {
+        "A": 72548,
+        "B": 44127,
+        "C": 9812,
+        "total": 126487
+      },
+      "num_cons": 16384,
+      "num_io": 2,
+      "num_vars": 16384,
+      "padded_rows": 16384,
+      "padded_vars": 16384,
+      "verify_ops": {
+        "ipa_msm_terms": 16384,
+        "ipa_s_vector_field_muls": 16383,
+        "matrix_eval_breakdown": {
+          "eq_tables": 49152,
+          "per_nonzero": 252974
+        },
+        "matrix_eval_field_muls": 302126
+      },
+      "z_columns": 32768
+    }
+  ],
+  "linear_verifier_work": {
+    "field_muls_in_matrix_eval_and_ipa_scalars": 2263254,
+    "msm_terms_total": 147456,
+    "not_counted": [
+      "NIFS Poseidon RO hashes and fold scalar multiplications",
+      "sumcheck rounds (logarithmic)",
+      "Keccak transcript (logarithmic)",
+      "IPA L/R folding (2 log n points)"
+    ]
+  },
+  "nova": "nova-snark 0.76.0 CompressedSNARK, spartan::snark::RelaxedR1CSSNARK + ipa_pc on both engines",
+  "pp_digest_le_hex": "fb8bd96cfb689dd9c61e443ce04b341275447cf177cb21744dc9b8139aa6b503",
+  "schema": "nova-bitvm3-verifier-inventory/v1",
+  "verifier_key_bytes": 42270392,
+  "verifier_key_path": "testnet4 k=1 key from vk-export (not in git; 42,270,392 bytes)",
+  "verifier_key_sha256": "6894f4903a9ff9713111bb1076b61663ac3592ad3d51b697d58125403fc5c12a"
+}

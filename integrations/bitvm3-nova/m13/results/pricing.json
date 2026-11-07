@@ -1,0 +1,116 @@
+{
+  "counts_files": [
+    "results/verify-counts-c4.json",
+    "results/verify-counts-second-guest.json"
+  ],
+  "prices": {
+    "blake3_compress": 10410,
+    "koalabear_mul_mod": 2068,
+    "koalabear_add_mod": 94,
+    "koalabear_mul_by_11": 328,
+    "koalabear_mul_by_3": 159
+  },
+  "circuit_counts": {
+    "blake3_by_role_max": {
+      "merkle_leaf": {
+        "calls": 2187,
+        "compressions": 2283,
+        "bytes": 78200
+      },
+      "merkle_node": {
+        "calls": 30199,
+        "compressions": 30199,
+        "bytes": 1932736
+      },
+      "transcript": {
+        "calls": 506,
+        "compressions": 1146,
+        "bytes": 55786
+      }
+    },
+    "koalabear_ops_max": {
+      "add": 520663,
+      "halve": 0,
+      "mul_2exp": 0,
+      "mul_const": 400084,
+      "mul_full": 344386,
+      "sub": 67374,
+      "sum_adds": 378
+    },
+    "margin_muls": 10000,
+    "margin_transcript_compressions": 64,
+    "observed_variation": {
+      "blake3_compressions_total": [
+        33626,
+        33628
+      ],
+      "muls_total": [
+        744425,
+        744388
+      ]
+    }
+  },
+  "gates": {
+    "blake3_compressions": 350733720,
+    "merkle_swaps": 7730944,
+    "merkle_root_compares": 557685,
+    "field_linear": 55311010,
+    "field_mul_full_with_margin": 732870248,
+    "field_mul_const": {
+      "upper": 827373712,
+      "central": 131227552,
+      "lower": 63613356
+    }
+  },
+  "final_verifier": {
+    "upper": {
+      "non_free_gates": 1974577319,
+      "ciphertext_bytes": 31593237104,
+      "ciphertext_gb": 31.593
+    },
+    "central": {
+      "non_free_gates": 1278431159,
+      "ciphertext_bytes": 20454898544,
+      "ciphertext_gb": 20.455
+    },
+    "lower": {
+      "non_free_gates": 1210816963,
+      "ciphertext_bytes": 19373071408,
+      "ciphertext_gb": 19.373
+    }
+  },
+  "share_upper": {
+    "hash_and_merkle": 0.1818,
+    "field": 0.8182
+  },
+  "proof": {
+    "wrap_proof_bytes": 1099069,
+    "input_bits": 8792552,
+    "input_label_bytes": 140680832
+  },
+  "cut_and_choose": {
+    "n": 181,
+    "f": 7,
+    "source": "repo cut-and-choose parameters for 2^-40 (as in M12)",
+    "ciphertext_shipped_gb": {
+      "upper": 221.2,
+      "central": 143.2,
+      "lower": 135.6
+    }
+  },
+  "comparison": {
+    "m12_sp1_compressed_poseidon2_as_proved": 33767979024,
+    "m12_same_shape_blake3_lower_bound_hash_only": 524666168,
+    "upstream_groth16_garbled_total": 11200000000,
+    "upstream_groth16_over_total": {
+      "upper": 5.67,
+      "central": 8.76,
+      "lower": 9.25
+    },
+    "m12_poseidon2_over_total": {
+      "upper": 17.1,
+      "central": 26.4,
+      "lower": 27.9
+    }
+  }
+}

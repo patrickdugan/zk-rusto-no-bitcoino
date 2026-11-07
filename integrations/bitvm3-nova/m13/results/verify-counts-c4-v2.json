@@ -1,0 +1,42 @@
+{
+  "blake3": {
+    "merkle_leaf": {
+      "bytes": 78200,
+      "calls": 2187,
+      "compressions": 2283
+    },
+    "merkle_node": {
+      "bytes": 1932736,
+      "calls": 30199,
+      "compressions": 30199
+    },
+    "transcript": {
+      "bytes": 56778,
+      "calls": 537,
+      "compressions": 1177
+    }
+  },
+  "blake3_compressions_total": 33659,
+  "koalabear_ops": {
+    "add": 520663,
+    "halve": 0,
+    "mul_2exp": 0,
+    "mul_const": 400071,
+    "mul_full": 344307,
+    "sub": 67374,
+    "sum_adds": 378
+  },
+  "public_values_len": 187,
+  "seconds": 0.013731708,
+  "statement": {
+    "committed_values_sha256": "cd9beb309f279b517a02582c54dd375bae18f66be1614a37f6eb33e1bbd36567",
+    "exit_code": 0,
+    "is_complete": 1,
+    "program_vk_digest": "4686663fefd26e0a8f980305c73da04d37980952b6fb87385776986da62ecd57",
+    "recursion_vk_root": "7487c2175bd3256619ca0118094b8150d6df0246a1b41979a081642e5253f257",
+    "wrap_vk_sha256": "d42c63e3c873b35576b4c95fa8c41770a8c6b8a9f16ba74732c5b52a43b0b0d7"
+  },
+  "status": "verified",
+  "wrap_file_bytes": 1099173,
+  "wrap_proof_bytes": 1099069
+}

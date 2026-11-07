@@ -1,0 +1,20 @@
+[package]
+name = "m12-direct-headers-program"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+
+[dependencies]
+sp1-zkvm = { version = "=6.9.0", features = ["lib"] }
+nova-header-chain = { git = "https://github.com/patrickdugan/zk-rusto-no-bitcoino", rev = "de607d3db17d400dd6c2923d357f1d4a7bf233c7" }
+ff = "0.13"
+halo2curves = { version = "0.9.0", default-features = false, features = ["std", "bits", "derive_serde"] }
+
+[patch.crates-io]
+sha2 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", tag = "patch-sha2-0.10.9-sp1-4.0.0" }
+
+[workspace]
+
+[profile.release]
+strip = "symbols"

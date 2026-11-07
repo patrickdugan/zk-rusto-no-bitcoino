@@ -1,0 +1,26 @@
+{
+  "shrink_proof_bytes": 891790,
+  "statement": {
+    "committed_values_sha256": "cd9beb309f279b517a02582c54dd375bae18f66be1614a37f6eb33e1bbd36567",
+    "exit_code": 0,
+    "is_complete": 1,
+    "program_vk_digest": "4686663fefd26e0a8f980305c73da04d37980952b6fb87385776986da62ecd57",
+    "recursion_vk_root": "7487c2175bd3256619ca0118094b8150d6df0246a1b41979a081642e5253f257",
+    "wrap_vk_sha256": "d42c63e3c873b35576b4c95fa8c41770a8c6b8a9f16ba74732c5b52a43b0b0d7"
+  },
+  "times": {
+    "shrink_execute_s": 0.048018664,
+    "shrink_program_build_s": 1.659210184,
+    "shrink_prove_s": 26.640579781,
+    "shrink_setup_s": 3.335785382,
+    "wrap_execute_s": 0.271782991,
+    "wrap_program_build_s": 0.690498479,
+    "wrap_prove_s": 67.18218681,
+    "wrap_setup_s": 7.29182861,
+    "wrap_verify_s": 0.033136191
+  },
+  "wrap_file_bytes": 1099173,
+  "wrap_proof_bytes": 1099069,
+  "wrap_proof_sha256": "896105cfd431367a7b5e8d385efc973ea4fd1745d7880373caace7da65ea42bb",
+  "wrap_vk_bytes": 104
+}

@@ -22,6 +22,10 @@ Heavy Cairo/STWO verification dependencies live in the separately built
 [optional Raito integration](integrations/raito/), pinned to an upstream commit.
 The default sidecar stays small and compiles without them.
 
+The [BitVM3 route for Nova header-chain proofs](integrations/bitvm3-nova/README.md) is also built
+separately: the Nova verifier inside SP1, SP1's final proof with BLAKE3, that proof's verifier as
+a garbled circuit, and a resumable SP1 prover for one machine (CPU or GPU).
+
 ## Bitcoin Supernode RPC
 
 The [read-only Supernode RPC service](services/supernode-rpc/README.md)

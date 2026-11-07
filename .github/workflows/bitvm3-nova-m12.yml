@@ -1,0 +1,48 @@
+name: Nova M12 final-proof feasibility
+on:
+  push:
+    branches: ['main', 'feat/nova-bitvm3-*']
+    paths: ['integrations/bitvm3-nova/m12/**', 'integrations/bitvm3-nova/cost_envelope.py', 'integrations/bitvm3-nova/fixtures/bitcoin-header/**', 'src/**', 'Cargo.toml', '.github/workflows/bitvm3-nova-m12.yml']
+  pull_request:
+    paths: ['integrations/bitvm3-nova/m12/**', 'integrations/bitvm3-nova/cost_envelope.py', '.github/workflows/bitvm3-nova-m12.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nova-m12-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  m12:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare evidence
+        run: mkdir -p integrations/bitvm3-nova/m12/ci
+      - name: Toolchain
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version | tee integrations/bitvm3-nova/m12/ci/rustc.txt
+          sha256sum integrations/bitvm3-nova/m12/fixtures/* | tee integrations/bitvm3-nova/m12/ci/fixtures.sha256
+      - name: Pricing from recorded counts
+        run: |
+          set -o pipefail
+          python3 integrations/bitvm3-nova/m12/price_m12.py > integrations/bitvm3-nova/m12/ci/pricing.json
+          git diff --exit-code integrations/bitvm3-nova/m12/results/pricing.json
+      - name: Measured Boolean gate prices (hashes, small fields)
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/m12/gates/Cargo.toml -- --test-threads=1 --nocapture 2>&1 | tee integrations/bitvm3-nova/m12/ci/gates.txt
+      - name: Real k=1 Nova verification, statement binding, PCS and commitment binding
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o integrations/bitvm3-nova/m12/ci/native-time.txt cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/m12/native/Cargo.toml -- --test-threads=2 --nocapture 2>&1 | tee integrations/bitvm3-nova/m12/ci/native.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-m12-${{ github.sha }}
+          path: integrations/bitvm3-nova/m12/ci/

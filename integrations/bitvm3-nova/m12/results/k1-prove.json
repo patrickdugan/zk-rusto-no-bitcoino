@@ -1,0 +1,48 @@
+{
+  "bundle_sha256": "ffa1fdbc8a7ef712941434db51c2c780232f5a2190f225bca640ab5a4d6c5f3c",
+  "checkpoint_state_sha256": "9c82dffe8b6005378775c8f2028b7644039defadb0fcc1d77820b7aaced6de9c",
+  "compress_seconds": 15.929078,
+  "compressed_setup_seconds": 1.1517764,
+  "constraints": {
+    "primary": 97409,
+    "secondary": 10349
+  },
+  "end_state_sha256": "eee9c07419e03a68050700e96815338448fd5f3f280dcfe931e6c7bf86452971",
+  "fold_seconds": 1.6506289,
+  "headers": 4,
+  "k": 1,
+  "network": "testnet4",
+  "proof_bytes": 12040,
+  "proof_sha256": "66c903b0e23876bf7c50414d6b2bfe451a256a6f44a7ba0d5b1c27e30addd7e4",
+  "recursive_snark_bytes": 7223800,
+  "setup_seconds": 7.6797194,
+  "steps": 4,
+  "variables": {
+    "primary": 97267,
+    "secondary": 10331
+  },
+  "vk_bytes": 42270392,
+  "vk_sha256": "6894f4903a9ff9713111bb1076b61663ac3592ad3d51b697d58125403fc5c12a",
+  "measured_process": {
+    "exe": "m12.exe",
+    "exe_sha256": "c1a07e314ca543f60cfb9c90feb178c7c9222b85805a14b20dba5fd2be222a01",
+    "exit_code": 0,
+    "wall_seconds": 29.32,
+    "peak_private_bytes": 390582272,
+    "peak_working_set_bytes": 362278912,
+    "cap_gib": 9,
+    "killed": null,
+    "args": "prove testnet4 1 4 testnet4-headers-0-80.bin out"
+  },
+  "vk_export_process": {
+    "exe": "m12.exe",
+    "exe_sha256": "c1a07e314ca543f60cfb9c90feb178c7c9222b85805a14b20dba5fd2be222a01",
+    "exit_code": 0,
+    "wall_seconds": 11.58,
+    "peak_private_bytes": 202674176,
+    "peak_working_set_bytes": 177278976,
+    "cap_gib": 9,
+    "killed": null,
+    "args": "vk-export testnet4 1 k1-export.vk"
+  }
+}

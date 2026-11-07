@@ -1,0 +1,43 @@
+{
+  "accumulator_bytes": 7223800,
+  "accumulator_sha256": "63bda1a09c21c128c7d8777e7ad935fa1b60ba97b4540299f22e43775f835531",
+  "pcs": {
+    "forgery": {
+      "binding_error": "Pedersen binding fails: the hash-committed witness is not the one Nova committed",
+      "binding_rejects": true,
+      "pcs_only_accepts": true,
+      "relaxed_r1cs_accepts": true
+    },
+    "num_vars_E": 17,
+    "num_vars_W": 17,
+    "pcs_verify_seconds": 0.0095584,
+    "proof_bytes": 2597056,
+    "prove_seconds": 0.6373398,
+    "queries": 148,
+    "relation_with_binding_seconds": 1.0304495
+  },
+  "primary": {
+    "E_len": 97409,
+    "W_len": 97267,
+    "nnz": 710229,
+    "padded_rows": 131072,
+    "padded_vars": 131072
+  },
+  "secondary": {
+    "E_len": 10349,
+    "W_len": 10331,
+    "fresh_W_len": 10331
+  },
+  "seconds": {
+    "accumulator_decode": 0.0340885,
+    "pedersen_combined_msm": 0.0993341,
+    "pedersen_two_msms": 0.2029196,
+    "relaxed_r1cs_check": 0.0891565,
+    "vk_decode": 4.5278409
+  },
+  "steps_i": 4,
+  "vk_sha256": "6894f4903a9ff9713111bb1076b61663ac3592ad3d51b697d58125403fc5c12a",
+  "z0_sha256": "9c82dffe8b6005378775c8f2028b7644039defadb0fcc1d77820b7aaced6de9c",
+  "zi_sha256": "eee9c07419e03a68050700e96815338448fd5f3f280dcfe931e6c7bf86452971",
+  "accumulator_source": "m12 prove testnet4 1 4 (the RecursiveSNARK behind fixtures/testnet4-k1-0-4.nht4; not committed)"
+}

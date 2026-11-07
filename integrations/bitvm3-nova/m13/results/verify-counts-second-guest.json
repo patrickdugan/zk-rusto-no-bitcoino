@@ -1,0 +1,40 @@
+{
+  "status": "verified",
+  "wrap_file_bytes": 1099173,
+  "wrap_proof_bytes": 1099069,
+  "public_values_len": 187,
+  "blake3": {
+    "merkle_leaf": {
+      "bytes": 78200,
+      "calls": 2187,
+      "compressions": 2283
+    },
+    "merkle_node": {
+      "bytes": 1932736,
+      "calls": 30199,
+      "compressions": 30199
+    },
+    "transcript": {
+      "bytes": 55786,
+      "calls": 506,
+      "compressions": 1146
+    }
+  },
+  "blake3_compressions_total": 33628,
+  "koalabear_ops": {
+    "add": 520663,
+    "halve": 0,
+    "mul_2exp": 0,
+    "mul_const": 400084,
+    "mul_full": 344304,
+    "sub": 67374,
+    "sum_adds": 378
+  },
+  "statement": {
+    "wrap_vk_sha256": "d42c63e3c873b35576b4c95fa8c41770a8c6b8a9f16ba74732c5b52a43b0b0d7",
+    "recursion_vk_root": "7487c2175bd3256619ca0118094b8150d6df0246a1b41979a081642e5253f257",
+    "exit_code": 0,
+    "is_complete": 1
+  },
+  "source": "BLAKE3 wrap proof built by this pipeline from a second SP1 6.9.0 compressed proof (a different guest in a private project); the proof is not committed, only its counts"
+}

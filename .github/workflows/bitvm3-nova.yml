@@ -1,0 +1,82 @@
+name: Nova BitVM3 kernels and native reference
+on:
+  push:
+    branches: ['main', 'feat/nova-bitvm3-*']
+    paths: ['src/nova.rs', 'src/nova/**', 'src/lib.rs', 'integrations/bitvm3-nova/**', 'docs/nova-bitvm3*', 'Cargo.toml', 'build.rs', '.github/workflows/bitvm3-nova.yml']
+  pull_request:
+    paths: ['src/nova.rs', 'src/nova/**', 'src/lib.rs', 'integrations/bitvm3-nova/**', 'Cargo.toml', 'build.rs', '.github/workflows/bitvm3-nova.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nova-bitvm3-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare evidence
+        run: mkdir -p integrations/bitvm3-nova/results
+      - name: Boolean references and local runner tests
+        run: |
+          set -o pipefail
+          python3 integrations/bitvm3-nova/reference.py 2>&1 | tee integrations/bitvm3-nova/results/python.txt
+          python3 integrations/bitvm3-nova/curve_reference.py 2>&1 | tee integrations/bitvm3-nova/results/curve-python.txt
+          python3 integrations/bitvm3-nova/test_local_run.py 2>&1 | tee integrations/bitvm3-nova/results/local-runner-tests.txt
+          python3 integrations/bitvm3-nova/audit_real_header_fixtures.py 2>&1 | tee integrations/bitvm3-nova/results/m11-fixture-audit.txt
+          python3 integrations/bitvm3-nova/local_run.py --suite all --plan > integrations/bitvm3-nova/results/local-plan.json
+      - name: Toolchain and dependency evidence
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version > integrations/bitvm3-nova/results/rustc.txt
+          cargo +1.90.0 generate-lockfile --manifest-path integrations/bitvm3-nova/Cargo.toml
+          cargo +1.90.0 tree --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference > integrations/bitvm3-nova/results/dependencies.txt
+          find "$HOME/.cargo/registry/src" -path '*/nova-snark-0.76.0/src/provider/keccak.rs' -exec cp {} integrations/bitvm3-nova/results/pinned-nova-keccak.rs \;
+          find "$HOME/.cargo/registry/src" -path '*/nova-snark-0.76.0/src/spartan/sumcheck.rs' -exec cp {} integrations/bitvm3-nova/results/pinned-nova-sumcheck.rs \;
+          find "$HOME/.cargo/registry/src" -path '*/nova-snark-0.76.0/src/spartan/snark.rs' -exec cp {} integrations/bitvm3-nova/results/pinned-nova-spartan.rs \;
+          find "$HOME/.cargo/registry/src" -path '*/nova-snark-0.76.0/src/spartan/polys/univariate.rs' -exec cp {} integrations/bitvm3-nova/results/pinned-nova-univariate.rs \;
+      - name: Execute and garble/evaluate Pasta kernels
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o integrations/bitvm3-nova/results/kernels-time.txt cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --lib -- --nocapture --test-threads=1 2>&1 | tee integrations/bitvm3-nova/results/kernels.txt
+      - name: Build independent curve and transcript tests
+        run: cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test curves --test transcript --test boolean_transcript --test structured_transcript --test sumcheck --test spartan_chain --no-run
+      - name: Multi-round chain and outer algebra conformance
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o integrations/bitvm3-nova/results/m78-time.txt cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test spartan_chain -- --nocapture --test-threads=1 2>&1 | tee integrations/bitvm3-nova/results/m78.txt
+      - name: Complete curve and exact transcript conformance
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o integrations/bitvm3-nova/results/m3-time.txt cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test curves --test transcript --no-fail-fast -- --nocapture --test-threads=1 2>&1 | tee integrations/bitvm3-nova/results/m3.txt
+      - name: Boolean Keccak and Nova transcript conformance
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o integrations/bitvm3-nova/results/m4-time.txt cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test boolean_transcript -- --nocapture --test-threads=1 2>&1 | tee integrations/bitvm3-nova/results/m4.txt
+      - name: Exercise local runner with real transcript tests
+        run: python3 integrations/bitvm3-nova/local_run.py --suite transcript --jobs 2 --threads 2 --output integrations/bitvm3-nova/results/local-ci
+      - name: Structured affine and commitment conformance
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o integrations/bitvm3-nova/results/m5-time.txt cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test structured_transcript -- --nocapture --test-threads=1 2>&1 | tee integrations/bitvm3-nova/results/m5.txt
+      - name: Spartan sumcheck round matches native Nova
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o integrations/bitvm3-nova/results/m6-time.txt cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test sumcheck -- --nocapture --test-threads=1 2>&1 | tee integrations/bitvm3-nova/results/m6.txt
+      - name: Real Nova compressed proof reference
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o integrations/bitvm3-nova/results/native-time.txt cargo +1.90.0 run --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference --bin nova-reference -- integrations/bitvm3-nova/results/native 2>&1 | tee integrations/bitvm3-nova/results/native.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-bitvm3-${{ github.sha }}
+          path: |
+            integrations/bitvm3-nova/results/
+            integrations/bitvm3-nova/Cargo.lock

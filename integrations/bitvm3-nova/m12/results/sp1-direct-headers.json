@@ -1,0 +1,52 @@
+{
+  "program": "nova-bitvm3/m12/sp1/program-direct (zk-rusto-no-bitcoino de607d3 native::State::apply_on, sha2 SP1 precompile patch)",
+  "headers_source": "zk-rusto-no-bitcoino de607d3 fixtures/testnet4/headers_0_4100.bin (sha256 c6806aaa...a2ee)",
+  "end_state_matches": {
+    "height_4_equals_k1_nova_statement": true,
+    "height_80_equals_k20_shard1_nova_statement": true
+  },
+  "runs": [
+    {
+      "checkpoint_state_sha256": "9c82dffe8b6005378775c8f2028b7644039defadb0fcc1d77820b7aaced6de9c",
+      "cycle_tracker": {
+        "apply_headers": 127502
+      },
+      "elf_sha256": "2d49248d63942a2748183933b0d73674b21098eec2826afe0056004151cb9005",
+      "end_state_sha256": "eee9c07419e03a68050700e96815338448fd5f3f280dcfe931e6c7bf86452971",
+      "execute_seconds": 0.084802284,
+      "headers": 4,
+      "instruction_count": 512784,
+      "instructions_per_header": 128196.0,
+      "status": "executed_unproved",
+      "peak_rss_kib": 63028
+    },
+    {
+      "checkpoint_state_sha256": "9c82dffe8b6005378775c8f2028b7644039defadb0fcc1d77820b7aaced6de9c",
+      "cycle_tracker": {
+        "apply_headers": 2538911
+      },
+      "elf_sha256": "2d49248d63942a2748183933b0d73674b21098eec2826afe0056004151cb9005",
+      "end_state_sha256": "df3824edb9c5222256710a35504730bade2fe558de0a6e9090b0966c8a677991",
+      "execute_seconds": 0.17435392,
+      "headers": 80,
+      "instruction_count": 2925505,
+      "instructions_per_header": 36568.8125,
+      "status": "executed_unproved",
+      "peak_rss_kib": 68336
+    },
+    {
+      "checkpoint_state_sha256": "9c82dffe8b6005378775c8f2028b7644039defadb0fcc1d77820b7aaced6de9c",
+      "cycle_tracker": {
+        "apply_headers": 130075323
+      },
+      "elf_sha256": "2d49248d63942a2748183933b0d73674b21098eec2826afe0056004151cb9005",
+      "end_state_sha256": "777e975757992fe2d92030aa6a362f506895f596fe6a9069ab0a3324e1a4b2df",
+      "execute_seconds": 11.926285163,
+      "headers": 4100,
+      "instruction_count": 130463147,
+      "instructions_per_header": 31820.27975609756,
+      "status": "executed_unproved",
+      "peak_rss_kib": 355464
+    }
+  ]
+}

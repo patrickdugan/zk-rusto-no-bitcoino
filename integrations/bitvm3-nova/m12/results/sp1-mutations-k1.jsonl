@@ -1,0 +1,14 @@
+{"case":"proof byte 8 flipped","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":689.843130868}
+{"case":"proof byte 3010 flipped","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":801.222555366}
+{"case":"proof byte 6020 flipped","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":957.535268093}
+{"case":"proof byte 12000 flipped","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":692.697640216}
+{"case":"final tip: zn inside the proof altered","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":704.651238913}
+{"case":"verifier key byte flipped","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":51.622697428}
+{"case":"checkpoint chainwork z0[3] altered","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":696.316676119}
+{"case":"checkpoint tip hash z0[1] altered","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":721.926194902}
+{"case":"checkpoint height z0[0] altered","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":742.557128864}
+{"case":"step count + 1","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":722.358745775}
+{"case":"network relabelled NHT4 -> NHC1","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":44.229638821}
+{"case":"fold width relabelled k -> 5","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":44.772013065}
+{"case":"truncated proof","committed_bytes":0,"error":null,"exit_code":1,"refused":true,"seconds":683.313415539}
+all mutations refused

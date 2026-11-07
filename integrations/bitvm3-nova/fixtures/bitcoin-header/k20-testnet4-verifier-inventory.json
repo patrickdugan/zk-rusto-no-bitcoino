@@ -1,0 +1,78 @@
+{
+  "F_arity": 17,
+  "decode_seconds": 111.9069547,
+  "engines": [
+    {
+      "engine": "primary (Pallas scalar field, Pallas curve commitments)",
+      "ipa_ck_s_generators": 1,
+      "ipa_ck_v_generators": 2097152,
+      "ipa_opening_length_n": 2097152,
+      "ipa_rounds": 21,
+      "nnz": {
+        "A": 4159082,
+        "B": 1851659,
+        "C": 3398554,
+        "total": 9409295
+      },
+      "num_cons": 2097152,
+      "num_io": 2,
+      "num_vars": 2097152,
+      "padded_rows": 2097152,
+      "padded_vars": 2097152,
+      "verify_ops": {
+        "ipa_msm_terms": 2097152,
+        "ipa_s_vector_field_muls": 2097151,
+        "matrix_eval_breakdown": {
+          "eq_tables": 6291456,
+          "per_nonzero": 18818590
+        },
+        "matrix_eval_field_muls": 25110046
+      },
+      "z_columns": 4194304
+    },
+    {
+      "engine": "secondary (Vesta scalar field, Vesta curve commitments)",
+      "ipa_ck_s_generators": 1,
+      "ipa_ck_v_generators": 16384,
+      "ipa_opening_length_n": 16384,
+      "ipa_rounds": 14,
+      "nnz": {
+        "A": 72548,
+        "B": 44127,
+        "C": 9812,
+        "total": 126487
+      },
+      "num_cons": 16384,
+      "num_io": 2,
+      "num_vars": 16384,
+      "padded_rows": 16384,
+      "padded_vars": 16384,
+      "verify_ops": {
+        "ipa_msm_terms": 16384,
+        "ipa_s_vector_field_muls": 16383,
+        "matrix_eval_breakdown": {
+          "eq_tables": 49152,
+          "per_nonzero": 252974
+        },
+        "matrix_eval_field_muls": 302126
+      },
+      "z_columns": 32768
+    }
+  ],
+  "linear_verifier_work": {
+    "field_muls_in_matrix_eval_and_ipa_scalars": 27525706,
+    "msm_terms_total": 2113536,
+    "not_counted": [
+      "NIFS Poseidon RO hashes and fold scalar multiplications",
+      "sumcheck rounds (logarithmic)",
+      "Keccak transcript (logarithmic)",
+      "IPA L/R folding (2 log n points)"
+    ]
+  },
+  "nova": "nova-snark 0.76.0 CompressedSNARK, spartan::snark::RelaxedR1CSSNARK + ipa_pc on both engines",
+  "pp_digest_le_hex": "56fb21962d6901d16d7f6897af7eba5019719def466af002e88176e1bf6da001",
+  "schema": "nova-bitvm3-verifier-inventory/v1",
+  "verifier_key_bytes": 500333512,
+  "verifier_key_path": "shard-000.vk (not in git; see README.md)",
+  "verifier_key_sha256": "9e94b9083b5be30e796e974218804214b7106284c071eeec9b15945735321727"
+}

@@ -1,0 +1,107 @@
+{
+  "vk_export_k20": {
+    "exe": "btc-header-fold.exe",
+    "exe_sha256": "ad531c222d530b26c4d1bec173f78d6ce1cb4d3f461161452abf44c4ed07be40",
+    "exit_code": 0,
+    "wall_seconds": 110.55,
+    "peak_private_bytes": 2429878272,
+    "peak_working_set_bytes": 2395484160,
+    "cap_gib": 9,
+    "killed": null,
+    "args": "vk-export 20 k20-regenerated.vk --network testnet4",
+    "stdout": "vk_sha256=9e94b9083b5be30e796e974218804214b7106284c071eeec9b15945735321727",
+    "output_sha256": "9e94b9083b5be30e796e974218804214b7106284c071eeec9b15945735321727",
+    "recorded_sha256_m11": "9e94b9083b5be30e796e974218804214b7106284c071eeec9b15945735321727",
+    "matches_recorded": true
+  },
+  "verify_0_40": {
+    "exe": "btc-header-fold.exe",
+    "exe_sha256": "ad531c222d530b26c4d1bec173f78d6ce1cb4d3f461161452abf44c4ed07be40",
+    "exit_code": 0,
+    "wall_seconds": 261.19,
+    "peak_private_bytes": 1916723200,
+    "peak_working_set_bytes": 1821245440,
+    "cap_gib": 9,
+    "killed": null,
+    "args": "verify-bundle k20-testnet4-0-40.nht4 --vk shard-000.vk",
+    "receipt": {
+      "statement": "btc_header_chain_testnet4_v1",
+      "network": "testnet4",
+      "verifier": "nova-snark 0.76.0 pallas/vesta ipa, spartan compressed",
+      "vk_sha256": "9e94b9083b5be30e796e974218804214b7106284c071eeec9b15945735321727",
+      "proof_sha256": "62cf7c1ce55568e35327b97fc220886a64259b44a5d33d713a105f77329d3e64",
+      "checkpoint_state_sha256": "9c82dffe8b6005378775c8f2028b7644039defadb0fcc1d77820b7aaced6de9c",
+      "end_state_sha256": "e8b8cf0934152716f9d54cdeec405019c4a6eb9bde815398854d21268741b123",
+      "checkpoint": {
+        "height": 0,
+        "tip_hash": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+        "chainwork": "0x100010001"
+      },
+      "end": {
+        "height": 40,
+        "tip_hash": "00000000a27e2b4028199231093f3542d0b4816455190a580ddb9017f84670d6",
+        "chainwork": "0x2900290029"
+      },
+      "headers": 40,
+      "verify_seconds": 21.432,
+      "verified": true
+    }
+  },
+  "verify_40_80": {
+    "exe": "btc-header-fold.exe",
+    "exe_sha256": "ad531c222d530b26c4d1bec173f78d6ce1cb4d3f461161452abf44c4ed07be40",
+    "exit_code": 0,
+    "wall_seconds": 247.84,
+    "peak_private_bytes": 1912901632,
+    "peak_working_set_bytes": 1821208576,
+    "cap_gib": 9,
+    "killed": null,
+    "args": "verify-bundle k20-testnet4-40-80.nht4 --vk shard-000.vk",
+    "receipt": {
+      "statement": "btc_header_chain_testnet4_v1",
+      "network": "testnet4",
+      "verifier": "nova-snark 0.76.0 pallas/vesta ipa, spartan compressed",
+      "vk_sha256": "9e94b9083b5be30e796e974218804214b7106284c071eeec9b15945735321727",
+      "proof_sha256": "2bb4ca79e81df961507a43c223b068629ac0e8378b5fc2ed6404fa694169175c",
+      "checkpoint_state_sha256": "e8b8cf0934152716f9d54cdeec405019c4a6eb9bde815398854d21268741b123",
+      "end_state_sha256": "df3824edb9c5222256710a35504730bade2fe558de0a6e9090b0966c8a677991",
+      "checkpoint": {
+        "height": 40,
+        "tip_hash": "00000000a27e2b4028199231093f3542d0b4816455190a580ddb9017f84670d6",
+        "chainwork": "0x2900290029"
+      },
+      "end": {
+        "height": 80,
+        "tip_hash": "00000000f2d5675990f22987f0fa75cebcf1ae9d18cdc16b817fce54c390ebc2",
+        "chainwork": "0x5100510051"
+      },
+      "headers": 40,
+      "verify_seconds": 19.578,
+      "verified": true
+    }
+  },
+  "vk_export_k1_btc_header_fold": {
+    "exe": "btc-header-fold.exe",
+    "exe_sha256": "ad531c222d530b26c4d1bec173f78d6ce1cb4d3f461161452abf44c4ed07be40",
+    "exit_code": 0,
+    "wall_seconds": 13.43,
+    "peak_private_bytes": 201580544,
+    "peak_working_set_bytes": 177192960,
+    "cap_gib": 7,
+    "killed": null,
+    "args": "vk-export 1 k1-btc-header-fold.vk --network testnet4",
+    "output_sha256": "6894f4903a9ff9713111bb1076b61663ac3592ad3d51b697d58125403fc5c12a"
+  },
+  "host": {
+    "cpu": "AMD Ryzen AI 9 365 (10 cores / 20 threads)",
+    "ram_gib": 47.1,
+    "os": "Windows 11; MSVC x86_64 build of de607d3 (halo2curves asm)",
+    "note": "machine shared with a running training job; wall times include contention"
+  },
+  "source": {
+    "repo": "patrickdugan/zk-rusto-no-bitcoino",
+    "commit": "de607d3db17d400dd6c2923d357f1d4a7bf233c7",
+    "btc_header_fold_exe_sha256": "ad531c222d530b26c4d1bec173f78d6ce1cb4d3f461161452abf44c4ed07be40",
+    "nova_chain_exe_sha256": "01075ba2b9b635c54b8b59a0f75b8b715042a1da498bcc81185fbe277cf1539f"
+  }
+}

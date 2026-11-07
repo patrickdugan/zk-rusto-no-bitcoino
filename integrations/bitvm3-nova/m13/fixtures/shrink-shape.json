@@ -1,0 +1,10 @@
+{
+  "BaseAlu": 148576,
+  "ExtAlu": 198816,
+  "MemoryConst": 123296,
+  "MemoryVar": 165536,
+  "Poseidon2WideDeg3": 39616,
+  "PrefixSumChecks": 18368,
+  "PublicValues": 16,
+  "Select": 271968
+}

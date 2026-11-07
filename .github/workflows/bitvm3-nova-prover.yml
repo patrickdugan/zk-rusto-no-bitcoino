@@ -1,0 +1,36 @@
+name: Nova nb3-prover (resumable SP1 proving)
+on:
+  push:
+    branches: ['main', 'feat/nova-bitvm3-*']
+    paths: ['integrations/bitvm3-nova/prover/**', '.github/workflows/bitvm3-nova-prover.yml']
+  pull_request:
+    paths: ['integrations/bitvm3-nova/prover/**', '.github/workflows/bitvm3-nova-prover.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nova-prover-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  units:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CARGO_BUILD_JOBS: '4'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swap on the runner's temporary disk (SP1 crates and the circuit tests exceed 16 GB RAM)
+        run: |
+          sudo fallocate -l 16G /mnt/ci-swap && sudo chmod 600 /mnt/ci-swap && sudo mkswap /mnt/ci-swap && sudo swapon /mnt/ci-swap
+          free -g
+      - name: Toolchain and protoc (sp1-prover-types generates its gRPC types with tonic-build)
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version
+          sudo apt-get update -q && sudo apt-get install -y -q protobuf-compiler
+          protoc --version
+      - name: Build nb3-prove
+        run: cargo +1.90.0 build --release --locked --manifest-path integrations/bitvm3-nova/prover/Cargo.toml
+      - name: Store, memo keys, deferred-chunk capture, run configuration
+        run: cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/prover/Cargo.toml --test units -- --nocapture

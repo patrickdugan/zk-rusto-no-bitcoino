@@ -1,0 +1,27 @@
+[package]
+name = "nova-bitvm3-m12"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+description = "M12: statement-bound native verification, folded-witness extraction, hash PCS and commitment binding for the Nova Bitcoin-header proofs"
+
+[workspace]
+
+[dependencies]
+nova-snark = "=0.76.0"
+nova-header-chain = { git = "https://github.com/patrickdugan/zk-rusto-no-bitcoino", rev = "de607d3db17d400dd6c2923d357f1d4a7bf233c7" }
+ff = "0.13"
+bincode = "1.3"
+serde = { version = "1", features = ["derive"] }
+serde_with = "=3.21.0"
+serde_json = "1"
+sha2 = "0.10"
+hex = "0.4"
+num-bigint = "0.4"
+
+[profile.release]
+debug = false
+
+[profile.test]
+opt-level = 3

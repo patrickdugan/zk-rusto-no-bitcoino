@@ -1,0 +1,53 @@
+name: Nova fixed-matrix R1CS conformance
+on:
+  push:
+    branches: [main]
+    paths: ['src/nova.rs', 'src/nova/**', 'integrations/bitvm3-nova/**', '.github/workflows/bitvm3-nova-r1cs.yml']
+  pull_request:
+    paths: ['src/nova.rs', 'src/nova/**', 'integrations/bitvm3-nova/**', '.github/workflows/bitvm3-nova-r1cs.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nova-r1cs-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  r1cs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare pinned dependencies
+        run: |
+          mkdir -p integrations/bitvm3-nova/results/m9
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version > integrations/bitvm3-nova/results/m9/rustc.txt
+          cargo +1.90.0 generate-lockfile --manifest-path integrations/bitvm3-nova/Cargo.toml
+          cargo +1.90.0 tree --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference > integrations/bitvm3-nova/results/m9/dependencies.txt
+      - name: Build algebra tests separately
+        run: cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test spartan_r1cs --test spartan_chain --test sumcheck --no-run
+      - name: Fixed-matrix R1CS differential and garbling tests
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o integrations/bitvm3-nova/results/m9/time.txt cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test spartan_r1cs -- --nocapture --test-threads=1 2>&1 | tee integrations/bitvm3-nova/results/m9/tests.txt
+      - name: Previous sumcheck and chain regressions
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test sumcheck --test spartan_chain -- --nocapture --test-threads=1 2>&1 | tee integrations/bitvm3-nova/results/m9/regressions.txt
+      - name: Retain installed reference source
+        if: always()
+        run: |
+          find "$HOME/.cargo/registry/src" -path '*/nova-snark-0.76.0/src/spartan/snark.rs' -exec cp {} integrations/bitvm3-nova/results/m9/pinned-spartan.rs \;
+          find "$HOME/.cargo/registry/src" -path '*/nova-snark-0.76.0/src/spartan/sumcheck.rs' -exec cp {} integrations/bitvm3-nova/results/m9/pinned-sumcheck.rs \;
+          find "$HOME/.cargo/registry/src" -path '*/nova-snark-0.76.0/src/spartan/polys/multilinear.rs' -exec cp {} integrations/bitvm3-nova/results/m9/pinned-multilinear.rs \;
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-r1cs-${{ github.sha }}
+          path: |
+            integrations/bitvm3-nova/results/m9/
+            integrations/bitvm3-nova/Cargo.lock

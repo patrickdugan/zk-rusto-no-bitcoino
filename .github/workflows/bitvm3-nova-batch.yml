@@ -1,0 +1,61 @@
+name: Nova W-E batch evaluation conformance
+on:
+  push:
+    branches: ['main', 'feat/nova-bitvm3-*']
+    paths: ['src/nova.rs', 'src/nova/**', 'integrations/bitvm3-nova/**', 'Cargo.toml', 'build.rs', '.github/workflows/bitvm3-nova-batch.yml']
+  pull_request:
+    paths: ['src/nova.rs', 'src/nova/**', 'integrations/bitvm3-nova/**', 'Cargo.toml', 'build.rs', '.github/workflows/bitvm3-nova-batch.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nova-batch-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  batch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare pinned dependencies
+        run: |
+          mkdir -p integrations/bitvm3-nova/results/m10
+          git rev-parse HEAD > integrations/bitvm3-nova/results/m10/commit.txt
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version > integrations/bitvm3-nova/results/m10/rustc.txt
+          cargo +1.90.0 generate-lockfile --manifest-path integrations/bitvm3-nova/Cargo.toml
+          cargo +1.90.0 tree --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference > integrations/bitvm3-nova/results/m10/dependencies.txt
+      - name: Build batch and integration tests separately
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test spartan_batch --test spartan_batch_integration --test spartan_r1cs --test spartan_chain --test sumcheck --no-run 2>&1 | tee integrations/bitvm3-nova/results/m10/build.txt
+      - name: Native batch proofs and streamed Boolean checks
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o integrations/bitvm3-nova/results/m10/batch-time.txt cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test spartan_batch -- --nocapture --test-threads=1 2>&1 | tee integrations/bitvm3-nova/results/m10/batch.txt
+      - name: R1CS to batch continuity and prior failure
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o integrations/bitvm3-nova/results/m10/integration-time.txt cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test spartan_batch_integration -- --nocapture --test-threads=1 2>&1 | tee integrations/bitvm3-nova/results/m10/integration.txt
+      - name: Existing algebra regressions
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/Cargo.toml --features native-reference,curve-reference --test spartan_r1cs --test spartan_chain --test sumcheck -- --nocapture --test-threads=1 2>&1 | tee integrations/bitvm3-nova/results/m10/regressions.txt
+      - name: Retain installed reference sources
+        if: always()
+        run: |
+          find "$HOME/.cargo/registry/src" -path '*/nova-snark-0.76.0/src/spartan/mod.rs' -exec cp {} integrations/bitvm3-nova/results/m10/pinned-spartan-mod.rs \;
+          find "$HOME/.cargo/registry/src" -path '*/nova-snark-0.76.0/src/spartan/sumcheck.rs' -exec cp {} integrations/bitvm3-nova/results/m10/pinned-sumcheck.rs \;
+          find "$HOME/.cargo/registry/src" -path '*/nova-snark-0.76.0/src/spartan/snark.rs' -exec cp {} integrations/bitvm3-nova/results/m10/pinned-snark.rs \;
+          sha256sum integrations/bitvm3-nova/results/m10/pinned-*.rs > integrations/bitvm3-nova/results/m10/source-hashes.txt
+          cp integrations/bitvm3-nova/Cargo.lock integrations/bitvm3-nova/results/m10/Cargo.lock
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-batch-${{ github.sha }}
+          path: integrations/bitvm3-nova/results/m10/

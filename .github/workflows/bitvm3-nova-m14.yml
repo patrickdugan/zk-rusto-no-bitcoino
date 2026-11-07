@@ -1,0 +1,69 @@
+name: Nova M14 garbled final verifier
+on:
+  push:
+    branches: ['main', 'feat/nova-bitvm3-*']
+    paths: ['integrations/bitvm3-nova/m14/**', 'integrations/bitvm3-nova/m13/**', 'integrations/bitvm3-nova/m12/gates/**', 'src/**', 'Cargo.toml', '.github/workflows/bitvm3-nova-m14.yml']
+  pull_request:
+    paths: ['integrations/bitvm3-nova/m14/**', 'integrations/bitvm3-nova/m13/**', 'integrations/bitvm3-nova/m12/gates/**', '.github/workflows/bitvm3-nova-m14.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nova-m14-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  m14:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CARGO_BUILD_JOBS: '4'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          mkdir -p integrations/bitvm3-nova/m14/ci
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version | tee integrations/bitvm3-nova/m14/ci/rustc.txt
+      - name: Gadgets against SP1's field, blake3 and M13's transcript; gate counts; garbled evaluation
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/m14/circuit/Cargo.toml -- --test-threads=2 --nocapture 2>&1 | tee integrations/bitvm3-nova/m14/ci/gadgets.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-m14-${{ github.sha }}
+          path: integrations/bitvm3-nova/m14/ci/
+  m14-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swap on the runner's temporary disk (SP1 crates and the circuit tests exceed 16 GB RAM)
+        run: |
+          sudo fallocate -l 16G /mnt/ci-swap && sudo chmod 600 /mnt/ci-swap && sudo mkswap /mnt/ci-swap && sudo swapon /mnt/ci-swap
+          free -g
+      - name: Toolchain
+        run: |
+          mkdir -p integrations/bitvm3-nova/m14/ci
+          rustup toolchain install 1.90.0 --profile minimal
+      - name: Stages against SP1's own verifier (LogUp-GKR, AIR constraints, zerocheck)
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/m14/e2e/Cargo.toml --test stages -- --test-threads=1 --nocapture 2>&1 | tee integrations/bitvm3-nova/m14/ci/e2e-stages.txt
+      - name: Complete final verifier circuit on the committed proof, mutations
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/m14/e2e/Cargo.toml --test full -- --test-threads=1 --nocapture 2>&1 | tee integrations/bitvm3-nova/m14/ci/e2e-full.txt
+      - name: Garbled and evaluated end to end
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/m14/e2e/Cargo.toml --test garbled -- --test-threads=1 --nocapture 2>&1 | tee integrations/bitvm3-nova/m14/ci/e2e-garbled.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-m14-e2e-${{ github.sha }}
+          path: integrations/bitvm3-nova/m14/ci/

@@ -1,0 +1,20 @@
+{
+  "metric": "non-free gates = AND/OR-class gates (GateCount::nonfree_gate_count) = GarbleMode ciphertexts; XOR/NOT free. Constants folded.",
+  "primitives": {
+    "keccak_f1600": {"non_free_gates": 38400, "construction": "keccak256 (repo, src/nova/transcript.rs) on an 8-byte message = exactly 1 rate block = 1 Keccak-f[1600] permutation; 24 rounds x 1600 chi ANDs, theta/rho/pi/iota free; padding/xor-absorb add no AND", "test_vector_source": "sha3 crate Keccak256, 64 random messages"},
+    "sha256_compress": {"non_free_gates": 22573, "construction": "64 rounds + 48 schedule steps; ripple 32-bit adders (31 AND each, K folded as constant), Ch = g^(e&(f^g)) and Maj = a^((a^b)&(a^c)) at 32 AND each; 7 adds/round, 3 adds/schedule word, 8 final feed-forward adds", "test_vector_source": "sha2 crate compress256, 64 random (chaining value, block) pairs"},
+    "blake3_compress": {"non_free_gates": 10410, "construction": "7 rounds x 8 G, 6 32-bit adds per G (56*6*31 = 10416 nominal; measured 6 fewer from constant folding of the constant state words); counter/block_len/flags are circuit constants (0, 64, CHUNK_START|CHUNK_END|ROOT); outputs all 16 words", "test_vector_source": "blake3 crate hash() of 64-byte messages (cv=IV trials) plus native reference with random cv, 64 trials"},
+    "koalabear_mul_mod": {"non_free_gates": 2068, "construction": "31x31 -> 62-bit via repo bigint mul (1702 AND) + Barrett reduction 366 AND (mu=floor(2^62/p) shift-add with folded zeros, r = x + (q<<24) - (q<<31) - q mod 2^34, two conditional subtractions of 2p and p)", "test_vector_source": "native u128 mod p; edge values plus random, >=64 pairs; Barrett model checked on 4M inputs (<=2 corrections)"},
+    "babybear_mul_mod": {"non_free_gates": 2161, "construction": "same as KoalaBear with k=27; reduction 459 AND (denser mu)", "test_vector_source": "same"},
+    "koalabear_add_mod": {"non_free_gates": 94, "construction": "32-bit add (31 AND) + conditional subtract p (32 AND carry chain + 31 mux)", "test_vector_source": "native u64"},
+    "babybear_add_mod": {"non_free_gates": 94, "construction": "same", "test_vector_source": "native u64"},
+    "koalabear_mul_by_3": {"non_free_gates": 159, "construction": "a + 2a then conditional subtract 2p, p", "test_vector_source": "native u128"},
+    "babybear_mul_by_3": {"non_free_gates": 159, "construction": "same", "test_vector_source": "native u128"},
+    "koalabear_mul_by_11": {"non_free_gates": 328, "construction": "8a+2a+a (2 adds) then conditional subtract 8p,4p,2p,p", "test_vector_source": "native u128"},
+    "babybear_mul_by_11": {"non_free_gates": 328, "construction": "same", "test_vector_source": "native u128"},
+    "koalabear_ext4_mul": {"non_free_gates": 34693, "construction": "schoolbook in F[X]/(X^4-3): 16 mul_mod, 12 add_mod, 3 mul_by_3 (applied to summed wrapped terms); 16*2068+12*94+3*159", "test_vector_source": "native schoolbook u128, 64 random + all-(p-1) cases"},
+    "babybear_ext4_mul": {"non_free_gates": 36688, "construction": "schoolbook in F[X]/(X^4-11): 16 mul_mod, 12 add_mod, 3 mul_by_11; 16*2161+12*94+3*328", "test_vector_source": "native schoolbook u128, 64 random + all-(p-1) cases"}
+  },
+  "also_measured": {"mul31x31_raw_repo_mul": 1702, "mul31x31_raw_naive": 1922, "koalabear_reduce62": 366, "babybear_reduce62": 459},
+  "unmeasured": ["lazy-reduction ext4 mul (sum raw products before reducing)", "Poseidon2 full permutation"]
+}

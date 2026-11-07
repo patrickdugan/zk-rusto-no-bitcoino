@@ -1,0 +1,43 @@
+{
+  "source_proof": {
+    "file": "Raito-Scrypt proof-artifacts lighto-h1-20261025/final/s1.cmp.bin",
+    "bytes": 1272893,
+    "sha256": "b6cf83499e3248ec409f01f1e276bf6a69f8c81a370db82fac72cda3e3a95a1e",
+    "sp1": "6.9.0 compressed (KoalaBear, degree-4 extension, Poseidon2 Merkle, BaseFold + jagged PCS, LogUp-GKR)"
+  },
+  "queries": 124,
+  "component_merkle_depth": 22,
+  "component_leaf_widths": [
+    34,
+    52
+  ],
+  "fri_rounds": 20,
+  "fri_leaf_width": 8,
+  "merkle_path_digests": 33976,
+  "opened_leaf_values": 30504,
+  "transcript_elements": 14257,
+  "poseidon2_permutations": {
+    "merkle_node_compressions": 33976,
+    "leaf_sponge_permutations": 3968,
+    "transcript_absorb_permutations": 1783,
+    "total": 39727
+  },
+  "hash_permutations": 39727,
+  "byte_hash_compressions_same_shape": {
+    "merkle_node_compressions": 33976,
+    "leaf_compressions": 3348,
+    "transcript_compressions": 892,
+    "total": 38216
+  },
+  "ext_muls_lower_bound": 3656,
+  "ext_muls_lower_bound_parts": {
+    "basefold_folds": 2480,
+    "sumcheck_horner": 1176
+  },
+  "not_counted": [
+    "chip AIR constraint evaluation at the opened point",
+    "jagged evaluation",
+    "GKR layer combination arithmetic",
+    "grinding checks (2 permutations)"
+  ]
+}

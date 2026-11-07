@@ -1,0 +1,52 @@
+{
+  "accumulator_bytes": 108262456,
+  "accumulator_sha256": "5d6956998d4e420d535fff6f5c0241acd26f54cb273ebea8363457828f71b1e8",
+  "pcs": {
+    "forgery": {
+      "binding_error": "Pedersen binding fails: the hash-committed witness is not the one Nova committed",
+      "binding_rejects": true,
+      "pcs_only_accepts": true,
+      "relaxed_r1cs_accepts": true
+    },
+    "num_vars_E": 21,
+    "num_vars_W": 21,
+    "pcs_verify_seconds": 0.0332762,
+    "proof_bytes": 10087104,
+    "prove_seconds": 13.3410874,
+    "queries": 148,
+    "relation_with_binding_seconds": 13.6612755
+  },
+  "primary": {
+    "E_len": 1677620,
+    "W_len": 1674514,
+    "nnz": 9409295,
+    "padded_rows": 2097152,
+    "padded_vars": 2097152
+  },
+  "secondary": {
+    "E_len": 10349,
+    "W_len": 10331,
+    "fresh_W_len": 10331
+  },
+  "seconds": {
+    "accumulator_decode": 0.8494122,
+    "pedersen_combined_msm": 1.7044169999999998,
+    "pedersen_two_msms": 1.8964916,
+    "relaxed_r1cs_check": 1.3346082,
+    "vk_decode": 100.9992859
+  },
+  "steps_i": 2,
+  "vk_sha256": "9e94b9083b5be30e796e974218804214b7106284c071eeec9b15945735321727",
+  "z0_sha256": "9c82dffe8b6005378775c8f2028b7644039defadb0fcc1d77820b7aaced6de9c",
+  "zi_sha256": "e8b8cf0934152716f9d54cdeec405019c4a6eb9bde815398854d21268741b123",
+  "process": {
+    "exe_sha256": "befa2ac8e23761fbc3d86fd0f5888d59d3137a48482e736c88132628e36a6d4b",
+    "exit_code": 0,
+    "wall_seconds": 169.5,
+    "peak_private_bytes": 1794539520,
+    "cap_gib": 6,
+    "killed": null
+  },
+  "accumulator_source": "nova-chain durable generation gen-000002 of shard-000 (Codex run proving-k20-two-shards-16g-parallel, nova-chain.exe 01075ba2...539f); the folded witness behind k20-testnet4-0-40.nht4",
+  "zi_matches_bundle_0_40_end_state": true
+}

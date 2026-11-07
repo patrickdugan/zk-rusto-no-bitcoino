@@ -1,0 +1,48 @@
+[package]
+name = "m14-e2e"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+description = "M14: the complete M13 final verifier (SP1 wrap layer, BLAKE3, transcript v2) as a garbled circuit, checked against SP1 on real proofs"
+
+[workspace]
+
+[dependencies]
+m14-circuit = { path = "../circuit" }
+m12-gates = { path = "../../m12/gates" }
+m13-verify = { path = "../../m13/verify" }
+garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "8fa7efe495ea1bd4675f9c8bbd29f0b6e8bee051", default-features = false }
+sp1-hypercube = "=6.9.0"
+sp1-primitives = "=6.9.0"
+sp1-recursion-machine = { version = "=6.9.0", default-features = false }
+sp1-recursion-executor = { version = "=6.9.0", default-features = false }
+sp1-verifier = { version = "=6.9.0", default-features = false, features = ["full"] }
+slop-air = "=6.9.0"
+slop-algebra = "=6.9.0"
+slop-challenger = "=6.9.0"
+slop-multilinear = "=6.9.0"
+slop-sumcheck = "=6.9.0"
+slop-uni-stark = "=6.9.0"
+slop-jagged = "=6.9.0"
+slop-basefold = "=6.9.0"
+slop-stacked = "=6.9.0"
+slop-merkle-tree = "=6.9.0"
+slop-symmetric = "=6.9.0"
+slop-matrix = "=6.9.0"
+anyhow = "1.0"
+bincode = "1.3"
+itertools = "0.14"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+crossbeam = "0.8"
+rand = "0.8"
+rand_chacha = "0.3"
+
+[profile.test]
+opt-level = 3
+
+[profile.release]
+debug = false
