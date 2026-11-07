@@ -1,0 +1,58 @@
+name: BitVM2 Nova STARK-route hash cost checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/stark-hash-oracle/**', '.github/workflows/bitvm2-nova-stark-hash.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/stark-hash-oracle/**', '.github/workflows/bitvm2-nova-stark-hash.yml']
+permissions:
+  contents: read
+jobs:
+  hash-cost:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test the upstream-hash cost worker
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          rustup update stable --no-self-update
+          rustup default stable
+          rustfmt --edition 2021 --config skip_children=true --check stark-hash-oracle/src/*.rs
+          cargo generate-lockfile --manifest-path stark-hash-oracle/Cargo.toml
+          cargo tree --locked --manifest-path stark-hash-oracle/Cargo.toml > results/m24-dependencies.txt
+          cargo test --release --locked --manifest-path stark-hash-oracle/Cargo.toml -- --nocapture \
+            2>&1 | tee results/m24-rust-tests.txt
+          cargo build --release --locked --manifest-path stark-hash-oracle/Cargo.toml --bin stark_hash_cost
+      - name: Measure upstream BLAKE3 and SHA-256 Script costs
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/m24-time.txt \
+            timeout --signal=KILL 600s prlimit --as=4294967296 --cpu=600 -- \
+            stark-hash-oracle/target/release/stark_hash_cost results/m24-hash-cost.json > /dev/null
+          sha256sum results/m24-hash-cost.json stark-hash-oracle/Cargo.lock > results/m24-pins.txt
+          python3 - <<'PY'
+          import json
+          report = json.load(open('results/m24-hash-cost.json'))
+          rows = [[c['hash'], c['message_bytes'], c['blocks'], c['compute_script_bytes'],
+                   c.get('unoptimized_compute_script_bytes'), c['max_stack_items'],
+                   c['correct_digest_accepted'], c['changed_digest_rejected']] for c in report['cases']]
+          print('::notice title=M24 hash rows::' + json.dumps(rows, separators=(',', ':')))
+          PY
+          echo "::notice title=M24 pins::$(tr '\n' ';' < results/m24-pins.txt)"
+          echo "::notice title=M24 tests::$(grep -E 'test result|passed|FAILED' results/m24-rust-tests.txt | tr '\n' ';')"
+          echo "::notice title=M24 time::$(grep -E 'Maximum resident|Elapsed' results/m24-time.txt | tr '\n' ';')"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-m24-hash-cost
+          path: |
+            integrations/bitvm2-nova/results/m24-*
+            integrations/bitvm2-nova/stark-hash-oracle/Cargo.lock
