@@ -41,6 +41,7 @@ jobs:
             timeout --signal=KILL 900s prlimit --as=536870912 --cpu=900 -- \
             python -m unittest discover -s tests -p 'test_proof_point_origins*.py' -v \
             2>&1 | tee results/m23-python-tests-${{ matrix.engine }}.txt
+          echo "::notice title=M23 ${{ matrix.engine }} Python tests::$(grep -E '^(Ran |OK|FAILED)|skipped' results/m23-python-tests-${{ matrix.engine }}.txt | tr '\n' ' ' | sed 's/%/%25/g' | cut -c1-3000)"
       - name: Build the isolated worker with all configured source locks
         run: |
           set -euo pipefail
@@ -58,13 +59,20 @@ jobs:
       - name: Execute the complete honest role source and every targeted claim
         run: |
           set -euo pipefail
+          status=0
           /usr/bin/time -v -o results/m23-execution-time-${{ matrix.engine }}.txt \
             timeout --signal=KILL 3000s prlimit --as=536870912 --cpu=1200 -- \
             python bench_proof_point_origins.py --engine '${{ matrix.engine }}' \
             --cases-dir results/m23-cases-${{ matrix.engine }} \
             --native-worker point-origins-oracle/target/release/proof_point_origins \
             --output results/m23-report-${{ matrix.engine }}.json \
-            | tee results/m23-stdout-${{ matrix.engine }}.json
+            2> results/m23-stderr-${{ matrix.engine }}.txt \
+            | tee results/m23-stdout-${{ matrix.engine }}.json || status=$?
+          if [ "$status" -ne 0 ]; then
+            cat results/m23-stderr-${{ matrix.engine }}.txt
+            echo "::error title=M23 ${{ matrix.engine }} execution::$(tail -c 3500 results/m23-stderr-${{ matrix.engine }}.txt | tr '\r\n' '  ' | sed 's/%/%25/g')"
+            exit "$status"
+          fi
           cp results/m23-cases-${{ matrix.engine }}/manifest.json results/m23-manifest-${{ matrix.engine }}.json
           sha256sum results/m23-report-${{ matrix.engine }}.json results/m23-manifest-${{ matrix.engine }}.json \
             > results/m23-pins-${{ matrix.engine }}.txt
