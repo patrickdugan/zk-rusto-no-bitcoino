@@ -1,0 +1,80 @@
+name: BitVM2 Nova grouped convolution arithmetic checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-grouped-convolution.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-grouped-convolution.yml']
+permissions:
+  contents: read
+jobs:
+  matched-legacy-grouped-arithmetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CUDA_VISIBLE_DEVICES: ''
+      BITVM2_NOVA_GROUPED_CONVOLUTION_TESTS: '1'
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check bounded arithmetic templates and closed source corpus
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m pip install -r transcript-requirements.txt
+          timeout --signal=KILL 60s prlimit --as=268435456 --cpu=60 -- \
+            python point_body_pins.py --check | tee results/grouped-convolution-legacy-body-pins.json
+          /usr/bin/time -v -o results/grouped-convolution-python-time.txt \
+            timeout --signal=KILL 480s prlimit --as=268435456 --cpu=480 -- \
+            python -m unittest discover -s tests -p 'test_grouped_convolution*.py' -v \
+            2>&1 | tee results/grouped-convolution-python-tests.txt
+      - name: Build isolated worker and verify unchanged authentication code
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/grouped-convolution-rust-version.txt
+          python grouped_body_pins.py --check | tee results/grouped-convolution-body-pins.json
+          rustfmt --edition 2021 --config skip_children=true --check grouped-convolution-oracle/src/*.rs
+          cargo generate-lockfile --manifest-path grouped-convolution-oracle/Cargo.toml
+          cargo generate-lockfile --manifest-path auth-cost-oracle/Cargo.toml
+          cargo generate-lockfile --manifest-path rust-oracle/Cargo.toml
+          cargo generate-lockfile --manifest-path point-oracle/Cargo.toml
+          cargo generate-lockfile --manifest-path scalar-source-oracle/Cargo.toml
+          cargo generate-lockfile --manifest-path proof-payload-origins-oracle/Cargo.toml
+          cargo tree --locked --manifest-path grouped-convolution-oracle/Cargo.toml > results/grouped-convolution-dependencies.txt
+          cargo test --release --locked --manifest-path grouped-convolution-oracle/Cargo.toml -- --nocapture
+          cargo build --release --locked --manifest-path grouped-convolution-oracle/Cargo.toml --bin grouped_convolution
+      - name: Execute matched complete graphs and closed targeted adversarial cases
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/grouped-convolution-execution-time.txt \
+            timeout --signal=KILL 1500s prlimit --as=536870912 --cpu=1500 -- \
+            python bench_grouped_convolution.py --cases-dir results/grouped-convolution-cases \
+            --native-worker grouped-convolution-oracle/target/release/grouped_convolution \
+            --output results/grouped-convolution-conformance.json | tee results/grouped-convolution-stdout.json
+          cat results/grouped-convolution-execution-time.txt
+          cp results/grouped-convolution-cases/manifest.json results/grouped-convolution-manifest.json
+          sha256sum results/grouped-convolution-manifest.json results/grouped-convolution-conformance.json \
+            > results/grouped-convolution-report-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-grouped-convolution-evidence
+          path: |
+            integrations/bitvm2-nova/results/grouped-convolution-*.json
+            integrations/bitvm2-nova/results/grouped-convolution-*.txt
+            integrations/bitvm2-nova/grouped-convolution-oracle/Cargo.lock
+            integrations/bitvm2-nova/auth-cost-oracle/Cargo.lock
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock
+            integrations/bitvm2-nova/point-oracle/Cargo.lock
+            integrations/bitvm2-nova/scalar-source-oracle/Cargo.lock
+            integrations/bitvm2-nova/proof-payload-origins-oracle/Cargo.lock

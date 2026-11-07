@@ -1,5 +1,17 @@
 # Next implementation boundary
 
+[The grouped convolution arithmetic experiment](GROUPED-CONVOLUTION.md) is
+implemented in a new isolated worker and passed static source review. Fourteen
+local pure tests pass; two hosted-only tests remain pending. Frozen row bodies
+are composed into conjunctions that retain every old subtotal, carry link and
+canonical guard under the legacy full-width WOTS adapter. The largest bounded
+alias-expanded body is 12,826 bytes below the unchanged 20,000-byte cap.
+The source expects complete point graphs to retain 7,476 words and 35 field
+guards while reducing leaves from 6,151 to 3,447. Matched complete Script costs,
+actual opening/guard executions and stack/resource peaks remain unmeasured.
+The forty-case hosted comparison must pass before any byte-saving claim.
+No full verifier, transcript, IPA, production or Bitcoin result follows.
+
 [The retained proof-payload scalar-origin experiment](PROOF-PAYLOAD-ORIGINS.md)
 passed its isolated legacy-only hosted worker on
 `aa221e66bbb7e18316000aaff5a44b871769c1dc`
