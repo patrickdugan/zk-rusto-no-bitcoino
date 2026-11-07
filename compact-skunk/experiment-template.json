@@ -1,0 +1,67 @@
+{
+  "schema": "compact-skunk/experiment/v1",
+  "name": "REPLACE_WITH_EXPERIMENT_NAME",
+  "status": "planned",
+  "lane": null,
+  "source_commit": null,
+  "baseline_commit": "55e52156f800f0f39e4bc04ff76103c14633b273",
+  "commands": [],
+  "statement": {
+    "relation": null,
+    "network": null,
+    "proof_sha256": null,
+    "key_sha256": null,
+    "generator_order_digest": null,
+    "public_inputs_digest": null,
+    "program_digest": null,
+    "program_fixed_before_proof": null,
+    "retained_header_proof_reused": null
+  },
+  "security": {
+    "cryptographic_trusted_setup": false,
+    "target_bits": null,
+    "achieved_composed_bits": null,
+    "soundness_regime": null,
+    "assumptions": [],
+    "bridge_setup_and_liveness_assumptions": [],
+    "opcode_changes": [],
+    "dispute_protocol_changes": [],
+    "zero_knowledge_established": false
+  },
+  "metrics": {
+    "catalogue_script_bytes": null,
+    "largest_disproof_transaction_weight": null,
+    "total_assertion_publication_weight": null,
+    "unique_authenticated_words": null,
+    "maximum_disproof_witness_items": null,
+    "maximum_combined_stack_items": null,
+    "proof_bytes": null,
+    "setup_storage_bytes": null,
+    "preprocessing_seconds": null,
+    "prover_seconds": null,
+    "prover_peak_rss_bytes": null,
+    "cold_verifier_seconds": null,
+    "warm_verifier_seconds": null,
+    "residual_verifier_script_bytes": null
+  },
+  "validation": {
+    "native_differential_passed": null,
+    "script_executed": false,
+    "bitcoin_limits_enforced": false,
+    "adversarial_cases": [],
+    "accepted_invalid_cases": null,
+    "shared_origin_binding_established": false,
+    "complete_disproof_coverage_established": false,
+    "spendable_transaction_graph_tested": false,
+    "independent_review": null
+  },
+  "resources": {
+    "runner": null,
+    "enforced_whole_job_memory_bytes": null,
+    "swap_disabled": null,
+    "timeout_seconds": null
+  },
+  "omitted_costs": [],
+  "artifacts": [],
+  "next_falsifying_test": null
+}
