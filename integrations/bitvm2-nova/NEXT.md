@@ -1,5 +1,37 @@
 # Next implementation boundary
 
+[Retained compressed-commitment decoding](PROOF-POINT-ORIGINS.md) is the tested
+M23 deliverable on implementation commit
+`598d4b8fb9489b889399f03b1162c5c9883dc1cc`
+([hosted run 42371873061](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42371873061)
+on `a300b1f`). It binds all 78 compressed commitments of the retained proof
+(43 Pallas, 35 Vesta), at their physical payload BYTEs, to asserted canonical
+affine coordinates:
+* x comes from the bytes, with the sign split out of byte 31;
+* x and y are canonical;
+* `infinity => x = y = 0`;
+* `y^2 = x^3 + 5` holds;
+* the parity of y equals the sign bit.
+
+Only frozen legacy predicates and body pins are used. Because 5 is a
+non-residue and both curves have prime order, each encoding has at most one
+satisfying claim; it has one exactly when the encoding is canonical.
+
+Complete honest sources measure 887,723,899 (Pallas) and 727,322,403 (Vesta)
+Script bytes: the unchanged tape plus 20,145,610 / 20,169,238 per decoder.
+Both roles pass 382,408 Script calls, including 215,578 expected rejections.
+Strict halo2curves decoding agreed with the leaf relation for every decoder of
+every profile, and each targeted fault rejects exactly its target decoder. All
+24 existing workflows pass the implementation commit. Coherent substitutions
+of other valid points pass by design. Which point each commitment should be
+(transcript, folding, MSM/IPA) remains open, and so does its 65-byte affine
+transcript encoding.
+
+The [IPA MSM feasibility gate](#ipa-msm-feasibility-gate-projection) below
+projects the IPA terminal from measured M22 costs: about 588 TiB of Script and
+1.57e13 bytes of assertion signatures. This is the decision point for the next
+owner.
+
 [The grouped point/forest integration](GROUPED-POINT-FOREST.md) is now a tested
 M22 deliverable at `6697b7ffb20dadc3c7e0639baabad8adefc3bbb5`
 ([hosted run 42353843912](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42353843912)).
@@ -215,6 +247,45 @@ rejection credit. Measure normal and guard-inclusive peaks separately and stop
 on an accepted forgery, binding mismatch, unexpected abort, cap failure or honest
 negative result. No whole-verifier fit or solution to the transcript footprint
 follows from M18's isolated round.
+
+## IPA MSM feasibility gate (projection)
+
+The retained key's IPA terminal computes `ck_hat = <s, G>` over all 524,288
+primary and 16,384 secondary generators. `s` is a product of the proof's IPA
+challenges, so it cannot be precomputed with the key, and folding the
+generator vector round by round costs at least as many point operations.
+[msm_projection.py](msm_projection.py) counts the additions of the best
+Pippenger window for each side. It prices them with M22's measured grouped
+complete addition:
+61,523,789 / 61,626,177 Script bytes and 7,476 asserted words per addition.
+
+| Side | Generators | Window | Point additions | Disproof Script bytes |
+| --- | ---: | ---: | ---: | ---: |
+| Primary | 524,288 | 15 | 10,027,280 | 616,916,258,963,920 |
+| Secondary | 16,384 | 10 | 479,518 | 29,550,861,142,686 |
+| Total | 540,672 | | 10,506,798 | 646,467,120,106,606 |
+
+That is about 588 TiB, 481,656 times the 1.25-GiB experimental policy, with
+7.85e10 asserted words (1.57e13 bytes of WOTS signatures). This is an
+unexecuted projection from measured components, not a lower bound for every
+backend. The conclusion does not depend on this backend's constants.
+BitVM2 is non-interactive: the operator signs every chunk-boundary value
+on-chain. Even a backend that performs one whole point addition per leaf still
+asserts its input and output coordinates for each of the ~10.5 million
+additions, which is tens of gigabytes of signatures.
+
+Consequence: the transparent Spartan/IPA compressed verifier cannot be
+completed for non-interactive BitVM2 by optimizing this backend. The
+linear-time IPA terminal is a blocker independent of the 70-GiB transcript
+projection. A working verifier needs the final MSM removed from the disputed
+statement. Candidate routes, none implemented here:
+
+* a final compression with a polylogarithmic transparent verifier (for
+  example a hash-based PCS or STARK over the Nova verifier);
+* an interactive bisection dispute instead of BitVM2's single assertion round;
+* a trusted-setup wrapper, which the current transparency policy excludes.
+
+Choosing among them is the owner's decision.
 
 ## Route to an end-to-end Nova SNARK verifier
 

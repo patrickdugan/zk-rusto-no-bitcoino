@@ -16,6 +16,10 @@ The [bounded proof codec](PROOF-ADMISSION.md) uses independently pinned metadata
 exported from the actual authenticated verifier key.
 The [real-proof replay](nova-oracle/REAL-PROOF-REPLAY.md) binds the retained proof
 to actual native transcript events while explicitly exposing incomplete checks.
+[Retained commitment decoding](PROOF-POINT-ORIGINS.md) binds the proof's 78
+compressed commitments to canonical affine coordinates in Script (M23).
+[msm_projection.py](msm_projection.py) prices the IPA generator MSM from measured
+point costs; see the feasibility gate in `NEXT.md`.
 
 ## What runs
 

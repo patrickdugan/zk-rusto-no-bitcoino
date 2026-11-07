@@ -1,6 +1,39 @@
-# Nova SNARK / BitVM2 handoff after M22
+# Nova SNARK / BitVM2 handoff after M23
 
-## Deliverable to keep
+## M23 deliverable (Claude, 2026-11-07)
+
+[PROOF-POINT-ORIGINS.md](PROOF-POINT-ORIGINS.md) is tested on implementation
+commit `598d4b8fb9489b889399f03b1162c5c9883dc1cc`. Its measured run is
+[42371873061](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/42371873061)
+on `a300b1f`. The later commits changed only the workflow: the bench parent's
+CPU hard limit and the public annotations. All 78
+retained compressed commitments are bound in Script, at their physical payload
+BYTEs, to canonical `(infinity, x, y)` with `y^2 = x^3 + 5` and the sign bit
+equal to the parity of y. Complete honest sources measure 887,723,899
+(Pallas) / 727,322,403 (Vesta) Script bytes; both roles pass 382,408 calls.
+Strict halo2curves decoding agrees with the leaf relation for every decoder
+of every profile. All 24 earlier workflows pass the implementation commit.
+Code lives in `proof_point_origins.py`, `bench_proof_point_origins.py`,
+`point-origins-oracle/` and `bitvm2-nova-proof-point-origins.yml`. Logs and
+artifacts need sign-in, so the workflow publishes its measurements as public
+annotations.
+
+**Decision before more component work.** The
+[IPA MSM feasibility gate](NEXT.md#ipa-msm-feasibility-gate-projection)
+prices the IPA terminal's generator MSM from measured M22 costs (code:
+`msm_projection.py`). Over 524,288 + 16,384 generators it needs about 10.5
+million point additions: about 588 TiB of Script and 1.57e13 bytes of
+assertion signatures. Because BitVM2 signs every chunk boundary on-chain, the
+transparent Spartan/IPA verifier cannot be completed for non-interactive
+BitVM2 by backend optimization alone. The owner has to choose one of:
+* a polylogarithmic transparent final compression;
+* an interactive bisection dispute;
+* relaxing the no-trusted-setup policy.
+
+Components 3-5 below are worth building only under a route that removes the
+linear MSM.
+
+## M22 deliverable
 
 Start from tested main `6697b7ffb20dadc3c7e0639baabad8adefc3bbb5`
 (implementation `0422b29bfb4f07d2c25f736295e335c7d655c7c8`).
@@ -27,10 +60,13 @@ yet form a complete Nova proof-acceptance/dispute verifier.
    lengths/EOF and opaque commitments. Bind actual proof bytes and verifier-owned
    network, key, k, step count and initial/final public state. JSON receipts are
    observations; invoke the native verifier freshly for differential checks.
-2. **Point encodings and key/proof origins.** Bind compressed point bytes and
-   canonical decoding to actual graph coordinates. Connect A/P/commitments and
-   generators to authenticated proof/key material. Current A/P are asserted
-   ports; local curve correctness does not authenticate their origin.
+2. **Point encodings and key/proof origins.** M23 binds the proof's
+   compressed commitment bytes to canonical coordinates. Still open:
+   * connecting those coordinates to A/P ports and transcript inputs. Each
+     needs the 65-byte affine encoding `x || y || [!infinity]`; the decoder
+     already holds x's and y's BYTE words.
+   * authenticating the generators and key material. Current A/P remain
+     asserted ports.
 3. **Complete Fiat-Shamir transcript in Script.** Compose the actual initialized
    Poseidon/Keccak protocol schedule, absorption, padding, squeeze and challenge
    reductions. The current graph links rho to one following sumcheck challenge;
@@ -57,8 +93,14 @@ yet form a complete Nova proof-acceptance/dispute verifier.
 
 ## Next bounded task and stop conditions
 
-Prefer closing a proof-byte/point-origin boundary using the existing real proofs
-before adding more arithmetic optimizations. Specify one closed source relation,
+M23 closed the commitment-decoding boundary. Settle the MSM gate first. If
+the current route continues, the next bounded relations are:
+* the 65-byte affine transcript encoding of the decoded commitments;
+* the 556-byte header-to-`zn` binding (`public_state_to_zn_script_bound`).
+
+Applying the grouped-AB transform to the decoders is the matching cost
+experiment: their AB/PQ/column leaves are 95.8% of decoder bytes. Use the
+existing real proofs; specify one closed source relation,
 preserve the current implementation as baseline, test malformed/coherent
 substitutions independently, then measure actual Script/forest effects under
 the same caps. Require both roles and direct worker execution; no imported result
@@ -116,5 +158,5 @@ Do not alter header provers/k settings, BitVM3 or Claude/testnet4 work, security
 or access settings, spend or transact. M19 point-auth-cost drafts and the dirty
 local NEXT.md are private paused work: do not import, publish or retry them.
 Read `git show HEAD:integrations/bitvm2-nova/NEXT.md` for the canonical published
-roadmap rather than the private working copy. This handoff closes M22;
-further feature work is deferred to the next owner.
+roadmap rather than the private working copy. This handoff closes M23;
+further feature work waits on the MSM-gate route decision.
