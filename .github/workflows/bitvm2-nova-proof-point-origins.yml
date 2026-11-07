@@ -1,0 +1,118 @@
+name: BitVM2 Nova retained commitment decoding checks
+on:
+  push:
+    branches: ['main']
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-proof-point-origins.yml']
+  pull_request:
+    paths: ['integrations/bitvm2-nova/**', '!integrations/bitvm2-nova/nova-oracle/**', '.github/workflows/bitvm2-nova-proof-point-origins.yml']
+permissions:
+  contents: read
+jobs:
+  point-role:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [pallas, vesta]
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CUDA_VISIBLE_DEVICES: ''
+      BITVM2_NOVA_PROOF_POINT_ORIGINS_TESTS: '1'
+      BITVM2_NOVA_POINT_ENGINE: ${{ matrix.engine }}
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check frozen body pins and the decoder relation
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          python -m pip install -r transcript-requirements.txt
+          timeout --signal=KILL 60s prlimit --as=268435456 --cpu=60 -- \
+            python point_body_pins.py --check | tee results/m23-point-pins-${{ matrix.engine }}.json
+          /usr/bin/time -v -o results/m23-python-time-${{ matrix.engine }}.txt \
+            timeout --signal=KILL 900s prlimit --as=536870912 --cpu=900 -- \
+            python -m unittest discover -s tests -p 'test_proof_point_origins*.py' -v \
+            2>&1 | tee results/m23-python-tests-${{ matrix.engine }}.txt
+      - name: Build the isolated worker with all configured source locks
+        run: |
+          set -euo pipefail
+          rustup update stable --no-self-update
+          rustup default stable
+          rustc --version | tee results/m23-rust-version-${{ matrix.engine }}.txt
+          rustfmt --edition 2021 --config skip_children=true --check point-origins-oracle/src/*.rs
+          for crate in rust-oracle point-oracle scalar-source-oracle point-origins-oracle; do
+            cargo generate-lockfile --manifest-path "$crate/Cargo.toml"
+          done
+          cargo tree --locked --manifest-path point-origins-oracle/Cargo.toml > results/m23-dependencies-${{ matrix.engine }}.txt
+          cargo test --release --locked --manifest-path point-origins-oracle/Cargo.toml -- --nocapture \
+            2>&1 | tee results/m23-rust-tests-${{ matrix.engine }}.txt
+          cargo build --release --locked --manifest-path point-origins-oracle/Cargo.toml --bin proof_point_origins
+      - name: Execute the complete honest role source and every targeted claim
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v -o results/m23-execution-time-${{ matrix.engine }}.txt \
+            timeout --signal=KILL 3000s prlimit --as=536870912 --cpu=1200 -- \
+            python bench_proof_point_origins.py --engine '${{ matrix.engine }}' \
+            --cases-dir results/m23-cases-${{ matrix.engine }} \
+            --native-worker point-origins-oracle/target/release/proof_point_origins \
+            --output results/m23-report-${{ matrix.engine }}.json \
+            | tee results/m23-stdout-${{ matrix.engine }}.json
+          cp results/m23-cases-${{ matrix.engine }}/manifest.json results/m23-manifest-${{ matrix.engine }}.json
+          sha256sum results/m23-report-${{ matrix.engine }}.json results/m23-manifest-${{ matrix.engine }}.json \
+            > results/m23-pins-${{ matrix.engine }}.txt
+          cat results/m23-execution-time-${{ matrix.engine }}.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-m23-${{ matrix.engine }}
+          path: |
+            integrations/bitvm2-nova/results/m23-*-${{ matrix.engine }}.json
+            integrations/bitvm2-nova/results/m23-*-${{ matrix.engine }}.txt
+            integrations/bitvm2-nova/rust-oracle/Cargo.lock
+            integrations/bitvm2-nova/point-oracle/Cargo.lock
+            integrations/bitvm2-nova/scalar-source-oracle/Cargo.lock
+            integrations/bitvm2-nova/point-origins-oracle/Cargo.lock
+  account-both-roles:
+    needs: point-role
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: integrations/bitvm2-nova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: bitvm2-nova-m23-pallas
+          path: integrations/bitvm2-nova/results/m23-role/pallas
+      - uses: actions/download-artifact@v4
+        with:
+          name: bitvm2-nova-m23-vesta
+          path: integrations/bitvm2-nova/results/m23-role/vesta
+      - name: Reconcile both role observations
+        run: |
+          set -euo pipefail
+          timeout --signal=KILL 120s prlimit --as=268435456 --cpu=120 -- \
+            python bench_proof_point_origins.py --aggregate \
+            --pallas-report results/m23-role/pallas/results/m23-report-pallas.json \
+            --vesta-report results/m23-role/vesta/results/m23-report-vesta.json \
+            --output results/m23-accounting.json | tee results/m23-accounting-stdout.json
+          sha256sum results/m23-accounting.json > results/m23-accounting-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitvm2-nova-m23-accounting
+          path: |
+            integrations/bitvm2-nova/results/m23-accounting*.json
+            integrations/bitvm2-nova/results/m23-accounting*.txt
