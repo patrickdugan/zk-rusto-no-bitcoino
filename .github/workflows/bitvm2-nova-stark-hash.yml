@@ -25,12 +25,19 @@ jobs:
           mkdir -p results
           rustup update stable --no-self-update
           rustup default stable
-          rustfmt --edition 2021 --config skip_children=true --check stark-hash-oracle/src/*.rs
-          cargo generate-lockfile --manifest-path stark-hash-oracle/Cargo.toml
-          cargo tree --locked --manifest-path stark-hash-oracle/Cargo.toml > results/m24-dependencies.txt
-          cargo test --release --locked --manifest-path stark-hash-oracle/Cargo.toml -- --nocapture \
-            2>&1 | tee results/m24-rust-tests.txt
-          cargo build --release --locked --manifest-path stark-hash-oracle/Cargo.toml --bin stark_hash_cost
+          status=0
+          {
+            rustfmt --edition 2021 --config skip_children=true --check stark-hash-oracle/src/*.rs &&
+            cargo generate-lockfile --manifest-path stark-hash-oracle/Cargo.toml &&
+            cargo tree --locked --manifest-path stark-hash-oracle/Cargo.toml > results/m24-dependencies.txt &&
+            cargo test --release --locked --manifest-path stark-hash-oracle/Cargo.toml -- --nocapture &&
+            cargo build --release --locked --manifest-path stark-hash-oracle/Cargo.toml --bin stark_hash_cost
+          } > results/m24-rust-tests.txt 2>&1 || status=$?
+          cat results/m24-rust-tests.txt
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=M24 build/test::$(grep -E -A4 '^(error|Diff in|thread .* panicked|---- )' results/m24-rust-tests.txt | head -c 3500 | tr '\r\n' '  ' | sed 's/%/%25/g')"
+            exit "$status"
+          fi
       - name: Measure upstream BLAKE3 and SHA-256 Script costs
         run: |
           set -euo pipefail
