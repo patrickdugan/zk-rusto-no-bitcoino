@@ -1,0 +1,98 @@
+{
+  "allowed_vk_height": 18,
+  "chips": [
+    {
+      "chip": "BaseAlu",
+      "height": 148558,
+      "main_width": 3,
+      "preprocessed_width": 8
+    },
+    {
+      "chip": "ExtAlu",
+      "height": 198809,
+      "main_width": 12,
+      "preprocessed_width": 8
+    },
+    {
+      "chip": "MemoryConst",
+      "height": 123294,
+      "main_width": 1,
+      "preprocessed_width": 6
+    },
+    {
+      "chip": "MemoryVar",
+      "height": 165505,
+      "main_width": 8,
+      "preprocessed_width": 4
+    },
+    {
+      "chip": "Poseidon2WideDeg3",
+      "height": 39607,
+      "main_width": 179,
+      "preprocessed_width": 49
+    },
+    {
+      "chip": "PrefixSumChecks",
+      "height": 18368,
+      "main_width": 15,
+      "preprocessed_width": 9
+    },
+    {
+      "chip": "PublicValues",
+      "height": 1,
+      "main_width": 1,
+      "preprocessed_width": 10
+    },
+    {
+      "chip": "Select",
+      "height": 271952,
+      "main_width": 5,
+      "preprocessed_width": 8
+    }
+  ],
+  "compress_shape_heights": [
+    {
+      "chip": "BaseAlu",
+      "height": 592384
+    },
+    {
+      "chip": "ExtAlu",
+      "height": 795264
+    },
+    {
+      "chip": "MemoryConst",
+      "height": 492320
+    },
+    {
+      "chip": "MemoryVar",
+      "height": 661984
+    },
+    {
+      "chip": "Poseidon2WideDeg3",
+      "height": 158368
+    },
+    {
+      "chip": "PrefixSumChecks",
+      "height": 224608
+    },
+    {
+      "chip": "PublicValues",
+      "height": 16
+    },
+    {
+      "chip": "Select",
+      "height": 1087808
+    }
+  ],
+  "event_counts": "RecursionAirEventCount { mem_const_events: 123294, mem_var_events: 331010, base_alu_events: 148558, ext_alu_events: 198809, ext_felt_conversion_events: 0, poseidon2_wide_events: 39607, poseidon2_linear_layer_events: 0, poseidon2_sbox_events: 0, select_events: 271952, prefix_sum_checks_events: 18368, commit_pv_hash_events: 1 }",
+  "log_stacking_height": 20,
+  "main_area": 13003650,
+  "max_height": 271952,
+  "max_log_row_count": 21,
+  "preprocessed_area": 8462401,
+  "proof_generated": false,
+  "schema": "bitvm2-nova-sp1-shrink-shape/v1",
+  "setup_run": false,
+  "sp1_version": "6.9.0",
+  "vk_verification": true
+}

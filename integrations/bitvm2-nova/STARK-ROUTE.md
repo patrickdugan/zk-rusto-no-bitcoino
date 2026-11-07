@@ -124,15 +124,62 @@ The model excludes:
 
 So M25a decides which trace size must be hit, not whether the verifier fits.
 
+## M25b: measured trace of the compressed-proof verifier
+
+[sp1-shrink-shape](sp1-shrink-shape) builds SP1 6.9.0's shrink program exactly
+as `ShrinkProver::new` does. That is the recursion circuit verifying one
+compressed proof. It is built from the fixed compress-shape dummy input, so
+its trace does not depend on which compressed proof is shrunk. The compiled
+program's per-chip event counts are its trace heights. No setup or proving is
+needed: the run took 2.94 s and 202 MB of peak RSS in WSL. The result is
+[results/m25b-sp1-shrink-shape.json](results/m25b-sp1-shrink-shape.json),
+SHA-256 `a3f3de9e47a5fe15b335fde79d144c55004c00266adb6689e851d8f0204b0460`.
+
+| Chip | Rows | Main columns | Preprocessed columns | Main area |
+| --- | ---: | ---: | ---: | ---: |
+| Poseidon2WideDeg3 | 39,607 | 179 | 49 | 7,089,653 |
+| ExtAlu | 198,809 | 12 | 8 | 2,385,708 |
+| Select | 271,952 | 5 | 8 | 1,359,760 |
+| MemoryVar | 165,505 | 8 | 4 | 1,324,040 |
+| BaseAlu | 148,558 | 3 | 8 | 445,674 |
+| PrefixSumChecks | 18,368 | 15 | 9 | 275,520 |
+| MemoryConst | 123,294 | 1 | 6 | 123,294 |
+| PublicValues | 1 | 1 | 10 | 1 |
+| Total | | | | 13,003,650 (+ 8,462,401 preprocessed) |
+
+The 39,607 Poseidon2 events agree within 0.3% with the 39,727 permutations
+M12 counted independently from a real compressed proof. The tallest chip has
+271,952 rows, just above 2^18.
+
+Feeding the measured shape into `final_layer_model.py`:
+
+| Final-layer layout | 100 bits | 128 bits | Hash Script | Prover LDE |
+| --- | ---: | ---: | ---: | ---: |
+| Stacked into 2^20-row columns (22 columns, as SP1's jagged PCS stacks) | 50,768 B (7 txs) | 67,760 B (9 txs) | 93.3 / 127.3 MiB | 11.0 GiB |
+| Per-chip uni-STARK, chips padded to 2^19 (326 columns) | 118,288 B (15 txs) | 155,192 B (20 txs) | 175.1 / 239.6 MiB | 11.7 GiB |
+
+**Conclusion:** one BLAKE3-committed final layer directly over the SP1
+compressed proof meets the ~80-KB target, if it commits the trace stacked
+rather than per chip. No additional shrinking recursion step is needed.
+
+This is still the M25a model, now applied to a measured trace:
+* The Johnson-bound estimate (22 queries instead of 11 at 100 bits) roughly
+  doubles the stacked proof, to about 100 KB.
+* A stacked layout needs a zerocheck and jagged-evaluation sumcheck in place
+  of quotient openings. Those proof bytes, a few kilobytes, are not modelled.
+* Transcript hashing and Script constraint evaluation remain excluded.
+
+The 11-GiB low-degree extension fits the 16-GiB budget without sharding.
+Committing the stacked columns in streamed chunks, the Groth16 sharding
+method, would lower that peak further.
+
 ## Next milestones
 
-1. **M25b: measure the real final trace.** Build or instrument the transparent
-   recursion layer that verifies the SP1 compressed proof, for example SP1's
-   shrink stage or a Plonky3 STARK with a BLAKE3 MMCS. Record its actual chip
-   heights and widths, and feed them to `final_layer_model.py`. If the trace
-   exceeds 2^18 x 128, add one more shrinking recursion step before the
-   BLAKE3 layer. This is the first step that needs a proving run, against the
-   16-GiB budget.
+1. **M25c: build the final layer.** A transparent STARK with a BLAKE3 MMCS and
+   stacked commitments that verifies the SP1 compressed proof, with blowup
+   2^7, 11 queries and 24 grinding bits (or the 128-bit parameters). Measure
+   its real proof size, prover time and RAM under a hard cgroup cap, sharding
+   the commitment if the cap binds.
 2. **M26: Script Merkle-path chunking.** Measure BLAKE3 Merkle-path leaves
    under the actual chunking, with digests asserted only at the chosen
    boundaries, and the extension-field fold arithmetic, under unchanged caps.

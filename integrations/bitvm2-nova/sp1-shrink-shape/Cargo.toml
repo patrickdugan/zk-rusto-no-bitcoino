@@ -1,0 +1,23 @@
+[package]
+name = "bitvm2-nova-sp1-shrink-shape"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+
+[workspace]
+
+[[bin]]
+name = "sp1_shrink_shape"
+path = "src/main.rs"
+
+[dependencies]
+sp1-prover = "=6.9.0"
+sp1-recursion-compiler = "=6.9.0"
+sp1-recursion-executor = "=6.9.0"
+sp1-hypercube = "=6.9.0"
+sp1-core-machine = "=6.9.0"
+slop-air = "=6.9.0"
+serde_json = "1"
+tokio = { version = "1.44", features = ["macros", "rt-multi-thread"] }
+anyhow = "1.0"
