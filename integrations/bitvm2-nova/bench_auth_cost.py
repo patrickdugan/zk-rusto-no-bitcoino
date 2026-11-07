@@ -29,6 +29,8 @@ MAX_RECORD_BYTES=128<<20
 MIXED_PROFILES=('a0','a1','a9','a255','bad-aux','bad-square','a256','a-max','auth-order')
 LEAF_COST_COLUMNS=['ordinal','correctness_script_bytes','disproof_script_bytes','witness_items','witness_payload_bytes']
 ADAPTERS=('compact','bound256-hinted')
+METRIC_SUM_FIELDS=('vectors','expected_rejections')
+METRIC_MAX_FIELDS=('max_script_bytes','max_witness_items','max_witness_payload_bytes','max_stack_items')
 
 
 def _guard():
@@ -214,6 +216,20 @@ def _special(profile,adapter):
     return {'a9':8,'a256':4,'a-max':4,'auth-order':20}.get(profile,0)
 
 
+def _checked_metrics(value,vectors,rejections,label):
+    fields=METRIC_SUM_FIELDS+METRIC_MAX_FIELDS
+    if (type(value) is not dict or set(value)!=set(fields)
+            or any(type(value[key]) is not int or value[key]<0 for key in fields)):
+        raise ValueError(label+' requires the exact six integer engine metrics')
+    _equal(value['vectors'],vectors,label+' engine calls')
+    _equal(value['expected_rejections'],rejections,label+' rejection calls')
+    if (not 0<value['max_script_bytes']<=100000
+            or not 0<value['max_witness_items']<=value['max_stack_items']<=1000
+            or not 0<value['max_witness_payload_bytes']<=520*value['max_witness_items']):
+        raise ValueError(label+' exceeds unchanged Script/witness/combined-stack limits')
+    return value
+
+
 def _validate(native,manifest,info,census):
     """Accept only the result of this run's directly configured worker call."""
     if type(native) is not dict or native.get('passed') is not True:
@@ -233,6 +249,7 @@ def _validate(native,manifest,info,census):
     rows=native.get('cases')
     if type(rows) is not list or len(rows)!=22 or len(census)!=22:raise ValueError('all twenty-two cost cases required')
     calls=rejects=largest=signatures=hash_links=0
+    folded_metrics={key:0 for key in METRIC_SUM_FIELDS+METRIC_MAX_FIELDS}
     comparison=[]
     for row,source,count in zip(rows,manifest['cases'],census,strict=True):
         if type(row) is not dict:raise ValueError('typed case observation required')
@@ -264,7 +281,7 @@ def _validate(native,manifest,info,census):
             leaf_costs=ledger.get('leaf_costs')
             if type(leaf_costs) is not list or len(leaf_costs)!=source['leaves']:
                 raise ValueError('all ordered leaf costs required; no sampling or shape projection')
-            compiled=maximum=0
+            compiled=maximum=normal_script=normal_items=normal_payload=0
             for ordinal,entry in enumerate(leaf_costs):
                 if type(entry) is not list or len(entry)!=5 or any(type(value) is not int for value in entry):
                     raise ValueError('strict integer five-column cost row required')
@@ -279,6 +296,8 @@ def _validate(native,manifest,info,census):
                 if not 200*unique<=payload<=200*unique+10*hinted:
                     raise ValueError('full32 signature witness payload accounting differs')
                 compiled+=dbytes;maximum=max(maximum,dbytes)
+                normal_script=max(normal_script,cbytes,dbytes)
+                normal_items=max(normal_items,items);normal_payload=max(normal_payload,payload)
             _equal(ledger.get('compiled_script_bytes'),compiled,'complete disproof Script sum')
             _equal(ledger.get('largest_disproof_leaf_bytes'),maximum,'largest actual disproof leaf')
             if compiled>256<<20:raise ValueError('complete component Script stream exceeds unchanged256MiB cap')
@@ -288,6 +307,18 @@ def _validate(native,manifest,info,census):
             _equal(ledger.get('total_guard_vectors'),attacks,'all adapter attack calls')
             isolated=10 if adapter==1 and source['profile'] in ('a9','auth-order') else 0
             _equal(ledger.get('isolated_checksum_valid_digit_chains'),isolated,'native-only isolated digit-chain evidence')
+            normal_metrics=_checked_metrics(ledger.get('normal_metrics'),2*source['leaves'],source['leaves'],
+                'normal adapter metrics')
+            for key,value in (('max_script_bytes',normal_script),('max_witness_items',normal_items),
+                              ('max_witness_payload_bytes',normal_payload)):
+                _equal(normal_metrics[key],value,'normal leaf-cost maximum '+key)
+            all_metrics=_checked_metrics(ledger.get('metrics'),2*source['leaves']+attacks,
+                source['leaves']+attacks,'all adapter metrics')
+            _equal(all_metrics['max_script_bytes'],normal_script,'guards reuse normal catalogue scripts')
+            for key in METRIC_MAX_FIELDS:
+                if all_metrics[key]<normal_metrics[key]:raise ValueError('all adapter maximum is below its normal snapshot: '+key)
+                folded_metrics[key]=max(folded_metrics[key],all_metrics[key])
+            for key in METRIC_SUM_FIELDS:folded_metrics[key]+=all_metrics[key]
             calls+=2*source['leaves']+attacks;rejects+=source['leaves']+attacks
         if registry_ids[0]==registry_ids[1]:raise ValueError('adapter policy must be committed in distinct registry identities')
         signatures+=source['words'];hash_links+=10*source['words']
@@ -298,15 +329,8 @@ def _validate(native,manifest,info,census):
             ('cross_adapter_hash_links',hash_links),('isolated_checksum_valid_digit_chains',40),
             ('isolated_chain_engine_executions',0)):
         _equal(native.get(key),value,key)
-    metrics=native.get('metrics')
-    if type(metrics) is not dict:raise ValueError('actual engine metrics required')
-    _equal(metrics.get('vectors'),calls,'every source/guard/special engine call')
-    _equal(metrics.get('expected_rejections'),rejects,'actual semantic-false and attack calls')
-    _equal(metrics.get('max_script_bytes'),largest,'actual maximum Script size')
-    for key in ('max_stack_items','max_witness_items'):
-        if type(metrics.get(key)) is not int or not 0<metrics[key]<=1000:raise ValueError('existing stack/witness cap exceeded')
-    payload=metrics.get('max_witness_payload_bytes')
-    if type(payload) is not int or not 0<payload<=520*metrics['max_witness_items']:raise ValueError('witness payload cap exceeded')
+    metrics=_checked_metrics(native.get('metrics'),calls,rejects,'global engine metrics')
+    _equal(metrics,folded_metrics,'exact global fold of all adapter metrics')
     wall=native.get('wall_seconds')
     if type(wall) not in (int,float) or not math.isfinite(wall) or not 0<=wall<=1260:raise ValueError('native wall cap exceeded')
     return comparison

@@ -66,6 +66,16 @@ fn witness_hash(witness: &[Vec<u8>]) -> String {
     }
     sha256::Hash::from_engine(h).to_string()
 }
+fn fold_metrics(aggregate: &mut engine::Metrics, local: &engine::Metrics) {
+    aggregate.vectors += local.vectors;
+    aggregate.expected_rejections += local.expected_rejections;
+    aggregate.max_script_bytes = aggregate.max_script_bytes.max(local.max_script_bytes);
+    aggregate.max_witness_items = aggregate.max_witness_items.max(local.max_witness_items);
+    aggregate.max_witness_payload_bytes = aggregate
+        .max_witness_payload_bytes
+        .max(local.max_witness_payload_bytes);
+    aggregate.max_stack_items = aggregate.max_stack_items.max(local.max_stack_items);
+}
 struct RecordSink {
     bytes: usize,
     hash: sha256::HashEngine,
@@ -651,7 +661,7 @@ fn registry_negatives(spec: &GraphSpec, material: &keys::Material, r: &Registry)
 }
 fn run_adapter(
     out: &mut RecordSink,
-    metrics: &mut engine::Metrics,
+    aggregate_metrics: &mut engine::Metrics,
     r: &Registry,
     other: &Registry,
     material: &keys::Material,
@@ -659,6 +669,10 @@ fn run_adapter(
     name: &str,
     profile: &str,
 ) -> Result<Value> {
+    // Each adapter owns its statistics; opposite-adapter replay guards may
+    // inflate all-execution peaks, so snapshot normal C/D before those guards.
+    let mut local_metrics = engine::Metrics::default();
+    let metrics = &mut local_metrics;
     let reps = bounded_layouts(r.spec())?;
     let mut stream = sha256::Hash::engine();
     let mut bytes = 0usize;
@@ -721,6 +735,12 @@ fn run_adapter(
         ]));
     }
     ensure(
+        metrics.vectors == 2 * r.spec().leaves.len()
+            && metrics.expected_rejections == r.spec().leaves.len(),
+        "normal adapter metrics census",
+    )?;
+    let normal_metrics = serde_json::to_value(&*metrics)?;
+    ensure(
         cache.len() == r.spec().words.len() && occurrences == cache.len() + links,
         "actual opening census",
     )?;
@@ -758,8 +778,15 @@ fn run_adapter(
     let (special, isolated) = fixed_attacks(out, metrics, r, material, name, profile)?;
     guards.special = special;
     let native_rejections = registry_negatives(r.spec(), material, r)?;
+    ensure(
+        metrics.vectors == 2 * r.spec().leaves.len() + guards.total()
+            && metrics.expected_rejections == r.spec().leaves.len() + guards.total(),
+        "all-execution adapter metrics census",
+    )?;
+    let all_metrics = serde_json::to_value(&*metrics)?;
+    fold_metrics(aggregate_metrics, metrics);
     Ok(
-        json!({"adapter":r.adapter().index(),"label":r.adapter().label(),"registry_id":hex::encode(r.identity()),"compiled_script_bytes":bytes,"compiled_stream_sha256":sha256::Hash::from_engine(stream).to_string(),"largest_disproof_leaf_bytes":largest,"normal_vectors":2*r.spec().leaves.len(),"guard_layouts":reps.len(),"standard_guard_vectors":guards.standard,"mode_replay_vectors":guards.replay,"hinted_guard_slots":guards.hinted_slots,"hint_grammar_vectors":guards.hint_grammar,"hint_hash_vectors":guards.hint_hash,"special_auth_vectors":guards.special,"total_guard_vectors":guards.total(),"isolated_checksum_valid_digit_chains":isolated,"actual_opening_occurrences":occurrences,"shared_opening_links":links,"alias_formal_reuses":aliases,"cache_rejections":cache_rejections,"native_rejections":native_rejections,"leaf_costs":costs}),
+        json!({"adapter":r.adapter().index(),"label":r.adapter().label(),"registry_id":hex::encode(r.identity()),"compiled_script_bytes":bytes,"compiled_stream_sha256":sha256::Hash::from_engine(stream).to_string(),"largest_disproof_leaf_bytes":largest,"normal_vectors":2*r.spec().leaves.len(),"normal_metrics":normal_metrics,"metrics":all_metrics,"guard_layouts":reps.len(),"standard_guard_vectors":guards.standard,"mode_replay_vectors":guards.replay,"hinted_guard_slots":guards.hinted_slots,"hint_grammar_vectors":guards.hint_grammar,"hint_hash_vectors":guards.hint_hash,"special_auth_vectors":guards.special,"total_guard_vectors":guards.total(),"isolated_checksum_valid_digit_chains":isolated,"actual_opening_occurrences":occurrences,"shared_opening_links":links,"alias_formal_reuses":aliases,"cache_rejections":cache_rejections,"native_rejections":native_rejections,"leaf_costs":costs}),
     )
 }
 fn case_run(
@@ -1046,5 +1073,43 @@ mod tests {
             };
             assert!(same_assertion(&a, &b).is_err());
         }
+    }
+    #[test]
+    fn metric_fold_adds_counts_takes_peaks_and_preserves_normal_snapshot() {
+        let mut local = engine::Metrics {
+            vectors: 4,
+            expected_rejections: 2,
+            max_script_bytes: 100,
+            max_witness_items: 20,
+            max_witness_payload_bytes: 400,
+            max_stack_items: 31,
+        };
+        let normal = serde_json::to_value(&local).unwrap();
+        // A later replay guard can inflate witness/stack peaks independently
+        // of the adapter's normal executions. It must not change the snapshot.
+        local.vectors += 2;
+        local.expected_rejections += 2;
+        local.max_witness_items = 40;
+        local.max_witness_payload_bytes = 600;
+        local.max_stack_items = 69;
+        let mut aggregate = engine::Metrics {
+            vectors: 10,
+            expected_rejections: 7,
+            max_script_bytes: 150,
+            max_witness_items: 30,
+            max_witness_payload_bytes: 800,
+            max_stack_items: 51,
+        };
+        fold_metrics(&mut aggregate, &local);
+        assert_eq!(aggregate.vectors, 16);
+        assert_eq!(aggregate.expected_rejections, 11);
+        assert_eq!(aggregate.max_script_bytes, 150);
+        assert_eq!(aggregate.max_witness_items, 40);
+        assert_eq!(aggregate.max_witness_payload_bytes, 800);
+        assert_eq!(aggregate.max_stack_items, 69);
+        assert_eq!(
+            normal,
+            json!({"vectors":4,"expected_rejections":2,"max_script_bytes":100,"max_witness_items":20,"max_witness_payload_bytes":400,"max_stack_items":31})
+        );
     }
 }

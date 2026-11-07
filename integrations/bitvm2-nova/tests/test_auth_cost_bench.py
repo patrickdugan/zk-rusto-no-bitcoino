@@ -47,6 +47,18 @@ def _synthetic_report():
                 compiled_script_bytes=100*leaves,largest_disproof_leaf_bytes=100,
                 leaf_costs=[[i,99,100,10*n+(10*hinted[i] if adapter else 0),200*n]
                             for i,n in enumerate(unique)])
+            normal_items=max(entry[3] for entry in ledger['leaf_costs'])
+            normal_payload=max(entry[4] for entry in ledger['leaf_costs'])
+            normal_metrics=dict(vectors=2*leaves,expected_rejections=leaves,max_script_bytes=100,
+                max_witness_items=normal_items,max_witness_payload_bytes=normal_payload,max_stack_items=normal_items+8)
+            # A compact adapter's guard phase receives the other adapter's
+            # larger packet during mode replay; this is not normal overhead.
+            replay_items=max(10*n+(10*hinted[i] if not adapter else 0) for i,n in enumerate(unique))
+            all_items=max(normal_items+1,replay_items)
+            ledger.update(normal_metrics=normal_metrics,metrics=dict(vectors=2*leaves+attacks,
+                expected_rejections=leaves+attacks,max_script_bytes=100,max_witness_items=all_items,
+                max_witness_payload_bytes=max(normal_payload+17,200*max(unique)+10*max(hinted)),
+                max_stack_items=all_items+8))
             row['adapters'].append(ledger)
             calls+=2*leaves+attacks;rejects+=leaves+attacks
         cases.append(source);rows.append(row);census.append(counts);keys+=words;links+=10*words
@@ -56,7 +68,9 @@ def _synthetic_report():
         signature_entries_created=keys,full_signature_signing_calls=keys,cross_adapter_hash_links=links,
         isolated_checksum_valid_digit_chains=40,isolated_chain_engine_executions=0,
         metrics=dict(vectors=calls,expected_rejections=rejects,max_script_bytes=100,
-            max_stack_items=70,max_witness_items=61,max_witness_payload_bytes=2000),wall_seconds=1.0)
+            max_stack_items=max(a['metrics']['max_stack_items'] for row in rows for a in row['adapters']),
+            max_witness_items=max(a['metrics']['max_witness_items'] for row in rows for a in row['adapters']),
+            max_witness_payload_bytes=max(a['metrics']['max_witness_payload_bytes'] for row in rows for a in row['adapters'])),wall_seconds=1.0)
     native.update({key:True for key in bench.TRUE_FLAGS})
     native.update({key:False for key in bench.FALSE_FLAGS})
     native.update({key:0 for key in ('setup_calls','proving_jobs','native_proofs_verified','gpu_jobs','transactions_broadcast','tree_calls')})
@@ -112,6 +126,35 @@ class AuthenticationCostBench(unittest.TestCase):
             lambda x:x.__setitem__('candidate_taproot_tree_verified',True),
             lambda x:x.__setitem__('panic_is_rejection',True),
             lambda x:x.__setitem__('tree_calls',1),
+        )
+        for mutate in mutations:
+            changed=copy.deepcopy(native);mutate(changed)
+            with self.assertRaises(ValueError):bench._validate(changed,manifest,info,census)
+
+    def test_normal_and_guard_metrics_are_distinct_and_fold_exactly(self):
+        native,manifest,info,census=_synthetic_report()
+        baseline_round=native['cases'][18]['adapters'][0]
+        self.assertEqual(baseline_round['normal_metrics']['max_witness_items'],30)
+        self.assertEqual(baseline_round['metrics']['max_witness_items'],60)
+        # This valid synthetic replay peak exceeds normal+1 and must remain
+        # accepted. It cannot be presented as the adapter's normal witness size.
+        self.assertEqual(len(bench._validate(native,manifest,info,census)),22)
+        mutations=(
+            lambda x:x['cases'][0]['adapters'][0]['normal_metrics'].__setitem__('vectors',True),
+            lambda x:x['cases'][0]['adapters'][0]['normal_metrics'].__setitem__('expected_rejections',0),
+            lambda x:x['cases'][0]['adapters'][0]['normal_metrics'].__setitem__('max_witness_items',True),
+            lambda x:x['cases'][0]['adapters'][0]['normal_metrics'].__setitem__('max_witness_payload_bytes',401),
+            lambda x:x['cases'][0]['adapters'][0]['normal_metrics'].__setitem__('max_stack_items',19),
+            lambda x:x['cases'][0]['adapters'][0]['normal_metrics'].__setitem__('max_altstack_items',1),
+            lambda x:x['cases'][0]['adapters'][0]['metrics'].__setitem__('vectors',True),
+            lambda x:x['cases'][0]['adapters'][0]['metrics'].__setitem__('expected_rejections',0),
+            lambda x:x['cases'][0]['adapters'][0]['metrics'].__setitem__('max_script_bytes',99),
+            lambda x:(x['cases'][0]['adapters'][0]['metrics'].__setitem__('max_script_bytes',101),
+                      x['metrics'].__setitem__('max_script_bytes',101)),
+            lambda x:x['cases'][18]['adapters'][0]['metrics'].__setitem__('max_stack_items',59),
+            lambda x:x['cases'][0]['adapters'][0]['metrics'].__setitem__('max_stack_items',1001),
+            lambda x:x['metrics'].__setitem__('max_stack_items',70),
+            lambda x:x['metrics'].__setitem__('max_witness_items',True),
         )
         for mutate in mutations:
             changed=copy.deepcopy(native);mutate(changed)
