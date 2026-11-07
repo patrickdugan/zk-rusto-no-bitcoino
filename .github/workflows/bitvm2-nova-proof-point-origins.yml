@@ -61,7 +61,7 @@ jobs:
           set -euo pipefail
           status=0
           /usr/bin/time -v -o results/m23-execution-time-${{ matrix.engine }}.txt \
-            timeout --signal=KILL 3000s prlimit --as=536870912 --cpu=1200 -- \
+            timeout --signal=KILL 3000s prlimit --as=536870912 --cpu=2400 -- \
             python bench_proof_point_origins.py --engine '${{ matrix.engine }}' \
             --cases-dir results/m23-cases-${{ matrix.engine }} \
             --native-worker point-origins-oracle/target/release/proof_point_origins \
