@@ -37,10 +37,12 @@ jobs:
           rustup update stable --no-self-update
           rustup default stable
           rustc --version | tee results/m22-rust-version-${{ matrix.role }}.txt
+          rustfmt --version 2>&1 | tee results/m22-rustfmt-version-${{ matrix.role }}.txt
           timeout --signal=KILL 60s prlimit --as=268435456 --cpu=60 -- \
             python point_body_pins.py --check | tee results/m22-point-pins-${{ matrix.role }}.json
-          timeout --signal=KILL 60s prlimit --as=268435456 --cpu=60 -- \
-            python grouped_body_pins.py --check | tee results/m22-grouped-pins-${{ matrix.role }}.json
+          timeout --signal=KILL 60s python grouped_body_pins.py --check \
+            2> >(tee results/m22-grouped-pins-stderr-${{ matrix.role }}.txt >&2) \
+            | tee results/m22-grouped-pins-${{ matrix.role }}.json
       - name: Check fresh projections, fixed source policy and accounting contradictions
         run: |
           set -euo pipefail
