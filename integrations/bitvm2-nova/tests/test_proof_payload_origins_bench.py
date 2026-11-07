@@ -7,6 +7,7 @@ from copy import deepcopy
 import os
 from pathlib import Path
 import sys
+import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -154,6 +155,41 @@ class ProofPayloadOriginBenchTests(unittest.TestCase):
         self.assertEqual(set(bench._literal_dependencies(source)), {
             '../../scalar-source-oracle/src/retained_scalar_block.rs',
             '../../point-oracle/src/body_pins.rs', '../../../fixtures/policy.json'})
+
+    def test_dependency_inventory_optional_and_required_inputs(self):
+        # Filesystem-only fixture inside this workspace's owned results; no
+        # worker, actual source snapshot, graph, build or key generation.
+        owner = Path(__file__).resolve().parents[1]/'results'
+        owner.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=owner, prefix='proof-origin-inventory-test-') as name:
+            root = Path(name).resolve()
+            self.assertTrue(root.is_relative_to(owner.resolve()))
+            crates = ('rust-oracle', 'point-oracle', 'scalar-source-oracle',
+                'auth-cost-oracle', 'proof-payload-origins-oracle')
+            for crate in crates:
+                source = root/crate/'src'
+                source.mkdir(parents=True)
+                (source/'main.rs').write_text('// synthetic source inventory\n', encoding='utf-8')
+                for filename in ('Cargo.toml', 'Cargo.lock'):
+                    (root/crate/filename).write_text('# synthetic inventory input\n', encoding='utf-8')
+            required = root/'transcript-requirements.txt'
+            required.write_text('synthetic-dependency==1\n', encoding='utf-8')
+            paths, rust = bench._dependency_inventory(root)
+            self.assertEqual(set(rust), {root/crate/'src'/'main.rs' for crate in crates})
+            self.assertTrue({root/crate/filename for crate in crates
+                for filename in ('Cargo.toml', 'Cargo.lock')} <= paths)
+            self.assertIn(required, paths)
+            self.assertNotIn(root/'requirements.txt', paths)
+            optional = root/'requirements.txt'
+            optional.write_text('optional-synthetic-dependency==1\n', encoding='utf-8')
+            self.assertIn(optional, bench._dependency_inventory(root)[0])
+            required.unlink()
+            with self.assertRaisesRegex(ValueError, 'required transcript'):
+                bench._dependency_inventory(root)
+            required.write_text('synthetic-dependency==1\n', encoding='utf-8')
+            (root/'point-oracle'/'Cargo.lock').unlink()
+            with self.assertRaisesRegex(ValueError, 'all five configured manifests and locks'):
+                bench._dependency_inventory(root)
 
     def test_reference_authority_and_nested_types(self):
         for key, value in (('proof_verified', True),

@@ -156,24 +156,44 @@ def _literal_dependencies(raw):
         + re.findall(r'#\s*\[\s*path\s*=\s*"([^"]+)"\s*\]', source))
 
 
+SNAPSHOT_CRATES = ('rust-oracle', 'point-oracle', 'scalar-source-oracle',
+    'auth-cost-oracle', 'proof-payload-origins-oracle')
+
+
+def _dependency_inventory(root):
+    """Configured build inputs, separate from worker execution for small tests."""
+    paths, rust = set(), []
+    for crate in SNAPSHOT_CRATES:
+        source = root/crate/'src'
+        if source.is_symlink() or not source.is_dir():
+            raise ValueError('all five configured Rust source roots required')
+        rust.extend(source.rglob('*.rs'))
+        for filename in ('Cargo.toml', 'Cargo.lock'):
+            path = root/crate/filename
+            if path.is_symlink() or not path.is_file():
+                raise ValueError('all five configured manifests and locks required')
+            paths.add(path)
+    paths.update(rust)
+    required = root/'transcript-requirements.txt'
+    if required.is_symlink() or not required.is_file():
+        raise ValueError('required transcript dependency input snapshot incomplete')
+    paths.add(required)
+    # Some completed profiles have this file; this repository need not. Never
+    # invent an empty dependency file just to satisfy an observation inventory.
+    optional = root/'requirements.txt'
+    if optional.exists() or optional.is_symlink():
+        if optional.is_symlink() or not optional.is_file():
+            raise ValueError('optional requirements input must be a regular file')
+        paths.add(optional)
+    return paths, rust
+
+
 def _source_snapshot(worker):
     _guard()
     root = Path(__file__).resolve().parent
     paths = set(root.glob('*.py'))
-    rust = []
-    for crate in ('rust-oracle', 'proof-payload-origins-oracle'):
-        rust.extend((root/crate/'src').rglob('*.rs'))
-        for filename in ('Cargo.toml', 'Cargo.lock'):
-            path = root/crate/filename
-            if not path.is_file():
-                raise ValueError('configured legacy/native manifests and locks required')
-            paths.add(path)
-    paths.update(rust)
-    for filename in ('requirements.txt', 'transcript-requirements.txt'):
-        path = root/filename
-        if not path.is_file():
-            raise ValueError('runtime dependency input snapshot incomplete')
-        paths.add(path)
+    dependencies, rust = _dependency_inventory(root)
+    paths.update(dependencies)
     for suffix in ('.expected.json', '.dimensions.json', '.nht4', '.trace.json'):
         path = root/'fixtures'/('nht4-genesis-0-2020-k5'+suffix)
         if not path.is_file():
