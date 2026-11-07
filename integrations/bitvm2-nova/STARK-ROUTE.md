@@ -173,9 +173,81 @@ The 11-GiB low-degree extension fits the 16-GiB budget without sharding.
 Committing the stacked columns in streamed chunks, the Groth16 sharding
 method, would lower that peak further.
 
+## Review corrections (2026-11-07)
+
+A review of the "Spartan + hash-based PCS" alternative to the SP1 wrapper
+raised four points, all adopted here.
+* **The Pasta cycle helps one curve at a time.** Pallas coordinate arithmetic
+  is native over the Vesta scalar field, but the Vesta-side MSM and the
+  scalar-field work are not. One outer circuit needs non-native arithmetic
+  somewhere, or two field-specific proofs and a binding between them.
+* **The earlier 2^26-constraint figure was arithmetic, not a measurement.** It
+  is replaced by the measurement below.
+* **Basefold and WHIR are not drop-in replacements for Nova's folding
+  commitment.** The design keeps Nova's folding intact and proves its
+  verifier in a separate outer wrapper. That wrapper also needs a succinct
+  treatment of the R1CS matrices, for example transparent preprocessing.
+* **Transparent succinct proofs are not all hash-based.** Spartan has a
+  transparent discrete-log option. A hash-based outer commitment is a design
+  choice made for Bitcoin Script, not a necessity.
+
+Both outer routes stay open: the SP1 STARK wrapper, and Spartan over R1CS with
+a hash-based PCS. They are compared on measured gadgets.
+
+## M26a: measured in-circuit IPA MSM (R1CS route)
+
+[msm-gadget-bench](msm-gadget-bench) builds the IPA generator MSM's terms in
+Nova 0.76's own frontend:
+* the circuit field is the Pallas base field Fp, so Pallas points are native
+  with Nova's ECC gadget;
+* the IPA weights are Fq values, non-native via Nova's BigNat (4 × 64-bit
+  limbs);
+* each term derives `s = parent · u`, decomposes it into bits, multiplies the
+  verifier-key constant generator by fixed-base windows, and accumulates the
+  result with a complete addition.
+
+Every unit is synthesized into a counting constraint system (constraints,
+variables and exact A/B/C nonzeros). It is also synthesized into Nova's
+`TestConstraintSystem` with real values; every unit was satisfied and matched
+native Pasta arithmetic. The run took 8.33 s and 63 MB in WSL. The result is
+[results/m26a-msm-gadget.json](results/m26a-msm-gadget.json), SHA-256
+`62a05b1b94807f9fa40c3da774e855a00f14b7af6e262df50e9e03f0e04ca66a`.
+
+| Unit | Constraints | A+B+C nonzeros |
+| --- | ---: | ---: |
+| Nova variable-base `scalar_mul`, 255 bits (256 of them allocate the bits) | 2,656 | 11,674 |
+| Nova complete `add` / `double` | 33 / 8 | 151 / 38 |
+| Fixed-base, constant tables, window 1 / 3 / **4** / 5 / 7 | 9,181 / 3,401 / **3,002** / 3,163 / 5,657 | 15,437 at window 4 |
+| Non-native Fq `mult_mod` / 256-bit decomposition | 994 / 260 | 6,252 together |
+| **One MSM term**, slope over n = 1, 2, 4, 8 (4,301 → 34,373) | **4,296** | **21,102** |
+
+Over the 524,288 primary generators that is 2.25 × 10^9 constraints (about
+2^31), 2.18 × 10^9 witness variables (69.8 GB at 32 bytes each) and 1.1 ×
+10^10 nonzeros. The secondary (Vesta) MSM, the transcript and the rest of the
+verifier are excluded. The earlier 2^26 figure was about 32 times too low for
+this gadget.
+
+Known reductions, not yet measured:
+* incomplete addition with a fixed-base offset in place of the 33-constraint
+  complete add, which accounts for 2,112 of each term's constraints;
+* sharing the non-native scalar work across the IPA's product tree.
+
+Even a threefold reduction leaves roughly 7 × 10^8 constraints and a witness
+over 16 GiB. The R1CS route therefore needs the prover sharded, as the Groth16
+work was, or it loses to the SP1 wrapper. SP1's verifier execution was
+18.1 × 10^9 instructions after a pinned affine key; its recorded CPU provers
+peaked at 19–30 GiB.
+
 ## Next milestones
 
-1. **M25c: build the final layer.** A transparent STARK with a BLAKE3 MMCS and
+1. **M26b: optimized MSM gadget and sharded prover memory.** Replace complete
+   additions with offset incomplete additions and amortize the non-native
+   scalar products. Re-measure constraints, nonzeros and RAM per shard against
+   the SP1 wrapper.
+2. **M26c: price a real WHIR or Basefold verifier in Script.** Model 32-byte
+   field elements and the full transcript at a stated security level, for the
+   R1CS route's outer proof.
+3. **M25c: build the final layer.** A transparent STARK with a BLAKE3 MMCS and
    stacked commitments that verifies the SP1 compressed proof, with blowup
    2^7, 11 queries and 24 grinding bits (or the 128-bit parameters). Measure
    its real proof size, prover time and RAM under a hard cgroup cap, sharding

@@ -1,0 +1,195 @@
+{
+  "circuit_field": "Pallas base Fp (Vesta scalar)",
+  "fixed_base_scalar_mul_255": [
+    {
+      "aux_variables": 8926,
+      "constraints": 9436,
+      "inputs": 0,
+      "multiplication_constraints": 9181,
+      "nnz_a": 14023,
+      "nnz_b": 12238,
+      "nnz_c": 14026,
+      "nnz_total": 40287,
+      "satisfied_and_correct": true,
+      "window": 1
+    },
+    {
+      "aux_variables": 4735,
+      "constraints": 4991,
+      "inputs": 0,
+      "multiplication_constraints": 4736,
+      "nnz_a": 8181,
+      "nnz_b": 6396,
+      "nnz_c": 7168,
+      "nnz_total": 21745,
+      "satisfied_and_correct": true,
+      "window": 2
+    },
+    {
+      "aux_variables": 3486,
+      "constraints": 3656,
+      "inputs": 0,
+      "multiplication_constraints": 3401,
+      "nnz_a": 6883,
+      "nnz_b": 4588,
+      "nnz_c": 5016,
+      "nnz_total": 16487,
+      "satisfied_and_correct": true,
+      "window": 3
+    },
+    {
+      "aux_variables": 3129,
+      "constraints": 3257,
+      "inputs": 0,
+      "multiplication_constraints": 3002,
+      "nnz_a": 7261,
+      "nnz_b": 3958,
+      "nnz_c": 4218,
+      "nnz_total": 15437,
+      "satisfied_and_correct": true,
+      "window": 4
+    },
+    {
+      "aux_variables": 3316,
+      "constraints": 3418,
+      "inputs": 0,
+      "multiplication_constraints": 3163,
+      "nnz_a": 9127,
+      "nnz_b": 3976,
+      "nnz_c": 4132,
+      "nnz_total": 17235,
+      "satisfied_and_correct": true,
+      "window": 5
+    },
+    {
+      "aux_variables": 4116,
+      "constraints": 4202,
+      "inputs": 0,
+      "multiplication_constraints": 3947,
+      "nnz_a": 13015,
+      "nnz_b": 4672,
+      "nnz_c": 4764,
+      "nnz_total": 22451,
+      "satisfied_and_correct": true,
+      "window": 6
+    },
+    {
+      "aux_variables": 5838,
+      "constraints": 5912,
+      "inputs": 0,
+      "multiplication_constraints": 5657,
+      "nnz_a": 20419,
+      "nnz_b": 6316,
+      "nnz_c": 6360,
+      "nnz_total": 33095,
+      "satisfied_and_correct": true,
+      "window": 7
+    }
+  ],
+  "msm_terms": [
+    {
+      "aux_variables": 4169,
+      "constraints": 4301,
+      "inputs": 0,
+      "nnz_a": 9644,
+      "nnz_b": 6980,
+      "nnz_c": 4487,
+      "nnz_total": 21111,
+      "satisfied_and_correct": true,
+      "terms": 1
+    },
+    {
+      "aux_variables": 8329,
+      "constraints": 8597,
+      "inputs": 0,
+      "nnz_a": 19286,
+      "nnz_b": 13958,
+      "nnz_c": 8969,
+      "nnz_total": 42213,
+      "satisfied_and_correct": true,
+      "terms": 2
+    },
+    {
+      "aux_variables": 16649,
+      "constraints": 17189,
+      "inputs": 0,
+      "nnz_a": 38570,
+      "nnz_b": 27914,
+      "nnz_c": 17933,
+      "nnz_total": 84417,
+      "satisfied_and_correct": true,
+      "terms": 4
+    },
+    {
+      "aux_variables": 33289,
+      "constraints": 34373,
+      "inputs": 0,
+      "nnz_a": 77138,
+      "nnz_b": 55826,
+      "nnz_c": 35861,
+      "nnz_total": 168825,
+      "satisfied_and_correct": true,
+      "terms": 8
+    }
+  ],
+  "nonnative_fq_mult_mod_and_bits": {
+    "aux_variables": 1256,
+    "constraints": 1258,
+    "decompose_constraints": 260,
+    "inputs": 0,
+    "mult_mod_constraints": 994,
+    "nnz_a": 2815,
+    "nnz_b": 3228,
+    "nnz_c": 209,
+    "nnz_total": 6252
+  },
+  "nova_complete_add": {
+    "aux_variables": 37,
+    "constraints": 35,
+    "inputs": 0,
+    "nnz_a": 51,
+    "nnz_b": 48,
+    "nnz_c": 52,
+    "nnz_total": 151,
+    "operation_constraints": 33
+  },
+  "nova_double": {
+    "aux_variables": 14,
+    "constraints": 10,
+    "inputs": 0,
+    "nnz_a": 11,
+    "nnz_b": 15,
+    "nnz_c": 12,
+    "nnz_total": 38,
+    "operation_constraints": 8
+  },
+  "nova_variable_base_scalar_mul_255": {
+    "aux_variables": 2652,
+    "bit_allocation_constraints": 256,
+    "constraints": 2656,
+    "inputs": 0,
+    "nnz_a": 3475,
+    "nnz_b": 3452,
+    "nnz_c": 4747,
+    "nnz_total": 11674,
+    "satisfied_and_correct": true
+  },
+  "nova_version": "0.76.0",
+  "per_term": {
+    "aux_variables": 4160.0,
+    "constraints": 4296.0,
+    "nnz_total": 21102.0,
+    "window": 4
+  },
+  "primary_ipa_msm_projection": {
+    "aux_variables": 2181038080.0,
+    "basis": "measured per-term slope x 524,288; Vesta side, transcript and rest of the verifier excluded",
+    "constraints": 2252341248.0,
+    "generators": 524288,
+    "measured": false,
+    "nnz_total": 11063525376.0,
+    "witness_bytes": 69793218560.0
+  },
+  "scalar_field_handling": "non-native Fq BigNat, 4 x 64-bit limbs",
+  "schema": "bitvm2-nova-msm-gadget-bench/v1"
+}
