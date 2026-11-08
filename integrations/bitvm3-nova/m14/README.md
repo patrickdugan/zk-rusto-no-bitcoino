@@ -79,6 +79,7 @@ Against the estimates:
   - a changed FRI row value;
   - a non-canonical field encoding (x + p);
   - the right proof under another pinned statement.
+- `full` and `garbled` on guest A's real final proof (see [Guest A](#guest-a-the-nova-verifier)).
 - `full` (local, `M14_SECOND_PROOF_DIR`): a second guest's real proof (same wrap key and shape,
   different values) is accepted by the circuit built from the committed proof's shape, under its
   own statement.
@@ -95,29 +96,32 @@ each BaseFold message as m₀ + β·m₁, not by interpolation. The fix is in th
 
 ### Guest A (the Nova verifier)
 
-The circuit does not depend on the guest. The wrap program, key and proof shape are the same for
-every guest, and the second-proof test confirms it on another guest's proof. A final proof of
-guest A, the complete Nova verifier from M12, goes through this exact circuit with A's two pins:
+**The Nova verifier runs in the garbled circuit.** Guest A is the complete Nova verifier from
+M12, checking a k=1 testnet4 proof. Its real final proof goes through this exact circuit with A's
+two pins (both in [`../m13/pins.json`](../m13/pins.json)):
 - guest key `5df3760f…f46b`;
 - statement digest `d3b478b0…2fa0`.
 
-Both are in [`../m13/pins.json`](../m13/pins.json).
+The circuit is built from the committed c4 proof's shape, because the wrap program, key and
+proof shape are the same for every guest. The proof is
+[`../m13/fixtures/a-wrap-blake3-v2.bin`](../m13/fixtures/README.md), and its statement is
+`a-statement.json`. Measured 2026-11-08 (WSL2):
+- **`full::final_verifier_circuit_on_guest_a`:** `m13_verify::verify_final` accepts the proof.
+  The circuit accepts it too (785,442,492 non-free gates, 8,635,080 input bits, 65.8 s plain
+  execution). The circuit rejects:
+  - A's proof with a flipped bit;
+  - A's proof under the c4 statement;
+  - the c4 proof under A's statement.
+- **`garbled::garbled_final_verifier_accepts_guest_a`:** garbled from the c4 shape and A's
+  statement. The evaluator, holding only the labels of A's proof bits, obtains the garbler's
+  accept label (785,442,492 ciphertexts, 162.5 s).
 
-**Not produced: guest A's compressed proof.** It was run here on 2026-11-07, with SP1 6.9.0's
-CPU prover, a 12 GiB RAM cap and 1.12 M-instruction shards (`ELEMENT_THRESHOLD=2^26`,
-`HEIGHT_THRESHOLD=2^20`):
-- execution checks passed (exit code 0, statement `d3b478b0…`);
-- steady proving was one shard every 165–189 s;
-- guest A executes 72.3 × 10^9 instructions, which is about 64,600 shards, or about 131 days on
-  this machine. The run was stopped.
-
-The GPU here (RTX 5080 Laptop, 16 GB) runs a training job, and SP1's CUDA prover needs about
-24 GB. The proof needs a 24 GB+ GPU, the prover network, or a much larger CPU host.
-
-With the compressed proof in hand:
-1. `run_full_a.sh` produces it (or reuse an existing compressed proof);
-2. `m13 shrink-wrap` / `wrap-only-v2` wraps it;
-3. `full::Known::new(proof, statement)` with A's statement verifies it.
+**How A's compressed proof was made.** SP1 6.9.0's CPU prover was tried first, on 2026-11-07.
+At 1.12 M-instruction shards it proved one shard every 165–189 s: about 131 days for A's
+72.3 × 10^9 instructions. SP1's CUDA prover requires 24 GB of device memory, and this laptop has
+16 GB. The proof was made with this repo's resumable prover on SP1's CUDA provers,
+[`nb3-prove-gpu`](../prover-gpu/README.md): 27,058 shard tasks in 14.9 h on the RTX 5080 Laptop
+GPU (16 GB), then `m13 shrink-wrap` and `wrap-only-v2`.
 
 ## What is built
 

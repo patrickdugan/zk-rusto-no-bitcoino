@@ -127,3 +127,19 @@ fn garbled_final_verifier_accepts_the_real_proof_and_rejects_a_mutation() {
     let (accept, reject, _) = garble_and_evaluate(&proof, &expect, bad);
     assert!(reject && !accept, "evaluator did not obtain the reject label for a mutated proof");
 }
+
+const A_PROOF: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../m13/fixtures/a-wrap-blake3-v2.bin");
+const A_STATEMENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../m13/fixtures/a-statement.json");
+
+/// Guest A (the Nova verifier): the circuit is garbled from the control proof's shape and A's
+/// statement, and the evaluator holding only the labels of A's proof bits obtains "accept".
+#[test]
+fn garbled_final_verifier_accepts_guest_a() {
+    let reference = native::load(native::FIXTURE_V2);
+    let a = native::load(A_PROOF);
+    let expect: m13_verify::FinalStatement = serde_json::from_slice(&std::fs::read(A_STATEMENT).unwrap()).unwrap();
+    let t = std::time::Instant::now();
+    let (accept, reject, gates) = garble_and_evaluate(&reference, &expect, native::bits(&full::items(&a)));
+    eprintln!("M14-E2E guest A garbled+evaluated: {gates} ciphertexts, {:.1} s", t.elapsed().as_secs_f64());
+    assert!(accept && !reject, "evaluator did not obtain the accept label for guest A's proof");
+}

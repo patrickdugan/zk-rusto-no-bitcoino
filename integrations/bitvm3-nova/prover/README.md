@@ -83,7 +83,8 @@ The first run lost one core shard's deferred chunks to the trash sweep, which th
 write time. The sweep now uses the deletion time and keeps everything deleted after the oldest
 in-flight shard started; `tests/units.rs` reproduces the case.
 
-Deleted artifacts move to `DIR/artifacts/trash` and are removed after ten minutes. A shard's
+Deleted artifacts move to `DIR/artifacts/trash` and are removed once no shard task that started
+before the deletion is still running, and at least two minutes after the deletion. A shard's
 deferred chunks can be consumed by the controller before the shard reports completion, and the
 memo reads them from the trash.
 

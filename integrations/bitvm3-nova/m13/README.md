@@ -37,11 +37,12 @@ M13 builds that final layer and prices its complete verifier from exact counts.
   The range comes only from how products by small constants are priced.
 - **Field arithmetic now dominates**, at 82% of the upper figure; BLAKE3 is the other 18%. M12's
   BLAKE3 estimate (≥ 5.2 × 10^8) counted the hash plus a lower bound of the field work.
-- **Architecture A's own proof was not generated here.** A at k=1 is 72.3 × 10^9 SP1
-  instructions, more than this host can prove beside its training job
-  ([Architecture A's full chain](#architecture-as-full-chain)). A's key and statement are pinned,
-  and [`run_full_a.sh`](run_full_a.sh) runs the whole chain unattended on a larger host. The final layer does not depend on the guest: its key, shape
-  and verifier circuit are the ones measured here.
+- **Architecture A's final proof exists (2026-11-08).** A at k=1 is 72.3 × 10^9 SP1
+  instructions. SP1's own provers could not prove it on this host; the resumable GPU prover
+  [`nb3-prove-gpu`](../prover-gpu/README.md) did, on the laptop GPU
+  ([Architecture A's full chain](#architecture-as-full-chain)). Its final proof,
+  [`fixtures/a-wrap-blake3-v2.bin`](fixtures/README.md), matches every pin. The final layer does
+  not depend on the guest: its key, shape and verifier circuit are the ones measured here.
 
 ## The pipeline
 
@@ -220,15 +221,21 @@ For A the final verifier pins:
 
 The wrap key and recursion key root are the same pins as for every guest.
 
-**Not run here: A's compressed proof.** This host shares its RAM with a training job, so SP1 ran
-capped at 7 GiB of RAM with the rest in swap. Measured:
+**A's compressed proof: produced 2026-11-08 with [`nb3-prove-gpu`](../prover-gpu/README.md).**
+27,058 shard tasks at 2^27 elements per shard on the RTX 5080 Laptop GPU (16 GB), 14.9 h from
+first start to proof. `m13 shrink-wrap` and `m13 wrap-only-v2` then produced the final proof in
+2 min 40 s. Its statement has committed values `d3b478b0…2fa0`, guest key `5df3760f…f46b`, and
+the shared wrap key and recursion root. Fixtures: `a-compressed.bin`, `a-wrap-blake3-v2.bin`,
+`a-statement.json`.
+
+Before that tool, SP1's own CPU prover could not do it here. This host shared its RAM with a
+training job, so SP1 ran capped at 7 GiB of RAM with the rest in swap. Measured:
 - **4 headers (0.51 × 10^6 instructions):** proved compressed in 369 s, with 8.1 GB of swap.
 - **4,100 headers (1.3 × 10^8 instructions):** reached 27.5 GB of swap in 14.6 minutes and was
   stopped before the swapfile filled. Its timing would have measured the disk.
 
-A is 72.3 × 10^9 instructions, 556 times that run. SP1 6.9.0's CPU prover peaks at 19–30 GiB. A
-therefore needs a host with that much RAM or SP1's GPU prover. `run_full_a.sh` is written for
-that host.
+A is 72.3 × 10^9 instructions, 556 times that run. SP1 6.9.0's CPU prover peaks at 19–30 GiB,
+and SP1's GPU prover requires 24 GB of device memory. `run_full_a.sh` is written for such a host.
 
 ## Recommendation for the next BitVM3 milestone
 

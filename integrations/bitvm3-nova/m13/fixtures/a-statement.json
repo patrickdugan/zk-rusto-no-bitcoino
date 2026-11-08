@@ -1,0 +1,8 @@
+{
+  "committed_values_sha256": "d3b478b0ed0055bbd43a59775729c990a33d1df07bd0a66ee728a3573c832fa0",
+  "exit_code": 0,
+  "is_complete": 1,
+  "program_vk_digest": "5df3760fed1620671151183a73c9407d528b2239a5cd243b14cf5c7b4d4af46b",
+  "recursion_vk_root": "7487c2175bd3256619ca0118094b8150d6df0246a1b41979a081642e5253f257",
+  "wrap_vk_sha256": "d42c63e3c873b35576b4c95fa8c41770a8c6b8a9f16ba74732c5b52a43b0b0d7"
+}

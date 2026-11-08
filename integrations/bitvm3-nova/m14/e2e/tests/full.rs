@@ -102,6 +102,37 @@ fn final_verifier_circuit_on_the_real_proof() {
     assert!(!run(&k2, bits).0, "proof accepted under another statement");
 }
 
+const A_PROOF: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../m13/fixtures/a-wrap-blake3-v2.bin");
+const A_STATEMENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../m13/fixtures/a-statement.json");
+
+/// Guest A (M12's complete Nova verifier): its real final proof is accepted by the circuit built
+/// from the committed control proof's shape, under A's own pinned statement, and rejected under the
+/// control's statement or with a flipped bit. The control proof is rejected under A's statement.
+#[test]
+fn final_verifier_circuit_on_guest_a() {
+    let reference = native::load(native::FIXTURE_V2);
+    let a = native::load(A_PROOF);
+    let expect_a = statement(A_STATEMENT);
+    let expect_c4 = statement(STATEMENT);
+    m13_verify::verify_final(&a, &expect_a).expect("SP1 (m13-verify) accepts guest A's proof");
+    let bits_a = native::bits(&full::items(&a));
+    let k_a = Known::new(&reference, &expect_a);
+    let t = std::time::Instant::now();
+    let (ok, gates) = run(&k_a, bits_a.clone());
+    eprintln!("M14-E2E guest A: {} input bits, {gates} non-free gates, {:.1} s", bits_a.len(), t.elapsed().as_secs_f64());
+    assert!(ok, "the circuit rejects guest A's final proof");
+
+    let mut b = bits_a.clone();
+    let at = b.len() - 5;
+    b[at] = !b[at];
+    assert!(!run(&k_a, b).0, "guest A proof with a flipped bit accepted");
+
+    let k_c4 = Known::new(&reference, &expect_c4);
+    assert!(!run(&k_c4, bits_a).0, "guest A proof accepted under the control statement");
+    let bits_c4 = native::bits(&full::items(&reference));
+    assert!(!run(&k_a, bits_c4).0, "control proof accepted under guest A's statement");
+}
+
 /// A second real proof (another guest, same wrap key and shape), if present locally: the circuit
 /// built from the committed proof's shape verifies it under its own statement.
 #[test]
