@@ -45,8 +45,8 @@ def ram_snapshot() -> dict[str, int | None]:
     except (OSError, ValueError, AttributeError):
         return {'total_bytes': None, 'available_bytes': None}
 
-def plans(suite: str, output: Path) -> list[tuple[str, list[str], list[str]]]:
-    common = ['--release', '--locked', '--manifest-path', 'nova-bitvm3/Cargo.toml']
+def plans(suite: str, output: Path, lab: str = 'nova-bitvm3') -> list[tuple[str, list[str], list[str]]]:
+    common = ['--release', '--locked', '--manifest-path', f'{lab}/Cargo.toml']
     flags = ['--features', FEATURES]
     targets = {
         'smoke': ['--lib'],
@@ -109,10 +109,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--build-only', action='store_true')
     parser.add_argument('--plan', action='store_true', help='print commands without requiring Cargo or writing files')
     args = parser.parse_args(argv)
-    repo = Path(__file__).resolve().parent.parent
+    # Commands run from the lab directory's parent with relative manifest paths, so the lab works
+    # under any directory name (garbled-snark-verifier: nova-bitvm3; zk-rusto-no-bitcoino:
+    # integrations/bitvm3-nova).
+    lab = Path(__file__).resolve().parent
+    repo = lab.parent
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')
-    output = (args.output or repo / 'nova-bitvm3' / 'results' / f'local-{stamp}').resolve()
-    plan = plans(args.suite, output)
+    output = (args.output or lab / 'results' / f'local-{stamp}').resolve()
+    plan = plans(args.suite, output, lab.name)
     if args.plan:
         commands = []
         for name, build, execute in plan:
@@ -126,9 +130,9 @@ def main(argv: list[str] | None = None) -> int:
     cargo = shutil.which('cargo')
     if cargo is None:
         parser.error('Cargo is missing. Install Rust with rustup and toolchain 1.90.0.')
-    if not (repo / 'nova-bitvm3' / 'Cargo.toml').is_file():
-        parser.error('run this script from its checked-out nova-bitvm3 directory')
-    lock = repo / 'nova-bitvm3' / 'Cargo.lock'
+    if not (lab / 'Cargo.toml').is_file():
+        parser.error('run this script from its checked-out lab directory (next to Cargo.toml)')
+    lock = lab / 'Cargo.lock'
     supplied_lock = args.lockfile.resolve() if args.lockfile else None
     if supplied_lock and not supplied_lock.is_file():
         parser.error('--lockfile must point to an existing CI artifact Cargo.lock')
@@ -170,14 +174,14 @@ def main(argv: list[str] | None = None) -> int:
             shutil.copyfile(supplied_lock, lock)
         if not lock.exists():
             receipt['lock_origin'] = 'resolved_locally'
-            if not step('dependency_resolution', [cargo, '+1.90.0', 'generate-lockfile', '--manifest-path', 'nova-bitvm3/Cargo.toml']):
+            if not step('dependency_resolution', [cargo, '+1.90.0', 'generate-lockfile', '--manifest-path', f'{lab.name}/Cargo.toml']):
                 receipt['status'] = 'failed'
                 return 1
         else:
             receipt['lock_origin'] = 'supplied_ci' if supplied_lock else 'existing'
         shutil.copyfile(lock, output / 'Cargo.lock')
         receipt['lock_sha256'] = hashlib.sha256(lock.read_bytes()).hexdigest()
-        if not step('dependencies', [cargo, '+1.90.0', 'tree', '--locked', '--manifest-path', 'nova-bitvm3/Cargo.toml', '--features', FEATURES]):
+        if not step('dependencies', [cargo, '+1.90.0', 'tree', '--locked', '--manifest-path', f'{lab.name}/Cargo.toml', '--features', FEATURES]):
             receipt['status'] = 'failed'
             return 1
         for name, build, execute in plan:
