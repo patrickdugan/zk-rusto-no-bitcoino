@@ -24,7 +24,7 @@ use sp1_prover_types::{
 use tokio::{sync::mpsc, task::JoinSet};
 
 use crate::{
-    memo::{capture_shard, Entry, Kind, Memo},
+    memo::{capture_shard, rebind_deferred_chunks, Entry, Kind, Memo},
     store::DiskArtifactClient,
 };
 
@@ -153,7 +153,8 @@ impl ShardedNode {
                                 Ok(k) => Some(k),
                                 Err(e) => { tracing::warn!("shard memo key: {e:#}"); None }
                             };
-                            let hit = key.as_ref().and_then(|k| memo.get(Kind::Shard, k));
+                            let hit = key.as_ref().and_then(|k| memo.get(Kind::Shard, k))
+                                .filter(|e| e.out1.is_some() == (request.outputs.len() == 2));
                             let tx = tx.clone();
                             match (key, hit) {
                                 (Some(key), Some(entry)) => {
@@ -390,7 +391,7 @@ impl ShardedNode {
     }
 }
 
-/// Replays a memoized `ProveShard`: deferred chunks under their recorded ids, the deferred events
+/// Replays a memoized `ProveShard`: deferred chunks under fresh ids, the deferred events
 /// into this request's deferred output (completing its marker task), then the proof.
 async fn replay_shard(
     store: &DiskArtifactClient,
@@ -399,16 +400,19 @@ async fn replay_shard(
     e: Entry,
 ) -> Result<TaskMetadata, TaskError> {
     let fatal = |e: anyhow::Error| TaskError::Fatal(e);
-    for (id, bytes) in e.chunks {
-        store.upload_raw(&id, ArtifactType::UnspecifiedArtifactType, bytes).await.map_err(fatal)?;
-    }
     match (request.outputs.get(1), e.out1) {
         (Some(d), Some(b)) => {
-            store.upload_raw(d, ArtifactType::UnspecifiedArtifactType, b).await.map_err(fatal)?;
+            let (events, chunks) = rebind_deferred_chunks(&b, e.chunks, || {
+                Ok(store.create_artifact()?.id().to_string())
+            }).map_err(fatal)?;
+            for (id, bytes) in chunks {
+                store.upload_raw(&id, ArtifactType::UnspecifiedArtifactType, bytes).await.map_err(fatal)?;
+            }
+            store.upload_raw(d, ArtifactType::UnspecifiedArtifactType, events).await.map_err(fatal)?;
             let marker = TaskId::new(request.inputs[3].id().to_string());
             wc.complete_task(request.context.proof_id.clone(), marker, TaskMetadata::default()).await.map_err(fatal)?;
         }
-        (None, None) => {}
+        (None, None) if e.chunks.is_empty() => {}
         _ => return Err(TaskError::Fatal(anyhow!("memo entry and request disagree on the deferred output"))),
     }
     store.upload_raw(&request.outputs[0], ArtifactType::UnspecifiedArtifactType, e.out0).await.map_err(fatal)?;

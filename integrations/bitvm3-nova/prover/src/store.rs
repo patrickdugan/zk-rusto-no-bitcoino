@@ -14,6 +14,8 @@
 //! started ([`DiskArtifactClient::task_started`]), and at least a grace period ago.
 use std::{
     collections::BTreeMap,
+    fs::OpenOptions,
+    io::Write,
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -38,7 +40,11 @@ struct Inner {
     /// Start times of shard tasks in flight, by token.
     inflight: Mutex<BTreeMap<u64, SystemTime>>,
     next_token: AtomicU64,
+    /// Serializes trash deletion and sweep over the same directory.
+    trash_ops: Mutex<()>,
 }
+
+static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
 
 impl DiskArtifactClient {
     /// Opens a store under `dir`, discarding anything a previous process left there: artifact ids
@@ -60,6 +66,7 @@ impl DiskArtifactClient {
                 index,
                 inflight: Mutex::new(BTreeMap::new()),
                 next_token: AtomicU64::new(0),
+                trash_ops: Mutex::new(()),
             }),
         })
     }
@@ -89,15 +96,17 @@ impl DiskArtifactClient {
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_secs(30)).await;
-                let (trash, cutoff) = (this.inner.trash.clone(), this.sweep_cutoff(grace));
-                let _ = tokio::task::spawn_blocking(move || sweep(&trash, cutoff)).await;
+                let store = this.clone();
+                let _ = tokio::task::spawn_blocking(move || store.sweep_now(grace)).await;
             }
         });
     }
 
     /// Runs one sweep now (tests).
     pub fn sweep_now(&self, grace: Duration) {
-        sweep(&self.inner.trash, self.sweep_cutoff(grace));
+        let cutoff = self.sweep_cutoff(grace);
+        let _guard = self.inner.trash_ops.lock().unwrap();
+        sweep(&self.inner.trash, cutoff);
     }
 
     fn file_name(id: &str) -> String {
@@ -149,10 +158,26 @@ fn sweep(trash: &Path, cutoff: SystemTime) {
 /// Writes `data` to `path` through a temporary file and a rename, so a crash never leaves a
 /// truncated artifact under its final name.
 pub fn write_atomic(path: &Path, data: &[u8]) -> Result<()> {
-    let tmp = path.with_extension(format!("tmp{}", std::process::id()));
-    std::fs::write(&tmp, data).with_context(|| format!("writing {}", tmp.display()))?;
-    std::fs::rename(&tmp, path).with_context(|| format!("renaming to {}", path.display()))?;
-    Ok(())
+    // Distinct exclusive staging files prevent concurrent writers of one artifact id
+    // from clobbering each other's temporary data.
+    loop {
+        let sequence = NEXT_TEMP.fetch_add(1, Ordering::Relaxed);
+        let tmp = path.with_extension(format!("nb3tmp-{}-{sequence}", std::process::id()));
+        let mut f = match OpenOptions::new().write(true).create_new(true).open(&tmp) {
+            Ok(f) => f,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e).with_context(|| format!("creating {}", tmp.display())),
+        };
+        let result = (|| -> Result<()> {
+            f.write_all(data).with_context(|| format!("writing {}", tmp.display()))?;
+            f.flush()?;
+            drop(f);
+            std::fs::rename(&tmp, path).with_context(|| format!("renaming to {}", path.display()))?;
+            Ok(())
+        })();
+        if result.is_err() { let _ = std::fs::remove_file(&tmp); }
+        return result;
+    }
 }
 
 impl ArtifactClient for DiskArtifactClient {
@@ -174,16 +199,26 @@ impl ArtifactClient for DiskArtifactClient {
 
     async fn delete(&self, artifact: &impl ArtifactId, _t: ArtifactType) -> Result<()> {
         let (live, trash) = (self.live_path(artifact.id()), self.trash_path(artifact.id()));
+        let client = self.clone();
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            // Stamp before publishing in trash, under the same lock as the sweeper.
+            // A sweep can never observe an old mtime between rename and stamping.
+            let _guard = client.inner.trash_ops.lock().unwrap();
+            match OpenOptions::new().write(true).open(&live) {
+                Ok(f) => {
+                    f.set_modified(SystemTime::now())?;
+                    match std::fs::rename(&live, &trash) {
+                        Ok(()) => {},
+                        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {},
+                        Err(e) => return Err(e).with_context(|| format!("trashing {}", live.display())),
+                    }
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {},
+                Err(e) => return Err(e).with_context(|| format!("opening {}", live.display())),
+            }
+            Ok(())
+        }).await??;
         self.inner.index.untrack(artifact.id());
-        // Deleting an artifact that is already gone is not an error: cleanup passes run over
-        // artifacts that the controller deleted inline. The modification time becomes the
-        // deletion stamp the sweep reads.
-        if tokio::fs::rename(&live, &trash).await.is_ok() {
-            let _ = tokio::task::spawn_blocking(move || {
-                std::fs::File::options().write(true).open(&trash).and_then(|f| f.set_modified(SystemTime::now()))
-            })
-            .await;
-        }
         Ok(())
     }
 

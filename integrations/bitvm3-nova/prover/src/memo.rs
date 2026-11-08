@@ -19,6 +19,7 @@
 //! that does not match is simply proved again. A memo entry never stands in for a task whose inputs
 //! differ.
 use std::{
+    collections::HashMap,
     fs::OpenOptions,
     io::Write,
     path::{Path, PathBuf},
@@ -32,11 +33,13 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sp1_prover::worker::{DeferredEvents, RawTaskRequest, TraceData};
-use sp1_prover_types::{ArtifactClient, ArtifactId, ArtifactType};
+use sp1_prover_types::{Artifact, ArtifactClient, ArtifactId, ArtifactType};
 
 use crate::store::{write_atomic, DiskArtifactClient};
 
 pub type Key = [u8; 32];
+
+static NEXT_STAGE: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
@@ -67,6 +70,26 @@ pub struct Entry {
 #[derive(Serialize, Deserialize)]
 struct ChunkIndex {
     ids: Vec<String>,
+}
+
+/// Checksums make a published memo entry self-verifying, including optional outputs.
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct Manifest {
+    version: u32,
+    out0_sha256: Key,
+    out1_sha256: Option<Key>,
+    chunks: Vec<(String, Key)>,
+}
+
+impl Manifest {
+    fn from_entry(e: &Entry) -> Self {
+        Self {
+            version: 1,
+            out0_sha256: sha(&e.out0),
+            out1_sha256: e.out1.as_ref().map(|b| sha(b)),
+            chunks: e.chunks.iter().map(|(id, b)| (id.clone(), sha(b))).collect(),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -174,14 +197,45 @@ impl Memo {
         let d = self.entry_dir(kind, key);
         let out0 = std::fs::read(d.join("out0")).ok()?;
         let out1 = std::fs::read(d.join("out1")).ok();
+        let idx: Option<ChunkIndex> = match std::fs::read(d.join("chunks.json")) {
+            Ok(b) => Some(serde_json::from_slice(&b).ok()?),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+            Err(_) => return None,
+        };
         let mut chunks = Vec::new();
-        if let Ok(idx) = std::fs::read(d.join("chunks.json")) {
-            let idx: ChunkIndex = serde_json::from_slice(&idx).ok()?;
+        if let Some(idx) = idx {
             for (n, id) in idx.ids.into_iter().enumerate() {
                 chunks.push((id, std::fs::read(d.join(format!("chunk{n}"))).ok()?));
             }
         }
-        Some(Entry { out0, out1, chunks })
+        let entry = Entry { out0, out1, chunks };
+        match std::fs::read(d.join("manifest.json")) {
+            Ok(b) => {
+                let m: Manifest = serde_json::from_slice(&b).ok()?;
+                if m != Manifest::from_entry(&entry) { return None; }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                // Backward-compatible legacy cache. Validate deferred references even though
+                // older entries have no stored checksums. The final proof is still verified.
+                if let Some(bytes) = &entry.out1 {
+                    let events: DeferredEvents = bincode::deserialize(bytes).ok()?;
+                    let mut referenced: Vec<_> =
+                        events.0.values().flatten().map(|s| s.artifact.id().to_string()).collect();
+                    referenced.sort();
+                    referenced.dedup();
+                    let mut stored: Vec<_> = entry.chunks.iter().map(|(id, _)| id.clone()).collect();
+                    stored.sort();
+                    if referenced != stored { return None; }
+                } else if !entry.chunks.is_empty() {
+                    return None;
+                }
+            }
+            Err(_) => return None,
+        }
+        if kind == Kind::Reduce && (entry.out1.is_some() || !entry.chunks.is_empty()) {
+            return None;
+        }
+        Some(entry)
     }
 
     /// Records an entry. Files go to a temporary directory that is renamed into place, so an entry
@@ -189,32 +243,39 @@ impl Memo {
     pub fn put(&self, kind: Kind, key: &Key, e: &Entry) -> Result<()> {
         let fin = self.entry_dir(kind, key);
         if fin.exists() {
-            return Ok(());
+            if self.get(kind, key).is_some() { return Ok(()); }
+            let bad = self.dir.join(kind.dir()).join(format!(
+                ".bad-{}-{}-{}", hex::encode(key), std::process::id(),
+                NEXT_STAGE.fetch_add(1, Ordering::Relaxed)));
+            std::fs::rename(&fin, &bad).context("quarantining invalid memo entry")?;
         }
-        let tmp = self.dir.join(kind.dir()).join(format!(".tmp-{}-{}", hex::encode(key), std::process::id()));
-        if tmp.exists() {
-            std::fs::remove_dir_all(&tmp)?;
-        }
-        std::fs::create_dir_all(&tmp)?;
-        write_atomic(&tmp.join("out0"), &e.out0)?;
-        if let Some(b) = &e.out1 {
-            write_atomic(&tmp.join("out1"), b)?;
-        }
-        if !e.chunks.is_empty() {
-            for (n, (_, b)) in e.chunks.iter().enumerate() {
-                write_atomic(&tmp.join(format!("chunk{n}")), b)?;
+        // Each invocation owns a distinct directory, including when several identical
+        // task keys finish concurrently in one process.
+        let tmp = self.dir.join(kind.dir()).join(format!(
+            ".tmp-{}-{}-{}", hex::encode(key), std::process::id(),
+            NEXT_STAGE.fetch_add(1, Ordering::Relaxed)));
+        std::fs::create_dir(&tmp)?;
+        let result = (|| -> Result<()> {
+            write_atomic(&tmp.join("out0"), &e.out0)?;
+            if let Some(b) = &e.out1 {
+                write_atomic(&tmp.join("out1"), b)?;
             }
-            let idx = ChunkIndex { ids: e.chunks.iter().map(|(id, _)| id.clone()).collect() };
-            write_atomic(&tmp.join("chunks.json"), &serde_json::to_vec(&idx)?)?;
-        }
-        match std::fs::rename(&tmp, &fin) {
-            Ok(()) => Ok(()),
-            Err(_) if fin.exists() => {
-                std::fs::remove_dir_all(&tmp)?;
-                Ok(())
+            if !e.chunks.is_empty() {
+                for (n, (_, b)) in e.chunks.iter().enumerate() {
+                    write_atomic(&tmp.join(format!("chunk{n}")), b)?;
+                }
+                let idx = ChunkIndex { ids: e.chunks.iter().map(|(id, _)| id.clone()).collect() };
+                write_atomic(&tmp.join("chunks.json"), &serde_json::to_vec(&idx)?)?;
             }
-            Err(e) => Err(e.into()),
-        }
+            write_atomic(&tmp.join("manifest.json"), &serde_json::to_vec(&Manifest::from_entry(e))?)?;
+            match std::fs::rename(&tmp, &fin) {
+                Ok(()) => Ok(()),
+                Err(_) if fin.exists() && self.get(kind, key).is_some() => Ok(()),
+                Err(err) => Err(err.into()),
+            }
+        })();
+        if tmp.exists() { let _ = std::fs::remove_dir_all(&tmp); }
+        result
     }
 
     /// Appends one line to `progress.jsonl` and updates the counters.
@@ -267,4 +328,37 @@ pub async fn capture_shard(store: &DiskArtifactClient, request: &RawTaskRequest)
         }
     };
     Ok(Entry { out0, out1, chunks })
+}
+
+/// Remap chunk references on replay, because other live tasks can use the recorded
+/// ids. The rewritten DeferredEvents and the freshly named chunks must agree exactly.
+pub fn rebind_deferred_chunks(
+    encoded: &[u8],
+    chunks: Vec<(String, Vec<u8>)>,
+    mut fresh_id: impl FnMut() -> Result<String>,
+) -> Result<(Vec<u8>, Vec<(String, Vec<u8>)>)> {
+    let mut events: DeferredEvents = bincode::deserialize(encoded).context("decoding replayed deferred events")?;
+    let mut ids: HashMap<String, String> = HashMap::new();
+    for slice in events.0.values_mut().flatten() {
+        let old = slice.artifact.id().to_string();
+        let new = match ids.get(&old) {
+            Some(id) => id.clone(),
+            None => {
+                let id = fresh_id()?;
+                ids.insert(old, id.clone());
+                id
+            }
+        };
+        slice.artifact = Artifact::from(new);
+    }
+    if ids.len() != chunks.len() {
+        bail!("memo deferred chunk count does not match its events");
+    }
+    let mut result = Vec::with_capacity(chunks.len());
+    for (old, bytes) in chunks {
+        let new = ids.remove(&old).context("memo contains a chunk not referenced by deferred events")?;
+        result.push((new, bytes));
+    }
+    if !ids.is_empty() { bail!("memo is missing a referenced deferred chunk"); }
+    Ok((bincode::serialize(&events)?, result))
 }

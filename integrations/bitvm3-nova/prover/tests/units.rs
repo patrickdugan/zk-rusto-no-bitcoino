@@ -3,14 +3,15 @@ use std::path::PathBuf;
 
 use nb3_prover::{
     config::RunConfig,
-    memo::{capture_shard, Entry, Kind, Memo},
-    store::DiskArtifactClient,
+    memo::{capture_shard, rebind_deferred_chunks, Entry, Kind, Memo},
+    store::{write_atomic, DiskArtifactClient},
 };
 use sp1_core_executor::SyscallCode;
+use sha2::Digest;
 use sp1_prover::worker::{
     DeferredEvents, PrecompileArtifactSlice, ProofId, RawTaskRequest, RequesterId, TaskContext, TraceData,
 };
-use sp1_prover_types::{Artifact, ArtifactClient, ArtifactType, ProofArtifacts};
+use sp1_prover_types::{Artifact, ArtifactClient, ArtifactId, ArtifactType, ProofArtifacts};
 
 fn tmp(name: &str) -> PathBuf {
     let d = std::env::temp_dir().join(format!("nb3-prover-test-{name}-{}", std::process::id()));
@@ -221,4 +222,109 @@ fn run_config_pins_a_run_directory() {
         x.nonce[0] ^= 1;
         x.digest()
     });
+}
+
+#[test]
+fn concurrent_writers_do_not_share_staging_files() {
+    let d = tmp("parallel-writers");
+    let p = d.join("output");
+    let mut handles = Vec::new();
+    for i in 1..=6u8 {
+        let p = p.clone();
+        handles.push(std::thread::spawn(move || {
+            let bytes = vec![i; 16 * 1024];
+            for _ in 0..24 { write_atomic(&p, &bytes).unwrap(); }
+        }));
+    }
+    for h in handles { h.join().unwrap(); }
+    let bytes = std::fs::read(&p).unwrap();
+    assert_eq!(bytes.len(), 16 * 1024);
+    assert!(bytes.iter().all(|b| *b == bytes[0]), "one complete writer's payload");
+}
+
+#[test]
+fn concurrent_memo_puts_publish_one_complete_entry() {
+    let d = tmp("parallel-memo");
+    let memo = std::sync::Arc::new(Memo::open(&d, config().digest()).unwrap());
+    let barrier = std::sync::Arc::new(std::sync::Barrier::new(6));
+    let key = [4u8; 32];
+    let mut handles = Vec::new();
+    for i in 0..6u8 {
+        let (memo, barrier) = (memo.clone(), barrier.clone());
+        handles.push(std::thread::spawn(move || {
+            let entry = Entry { out0: vec![i + 1; 4096], out1: None, chunks: vec![] };
+            barrier.wait();
+            memo.put(Kind::Reduce, &key, &entry).unwrap();
+        }));
+    }
+    for h in handles { h.join().unwrap(); }
+    let e = memo.get(Kind::Reduce, &key).unwrap();
+    assert_eq!(e.out0.len(), 4096);
+    assert!(e.out0.iter().all(|b| *b == e.out0[0]));
+    assert_eq!(Memo::count(&d, Kind::Reduce), 1);
+}
+
+#[test]
+fn memo_manifest_rejects_corruption_and_replaces_bad_entries() {
+    let d = tmp("corrupt-memo");
+    let memo = Memo::open(&d, config().digest()).unwrap();
+    let key = [9u8; 32];
+    let entry = Entry { out0: vec![3; 24], out1: None, chunks: vec![] };
+    memo.put(Kind::Reduce, &key, &entry).unwrap();
+    let p = d.join("memo/reduce").join(hex::encode(key)).join("out0");
+    std::fs::write(&p, b"bad data").unwrap();
+    assert!(memo.get(Kind::Reduce, &key).is_none());
+    memo.put(Kind::Reduce, &key, &entry).unwrap();
+    assert_eq!(memo.get(Kind::Reduce, &key).unwrap(), entry);
+}
+
+#[test]
+fn replay_rebinds_chunk_ids_and_preserves_duplicate_slices() {
+    let mut map = std::collections::HashMap::new();
+    map.insert(
+        SyscallCode::SHA_EXTEND,
+        vec![
+            PrecompileArtifactSlice { artifact: Artifact::from("old".to_string()), start_idx: 0, end_idx: 2 },
+            PrecompileArtifactSlice { artifact: Artifact::from("old".to_string()), start_idx: 2, end_idx: 3 },
+        ],
+    );
+    let bytes = bincode::serialize(&DeferredEvents(map.into_iter().collect())).unwrap();
+    let (rebuilt, chunks) = rebind_deferred_chunks(&bytes, vec![("old".into(), b"content".to_vec())],
+        || Ok("new-unique-id".into())).unwrap();
+    let events: DeferredEvents = bincode::deserialize(&rebuilt).unwrap();
+    assert_eq!(chunks, vec![("new-unique-id".to_string(), b"content".to_vec())]);
+    assert!(events.0.values().flatten().all(|s| s.artifact.id() == "new-unique-id"));
+    assert!(rebind_deferred_chunks(&bytes, vec![], || Ok("fresh".into())).is_err());
+    assert!(rebind_deferred_chunks(&bytes, vec![("unrelated".into(), vec![1])],
+        || Ok("fresh".into())).is_err());
+}
+
+#[tokio::test]
+async fn sweep_and_delete_remain_safe_under_concurrency() {
+    let d = tmp("sweep-race");
+    let s = DiskArtifactClient::open(&d, ProofArtifacts::default()).unwrap();
+    let token = s.task_started();
+    for n in 0..16 {
+        let id = Artifact::from(format!("chunk-{n}"));
+        s.upload_raw(&id, U, vec![n as u8; 128]).await.unwrap();
+        let path = d.join("live").join(hex::encode(&sha2::Sha256::digest(id.id().as_bytes())[..20]));
+        let old = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+        std::fs::File::options().write(true).open(&path).unwrap().set_modified(old).unwrap();
+        let a = s.clone();
+        let b = s.clone();
+        tokio::join!(
+            async move { a.delete(&id, U).await.unwrap(); },
+            async move {
+                for _ in 0..8 {
+                    b.sweep_now(std::time::Duration::ZERO);
+                    tokio::task::yield_now().await;
+                }
+            },
+        );
+        assert_eq!(s.read_live_or_trash(&format!("chunk-{n}")).await.unwrap(), vec![n as u8; 128]);
+    }
+    s.task_finished(token);
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    s.sweep_now(std::time::Duration::ZERO);
+    assert!(s.read_live_or_trash("chunk-0").await.is_err());
 }

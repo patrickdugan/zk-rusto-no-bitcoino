@@ -2,9 +2,9 @@ name: Nova BitVM3 kernels and native reference
 on:
   push:
     branches: ['main', 'feat/nova-bitvm3-*']
-    paths: ['src/nova.rs', 'src/nova/**', 'src/lib.rs', 'integrations/bitvm3-nova/**', 'docs/nova-bitvm3*', 'Cargo.toml', 'build.rs', '.github/workflows/bitvm3-nova.yml']
+    paths: ['src/nova.rs', 'src/nova/**', 'src/lib.rs', 'integrations/bitvm3-nova/**', '!integrations/bitvm3-nova/prover/**', '!integrations/bitvm3-nova/prover-gpu/**', 'docs/nova-bitvm3*', 'Cargo.toml', 'build.rs', '.github/workflows/bitvm3-nova.yml']
   pull_request:
-    paths: ['src/nova.rs', 'src/nova/**', 'src/lib.rs', 'integrations/bitvm3-nova/**', 'Cargo.toml', 'build.rs', '.github/workflows/bitvm3-nova.yml']
+    paths: ['src/nova.rs', 'src/nova/**', 'src/lib.rs', 'integrations/bitvm3-nova/**', '!integrations/bitvm3-nova/prover/**', '!integrations/bitvm3-nova/prover-gpu/**', 'Cargo.toml', 'build.rs', '.github/workflows/bitvm3-nova.yml']
   workflow_dispatch:
 permissions:
   contents: read

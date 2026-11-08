@@ -12,7 +12,7 @@
 //! programs need.
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{ensure, Context, Result};
 use nb3_prover::backend::Backend;
 use sp1_core_executor::SP1CoreOpts;
 use sp1_core_machine::riscv::RiscvAir;
@@ -52,8 +52,24 @@ impl Backend for Cuda {
     ) -> Result<SP1WorkerBuilder<SP1CudaProverComponents>> {
         let (free, total) = cuda_memory_info()?;
         tracing::info!("GPU memory: {} MiB free of {} MiB", free >> 20, total >> 20);
+        let (free, total) = (free as u64, total as u64);
+        ensure!(permits > 0, "--permits must be positive");
+        ensure!((1..=4).contains(&self.trace_buffers), "--trace-buffers must be between 1 and 4");
+        let base = usize::try_from(opts.sharding_threshold.element_threshold).context("element threshold exceeds usize")?;
+        ensure!(base > 0, "--element-threshold must be positive");
+        let stack = 1usize.checked_shl(CORE_LOG_STACKING_HEIGHT as u32).context("stacking height overflow")?;
+        let core_elements = base.checked_add(stack).context("core trace allocation overflow")?;
+        // Lower bound only: FRI, recursion, CUDA graphs and other buffers also consume VRAM.
+        let min_trace_bytes = (core_elements as u64)
+            .checked_mul(std::mem::size_of::<SP1Field>() as u64)
+            .context("core trace byte count overflow")?;
+        let reserve = (total / 4).min(512 * 1024 * 1024);
+        ensure!(free > reserve && min_trace_bytes <= free - reserve,
+            "core trace alone needs {} MiB with {} MiB free; reduce --element-threshold or free GPU memory",
+            min_trace_bytes >> 20, free >> 20);
+        tracing::info!("core trace {} MiB minimum, GPU reserve {} MiB; this does not bound peak usage",
+            min_trace_bytes >> 20, reserve >> 20);
         let permits = ProverSemaphore::new(permits);
-        let core_elements = opts.sharding_threshold.element_threshold as usize + (1 << CORE_LOG_STACKING_HEIGHT);
         let s = &self.scope;
         let core_verifier = SP1CudaProverComponents::core_verifier(machine.clone());
         let core = new_cuda_prover(
