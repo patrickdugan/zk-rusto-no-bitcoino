@@ -1,0 +1,352 @@
+{
+  "all_checks_pass": true,
+  "bitcoind": "Bitcoin Core RPC client version v31.1.0",
+  "bond_sats": 200000,
+  "chain": "regtest",
+  "checks": [
+    {
+      "actual": "rejected: error code: -26\r\nerror message:\r\nnon-BIP68-final",
+      "check": "unchallenged payout before D1",
+      "detail": {
+        "blocks_since_claim": 1,
+        "csv": 6
+      },
+      "expected": "rejected",
+      "pass": true
+    },
+    {
+      "actual": "accepted",
+      "check": "unchallenged payout at D1",
+      "detail": {
+        "csv": 6
+      },
+      "expected": "accepted",
+      "pass": true
+    },
+    {
+      "actual": "accepted",
+      "check": "challenge (row 2, honest claim)",
+      "detail": {},
+      "expected": "accepted",
+      "pass": true
+    },
+    {
+      "actual": "accepted",
+      "check": "response (honest, row 2)",
+      "detail": {
+        "payload_bytes": 2044
+      },
+      "expected": "accepted",
+      "pass": true
+    },
+    {
+      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation), input 0 of f1050999531332c9c19015694d7ad5da0925fd034fddf40658bd74ed42bc5505 (wtxid 4c9aa2e3913cf10d4f83bf1fd7d9ab24d991014310f492191d0d8db023fa4e04), spending 149a927b9e208c135bc5e2e4e899258da171ded8908106e7a5928c9741c697a3:0",
+      "check": "disprove with the label an honest response yields",
+      "detail": {
+        "ciphertexts": 2683971,
+        "evaluator_got": "accept label",
+        "garble_and_evaluate_seconds": 1.4482987,
+        "labels_match_committed": true
+      },
+      "expected": "rejected",
+      "pass": true
+    },
+    {
+      "actual": "rejected: error code: -26\r\nerror message:\r\nnon-BIP68-final",
+      "check": "operator payout before D3",
+      "detail": {},
+      "expected": "rejected",
+      "pass": true
+    },
+    {
+      "actual": "accepted",
+      "check": "operator payout at D3",
+      "detail": {
+        "csv": 6
+      },
+      "expected": "accepted",
+      "pass": true
+    },
+    {
+      "actual": "accepted",
+      "check": "challenge (dishonest claim, located row)",
+      "detail": {
+        "located": "Some(Row { row: 3 })"
+      },
+      "expected": "accepted",
+      "pass": true
+    },
+    {
+      "actual": "accepted",
+      "check": "response (dishonest claim)",
+      "detail": {
+        "payload_bytes": 2044
+      },
+      "expected": "accepted",
+      "pass": true
+    },
+    {
+      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of 7a0c8d4bbf3db7dab1cbeb39296eb835460d6cc9329267415ab64707ec11b263 (wtxid 28445825b9ad770dc7d624a79e310d1a82509c7321efd2eaa2c74413a161f86c), spending eb008adf6101a2c17cbe466c0cbf298fdd26123dc862d1bf8d60143ce2e10cef:0",
+      "check": "disprove signed by the operator's key",
+      "detail": {},
+      "expected": "rejected",
+      "pass": true
+    },
+    {
+      "actual": "accepted",
+      "check": "disprove with the refute label",
+      "detail": {
+        "evaluator_got": "refute label",
+        "labels_match_committed": true
+      },
+      "expected": "accepted",
+      "pass": true
+    },
+    {
+      "actual": "rejected: error code: -25\r\nerror message:\r\nbad-txns-inputs-missingorspent",
+      "check": "operator payout after a confirmed disprove (output already spent)",
+      "detail": {},
+      "expected": "rejected",
+      "pass": true
+    },
+    {
+      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of ab54b288ae95302c499b8e0f55a73294836575dc0ee433e9cda2311a87af9f52 (wtxid 95443551bceb37ab08c6aaf0d7a089abfb40ed513b8214fd8e238c8a3d4d3e57), spending c654af6969d125cf53c2b95551938690a1d87ec657ea03a7f3db5d8b8a8095e1:1",
+      "check": "challenge with a corrupted challenger signature",
+      "detail": {},
+      "expected": "rejected",
+      "pass": true
+    },
+    {
+      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of ab54b288ae95302c499b8e0f55a73294836575dc0ee433e9cda2311a87af9f52 (wtxid adc0b7d2e7100c6eb9b19df15840b5f5ae9dcd0875920ef65ac53cd4688eeaa6), spending c654af6969d125cf53c2b95551938690a1d87ec657ea03a7f3db5d8b8a8095e1:1",
+      "check": "operator pre-signature of another row's leaf",
+      "detail": {},
+      "expected": "rejected",
+      "pass": true
+    },
+    {
+      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of 4f6d5030df9e0c9dcb55b3c9d476545a5769f8829d4b85963cc38f2fb9862937 (wtxid e5f8ca80d21f7e0bfcc7451c70a27d8cf634bb30472556b904b5fd8769398223), spending c654af6969d125cf53c2b95551938690a1d87ec657ea03a7f3db5d8b8a8095e1:1",
+      "check": "challenge pre-signed for another claim replayed on this claim's output",
+      "detail": {},
+      "expected": "rejected",
+      "pass": true
+    },
+    {
+      "actual": "accepted",
+      "check": "challenge (row 1, operator will stay silent)",
+      "detail": {},
+      "expected": "accepted",
+      "pass": true
+    },
+    {
+      "actual": "rejected: error code: -26\r\nerror message:\r\nnon-BIP68-final",
+      "check": "withheld-response claim before D2",
+      "detail": {
+        "csv": 6
+      },
+      "expected": "rejected",
+      "pass": true
+    },
+    {
+      "actual": "accepted",
+      "check": "withheld-response claim at D2",
+      "detail": {
+        "challenge_confirmed_height": 123,
+        "csv": 6,
+        "spend_height": 129
+      },
+      "expected": "accepted",
+      "pass": true
+    }
+  ],
+  "deadlines_blocks": {
+    "operator_payout_after_response_D3": 6,
+    "response_D2": 6,
+    "unchallenged_D1": 6
+  },
+  "enforced_by_bitcoin": [
+    "only the pinned challenger, with the operator's pre-signature, can open a challenge, and only through the leaf of the challenged row",
+    "the challenge id is fixed by the pre-signed OP_RETURN output",
+    "a missing response lets the challenger take the bond after D2 blocks (BIP68 relative locktime)",
+    "only the preimage of SHA256(refute label) of that row's garbled circuit, plus the challenger's signature, spends the disprove leaf",
+    "an unrefuted response pays the operator after D3 blocks"
+  ],
+  "fee_rate_sat_per_vb": 2,
+  "network_note": "regtest only: the harness refuses any node whose getblockchaininfo.chain is not regtest; keys are derived from fixed test labels",
+  "publication": {
+    "flatmerkle-full-matrix-stream-OP_SHA256": {
+      "consensus": "mined by generateblock (consensus-valid)",
+      "measure": {
+        "fee_sats": 468,
+        "txid": "1bf87560d158ef68a03882f5d9e5a8f157b4440bc94d1c0059213006560c7a7f",
+        "vsize": 234,
+        "weight": 935,
+        "witness_items": 4
+      },
+      "payload_bytes": 384,
+      "policy": "error code: -26\r error message:\r bad-witness-nonstandard",
+      "stack_items": 1
+    },
+    "flatmerkle-row-response": {
+      "consensus": "relayed",
+      "measure": {
+        "fee_sats": 1298,
+        "txid": "710f643dc7a0663cd8bc0047ca2058dcf8dfb82274a26c18ff6928fae929e2ab",
+        "vsize": 649,
+        "weight": 2596,
+        "witness_items": 29
+      },
+      "payload_bytes": 2044,
+      "policy": "standard",
+      "stack_items": 26
+    },
+    "flatmerkle_payload_bytes": 2044,
+    "merkle-row-response": {
+      "consensus": "relayed",
+      "measure": {
+        "fee_sats": 1152,
+        "txid": "b51852d84ca159a8502e0fe98d86638f9e734a2feee1b53d32e5ba299cf5bff6",
+        "vsize": 576,
+        "weight": 2302,
+        "witness_items": 25
+      },
+      "payload_bytes": 1756,
+      "policy": "standard",
+      "stack_items": 22
+    },
+    "merkle_payload_bytes": 1756,
+    "row": 3
+  },
+  "transactions": [
+    {
+      "measure": {
+        "fee_sats": 396,
+        "op_return_claim_id": "ee4ced6e866224e2a822e2f2478b14af3f7c9d84b93373563158f7638bc6acac",
+        "taptree_leaves": 5,
+        "txid": "a1e20e5efdb6982b92eb5e3ab045ff2763ace8a34a4c70fa9460ddaba2c84d78",
+        "vsize": 197,
+        "weight": 788
+      },
+      "tx": "claim/honest"
+    },
+    {
+      "measure": {
+        "fee_sats": 396,
+        "op_return_claim_id": "b3da487e61f0ff46a108338e194f4ebfcec7b4bc108b753ee1b3187fa311feed",
+        "taptree_leaves": 5,
+        "txid": "d2a305ca8fde4d834e348bc832c9e44f1aca92a18d718aea572fd9341f1b3de8",
+        "vsize": 197,
+        "weight": 788
+      },
+      "tx": "claim/dishonest"
+    },
+    {
+      "measure": {
+        "fee_sats": 396,
+        "op_return_claim_id": "f3911bce3bd75c4602df169d132e40604e73207a96f351e655bafbf10328d7c4",
+        "taptree_leaves": 5,
+        "txid": "c654af6969d125cf53c2b95551938690a1d87ec657ea03a7f3db5d8b8a8095e1",
+        "vsize": 197,
+        "weight": 788
+      },
+      "tx": "claim/withheld"
+    },
+    {
+      "measure": {
+        "fee_sats": 396,
+        "op_return_claim_id": "be820a62791b35b82c9a0f04b91a57d938ec9c24022357b9e930732501c08ca7",
+        "taptree_leaves": 5,
+        "txid": "873b1b4731efde405b1e85abadfb3f298133881ed8935b4fdf76d2ba939c1180",
+        "vsize": 197,
+        "weight": 788
+      },
+      "tx": "claim/unchallenged"
+    },
+    {
+      "measure": {
+        "fee_sats": 290,
+        "txid": "56786a01765dd7dea764eb85fab626763a3be31b8796c561363281348fff2aa0",
+        "vsize": 145,
+        "weight": 580,
+        "witness_items": 3
+      },
+      "tx": "unchallenged-payout"
+    },
+    {
+      "measure": {
+        "fee_sats": 426,
+        "txid": "7877a21e977129beff836de8aea39455efbe0e3b9290215648d80edf0de0ad42",
+        "vsize": 213,
+        "weight": 850,
+        "witness_items": 4
+      },
+      "tx": "challenge/honest-row2"
+    },
+    {
+      "measure": {
+        "fee_sats": 1364,
+        "txid": "149a927b9e208c135bc5e2e4e899258da171ded8908106e7a5928c9741c697a3",
+        "vsize": 682,
+        "weight": 2727,
+        "witness_items": 30
+      },
+      "payload_bytes": 2044,
+      "tx": "response/honest-row2"
+    },
+    {
+      "measure": {
+        "fee_sats": 274,
+        "txid": "5b8fcac2101a7ba6e892f01b3d5bda08f02addd37027eef187bde38252e01ecf",
+        "vsize": 137,
+        "weight": 548,
+        "witness_items": 3
+      },
+      "tx": "operator-payout/honest"
+    },
+    {
+      "measure": {
+        "fee_sats": 442,
+        "txid": "e42047dcefa51432c7fd4c6020c2434c16ffa02c15b8dea2551af4210d3acbab",
+        "vsize": 221,
+        "weight": 882,
+        "witness_items": 4
+      },
+      "tx": "challenge/dishonest"
+    },
+    {
+      "measure": {
+        "fee_sats": 1364,
+        "txid": "eb008adf6101a2c17cbe466c0cbf298fdd26123dc862d1bf8d60143ce2e10cef",
+        "vsize": 682,
+        "weight": 2727,
+        "witness_items": 30
+      },
+      "tx": "response/dishonest"
+    },
+    {
+      "measure": {
+        "fee_sats": 300,
+        "txid": "7a0c8d4bbf3db7dab1cbeb39296eb835460d6cc9329267415ab64707ec11b263",
+        "vsize": 150,
+        "weight": 597,
+        "witness_items": 4
+      },
+      "tx": "disprove/dishonest"
+    },
+    {
+      "measure": {
+        "fee_sats": 274,
+        "txid": "a7d245c5ab48c1460d97b7007935655e1fb4a85021169946f15fbce3bf17bb8a",
+        "vsize": 137,
+        "weight": 548,
+        "witness_items": 3
+      },
+      "tx": "withheld-payout"
+    }
+  ],
+  "trust": [
+    "T1 garbling: the operator garbles the row circuit; nothing here checks the tables were generated for the pinned circuit (BitVM3 needs cut-and-choose or a proof of correct garbling)",
+    "T2 labels: the operator hands the challenger the input labels of the on-chain claim, challenge and response bits off-chain; Bitcoin does not verify them. Any label set that yields 'accept' must encode an authenticated response (openings are binding), but withheld or garbage labels after a confirmed response leave the challenger without a refute label and the operator paid after D3",
+    "T3 pre-signed graph: the operator's pre-signatures stand in for a covenant; an operator that refuses to pre-sign cannot be challenged, so the graph must be signed before the bond is locked",
+    "the challenger's off-chain search (locate_fault) uses the published claim data, which the operator must make available (data availability is not enforced)"
+  ]
+}

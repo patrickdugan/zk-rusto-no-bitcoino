@@ -1,0 +1,286 @@
+{
+  "baseline": {
+    "nonfree_gates": 785442492,
+    "source": "integrations/bitvm3-nova/m14/README.md (garbled-snark-verifier m14/e2e, commit f6ec7ab)",
+    "what": "complete final verifier of the Nova proof (SP1 wrap, BLAKE3 transcript v2) as one garbled circuit"
+  },
+  "garbling_scheme": "garbled-snark-verifier 8fa7efe GarbleMode with AesCcrGateHasher (free-XOR, one 16-byte ciphertext per non-free gate)",
+  "process_peak_rss_bytes": 2363539456,
+  "real_headerstep_primary": {
+    "counts": [
+      {
+        "circuit": "row",
+        "exact": true,
+        "execute_seconds": 1.2309861,
+        "input_bytes": 4205,
+        "k": [
+          1,
+          1,
+          1
+        ],
+        "nonfree_gates": 4958395,
+        "slots": 3
+      },
+      {
+        "circuit": "row",
+        "exact": true,
+        "execute_seconds": 1.4435777,
+        "input_bytes": 4917,
+        "k": [
+          2,
+          1,
+          1
+        ],
+        "nonfree_gates": 5851931,
+        "slots": 4
+      },
+      {
+        "circuit": "row",
+        "exact": true,
+        "execute_seconds": 7.945432,
+        "input_bytes": 24853,
+        "k": [
+          16,
+          8,
+          8
+        ],
+        "nonfree_gates": 31180124,
+        "slots": 32
+      },
+      {
+        "circuit": "row",
+        "exact": true,
+        "execute_seconds": 13.060934,
+        "input_bytes": 41941,
+        "k": [
+          32,
+          16,
+          8
+        ],
+        "nonfree_gates": 52894047,
+        "slots": 56
+      },
+      {
+        "circuit": "row",
+        "exact": true,
+        "execute_seconds": 19.3761321,
+        "input_bytes": 64725,
+        "k": [
+          64,
+          16,
+          8
+        ],
+        "nonfree_gates": 81836575,
+        "slots": 88
+      },
+      {
+        "circuit": "row",
+        "exact": false,
+        "k": [
+          929,
+          84,
+          256
+        ],
+        "model": {
+          "fit_points_slots": [
+            32.0,
+            56.0,
+            88.0
+          ],
+          "fixed": 2235317.0,
+          "max_abs_residual_on_exact_points": 2658.864864870906,
+          "per_slot": 904573.0
+        },
+        "nonfree_gates": 1150138072.0,
+        "slots": 1269.0
+      },
+      {
+        "circuit": "row (p99 width)",
+        "exact": false,
+        "nonfree_gates": 50177670.0,
+        "slots": 53.0
+      },
+      {
+        "circuit": "step-W",
+        "exact": true,
+        "execute_seconds": 1.611518,
+        "input_bytes": 4316,
+        "nonfree_gates": 7285647,
+        "trace_leaves": 67108864
+      },
+      {
+        "circuit": "step-E",
+        "exact": true,
+        "execute_seconds": 1.6074571,
+        "input_bytes": 4316,
+        "nonfree_gates": 7285647,
+        "trace_leaves": 67108864
+      }
+    ],
+    "k_max": [
+      929,
+      84,
+      256
+    ],
+    "num_cons": 131072,
+    "row_total_nnz": {
+      "max": 1169,
+      "p50": 3,
+      "p99": 53,
+      "p999": 169
+    },
+    "source": "C:\\Users\\patri\\OneDrive\\Documents\\GitHub\\rbzk-flat\\integrations\\bitvm3-nova\\flatcheck-lab\\results\\fc03_realshape.json"
+  },
+  "toy": [
+    {
+      "case": "pasta/pallas-engine/scalar-Fq/honest/row3",
+      "ciphertext_bytes": 42943536,
+      "ciphertexts": 2683971,
+      "circuit": "row/honest",
+      "evaluator_got": "accept label",
+      "execute_seconds": 0.4475566,
+      "field": "pasta/pallas-engine/scalar-Fq",
+      "garble_and_evaluate_seconds": 0.7470552,
+      "input_bits": 21864,
+      "input_label_bytes": 349824,
+      "nonfree_gates_execute": 2683971,
+      "process_peak_rss_bytes_so_far": 149659648,
+      "total_gates": 12908505
+    },
+    {
+      "case": "pasta/vesta-engine/scalar-Fp/honest/row3",
+      "ciphertext_bytes": 42893936,
+      "ciphertexts": 2680871,
+      "circuit": "row/honest",
+      "evaluator_got": "accept label",
+      "execute_seconds": 0.4723025,
+      "field": "pasta/vesta-engine/scalar-Fp",
+      "garble_and_evaluate_seconds": 0.9400548,
+      "input_bits": 21864,
+      "input_label_bytes": 349824,
+      "nonfree_gates_execute": 2680882,
+      "process_peak_rss_bytes_so_far": 152064000,
+      "total_gates": 12893037
+    },
+    {
+      "case": "pasta/pallas-engine/scalar-Fq/W2-changed-row3",
+      "ciphertext_bytes": 42943536,
+      "ciphertexts": 2683971,
+      "circuit": "row/refuted",
+      "evaluator_got": "refute label",
+      "execute_seconds": 0.6255952,
+      "field": "pasta/pallas-engine/scalar-Fq",
+      "garble_and_evaluate_seconds": 0.9475176,
+      "input_bits": 21864,
+      "input_label_bytes": 349824,
+      "nonfree_gates_execute": 2683971,
+      "process_peak_rss_bytes_so_far": 152244224,
+      "total_gates": 12908505
+    },
+    {
+      "case": "pasta/vesta-engine/scalar-Fp/W2-changed-row3",
+      "ciphertext_bytes": 42893936,
+      "ciphertexts": 2680871,
+      "circuit": "row/refuted",
+      "evaluator_got": "refute label",
+      "execute_seconds": 0.5642249,
+      "field": "pasta/vesta-engine/scalar-Fp",
+      "garble_and_evaluate_seconds": 0.9527247,
+      "input_bits": 21864,
+      "input_label_bytes": 349824,
+      "nonfree_gates_execute": 2680882,
+      "process_peak_rss_bytes_so_far": 152461312,
+      "total_gates": 12893037
+    },
+    {
+      "case": "pasta/pallas-engine/scalar-Fq/honest/binding-step-W-255",
+      "ciphertext_bytes": 74668416,
+      "ciphertexts": 4666776,
+      "circuit": "step-W/honest",
+      "evaluator_got": "accept label",
+      "execute_seconds": 0.9287961,
+      "field": "pasta/pallas-engine/scalar-Fq",
+      "garble_and_evaluate_seconds": 1.6212655,
+      "input_bits": 19168,
+      "input_label_bytes": 306688,
+      "nonfree_gates_execute": 4666812,
+      "process_peak_rss_bytes_so_far": 172359680,
+      "total_gates": 21033105
+    },
+    {
+      "case": "pasta/vesta-engine/scalar-Fp/honest/binding-step-W-255",
+      "ciphertext_bytes": 74648256,
+      "ciphertexts": 4665516,
+      "circuit": "step-W/honest",
+      "evaluator_got": "accept label",
+      "execute_seconds": 0.9088186,
+      "field": "pasta/vesta-engine/scalar-Fp",
+      "garble_and_evaluate_seconds": 1.6011997,
+      "input_bits": 19168,
+      "input_label_bytes": 306688,
+      "nonfree_gates_execute": 4665516,
+      "process_peak_rss_bytes_so_far": 172359680,
+      "total_gates": 21026790
+    },
+    {
+      "case": "pasta/pallas-engine/scalar-Fq/forged-WE-end-patched/last-step-W",
+      "ciphertext_bytes": 74668416,
+      "ciphertexts": 4666776,
+      "circuit": "step-W/refuted",
+      "evaluator_got": "refute label",
+      "execute_seconds": 0.9256115,
+      "field": "pasta/pallas-engine/scalar-Fq",
+      "garble_and_evaluate_seconds": 1.5560429,
+      "input_bits": 19168,
+      "input_label_bytes": 306688,
+      "nonfree_gates_execute": 4666812,
+      "process_peak_rss_bytes_so_far": 172359680,
+      "total_gates": 21033105
+    },
+    {
+      "case": "pasta/vesta-engine/scalar-Fp/forged-WE-end-patched/last-step-W",
+      "ciphertext_bytes": 74648256,
+      "ciphertexts": 4665516,
+      "circuit": "step-W/refuted",
+      "evaluator_got": "refute label",
+      "execute_seconds": 0.8880198,
+      "field": "pasta/vesta-engine/scalar-Fp",
+      "garble_and_evaluate_seconds": 1.7644790000000001,
+      "input_bits": 19168,
+      "input_label_bytes": 306688,
+      "nonfree_gates_execute": 4665516,
+      "process_peak_rss_bytes_so_far": 172359680,
+      "total_gates": 21026790
+    },
+    {
+      "case": "pasta/pallas-engine/scalar-Fq/honest/binding-step-E-700",
+      "ciphertext_bytes": 74668416,
+      "ciphertexts": 4666776,
+      "circuit": "step-E/honest",
+      "evaluator_got": "accept label",
+      "execute_seconds": 1.0074919,
+      "field": "pasta/pallas-engine/scalar-Fq",
+      "garble_and_evaluate_seconds": 1.7496217,
+      "input_bits": 19168,
+      "input_label_bytes": 306688,
+      "nonfree_gates_execute": 4666812,
+      "process_peak_rss_bytes_so_far": 173191168,
+      "total_gates": 21033093
+    },
+    {
+      "case": "pasta/vesta-engine/scalar-Fp/honest/binding-step-E-700",
+      "ciphertext_bytes": 74648256,
+      "ciphertexts": 4665516,
+      "circuit": "step-E/honest",
+      "evaluator_got": "accept label",
+      "execute_seconds": 1.0116669,
+      "field": "pasta/vesta-engine/scalar-Fp",
+      "garble_and_evaluate_seconds": 1.6712639,
+      "input_bits": 19168,
+      "input_label_bytes": 306688,
+      "nonfree_gates_execute": 4665516,
+      "process_peak_rss_bytes_so_far": 174542848,
+      "total_gates": 21026778
+    }
+  ]
+}

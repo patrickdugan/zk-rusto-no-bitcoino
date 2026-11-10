@@ -1,0 +1,20 @@
+[package]
+name = "fc03-realshape"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+description = "FC03: per-row non-zero statistics of the real Nova HeaderStep primary and secondary shapes (testnet4, k = 1), read from the pinned verifier key through M12's mirror"
+
+[workspace]
+
+[dependencies]
+nova-bitvm3-m12 = { path = "../../../m12/native" }
+nova-header-chain = { git = "https://github.com/patrickdugan/zk-rusto-no-bitcoino", rev = "de607d3db17d400dd6c2923d357f1d4a7bf233c7" }
+nova-snark = "=0.76.0"
+serde_json = "1"
+sha2 = "0.10"
+hex = "0.4"
+
+[profile.release]
+debug = false
