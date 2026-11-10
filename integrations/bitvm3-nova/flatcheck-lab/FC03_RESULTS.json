@@ -1,0 +1,2945 @@
+{
+  "format": "flatcheck-fc03-results/v1",
+  "repository": "patrickdugan/zk-rusto-no-bitcoino",
+  "branch": "feat/flatmerkle-bitvm3-checks",
+  "pull_request": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/pull/23",
+  "base_commit": "5e9095d6a8fd21a6ad76088b556bf7425b8f5a0e",
+  "tested_commit": "e3ca206aabe377f3a2ff0fe15aebc3ba333e3219",
+  "host": "Windows 11 laptop (15.5 GB RAM), Rust 1.90.0 x86_64-pc-windows-msvc, Python 3.12.10, Bitcoin Core 31.1",
+  "pins": {
+    "nova-snark": "0.76.0",
+    "halo2curves": "0.9.0",
+    "bitcoin (rust)": "0.32.102",
+    "secp256k1": "0.29.1",
+    "garbled-snark-verifier": "git rev 8fa7efe495ea1bd4675f9c8bbd29f0b6e8bee051",
+    "m12-gates": "path ../../m12/gates (same repository)",
+    "nova-header-chain (realshape only)": "git rev de607d3db17d400dd6c2923d357f1d4a7bf233c7",
+    "testnet4 k=1 verifier key sha256": "6894f4903a9ff9713111bb1076b61663ac3592ad3d51b697d58125403fc5c12a",
+    "bitcoin core": "31.1; CI tarball bitcoin-31.1-x86_64-linux-gnu.tar.gz sha256 b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e"
+  },
+  "fc02": {
+    "status": "not available on this machine; not applied, not reproduced",
+    "searched": [
+      "%USERPROFILE%\\Downloads",
+      "OneDrive",
+      "D:\\",
+      "WSL /root"
+    ],
+    "previously_reported_not_relied_on": {
+      "python_tests": 32,
+      "native_oracle_assignment_comparisons": 80,
+      "authenticated_local_check_comparisons": 2240
+    }
+  },
+  "tests": [
+    {
+      "suite": "cargo test --release (fc03 lib unit tests)",
+      "result": "pass",
+      "passed": 11,
+      "failed": 0
+    },
+    {
+      "suite": "cargo test --release --test native",
+      "result": "pass",
+      "passed": 5,
+      "failed": 0,
+      "evidence": {
+        "adversarial_cases": 172,
+        "native_matches_expected": 172,
+        "honest_local_checks_exhaustive": 5128,
+        "vectors_sha256": "dafaacd61fbb7e98f8228be829d279f241fb118d872e5d4da5c468b14272366b"
+      }
+    },
+    {
+      "suite": "cargo test --release --test circuit",
+      "result": "pass",
+      "passed": 4,
+      "failed": 0,
+      "evidence": {
+        "circuit_vs_native_compared": 120,
+        "mismatches": 0,
+        "garbled_cases": 8,
+        "garbled_label_correct": 8
+      }
+    },
+    {
+      "suite": "python -m unittest discover (flatcheck-lab)",
+      "result": "pass",
+      "passed": 9,
+      "failed": 0,
+      "evidence": {
+        "vectors": 172,
+        "compared": 160,
+        "matched": 160,
+        "skipped_poseidon": 12
+      }
+    },
+    {
+      "suite": "fc03_case_table.py (per-case expected/native/circuit/python)",
+      "result": "pass",
+      "disagreements": 0
+    },
+    {
+      "suite": "m12/gates cargo test --release --locked (existing regression)",
+      "result": "pass",
+      "passed": 6,
+      "failed": 0
+    },
+    {
+      "suite": "fc03 regtest (Bitcoin Core 31.1)",
+      "result": "pass",
+      "checks": 18,
+      "passed": 18
+    },
+    {
+      "suite": "CI workflow flatmerkle-bitvm3-reference.yml",
+      "result": "not yet reported at the time of writing (pushed with this commit)"
+    }
+  ],
+  "adversarial_cases": [
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/row0",
+      "group": "honest",
+      "kind": "Row { row: 0 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/row1",
+      "group": "honest",
+      "kind": "Row { row: 1 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/row2",
+      "group": "honest",
+      "kind": "Row { row: 2 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/row3",
+      "group": "honest",
+      "kind": "Row { row: 3 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/claim-fold",
+      "group": "honest",
+      "kind": "Claim",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "skipped_poseidon",
+      "python_refutes": null
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-start-W",
+      "group": "honest",
+      "kind": "BindingStart { vec: W }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-end-W",
+      "group": "honest",
+      "kind": "BindingEnd { vec: W }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-W-0",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 0 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-W-1",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 1 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-W-254",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 254 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-W-255",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 255 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-W-256",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 256 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-W-700",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 700 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-W-1024",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 1024 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-W-1023",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 1023 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-W-1278",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 1278 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-W-1279",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 1279 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-start-E",
+      "group": "honest",
+      "kind": "BindingStart { vec: E }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-end-E",
+      "group": "honest",
+      "kind": "BindingEnd { vec: E }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-E-0",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 0 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-E-1",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 1 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-E-254",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 254 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-E-255",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 255 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-E-256",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 256 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-E-700",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 700 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-E-1024",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 1024 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-E-1023",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 1023 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-E-1278",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 1278 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/honest/binding-step-E-1279",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 1279 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/u-equals-modulus",
+      "group": "malformed-encoding",
+      "kind": "Row { row: 0 }",
+      "expected": "claim_invalid",
+      "expected_refutes": true,
+      "native": "claim_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "claim_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/x0-all-ones",
+      "group": "malformed-encoding",
+      "kind": "Row { row: 0 }",
+      "expected": "claim_invalid",
+      "expected_refutes": true,
+      "native": "claim_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "claim_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/committed-W1-non-canonical",
+      "group": "malformed-encoding",
+      "kind": "Row { row: 1 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/committed-E2-non-canonical",
+      "group": "malformed-encoding",
+      "kind": "Row { row: 2 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/row-record-coefficient-non-canonical",
+      "group": "malformed-encoding",
+      "kind": "Row { row: 2 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/trace-state-coordinate-non-canonical",
+      "group": "malformed-encoding",
+      "kind": "BindingStep { vec: W, step: 0 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/trace-infinity-flag-2",
+      "group": "malformed-encoding",
+      "kind": "BindingStart { vec: W }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/response-for-row2-to-row1",
+      "group": "wrong-row",
+      "kind": "Row { row: 1 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/row2-data-relabelled-row1",
+      "group": "wrong-row",
+      "kind": "Row { row: 1 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/row-out-of-range",
+      "group": "wrong-row",
+      "kind": "Row { row: 4 }",
+      "expected": "challenge_invalid",
+      "expected_refutes": false,
+      "native": "challenge_invalid",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "challenge_invalid",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/E-opening-of-another-row",
+      "group": "wrong-row",
+      "kind": "Row { row: 1 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/W-opening-at-wrong-column",
+      "group": "wrong-row",
+      "kind": "Row { row: 3 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/claim-field-byte-switched",
+      "group": "switched-field",
+      "kind": "Row { row: 0 }",
+      "expected": "claim_invalid",
+      "expected_refutes": true,
+      "native": "claim_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "claim_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/W-items-tagged-other-field",
+      "group": "switched-field",
+      "kind": "Row { row: 1 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/x0-plus-one/row0",
+      "group": "altered-public",
+      "kind": "Row { row: 0 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/x0-plus-one/claim-fold",
+      "group": "altered-public",
+      "kind": "Claim",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "skipped_poseidon",
+      "python_refutes": null
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/x0-plus-one/row3-does-not-read-x0",
+      "group": "altered-public",
+      "kind": "Row { row: 3 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/u-plus-one/row2",
+      "group": "altered-public",
+      "kind": "Row { row: 2 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/u-plus-one/claim-fold",
+      "group": "altered-public",
+      "kind": "Claim",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "skipped_poseidon",
+      "python_refutes": null
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/pp-digest/claim-fold",
+      "group": "altered-public",
+      "kind": "Claim",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/comm-T-shifted/claim-fold",
+      "group": "altered-public",
+      "kind": "Claim",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "skipped_poseidon",
+      "python_refutes": null
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/comm-W-shifted/claim-fold",
+      "group": "altered-public",
+      "kind": "Claim",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "skipped_poseidon",
+      "python_refutes": null
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/comm-W-shifted/binding-end",
+      "group": "altered-public",
+      "kind": "BindingEnd { vec: W }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/comm-W-off-curve/claim-fold",
+      "group": "altered-public",
+      "kind": "Claim",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/flipped-reveal-byte",
+      "group": "forged-opening",
+      "kind": "Row { row: 3 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/item-value-changed",
+      "group": "forged-opening",
+      "kind": "Row { row: 3 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/E-opening-from-W-tree",
+      "group": "forged-opening",
+      "kind": "Row { row: 1 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/trace-state-from-E-trace",
+      "group": "forged-opening",
+      "kind": "BindingStep { vec: W, step: 5 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/generator-substituted",
+      "group": "forged-opening",
+      "kind": "BindingStep { vec: W, step: 255 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/opening-from-another-commitment",
+      "group": "forged-opening",
+      "kind": "Row { row: 0 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/W0-read-twice-honest",
+      "group": "repeated-operand",
+      "kind": "Row { row: 3 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/W0-second-read-different-value",
+      "group": "repeated-operand",
+      "kind": "Row { row: 3 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/challenge-of-another-claim",
+      "group": "replay",
+      "kind": "Row { row: 0 }",
+      "expected": "challenge_invalid",
+      "expected_refutes": false,
+      "native": "challenge_invalid",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "challenge_invalid",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/challenge-other-contract",
+      "group": "replay",
+      "kind": "Row { row: 0 }",
+      "expected": "challenge_invalid",
+      "expected_refutes": false,
+      "native": "challenge_invalid",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "challenge_invalid",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/challenge-other-network",
+      "group": "replay",
+      "kind": "Row { row: 0 }",
+      "expected": "challenge_invalid",
+      "expected_refutes": false,
+      "native": "challenge_invalid",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "challenge_invalid",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/challenge-version-2",
+      "group": "replay",
+      "kind": "Row { row: 0 }",
+      "expected": "challenge_invalid",
+      "expected_refutes": false,
+      "native": "challenge_invalid",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "challenge_invalid",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/response-to-earlier-challenge",
+      "group": "replay",
+      "kind": "Row { row: 0 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/W2-changed-row3",
+      "group": "witness-substitution",
+      "kind": "Row { row: 3 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/E0-changed-row0",
+      "group": "witness-substitution",
+      "kind": "Row { row: 0 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/forged-WE/row0",
+      "group": "witness-substitution",
+      "kind": "Row { row: 0 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/forged-WE/row1",
+      "group": "witness-substitution",
+      "kind": "Row { row: 1 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/forged-WE/row2",
+      "group": "witness-substitution",
+      "kind": "Row { row: 2 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/forged-WE/row3",
+      "group": "witness-substitution",
+      "kind": "Row { row: 3 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/forged-WE/claim-fold",
+      "group": "witness-substitution",
+      "kind": "Claim",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "skipped_poseidon",
+      "python_refutes": null
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/forged-WE/binding-end-W",
+      "group": "witness-substitution",
+      "kind": "BindingEnd { vec: W }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/forged-WE/binding-end-E",
+      "group": "witness-substitution",
+      "kind": "BindingEnd { vec: E }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/forged-WE-end-patched/binding-end-W",
+      "group": "witness-substitution",
+      "kind": "BindingEnd { vec: W }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/forged-WE-end-patched/last-step-W",
+      "group": "witness-substitution",
+      "kind": "BindingStep { vec: W, step: 1279 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/forged-WE-nova-trace/binding-end-W",
+      "group": "witness-substitution",
+      "kind": "BindingEnd { vec: W }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/forged-WE-nova-trace/binding-end-E",
+      "group": "witness-substitution",
+      "kind": "BindingEnd { vec: E }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/forged-WE-nova-trace/first-wrong-W-step",
+      "group": "witness-substitution",
+      "kind": "BindingStep { vec: W, step: 256 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/row2-no-response",
+      "group": "withheld",
+      "kind": "Row { row: 2 }",
+      "expected": "response_missing",
+      "expected_refutes": true,
+      "native": "response_missing",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "response_missing",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/binding-step-no-response",
+      "group": "withheld",
+      "kind": "BindingStep { vec: E, step: 9 }",
+      "expected": "response_missing",
+      "expected_refutes": true,
+      "native": "response_missing",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "response_missing",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/acc0-not-identity",
+      "group": "binding-start",
+      "kind": "BindingStart { vec: W }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq/generator-1-offered-as-0",
+      "group": "binding-start",
+      "kind": "BindingStart { vec: E }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/row0",
+      "group": "honest",
+      "kind": "Row { row: 0 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/row1",
+      "group": "honest",
+      "kind": "Row { row: 1 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/row2",
+      "group": "honest",
+      "kind": "Row { row: 2 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/row3",
+      "group": "honest",
+      "kind": "Row { row: 3 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/claim-fold",
+      "group": "honest",
+      "kind": "Claim",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "skipped_poseidon",
+      "python_refutes": null
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-start-W",
+      "group": "honest",
+      "kind": "BindingStart { vec: W }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-end-W",
+      "group": "honest",
+      "kind": "BindingEnd { vec: W }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-W-0",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 0 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-W-1",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 1 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-W-254",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 254 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-W-255",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 255 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-W-256",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 256 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-W-700",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 700 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-W-1024",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 1024 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-W-1023",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 1023 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-W-1278",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 1278 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-W-1279",
+      "group": "honest",
+      "kind": "BindingStep { vec: W, step: 1279 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-start-E",
+      "group": "honest",
+      "kind": "BindingStart { vec: E }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-end-E",
+      "group": "honest",
+      "kind": "BindingEnd { vec: E }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-E-0",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 0 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-E-1",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 1 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-E-254",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 254 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-E-255",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 255 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-E-256",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 256 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-E-700",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 700 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-E-1024",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 1024 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-E-1023",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 1023 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-E-1278",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 1278 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/honest/binding-step-E-1279",
+      "group": "honest",
+      "kind": "BindingStep { vec: E, step: 1279 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/u-equals-modulus",
+      "group": "malformed-encoding",
+      "kind": "Row { row: 0 }",
+      "expected": "claim_invalid",
+      "expected_refutes": true,
+      "native": "claim_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "claim_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/x0-all-ones",
+      "group": "malformed-encoding",
+      "kind": "Row { row: 0 }",
+      "expected": "claim_invalid",
+      "expected_refutes": true,
+      "native": "claim_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "claim_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/committed-W1-non-canonical",
+      "group": "malformed-encoding",
+      "kind": "Row { row: 1 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/committed-E2-non-canonical",
+      "group": "malformed-encoding",
+      "kind": "Row { row: 2 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/row-record-coefficient-non-canonical",
+      "group": "malformed-encoding",
+      "kind": "Row { row: 2 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/trace-state-coordinate-non-canonical",
+      "group": "malformed-encoding",
+      "kind": "BindingStep { vec: W, step: 0 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/trace-infinity-flag-2",
+      "group": "malformed-encoding",
+      "kind": "BindingStart { vec: W }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/response-for-row2-to-row1",
+      "group": "wrong-row",
+      "kind": "Row { row: 1 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/row2-data-relabelled-row1",
+      "group": "wrong-row",
+      "kind": "Row { row: 1 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/row-out-of-range",
+      "group": "wrong-row",
+      "kind": "Row { row: 4 }",
+      "expected": "challenge_invalid",
+      "expected_refutes": false,
+      "native": "challenge_invalid",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "challenge_invalid",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/E-opening-of-another-row",
+      "group": "wrong-row",
+      "kind": "Row { row: 1 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/W-opening-at-wrong-column",
+      "group": "wrong-row",
+      "kind": "Row { row: 3 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/claim-field-byte-switched",
+      "group": "switched-field",
+      "kind": "Row { row: 0 }",
+      "expected": "claim_invalid",
+      "expected_refutes": true,
+      "native": "claim_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "claim_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/W-items-tagged-other-field",
+      "group": "switched-field",
+      "kind": "Row { row: 1 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/x0-plus-one/row0",
+      "group": "altered-public",
+      "kind": "Row { row: 0 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/x0-plus-one/claim-fold",
+      "group": "altered-public",
+      "kind": "Claim",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "skipped_poseidon",
+      "python_refutes": null
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/x0-plus-one/row3-does-not-read-x0",
+      "group": "altered-public",
+      "kind": "Row { row: 3 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/u-plus-one/row2",
+      "group": "altered-public",
+      "kind": "Row { row: 2 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/u-plus-one/claim-fold",
+      "group": "altered-public",
+      "kind": "Claim",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "skipped_poseidon",
+      "python_refutes": null
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/pp-digest/claim-fold",
+      "group": "altered-public",
+      "kind": "Claim",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/comm-T-shifted/claim-fold",
+      "group": "altered-public",
+      "kind": "Claim",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "skipped_poseidon",
+      "python_refutes": null
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/comm-W-shifted/claim-fold",
+      "group": "altered-public",
+      "kind": "Claim",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "skipped_poseidon",
+      "python_refutes": null
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/comm-W-shifted/binding-end",
+      "group": "altered-public",
+      "kind": "BindingEnd { vec: W }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/comm-W-off-curve/claim-fold",
+      "group": "altered-public",
+      "kind": "Claim",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/flipped-reveal-byte",
+      "group": "forged-opening",
+      "kind": "Row { row: 3 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/item-value-changed",
+      "group": "forged-opening",
+      "kind": "Row { row: 3 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/E-opening-from-W-tree",
+      "group": "forged-opening",
+      "kind": "Row { row: 1 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/trace-state-from-E-trace",
+      "group": "forged-opening",
+      "kind": "BindingStep { vec: W, step: 5 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/generator-substituted",
+      "group": "forged-opening",
+      "kind": "BindingStep { vec: W, step: 255 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/opening-from-another-commitment",
+      "group": "forged-opening",
+      "kind": "Row { row: 0 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/W0-read-twice-honest",
+      "group": "repeated-operand",
+      "kind": "Row { row: 3 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/W0-second-read-different-value",
+      "group": "repeated-operand",
+      "kind": "Row { row: 3 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/challenge-of-another-claim",
+      "group": "replay",
+      "kind": "Row { row: 0 }",
+      "expected": "challenge_invalid",
+      "expected_refutes": false,
+      "native": "challenge_invalid",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "challenge_invalid",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/challenge-other-contract",
+      "group": "replay",
+      "kind": "Row { row: 0 }",
+      "expected": "challenge_invalid",
+      "expected_refutes": false,
+      "native": "challenge_invalid",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "challenge_invalid",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/challenge-other-network",
+      "group": "replay",
+      "kind": "Row { row: 0 }",
+      "expected": "challenge_invalid",
+      "expected_refutes": false,
+      "native": "challenge_invalid",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "challenge_invalid",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/challenge-version-2",
+      "group": "replay",
+      "kind": "Row { row: 0 }",
+      "expected": "challenge_invalid",
+      "expected_refutes": false,
+      "native": "challenge_invalid",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "challenge_invalid",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/response-to-earlier-challenge",
+      "group": "replay",
+      "kind": "Row { row: 0 }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/W2-changed-row3",
+      "group": "witness-substitution",
+      "kind": "Row { row: 3 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/E0-changed-row0",
+      "group": "witness-substitution",
+      "kind": "Row { row: 0 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/forged-WE/row0",
+      "group": "witness-substitution",
+      "kind": "Row { row: 0 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/forged-WE/row1",
+      "group": "witness-substitution",
+      "kind": "Row { row: 1 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/forged-WE/row2",
+      "group": "witness-substitution",
+      "kind": "Row { row: 2 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/forged-WE/row3",
+      "group": "witness-substitution",
+      "kind": "Row { row: 3 }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": false,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/forged-WE/claim-fold",
+      "group": "witness-substitution",
+      "kind": "Claim",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "skipped_poseidon",
+      "python_refutes": null
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/forged-WE/binding-end-W",
+      "group": "witness-substitution",
+      "kind": "BindingEnd { vec: W }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/forged-WE/binding-end-E",
+      "group": "witness-substitution",
+      "kind": "BindingEnd { vec: E }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/forged-WE-end-patched/binding-end-W",
+      "group": "witness-substitution",
+      "kind": "BindingEnd { vec: W }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/forged-WE-end-patched/last-step-W",
+      "group": "witness-substitution",
+      "kind": "BindingStep { vec: W, step: 1279 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/forged-WE-nova-trace/binding-end-W",
+      "group": "witness-substitution",
+      "kind": "BindingEnd { vec: W }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/forged-WE-nova-trace/binding-end-E",
+      "group": "witness-substitution",
+      "kind": "BindingEnd { vec: E }",
+      "expected": "holds",
+      "expected_refutes": false,
+      "native": "holds",
+      "native_refutes": false,
+      "circuit_refutes": null,
+      "python": "holds",
+      "python_refutes": false
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/forged-WE-nova-trace/first-wrong-W-step",
+      "group": "witness-substitution",
+      "kind": "BindingStep { vec: W, step: 256 }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/row2-no-response",
+      "group": "withheld",
+      "kind": "Row { row: 2 }",
+      "expected": "response_missing",
+      "expected_refutes": true,
+      "native": "response_missing",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "response_missing",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/binding-step-no-response",
+      "group": "withheld",
+      "kind": "BindingStep { vec: E, step: 9 }",
+      "expected": "response_missing",
+      "expected_refutes": true,
+      "native": "response_missing",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "response_missing",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/acc0-not-identity",
+      "group": "binding-start",
+      "kind": "BindingStart { vec: W }",
+      "expected": "violated",
+      "expected_refutes": true,
+      "native": "violated",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "violated",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp/generator-1-offered-as-0",
+      "group": "binding-start",
+      "kind": "BindingStart { vec: E }",
+      "expected": "response_invalid",
+      "expected_refutes": true,
+      "native": "response_invalid",
+      "native_refutes": true,
+      "circuit_refutes": null,
+      "python": "response_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq-claim-under-pasta/vesta-engine/scalar-Fp-config/honest/row1",
+      "group": "switched-field",
+      "kind": "Row { row: 1 }",
+      "expected": "claim_invalid",
+      "expected_refutes": true,
+      "native": "claim_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "claim_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/pallas-engine/scalar-Fq-claim-under-pasta/vesta-engine/scalar-Fp-config/honest/binding-step-W-255",
+      "group": "switched-field",
+      "kind": "BindingStep { vec: W, step: 255 }",
+      "expected": "claim_invalid",
+      "expected_refutes": true,
+      "native": "claim_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "claim_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp-claim-under-pasta/pallas-engine/scalar-Fq-config/honest/row1",
+      "group": "switched-field",
+      "kind": "Row { row: 1 }",
+      "expected": "claim_invalid",
+      "expected_refutes": true,
+      "native": "claim_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "claim_invalid",
+      "python_refutes": true
+    },
+    {
+      "name": "pasta/vesta-engine/scalar-Fp-claim-under-pasta/pallas-engine/scalar-Fq-config/honest/binding-step-W-255",
+      "group": "switched-field",
+      "kind": "BindingStep { vec: W, step: 255 }",
+      "expected": "claim_invalid",
+      "expected_refutes": true,
+      "native": "claim_invalid",
+      "native_refutes": true,
+      "circuit_refutes": true,
+      "python": "claim_invalid",
+      "python_refutes": true
+    }
+  ],
+  "witness_error_substitution": {
+    "attack": "W' = W with one entry changed, E' = A z' o B z' - u C z'; fresh FlatMerkle roots over (W', E')",
+    "rows": "all hold (relaxed R1CS satisfied by construction)",
+    "nova_is_sat_relaxed": "R1CS equations pass; fails with 'Invalid commitments'",
+    "detected_by": [
+      "BindingEnd{W} with an honest trace of W'",
+      "BindingStep{W,1279} after the trace end is overwritten with Nova's comm_W",
+      "the first BindingStep{W,t} where bits of W'_j and W_j differ, when Nova's own trace is committed next to W'"
+    ],
+    "not_detected_by": [
+      "any Row challenge",
+      "FlatMerkle opening verification"
+    ]
+  },
+  "flatmerkle_vs_merkle": [
+    {
+      "flatmerkle": {
+        "build_compressions": 31,
+        "build_peak_heap_bytes": 3296,
+        "build_us_median": 3.9,
+        "malformed_mid_checkpoint": {
+          "openable_items": 8,
+          "rebuild_from_items_detects": true,
+          "unopenable_items": 8
+        },
+        "multiproof": {
+          "bytes": 656,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 1140,
+          "verify_compressions": 20
+        },
+        "opening_bytes": 228,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 1147,
+        "stream_bytes": 1920,
+        "substitution": {
+          "attempts": 64,
+          "rejected": 64
+        },
+        "verify_compressions": 8,
+        "verify_us_median": 0.33125
+      },
+      "merkle": {
+        "build_compressions": 62,
+        "build_peak_heap_bytes": 1218,
+        "build_us_median": 8.2,
+        "full_publication_bytes": 1024,
+        "multiproof": {
+          "bytes": 564,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 980,
+          "verify_compressions": 32
+        },
+        "opening_bytes": 196,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 986,
+        "substitution": {
+          "attempts": 64,
+          "rejected": 64
+        },
+        "verify_compressions": 10,
+        "verify_us_median": 1.0687499999999999
+      },
+      "records": 16
+    },
+    {
+      "flatmerkle": {
+        "build_compressions": 127,
+        "build_peak_heap_bytes": 19312,
+        "build_us_median": 19.0,
+        "malformed_mid_checkpoint": {
+          "openable_items": 32,
+          "rebuild_from_items_detects": true,
+          "unopenable_items": 32
+        },
+        "multiproof": {
+          "bytes": 848,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 1460,
+          "verify_compressions": 30
+        },
+        "opening_bytes": 292,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 1469,
+        "stream_bytes": 8064,
+        "substitution": {
+          "attempts": 256,
+          "rejected": 256
+        },
+        "verify_compressions": 12,
+        "verify_us_median": 0.47812499999999997
+      },
+      "merkle": {
+        "build_compressions": 254,
+        "build_peak_heap_bytes": 4386,
+        "build_us_median": 32.8,
+        "full_publication_bytes": 4096,
+        "multiproof": {
+          "bytes": 756,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 1300,
+          "verify_compressions": 44
+        },
+        "opening_bytes": 260,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 1309,
+        "substitution": {
+          "attempts": 256,
+          "rejected": 256
+        },
+        "verify_compressions": 14,
+        "verify_us_median": 1.696875
+      },
+      "records": 64
+    },
+    {
+      "flatmerkle": {
+        "build_compressions": 511,
+        "build_peak_heap_bytes": 77104,
+        "build_us_median": 160.70000000000002,
+        "malformed_mid_checkpoint": {
+          "openable_items": 128,
+          "rebuild_from_items_detects": true,
+          "unopenable_items": 128
+        },
+        "multiproof": {
+          "bytes": 1040,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 1780,
+          "verify_compressions": 40
+        },
+        "opening_bytes": 356,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 1790,
+        "stream_bytes": 32640,
+        "substitution": {
+          "attempts": 1024,
+          "rejected": 1024
+        },
+        "verify_compressions": 16,
+        "verify_us_median": 0.6628906250000001
+      },
+      "merkle": {
+        "build_compressions": 1022,
+        "build_peak_heap_bytes": 16736,
+        "build_us_median": 129.9,
+        "full_publication_bytes": 16384,
+        "multiproof": {
+          "bytes": 948,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 1620,
+          "verify_compressions": 56
+        },
+        "opening_bytes": 324,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 1630,
+        "substitution": {
+          "attempts": 1024,
+          "rejected": 1024
+        },
+        "verify_compressions": 18,
+        "verify_us_median": 2.3375
+      },
+      "records": 256
+    },
+    {
+      "flatmerkle": {
+        "build_compressions": 2047,
+        "build_peak_heap_bytes": 308272,
+        "build_us_median": 655.9,
+        "malformed_mid_checkpoint": {
+          "openable_items": 512,
+          "rebuild_from_items_detects": true,
+          "unopenable_items": 512
+        },
+        "multiproof": {
+          "bytes": 1232,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 2100,
+          "verify_compressions": 50
+        },
+        "opening_bytes": 420,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 2113,
+        "stream_bytes": 130944,
+        "substitution": {
+          "attempts": 4096,
+          "rejected": 4096
+        },
+        "verify_compressions": 20,
+        "verify_us_median": 1.609375
+      },
+      "merkle": {
+        "build_compressions": 4094,
+        "build_peak_heap_bytes": 66018,
+        "build_us_median": 501.09999999999997,
+        "full_publication_bytes": 65536,
+        "multiproof": {
+          "bytes": 1140,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 1940,
+          "verify_compressions": 68
+        },
+        "opening_bytes": 388,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 1952,
+        "substitution": {
+          "attempts": 4096,
+          "rejected": 4096
+        },
+        "verify_compressions": 22,
+        "verify_us_median": 2.866796875
+      },
+      "records": 1024
+    }
+  ],
+  "circuits": {
+    "baseline": {
+      "nonfree_gates": 785442492,
+      "source": "integrations/bitvm3-nova/m14/README.md (garbled-snark-verifier m14/e2e, commit f6ec7ab)",
+      "what": "complete final verifier of the Nova proof (SP1 wrap, BLAKE3 transcript v2) as one garbled circuit"
+    },
+    "gates": [
+      {
+        "circuit": "row, toy, Pallas (ciphertexts)",
+        "nonfree_gates": 2683971,
+        "baseline_over_circuit": 292.64,
+        "meets_10x": true
+      },
+      {
+        "circuit": "row, toy, Vesta (ciphertexts)",
+        "nonfree_gates": 2680871,
+        "baseline_over_circuit": 292.98,
+        "meets_10x": true
+      },
+      {
+        "circuit": "binding step, toy, Pallas (ciphertexts)",
+        "nonfree_gates": 4666776,
+        "baseline_over_circuit": 168.31,
+        "meets_10x": true
+      },
+      {
+        "circuit": "binding step, toy, Vesta (ciphertexts)",
+        "nonfree_gates": 4665516,
+        "baseline_over_circuit": 168.35,
+        "meets_10x": true
+      },
+      {
+        "circuit": "binding step, real HeaderStep sizes (exact)",
+        "nonfree_gates": 7285647,
+        "baseline_over_circuit": 107.81,
+        "meets_10x": true
+      },
+      {
+        "circuit": "row, real sizes, p99 width 53 slots (model)",
+        "nonfree_gates": 50177670,
+        "baseline_over_circuit": 15.65,
+        "meets_10x": true
+      },
+      {
+        "circuit": "row, real sizes, widest row 1,269 slots (model)",
+        "nonfree_gates": 1150138072,
+        "baseline_over_circuit": 0.68,
+        "meets_10x": false
+      }
+    ],
+    "row_model_real_sizes": {
+      "fit_points_slots": [
+        32.0,
+        56.0,
+        88.0
+      ],
+      "fixed": 2235317.0,
+      "max_abs_residual_on_exact_points": 2658.864864870906,
+      "per_slot": 904573.0
+    },
+    "toy_garbling": [
+      {
+        "circuit": "row/honest",
+        "field": "pasta/pallas-engine/scalar-Fq",
+        "ciphertexts": 2683971,
+        "ciphertext_bytes": 42943536,
+        "input_bits": 21864,
+        "garble_and_evaluate_seconds": 0.7470552,
+        "evaluator_got": "accept label"
+      },
+      {
+        "circuit": "row/honest",
+        "field": "pasta/vesta-engine/scalar-Fp",
+        "ciphertexts": 2680871,
+        "ciphertext_bytes": 42893936,
+        "input_bits": 21864,
+        "garble_and_evaluate_seconds": 0.9400548,
+        "evaluator_got": "accept label"
+      },
+      {
+        "circuit": "row/refuted",
+        "field": "pasta/pallas-engine/scalar-Fq",
+        "ciphertexts": 2683971,
+        "ciphertext_bytes": 42943536,
+        "input_bits": 21864,
+        "garble_and_evaluate_seconds": 0.9475176,
+        "evaluator_got": "refute label"
+      },
+      {
+        "circuit": "row/refuted",
+        "field": "pasta/vesta-engine/scalar-Fp",
+        "ciphertexts": 2680871,
+        "ciphertext_bytes": 42893936,
+        "input_bits": 21864,
+        "garble_and_evaluate_seconds": 0.9527247,
+        "evaluator_got": "refute label"
+      },
+      {
+        "circuit": "step-W/honest",
+        "field": "pasta/pallas-engine/scalar-Fq",
+        "ciphertexts": 4666776,
+        "ciphertext_bytes": 74668416,
+        "input_bits": 19168,
+        "garble_and_evaluate_seconds": 1.6212655,
+        "evaluator_got": "accept label"
+      },
+      {
+        "circuit": "step-W/honest",
+        "field": "pasta/vesta-engine/scalar-Fp",
+        "ciphertexts": 4665516,
+        "ciphertext_bytes": 74648256,
+        "input_bits": 19168,
+        "garble_and_evaluate_seconds": 1.6011997,
+        "evaluator_got": "accept label"
+      },
+      {
+        "circuit": "step-W/refuted",
+        "field": "pasta/pallas-engine/scalar-Fq",
+        "ciphertexts": 4666776,
+        "ciphertext_bytes": 74668416,
+        "input_bits": 19168,
+        "garble_and_evaluate_seconds": 1.5560429,
+        "evaluator_got": "refute label"
+      },
+      {
+        "circuit": "step-W/refuted",
+        "field": "pasta/vesta-engine/scalar-Fp",
+        "ciphertexts": 4665516,
+        "ciphertext_bytes": 74648256,
+        "input_bits": 19168,
+        "garble_and_evaluate_seconds": 1.7644790000000001,
+        "evaluator_got": "refute label"
+      },
+      {
+        "circuit": "step-E/honest",
+        "field": "pasta/pallas-engine/scalar-Fq",
+        "ciphertexts": 4666776,
+        "ciphertext_bytes": 74668416,
+        "input_bits": 19168,
+        "garble_and_evaluate_seconds": 1.7496217,
+        "evaluator_got": "accept label"
+      },
+      {
+        "circuit": "step-E/honest",
+        "field": "pasta/vesta-engine/scalar-Fp",
+        "ciphertexts": 4665516,
+        "ciphertext_bytes": 74648256,
+        "input_bits": 19168,
+        "garble_and_evaluate_seconds": 1.6712639,
+        "evaluator_got": "accept label"
+      }
+    ],
+    "peak_rss_bytes": {
+      "toy garbling (max)": 174542848,
+      "circuits run incl. 82M-gate real-size builds": 2363539456,
+      "benchmark": 8429568
+    },
+    "ten_fold_target": "met for binding steps (108x at real sizes) and rows up to ~84 operand slots; missed by one fixed-width circuit for the widest real row (1.46x the baseline)"
+  },
+  "regtest": {
+    "deadlines_blocks": {
+      "operator_payout_after_response_D3": 6,
+      "response_D2": 6,
+      "unchallenged_D1": 6
+    },
+    "fee_rate_sat_per_vb": 2,
+    "bond_sats": 200000,
+    "transactions": [
+      {
+        "measure": {
+          "fee_sats": 396,
+          "op_return_claim_id": "ee4ced6e866224e2a822e2f2478b14af3f7c9d84b93373563158f7638bc6acac",
+          "taptree_leaves": 5,
+          "txid": "ad44684a46b256b878ce3083cfd94a3e5236c65111e816e765df6bdaaaae42e8",
+          "vsize": 197,
+          "weight": 788
+        },
+        "tx": "claim/honest"
+      },
+      {
+        "measure": {
+          "fee_sats": 396,
+          "op_return_claim_id": "b3da487e61f0ff46a108338e194f4ebfcec7b4bc108b753ee1b3187fa311feed",
+          "taptree_leaves": 5,
+          "txid": "665a2902ea12a0f898abf109498f430d7108256e7d88aae112f3ae60a6fc9276",
+          "vsize": 197,
+          "weight": 788
+        },
+        "tx": "claim/dishonest"
+      },
+      {
+        "measure": {
+          "fee_sats": 396,
+          "op_return_claim_id": "f3911bce3bd75c4602df169d132e40604e73207a96f351e655bafbf10328d7c4",
+          "taptree_leaves": 5,
+          "txid": "e86c5af57ab007116888ee03aa90ccbf93caf55dda02b2a205d932d8497b77a6",
+          "vsize": 197,
+          "weight": 788
+        },
+        "tx": "claim/withheld"
+      },
+      {
+        "measure": {
+          "fee_sats": 396,
+          "op_return_claim_id": "be820a62791b35b82c9a0f04b91a57d938ec9c24022357b9e930732501c08ca7",
+          "taptree_leaves": 5,
+          "txid": "eeb4540fae769e414c388e35c58354bfa0d075649b44e2aea07559301db014de",
+          "vsize": 197,
+          "weight": 788
+        },
+        "tx": "claim/unchallenged"
+      },
+      {
+        "measure": {
+          "fee_sats": 290,
+          "txid": "6ac20693e892cb9a5467ee54a2be9fd09c21607498332a1d1dea29db49bb6151",
+          "vsize": 145,
+          "weight": 580,
+          "witness_items": 3
+        },
+        "tx": "unchallenged-payout"
+      },
+      {
+        "measure": {
+          "fee_sats": 426,
+          "txid": "e9490b73c56efe67406dae309551075e24db4425a77a16054e9a3505bb2c9eda",
+          "vsize": 213,
+          "weight": 850,
+          "witness_items": 4
+        },
+        "tx": "challenge/honest-row2"
+      },
+      {
+        "measure": {
+          "fee_sats": 1364,
+          "txid": "b8b1abcaad33616fafd0f7d8fb7c0021afae9099f403649f544462059df4de1e",
+          "vsize": 682,
+          "weight": 2727,
+          "witness_items": 30
+        },
+        "payload_bytes": 2044,
+        "tx": "response/honest-row2"
+      },
+      {
+        "measure": {
+          "fee_sats": 274,
+          "txid": "124694b3aadb3e6d72782e081580a9b3c1678309ffffc61679c3af9b2363ba59",
+          "vsize": 137,
+          "weight": 548,
+          "witness_items": 3
+        },
+        "tx": "operator-payout/honest"
+      },
+      {
+        "measure": {
+          "fee_sats": 442,
+          "txid": "8b29de2f85c8a14024c329e7db797284005281f3c7d877c1b42d53b27d7ca583",
+          "vsize": 221,
+          "weight": 882,
+          "witness_items": 4
+        },
+        "tx": "challenge/dishonest"
+      },
+      {
+        "measure": {
+          "fee_sats": 1364,
+          "txid": "416f0d3dad8816417464482f120dcd349e56dade2a72851dd89a7e1ac4232190",
+          "vsize": 682,
+          "weight": 2727,
+          "witness_items": 30
+        },
+        "tx": "response/dishonest"
+      },
+      {
+        "measure": {
+          "fee_sats": 300,
+          "txid": "3f6b8f14ec2fe1e2ad72ea2b561daa0e2d925aaf4ff8b531541361d94ba0ed1e",
+          "vsize": 150,
+          "weight": 597,
+          "witness_items": 4
+        },
+        "tx": "disprove/dishonest"
+      },
+      {
+        "measure": {
+          "fee_sats": 274,
+          "txid": "ed81e25246e20b3f4dbe032b06cea1084c400fe45962b1788039346eb0d30d40",
+          "vsize": 137,
+          "weight": 548,
+          "witness_items": 3
+        },
+        "tx": "withheld-payout"
+      }
+    ],
+    "checks": [
+      {
+        "actual": "rejected: error code: -26\r\nerror message:\r\nnon-BIP68-final",
+        "check": "unchallenged payout before D1",
+        "detail": {
+          "blocks_since_claim": 1,
+          "csv": 6
+        },
+        "expected": "rejected",
+        "pass": true
+      },
+      {
+        "actual": "accepted",
+        "check": "unchallenged payout at D1",
+        "detail": {
+          "csv": 6
+        },
+        "expected": "accepted",
+        "pass": true
+      },
+      {
+        "actual": "accepted",
+        "check": "challenge (row 2, honest claim)",
+        "detail": {},
+        "expected": "accepted",
+        "pass": true
+      },
+      {
+        "actual": "accepted",
+        "check": "response (honest, row 2)",
+        "detail": {
+          "payload_bytes": 2044
+        },
+        "expected": "accepted",
+        "pass": true
+      },
+      {
+        "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation), input 0 of 45f7273ee81ba3f2905aad39f8dc7b61c42da3f1355a2aa699f6ba5a6801b6d4 (wtxid d042d9eafd2c75f8208805b807e74eeca137a11fd2baa36ba0e59bb4e04647d2), spending b8b1abcaad33616fafd0f7d8fb7c0021afae9099f403649f544462059df4de1e:0",
+        "check": "disprove with the label an honest response yields",
+        "detail": {
+          "ciphertexts": 2683971,
+          "evaluator_got": "accept label",
+          "garble_and_evaluate_seconds": 0.9846179,
+          "labels_match_committed": true
+        },
+        "expected": "rejected",
+        "pass": true
+      },
+      {
+        "actual": "rejected: error code: -26\r\nerror message:\r\nnon-BIP68-final",
+        "check": "operator payout before D3",
+        "detail": {},
+        "expected": "rejected",
+        "pass": true
+      },
+      {
+        "actual": "accepted",
+        "check": "operator payout at D3",
+        "detail": {
+          "csv": 6
+        },
+        "expected": "accepted",
+        "pass": true
+      },
+      {
+        "actual": "accepted",
+        "check": "challenge (dishonest claim, located row)",
+        "detail": {
+          "located": "Some(Row { row: 3 })"
+        },
+        "expected": "accepted",
+        "pass": true
+      },
+      {
+        "actual": "accepted",
+        "check": "response (dishonest claim)",
+        "detail": {
+          "payload_bytes": 2044
+        },
+        "expected": "accepted",
+        "pass": true
+      },
+      {
+        "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of 3f6b8f14ec2fe1e2ad72ea2b561daa0e2d925aaf4ff8b531541361d94ba0ed1e (wtxid dddb40c28ad3cdb189b89459a1815b6dd2e28d091c2564607d8cce9278508a0a), spending 416f0d3dad8816417464482f120dcd349e56dade2a72851dd89a7e1ac4232190:0",
+        "check": "disprove signed by the operator's key",
+        "detail": {},
+        "expected": "rejected",
+        "pass": true
+      },
+      {
+        "actual": "accepted",
+        "check": "disprove with the refute label",
+        "detail": {
+          "evaluator_got": "refute label",
+          "labels_match_committed": true
+        },
+        "expected": "accepted",
+        "pass": true
+      },
+      {
+        "actual": "rejected: error code: -25\r\nerror message:\r\nbad-txns-inputs-missingorspent",
+        "check": "operator payout after a confirmed disprove (output already spent)",
+        "detail": {},
+        "expected": "rejected",
+        "pass": true
+      },
+      {
+        "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of 24d3378fe0e5b8ca50c8ac1e53c69314a135032560fbbeeb948110fa13aed056 (wtxid 9fea9b4eed0f73c1df8ec6e01ebb3d869ee94bac129816cde496c53cd6db6ed0), spending e86c5af57ab007116888ee03aa90ccbf93caf55dda02b2a205d932d8497b77a6:1",
+        "check": "challenge with a corrupted challenger signature",
+        "detail": {},
+        "expected": "rejected",
+        "pass": true
+      },
+      {
+        "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of 24d3378fe0e5b8ca50c8ac1e53c69314a135032560fbbeeb948110fa13aed056 (wtxid 2afc01214fd7bcfeefe4e1107eb835318abdbf2674159d5b4783fea771c619fa), spending e86c5af57ab007116888ee03aa90ccbf93caf55dda02b2a205d932d8497b77a6:1",
+        "check": "operator pre-signature of another row's leaf",
+        "detail": {},
+        "expected": "rejected",
+        "pass": true
+      },
+      {
+        "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of 5c31f4ff662d4daf030d826f931d3503caef14439471e4d6cfc20efee3c9d86f (wtxid 89322ad0ff0bb41071d4dcf75f9a416ae1dc87ff6ee7ac7b85af4b41649ee290), spending e86c5af57ab007116888ee03aa90ccbf93caf55dda02b2a205d932d8497b77a6:1",
+        "check": "challenge pre-signed for another claim replayed on this claim's output",
+        "detail": {},
+        "expected": "rejected",
+        "pass": true
+      },
+      {
+        "actual": "accepted",
+        "check": "challenge (row 1, operator will stay silent)",
+        "detail": {},
+        "expected": "accepted",
+        "pass": true
+      },
+      {
+        "actual": "rejected: error code: -26\r\nerror message:\r\nnon-BIP68-final",
+        "check": "withheld-response claim before D2",
+        "detail": {
+          "csv": 6
+        },
+        "expected": "rejected",
+        "pass": true
+      },
+      {
+        "actual": "accepted",
+        "check": "withheld-response claim at D2",
+        "detail": {
+          "challenge_confirmed_height": 123,
+          "csv": 6,
+          "spend_height": 129
+        },
+        "expected": "accepted",
+        "pass": true
+      }
+    ],
+    "publication": {
+      "flatmerkle-full-matrix-stream-OP_SHA256": {
+        "consensus": "mined by generateblock (consensus-valid)",
+        "measure": {
+          "fee_sats": 468,
+          "txid": "96f5ebcfc341f4c5f17f305c0bd0c8dc315f67b18f73af2dc68b8622f555528a",
+          "vsize": 234,
+          "weight": 935,
+          "witness_items": 4
+        },
+        "payload_bytes": 384,
+        "policy": "error code: -26  error message:  bad-witness-nonstandard",
+        "stack_items": 1
+      },
+      "flatmerkle-row-response": {
+        "consensus": "relayed",
+        "measure": {
+          "fee_sats": 1298,
+          "txid": "d5b496ac07928ab648c4ac86ac699925ee6e7e97f43ce6df19fcb6ca4b96b548",
+          "vsize": 649,
+          "weight": 2596,
+          "witness_items": 29
+        },
+        "payload_bytes": 2044,
+        "policy": "standard",
+        "stack_items": 26
+      },
+      "flatmerkle_payload_bytes": 2044,
+      "merkle-row-response": {
+        "consensus": "relayed",
+        "measure": {
+          "fee_sats": 1152,
+          "txid": "4ef26a18a634ef631307c5d6e4b3a7f98bb7173ab0234520ed296df89a641916",
+          "vsize": 576,
+          "weight": 2302,
+          "witness_items": 25
+        },
+        "payload_bytes": 1756,
+        "policy": "standard",
+        "stack_items": 22
+      },
+      "merkle_payload_bytes": 1756,
+      "row": 3
+    },
+    "enforced_by_bitcoin": [
+      "only the pinned challenger, with the operator's pre-signature, can open a challenge, and only through the leaf of the challenged row",
+      "the challenge id is fixed by the pre-signed OP_RETURN output",
+      "a missing response lets the challenger take the bond after D2 blocks (BIP68 relative locktime)",
+      "only the preimage of SHA256(refute label) of that row's garbled circuit, plus the challenger's signature, spends the disprove leaf",
+      "an unrefuted response pays the operator after D3 blocks"
+    ],
+    "trust": [
+      "T1 garbling: the operator garbles the row circuit; nothing here checks the tables were generated for the pinned circuit (BitVM3 needs cut-and-choose or a proof of correct garbling)",
+      "T2 labels: the operator hands the challenger the input labels of the on-chain claim, challenge and response bits off-chain; Bitcoin does not verify them. Any label set that yields 'accept' must encode an authenticated response (openings are binding), but withheld or garbage labels after a confirmed response leave the challenger without a refute label and the operator paid after D3",
+      "T3 pre-signed graph: the operator's pre-signatures stand in for a covenant; an operator that refuses to pre-sign cannot be challenged, so the graph must be signed before the bond is locked",
+      "the challenger's off-chain search (locate_fault) uses the published claim data, which the operator must make available (data availability is not enforced)"
+    ]
+  },
+  "outside_garbled_circuits": [
+    "Claim kind (public fold recomputation with Nova's Poseidon RO) - native only",
+    "BindingStart / BindingEnd - native only",
+    "locate_fault: the challenger's off-chain search over published data",
+    "garbling and input-label delivery by the operator (T1, T2)"
+  ],
+  "outstanding_security_gates": [
+    {
+      "id": "G-LABEL",
+      "what": "bind garbled-circuit input labels to the on-chain claim, challenge and response; label withholding after a confirmed response is not penalised"
+    },
+    {
+      "id": "G-INDEX",
+      "what": "real shapes need 131,072 row and ~67.1M binding-step challenges; regtest wires one pre-signed leaf and one garbled instance per row of the 4-row fixture"
+    },
+    {
+      "id": "G-WIDE-ROWS",
+      "what": "fixed row circuit at the widest real row is ~1.15e9 gates (> 785M baseline); needs width classes or a term-accumulator trace"
+    },
+    {
+      "id": "G-FOLD",
+      "what": "no circuit for U = fold(U1, U2, comm_T) with Nova's Poseidon challenge"
+    },
+    {
+      "id": "G-ENDPOINTS",
+      "what": "no circuits for BindingStart / BindingEnd"
+    },
+    {
+      "id": "G-NOVA-FULL",
+      "what": "secondary relaxed instance, fresh secondary instance and the cross-curve IVC hash binding X = H(pp, i, z0, zi, U_other) are not covered"
+    },
+    {
+      "id": "G-REAL-WITNESS",
+      "what": "no row of the real HeaderStep folded witness was challenged; real-size circuits counted with synthetic values"
+    },
+    {
+      "id": "G-DA",
+      "what": "availability of committed W, E and traces is assumed"
+    },
+    {
+      "id": "T1",
+      "what": "garbling correctness unchecked (needs cut-and-choose or proof of garbling)"
+    },
+    {
+      "id": "T3",
+      "what": "pre-signed transaction graph stands in for a covenant"
+    }
+  ],
+  "next_blocker": "G-LABEL with G-INDEX: one garbled circuit per check kind whose challenge-index and response input labels are fixed by the on-chain transactions; today each challengeable check needs its own pre-signed leaf and garbled instance"
+}
