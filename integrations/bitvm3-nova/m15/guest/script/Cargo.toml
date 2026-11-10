@@ -1,0 +1,20 @@
+[package]
+name = "m15-guest-script"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+
+[[bin]]
+name = "m15-guest"
+path = "src/main.rs"
+
+[dependencies]
+sp1-sdk = { version = "=6.9.0" }
+sha2 = "=0.10.9"
+hex = "0.4"
+
+[build-dependencies]
+sp1-build = "=6.9.0"
+
+[workspace]
