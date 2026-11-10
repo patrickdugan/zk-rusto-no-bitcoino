@@ -231,9 +231,45 @@ fn circuits(out: &str, realshape: &str) {
     );
 }
 
+/// Per-case table: expected verdict, native verdict, and the circuit's verdict where a circuit
+/// decides the case's kind.
+fn case_table(out: &str) {
+    let p = Suite::<PallasEngine>::build(0xFC03_0001);
+    let v = Suite::<VestaEngine>::build(0xFC03_0002);
+    let (ptc, vtc) = (&p.toy.pinned.tc, &v.toy.pinned.tc);
+    let mut all = p.cases.clone();
+    all.extend(v.cases.clone());
+    all.extend(flatcheck_fc03::cases::cross_field_cases(&p, &v));
+    let mut rows = Vec::new();
+    for c in &all {
+        let native = flatcheck_fc03::cases::run_native(c, ptc, vtc);
+        let tc = if c.tc_field == FieldId::PallasScalar { ptc } else { vtc };
+        let circ = match c.challenge.kind {
+            ChallengeKind::Row { .. } => inputs::row_input(tc, &c.claim, &c.challenge, c.response.as_ref()).map(|b| (run::Which::Row(RowKnown::new(tc)), b)),
+            ChallengeKind::BindingStep { vec, .. } => {
+                inputs::step_input(tc, &c.claim, &c.challenge, c.response.as_ref(), vec).map(|b| (run::Which::Step(StepKnown::new(tc, vec)), b))
+            }
+            _ => Err("no circuit for this kind (native only)".into()),
+        };
+        let (circuit, note) = match circ {
+            Ok((w, b)) => (Some(run::execute(&w, inputs::bits(&b)).0), None),
+            Err(e) => (None, Some(e)),
+        };
+        rows.push(json!({
+            "name": c.name, "group": c.group, "field": c.field.name(), "tc_field": c.tc_field.name(),
+            "kind": format!("{:?}", c.challenge.kind),
+            "expected": c.expected, "expected_refutes": c.expected_refutes,
+            "native": native.code(), "native_refutes": native.refutes(), "native_detail": format!("{native:?}"),
+            "circuit_refutes": circuit, "circuit_note": note,
+        }));
+    }
+    write(out, &json!({"cases": rows}));
+}
+
 fn main() {
     let a: Vec<String> = std::env::args().collect();
     match a.get(1).map(String::as_str) {
+        Some("cases") => case_table(&a[2]),
         Some("bench") => {
             let v = bench::run(&bench::HeapProbe { reset: heap_reset, peak: heap_peak });
             let mut v = v;
