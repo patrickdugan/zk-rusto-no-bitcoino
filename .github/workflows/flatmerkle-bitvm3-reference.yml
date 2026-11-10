@@ -1,0 +1,21 @@
+name: flatmerkle-bitvm3-reference
+on:
+  pull_request:
+    paths:
+      - 'integrations/bitvm3-nova/flatcheck-lab/**'
+      - '.github/workflows/flatmerkle-bitvm3-reference.yml'
+  workflow_dispatch:
+jobs:
+  flatmerkle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run reference tests
+        working-directory: integrations/bitvm3-nova/flatcheck-lab
+        run: python -m unittest discover -p 'test_*.py' -v
