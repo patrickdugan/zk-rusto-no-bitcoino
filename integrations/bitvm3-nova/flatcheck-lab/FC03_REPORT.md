@@ -140,8 +140,10 @@ What the numbers show:
   | Merkle openings, 1,756 bytes, witness in 80-byte pushes | standard | 576 / 2,302 |
   | FlatMerkle, witness in 520-byte pushes | `bad-witness-nonstandard` (consensus-valid, mined with `generateblock`) | 643 / 2,571 |
   | FlatMerkle, one OP_RETURN output | standard | 2,197 / 8,785 |
+  | FlatMerkle, envelope in the leaf script (`OP_FALSE OP_IF <520-byte pushes> OP_ENDIF`) | standard | 644 / 2,574 |
 
 - OP_RETURN relays the payload but costs 3.4 × the weight of the witness carrier: output bytes weigh 4 WU each, witness bytes 1 WU. Script also cannot read output data. Splitting into 80-byte pushes costs 6 vB more than 520-byte pushes.
+- The envelope is the cheapest standard carrier. Its pushes live in the revealed script, not on the initial stack, so the 80-byte stack-item policy never applies, which is the same route inscriptions take around it. The catch is that the script is fixed when the output is created, so the payload must be known then. The dispute uses this: a row's response is a function of the operator's committed data, so it is baked into the response leaf at setup.
 - Because a FlatMerkle digest is plain SHA-256 of the stream, `OP_SHA256 <root> OP_EQUALVERIFY` checks a whole commitment when the stream fits one stack item (n = 4, 384 bytes). This is consensus-valid (234 vB, mined with `generateblock`) but not relayed, because of the 80-byte tapscript item limit. The larger OP_RETURN limit does not help here: OP_SHA256 needs the stream on the stack.
 - For n ≥ 8, and for any Merkle root, Script would need OP_CAT.
 
@@ -194,7 +196,7 @@ Bitcoin Core 31.1 regtest, 2 sat/vB, bond 200,000 sat. Every output is Taproot w
 | Output | Leaves |
 | --- | --- |
 | claim C | `<6> CSV DROP <op> CHECKSIG`; per row i: `<i> DROP <op> CHECKSIGVERIFY <ch> CHECKSIG` |
-| challenge X_i (operator pre-signed tx, OP_RETURN challenge id) | `2DROP… <ch> CHECKSIGVERIFY <op> CHECKSIG` (response payload as 80-byte witness pushes: the tapscript stack-item policy limit, not the OP_RETURN one); `<6> CSV DROP <ch> CHECKSIG` |
+| challenge X_i (operator pre-signed tx, OP_RETURN challenge id) | `OP_FALSE OP_IF <row i response, 520-byte pushes> OP_ENDIF <ch> CHECKSIGVERIFY <op> CHECKSIG`; `<6> CSV DROP <ch> CHECKSIG` |
 | response R_i (challenger pre-signed tx) | `SHA256 <H(refute label_i)> EQUALVERIFY <ch> CHECKSIG`; `<6> CSV DROP <op> CHECKSIG` |
 
 | Transaction | vsize | weight | fee (sat) |
@@ -202,15 +204,16 @@ Bitcoin Core 31.1 regtest, 2 sat/vB, bond 200,000 sat. Every output is Taproot w
 | claim (bond + OP_RETURN claim id) | 197 | 788 | 396 |
 | unchallenged payout after D1 | 145 | 580 | 290 |
 | challenge | 213–221 | 850–882 | 426–442 |
-| response (2,044-byte payload, 26 pushes) | 682 | 2,727 | 1,364 |
+| response (2,044-byte payload revealed from the envelope leaf) | 677 | 2,705 | 1,354 |
 | disprove (refute-label preimage) | 150 | 597 | 300 |
 | operator payout after D3 / withheld-response payout after D2 | 137 | 548 | 274 |
 
-All 18 checks match the expected accept/reject outcome:
+All 19 checks match the expected accept/reject outcome:
 
 | Scenario | Outcome |
 | --- | --- |
 | Premature payouts on all three CSV leaves | `non-BIP68-final` |
+| A response revealing any envelope other than the committed one | `Witness program hash mismatch` |
 | Honest claim, row 2 | The challenger reads the response back from the confirmed witness and evaluates the garbled circuit. It obtains the accept label; disprove with it fails `OP_EQUALVERIFY`, and the operator is paid after 6 blocks |
 | Dishonest claim (W2 + 1) | The challenger's search locates row 3. The response opens correctly, and evaluation yields the refute label: disprove accepted. The same with the operator's key fails "Invalid Schnorr signature"; the operator's later payout fails `bad-txns-inputs-missingorspent` |
 | Withheld response | The challenger is paid after D2 = 6 blocks |
@@ -219,6 +222,7 @@ All 18 checks match the expected accept/reject outcome:
 **Enforced by Bitcoin:**
 - who may challenge, and for which row;
 - the challenge id;
+- the exact response payload, fixed in the envelope at setup;
 - the response deadline;
 - that only the holder of that circuit instance's refute label can disprove;
 - the operator's payout after an unrefuted response.
@@ -238,7 +242,7 @@ All 18 checks match the expected accept/reject outcome:
 ## 9. Outstanding security gates
 
 1. **G-LABEL**: bind circuit input labels to the on-chain claim, challenge and response (BitVM3 label commitments or WOTS-derived labels), so withholding is punishable.
-2. **G-INDEX**: real shapes need 131,072 row challenges and 2 × (2^17 + 1) × 256 ≈ 67.1M binding-step challenges. The regtest graph has one leaf and one garbled instance per row (4 rows). One circuit per kind with an on-chain-bound index input is required.
+2. **G-INDEX**: real shapes need 131,072 row challenges and 2 × (2^17 + 1) × 256 ≈ 67.1M binding-step challenges. The regtest graph has one leaf, one garbled instance and one envelope-baked response per row (4 rows). One circuit per kind with an on-chain-bound index input is required; envelope responses would then need a commit-reveal step, since a leaf cannot hold every possible response.
 3. **G-WIDE-ROWS**: the fixed row circuit at the real widest row is 1.15 × 10^9 gates. Width classes or a term-accumulator trace are needed.
 4. **G-FOLD**: the public fold check (Poseidon over 2 points and the X vector, 128-bit scalar multiplications) has no circuit.
 5. **G-ENDPOINTS**: `BindingStart`/`BindingEnd` circuits are not built (small: one or two openings and a 65-byte comparison).

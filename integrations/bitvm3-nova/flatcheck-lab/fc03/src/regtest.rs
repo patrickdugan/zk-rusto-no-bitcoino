@@ -5,10 +5,14 @@
 //!                      [challenge i]   <i> DROP <op> CHECKSIGVERIFY <ch> CHECKSIG     (one leaf per row)
 //!   challenge tx   spends C via leaf i; outputs X_i and OP_RETURN(challenge_id_i). The operator
 //!                  pre-signs it (SIGHASH_DEFAULT), so outputs and the challenge id are fixed.
-//!   challenge out  X_i:[respond]     DROP*k <ch> CHECKSIGVERIFY <op> CHECKSIG  (payload: k pushes)
+//!   challenge out  X_i:[respond]     OP_FALSE OP_IF <payload, 520-byte pushes> OP_ENDIF
+//!                                    <ch> CHECKSIGVERIFY <op> CHECKSIG
 //!                      [withheld]    <D2> CSV DROP <ch> CHECKSIG
-//!   response tx    spends X_i via [respond]; the challenger pre-signs it; the witness carries the
-//!                  response bytes the garbled row circuit evaluates.
+//!   response tx    spends X_i via [respond]; the challenger pre-signs it. A row's response is a
+//!                  function of the operator's committed data, so it is baked into the leaf as an
+//!                  envelope at setup: revealing the leaf publishes exactly that payload, the bytes
+//!                  the garbled row circuit evaluates. Envelope pushes sit in the script, not on the
+//!                  initial stack, so the 80-byte tapscript stack-item policy does not apply.
 //!   response out   R_i:[disprove]    SHA256 <H(refute label of circuit instance i)> EQUALVERIFY <ch> CHECKSIG
 //!                      [operator]    <D3> CSV DROP <op> CHECKSIG
 //! Bitcoin enforces: who may challenge (pre-signature), which row (the leaf), the response
@@ -29,7 +33,10 @@ use bitcoin::{
     consensus::encode::{deserialize, serialize_hex},
     hashes::Hash,
     key::{Keypair, Secp256k1},
-    opcodes::all::{OP_2DROP, OP_CHECKSIG, OP_CHECKSIGVERIFY, OP_CSV, OP_DROP, OP_EQUALVERIFY, OP_RETURN, OP_SHA256},
+    opcodes::{
+        all::{OP_2DROP, OP_CHECKSIG, OP_CHECKSIGVERIFY, OP_CSV, OP_DROP, OP_ENDIF, OP_EQUALVERIFY, OP_IF, OP_RETURN, OP_SHA256},
+        OP_FALSE,
+    },
     script::{Builder, PushBytesBuf},
     secp256k1::{All, Message, SecretKey, XOnlyPublicKey},
     sighash::{Prevouts, SighashCache, TapSighashType},
@@ -159,6 +166,38 @@ fn two_sig_leaf(tag: i64, drops: usize, first: &XOnlyPublicKey, second: &XOnlyPu
     b.push_x_only_key(first).push_opcode(OP_CHECKSIGVERIFY).push_x_only_key(second).push_opcode(OP_CHECKSIG).into_script()
 }
 
+/// `OP_FALSE OP_IF <520-byte pushes> OP_ENDIF`: data carried in the script, never executed.
+fn envelope(payload: &[u8]) -> Builder {
+    let mut b = Builder::new().push_opcode(OP_FALSE).push_opcode(OP_IF);
+    for c in payload.chunks(520) {
+        b = b.push_slice(push(c));
+    }
+    b.push_opcode(OP_ENDIF)
+}
+
+fn envelope_leaf(payload: &[u8], first: &XOnlyPublicKey, second: &XOnlyPublicKey) -> ScriptBuf {
+    envelope(payload).push_x_only_key(first).push_opcode(OP_CHECKSIGVERIFY).push_x_only_key(second).push_opcode(OP_CHECKSIG).into_script()
+}
+
+/// The payload of a leaf that starts with an envelope.
+fn envelope_payload(script: &bitcoin::Script) -> Option<Vec<u8>> {
+    use bitcoin::script::Instruction;
+    let mut it = script.instructions();
+    match (it.next()?.ok()?, it.next()?.ok()?) {
+        (Instruction::PushBytes(z), Instruction::Op(o)) if z.is_empty() && o == OP_IF => {}
+        _ => return None,
+    }
+    let mut out = Vec::new();
+    for ins in it {
+        match ins.ok()? {
+            Instruction::PushBytes(b) => out.extend_from_slice(b.as_bytes()),
+            Instruction::Op(o) if o == OP_ENDIF => return Some(out),
+            _ => return None,
+        }
+    }
+    None
+}
+
 fn hashlock_leaf(h: &[u8; 32], pk: &XOnlyPublicKey) -> ScriptBuf {
     Builder::new().push_opcode(OP_SHA256).push_slice(push(h)).push_opcode(OP_EQUALVERIFY).push_x_only_key(pk).push_opcode(OP_CHECKSIG).into_script()
 }
@@ -238,12 +277,9 @@ struct RowGraph {
 /// Bitcoin Core relay policy caps each initial tapscript stack item at 80 bytes
 /// (MAX_STANDARD_TAPSCRIPT_STACK_ITEM_SIZE in policy.h). This is separate from the OP_RETURN
 /// data-carrier limit, which Core 30 raised (-datacarriersize defaults to 100,000 bytes in 31.1).
-/// Response payloads therefore travel in the witness as 80-byte pushes.
+/// Initial-stack carriers therefore use 80-byte pushes; the dispute itself carries responses in
+/// a leaf-script envelope, which that policy does not touch.
 pub const CHUNK: usize = 80;
-
-fn payload_chunks(b: &[u8]) -> Vec<Vec<u8>> {
-    b.chunks(CHUNK).map(|c| c.to_vec()).collect()
-}
 
 fn drops(mut b: Builder, k: usize) -> Builder {
     for _ in 0..k / 2 {
@@ -288,8 +324,7 @@ fn setup_claim(node: &Node, secp: &Secp256k1<All>, toy: &Toy<E>, op: &Keypair, c
         chal.challenger = chk.serialize();
         let seed = seed_for(&claim.id(), row);
         let (accept, refute) = run::output_labels(&which, n_in, seed);
-        let k_chunks = payload_chunks(&response_payload(toy, &claim, &committed, &chal)).len();
-        let leaf_respond = two_sig_leaf(-1, k_chunks, &chk, &opk);
+        let leaf_respond = envelope_leaf(&response_payload(toy, &claim, &committed, &chal), &chk, &opk);
         let leaf_withheld = timeout_leaf(D2, &chk);
         let x_info = tree(secp, &[leaf_respond.clone(), leaf_withheld.clone()]);
         let leaf_disprove = hashlock_leaf(&sha::sha256(&refute.to_le_bytes()), &chk);
@@ -336,20 +371,27 @@ fn challenge_tx(secp: &Secp256k1<All>, c: &Claimed, row: usize, op: &Keypair, ch
     (tx, prev)
 }
 
-fn response_tx(secp: &Secp256k1<All>, c: &Claimed, row: usize, chal_tx: &Transaction, payload: &[u8], op: &Keypair, ch: &Keypair) -> (Transaction, TxOut) {
+fn response_tx(secp: &Secp256k1<All>, c: &Claimed, row: usize, chal_tx: &Transaction, op: &Keypair, ch: &Keypair) -> (Transaction, TxOut) {
+    response_tx_with_leaf(secp, c, row, chal_tx, &c.rows[row].leaf_respond.clone(), op, ch)
+}
+
+/// A response that reveals `leaf` with the control block of the committed response leaf; with any
+/// other leaf than the committed one the Taproot commitment check fails.
+fn response_tx_with_leaf(secp: &Secp256k1<All>, c: &Claimed, row: usize, chal_tx: &Transaction, leaf: &ScriptBuf, op: &Keypair, ch: &Keypair) -> (Transaction, TxOut) {
     let g = &c.rows[row];
     let prev = chal_tx.output[0].clone();
-    let chunks = payload_chunks(payload);
-    let mut dummy = vec![vec![0u8; 64], vec![0u8; 64]];
-    dummy.extend(chunks.iter().cloned());
+    let dummy = vec![vec![0u8; 64], vec![0u8; 64]];
     let outs = vec![TxOut { value: Amount::ZERO, script_pubkey: spk(&g.r_info) }];
     let mut tx = spend(OutPoint { txid: chal_tx.compute_txid(), vout: 0 }, prev.value.to_sat(), Sequence::ENABLE_RBF_NO_LOCKTIME, outs, &dummy, &g.leaf_respond, &g.x_info);
-    let ch_presig = sign(secp, &tx, &prev, &g.leaf_respond, ch);
-    let op_sig = sign(secp, &tx, &prev, &g.leaf_respond, op);
-    // stack bottom->top: op_sig, ch_sig, chunk_0 .. chunk_{k-1}; DROP*k, then <ch> CSV, <op> CS.
-    let mut items = vec![op_sig, ch_presig];
-    items.extend(chunks);
-    tx.input[0].witness = witness(&items, &g.leaf_respond, &g.x_info);
+    let ch_presig = sign(secp, &tx, &prev, leaf, ch);
+    let op_sig = sign(secp, &tx, &prev, leaf, op);
+    // stack bottom->top: op_sig, ch_sig; the envelope is skipped, then <ch> CSV, <op> CS.
+    let mut w = Witness::new();
+    w.push(op_sig);
+    w.push(ch_presig);
+    w.push(leaf.as_bytes());
+    w.push(g.x_info.control_block(&(g.leaf_respond.clone(), LeafVersion::TapScript)).unwrap().serialize());
+    tx.input[0].witness = w;
     (tx, prev)
 }
 
@@ -390,13 +432,13 @@ fn tx_of(node: &Node, txid: &str) -> Transaction {
 }
 
 /// The challenger's evaluation: rebuild the circuit input from the claim it holds, the on-chain
-/// challenge and the response bytes read back from the confirmed response witness.
+/// challenge and the response bytes read back from the envelope of the revealed leaf.
 fn evaluate(toy: &Toy<E>, c: &Claimed, row: usize, resp_onchain: &Transaction) -> (run::GarbleReport, bool) {
     let tc = &toy.pinned.tc;
     let wit = &resp_onchain.input[0].witness;
-    let n = wit.len();
-    // witness: op_sig, ch_sig, chunks..., script, control block
-    let payload: Vec<u8> = (2..n - 2).flat_map(|i| wit.nth(i).unwrap().to_vec()).collect();
+    // witness: op_sig, ch_sig, leaf script, control block
+    let script = bitcoin::Script::from_bytes(wit.nth(wit.len() - 2).unwrap());
+    let payload = envelope_payload(script).expect("response leaf carries an envelope");
     let g = &c.rows[row];
     let mut bytes = inputs::common(tc, &c.claim, &g.challenge).unwrap();
     bytes.extend_from_slice(&payload);
@@ -460,7 +502,12 @@ pub fn run(bitcoind: &str, cli: &str, root: &str) -> Result<Value, String> {
     log.push(json!({"tx": "challenge/honest-row2", "measure": measure(&ctx, prev.value.to_sat())}));
     node.mine(1, &addr)?;
     let payload = response_payload(&toy, &honest.claim, &honest.committed, &honest.rows[row].challenge);
-    let (rtx, rprev) = response_tx(&secp, &honest, row, &ctx, &payload, &op, &ch);
+    let mut altered = payload.clone();
+    altered[100] ^= 1;
+    let alt_leaf = envelope_leaf(&altered, &ch.x_only_public_key().0, &op.x_only_public_key().0);
+    let (alt_tx, _) = response_tx_with_leaf(&secp, &honest, row, &ctx, &alt_leaf, &op, &ch);
+    expect("response revealing an envelope other than the committed one", false, send(&node, &alt_tx), json!({"payload_bytes": altered.len()}));
+    let (rtx, rprev) = response_tx(&secp, &honest, row, &ctx, &op, &ch);
     expect("response (honest, row 2)", true, send(&node, &rtx), json!({"payload_bytes": payload.len()}));
     log.push(json!({"tx": "response/honest-row2", "payload_bytes": payload.len(), "measure": measure(&rtx, rprev.value.to_sat())}));
     node.mine(1, &addr)?;
@@ -486,7 +533,7 @@ pub fn run(bitcoind: &str, cli: &str, root: &str) -> Result<Value, String> {
     log.push(json!({"tx": "challenge/dishonest", "measure": measure(&ctx2, prev2.value.to_sat())}));
     node.mine(1, &addr)?;
     let payload2 = response_payload(&toy, &dishonest.claim, &dishonest.committed, &dishonest.rows[frow].challenge);
-    let (rtx2, rprev2) = response_tx(&secp, &dishonest, frow, &ctx2, &payload2, &op, &ch);
+    let (rtx2, rprev2) = response_tx(&secp, &dishonest, frow, &ctx2, &op, &ch);
     expect("response (dishonest claim)", true, send(&node, &rtx2), json!({"payload_bytes": payload2.len()}));
     log.push(json!({"tx": "response/dishonest", "measure": measure(&rtx2, rprev2.value.to_sat())}));
     node.mine(1, &addr)?;
@@ -594,22 +641,25 @@ fn publication(node: &Node, secp: &Secp256k1<All>, toy: &Toy<E>, op: &Keypair, a
         Witness(usize),
         WholeItem,
         OpReturn,
+        Envelope,
     }
     for (name, payload, carrier) in [
         ("flatmerkle-row-response", flat.clone(), Carrier::Witness(CHUNK)),
         ("merkle-row-response", mk.clone(), Carrier::Witness(CHUNK)),
         ("flatmerkle-row-response-520-byte-pushes", flat.clone(), Carrier::Witness(520)),
         ("flatmerkle-row-response-op_return", flat.clone(), Carrier::OpReturn),
+        ("flatmerkle-row-response-envelope", flat.clone(), Carrier::Envelope),
         ("flatmerkle-full-matrix-stream-OP_SHA256", stream.clone(), Carrier::WholeItem),
     ] {
         let opk = op.x_only_public_key().0;
         let chunks: Vec<Vec<u8>> = match carrier {
             Carrier::Witness(n) => payload.chunks(n).map(|c| c.to_vec()).collect(),
             Carrier::WholeItem => vec![payload.clone()],
-            Carrier::OpReturn => Vec::new(),
+            Carrier::OpReturn | Carrier::Envelope => Vec::new(),
         };
         let leaf = match carrier {
             Carrier::WholeItem => full_leaf.clone(),
+            Carrier::Envelope => envelope(&payload).push_x_only_key(&opk).push_opcode(OP_CHECKSIG).into_script(),
             _ => drops(Builder::new(), chunks.len()).push_x_only_key(&opk).push_opcode(OP_CHECKSIG).into_script(),
         };
         let info = tree(secp, &[leaf.clone()]);
