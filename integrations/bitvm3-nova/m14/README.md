@@ -79,7 +79,8 @@ Against the estimates:
   - a changed FRI row value;
   - a non-canonical field encoding (x + p);
   - the right proof under another pinned statement.
-- `full` and `garbled` on guest A's real final proof (see [Guest A](#guest-a-the-nova-verifier)).
+- `full` and `garbled` on guest A's real final proof (see [Guest A](#guest-a-the-nova-verifier)),
+  and on M16's mainnet final proof (see [M16 on mainnet](#m16-on-mainnet)).
 - `full` (local, `M14_SECOND_PROOF_DIR`): a second guest's real proof (same wrap key and shape,
   different values) is accepted by the circuit built from the committed proof's shape, under its
   own statement.
@@ -122,6 +123,22 @@ At 1.12 M-instruction shards it proved one shard every 165–189 s: about 131 da
 16 GB. The proof was made with this repo's resumable prover on SP1's CUDA provers,
 [`nb3-prove-gpu`](../prover-gpu/README.md): 27,058 shard tasks in 14.9 h on the RTX 5080 Laptop
 GPU (16 GB), then `m13 shrink-wrap` and `wrap-only-v2`.
+
+### M16 on mainnet
+
+[M16](../m16/README.md)'s guest checks a Nova proof of the Bitcoin mainnet header chain from
+genesis to 975,072 and a payment in block 975,067 (6 confirmations). Its compressed proof was made
+by `nb3-prove-gpu` (13,290 shard tasks) and wrapped like A's. Proof
+[`../m13/fixtures/m16-wrap-blake3-v2.bin`](../m13/fixtures/README.md), statement
+`m16-statement.json`, pins in [`../m13/pins.json`](../m13/pins.json): guest key `dfc68a5d…cb60`,
+statement digest `cae6068f…c869`. Measured 2026-11-11 (WSL2):
+- **`full::final_verifier_circuit_on_m16_mainnet`:** `m13_verify::verify_final` accepts the
+  proof. The circuit built from the c4 shape accepts it (785,442,492 non-free gates, 8,635,080
+  input bits, 96.8 s plain execution) and rejects it with a flipped bit or under guest A's
+  statement.
+- **`garbled::garbled_final_verifier_accepts_m16_mainnet`:** garbled from the c4 shape and M16's
+  statement. The evaluator, holding only the labels of the M16 proof's bits, obtains the
+  garbler's accept label (785,442,492 ciphertexts, 167.1 s).
 
 ## What is built
 

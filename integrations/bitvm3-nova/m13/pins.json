@@ -1,5 +1,5 @@
 {
-  "note": "Pins of the M13 final layer. wrap_vk_sha256 and recursion_vk_root are the same for every guest (checked on two guests); program_vk_digest pins one guest.",
+  "note": "Pins of the M13 final layer. wrap_vk_sha256 and recursion_vk_root are the same for every guest (checked on three guests); program_vk_digest pins one guest.",
   "sp1_version": "6.9.0",
   "wrap_vk_sha256": "d42c63e3c873b35576b4c95fa8c41770a8c6b8a9f16ba74732c5b52a43b0b0d7",
   "recursion_vk_root": "7487c2175bd3256619ca0118094b8150d6df0246a1b41979a081642e5253f257",
@@ -21,6 +21,11 @@
       "elf_sha256": "2db52978545be814d9a57de44c150ff36258c507377d28fe98aabbe8e72babca",
       "k1_testnet4_statement_sha256": "d3b478b0ed0055bbd43a59775729c990a33d1df07bd0a66ee728a3573c832fa0",
       "program_vk_digest": "5df3760fed1620671151183a73c9407d528b2239a5cd243b14cf5c7b4d4af46b"
+    },
+    "m16_mainnet_chain_spv": {
+      "elf_sha256": "bb7d51b0352db50512ce4c6485d1a0b255a97dc05c3ebaf10ef7201604584790",
+      "mainnet_statement_sha256": "cae6068f7ad8c4891cb3220702a88b0bc3df54013f45e65df11a9ced531bc869",
+      "program_vk_digest": "dfc68a5d579b86244a60ba0baee7852348cf0d2a3bb13910ebb95a3e625fcb60"
     }
   }
 }

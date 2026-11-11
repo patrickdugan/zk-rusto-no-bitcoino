@@ -33,6 +33,7 @@ newer, cmake, clang; under WSL2 the driver's `libcuda` is in `/usr/lib/wsl/lib`.
 | --- | --- | --- |
 | control C, 4 headers (512,784 instructions) | SP1 default | proved in 2.8 s (CPU backend: 619–1,366 s); verified, statement `cd9beb30…`, program key `4686663f…` |
 | guest A, the Nova verifier (72.3 × 10^9 instructions) | `--element-threshold 134217728` (2^27) | 27,058 shard tasks; compressed proof verified, statement `d3b478b0…`, program key `5df3760f…` (M13's pins); 14.9 h from first start to proof, including three hangs after the laptop slept and the restarts below |
+| M16, the mainnet header chain and payment ([`../m16`](../m16/README.md), 34.1 × 10^9 instructions) | `--element-threshold 134217728` (2^27) | 13,290 shard tasks and 4,430 recursion tasks; compressed proof verified, statement `cae6068f…`, program key `dfc68a5d…`; the last attempt took 1 h 54 min (3,645 shards proved, 9,645 replayed from the memo, 11.6 GiB peak resident set under a 12 GiB cap) after attempts on 2026-11-10 that the memory guard and a WSL crash cut short (below) |
 
 Guest A ran with these SP1 worker settings (environment): 8 core workers, 2 splicing workers, 4
 in each recursion pool and `RAYON_NUM_THREADS=18`:
@@ -73,3 +74,30 @@ awake on AC power avoids the restarts:
 powercfg /change standby-timeout-ac 0
 powercfg /change monitor-timeout-ac 0
 ```
+
+### Under a host memory guard
+
+On a laptop shared with other work, a watchdog that stops the prover when Windows runs short of
+memory keeps the machine usable. Two things went wrong with one during the M16 mainnet run
+(2026-11-10):
+
+- A killed prover leaves its SP1 shared-memory files in `/dev/shm`, about 0.5 to 4 GiB each, and
+  they stay in RAM until removed. By 14:16 UTC files from earlier killed runs held 7.6 GiB, and from
+  then on the guard killed every restart within a minute. `supervise.sh` now removes the files no
+  process holds before each restart, and resumes after an outside SIGTERM or SIGKILL (exit 143 or
+  137) instead of exiting. [`scripts/test-supervise.sh`](scripts/test-supervise.sh) checks this
+  with a fake prover; the previous script fails it.
+- The guard read `FreePhysicalMemory`, which leaves out the standby list that Windows hands back
+  on demand: it saw 0.95 GiB with 3.95 GiB available. Reading available memory still killed
+  restarts, because a restart takes about 5 GiB in under a minute, faster than Windows trims idle
+  working sets. The run resumed under a guard that kills when available memory stays below
+  1.5 GiB for 30 s, or falls below 0.8 GiB at any moment.
+
+### Host disk
+
+The memo and SP1's artifact store sit inside WSL's virtual disk, a file on the host that grows and
+never shrinks; the artifact store alone reached 36 GB during the M16 run. At 15:16 UTC on
+2026-11-10 the host drive holding that file filled, and the WSL VM died with the prover in it.
+Memo entries are checksummed and renamed into place, so after space was freed the run resumed
+from the 10,078 core shards and 5,635 recursion entries already recorded. The artifact store is
+cleared at each start.

@@ -133,6 +133,34 @@ fn final_verifier_circuit_on_guest_a() {
     assert!(!run(&k_a, bits_c4).0, "control proof accepted under guest A's statement");
 }
 
+const M16_PROOF: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../m13/fixtures/m16-wrap-blake3-v2.bin");
+const M16_STATEMENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../m13/fixtures/m16-statement.json");
+
+/// M16 on mainnet (the Nova header chain from genesis to 975,072 and a payment in block 975,067):
+/// its final proof is accepted by the circuit built from the control proof's shape under its own
+/// statement, and rejected with a flipped bit or under guest A's statement.
+#[test]
+fn final_verifier_circuit_on_m16_mainnet() {
+    let reference = native::load(native::FIXTURE_V2);
+    let p = native::load(M16_PROOF);
+    let expect = statement(M16_STATEMENT);
+    m13_verify::verify_final(&p, &expect).expect("SP1 (m13-verify) accepts the M16 mainnet proof");
+    let bits = native::bits(&full::items(&p));
+    let k = Known::new(&reference, &expect);
+    let t = std::time::Instant::now();
+    let (ok, gates) = run(&k, bits.clone());
+    eprintln!("M14-E2E M16 mainnet: {} input bits, {gates} non-free gates, {:.1} s", bits.len(), t.elapsed().as_secs_f64());
+    assert!(ok, "the circuit rejects the M16 mainnet final proof");
+
+    let mut b = bits.clone();
+    let at = b.len() - 5;
+    b[at] = !b[at];
+    assert!(!run(&k, b).0, "M16 proof with a flipped bit accepted");
+
+    let k_a = Known::new(&reference, &statement(A_STATEMENT));
+    assert!(!run(&k_a, bits).0, "M16 proof accepted under guest A's statement");
+}
+
 /// A second real proof (another guest, same wrap key and shape), if present locally: the circuit
 /// built from the committed proof's shape verifies it under its own statement.
 #[test]

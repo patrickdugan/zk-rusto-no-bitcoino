@@ -120,5 +120,16 @@ Statement, 1,292 bytes, SHA-256 `cae6068f7ad8c4891cb3220702a88b0bc3df54013f45e65
 - payment: block 975,067 (`…55fe22`), 6 confirmations, txid `a652ab0c…0045`, output 0,
   940,000 sats, 22-byte script `58432f41…7283`.
 
-Next: prove this execution on the GPU (about 34 × 10^9 instructions; guest A ran at about
-6.6 × 10^9 per hour), wrap it, and evaluate the M14 circuit on the wrapped statement.
+Proved, wrapped and garbled (2026-11-11):
+
+| Step | Result |
+| --- | --- |
+| [`nb3-prove-gpu`](../prover-gpu/README.md), `--element-threshold 134217728` | compressed proof verified: 13,290 shard tasks, 4,430 recursion tasks; statement `cae6068f…c869`, program key `dfc68a5d…cb60` |
+| `m13 shrink-wrap`, `m13 wrap-only-v2` | 1 min 52 s and 1 min 12 s; `m13-verify verify` and `verify-v2` accept; wrap key `d42c63e3…` and recursion key root `7487c217…` equal the pins |
+| M14 circuit, plain | accepts (785,442,492 non-free gates, 96.8 s); rejects a flipped bit and guest A's statement |
+| M14 circuit, garbled and evaluated | the evaluator obtains the accept label (167.1 s) |
+
+The GPU run's last attempt took 1 h 54 min from its memo. Earlier attempts on 2026-11-10 were cut
+short by a host memory guard and by the host drive filling (see the GPU prover's README). The
+proofs and statement are in [`../m13/fixtures`](../m13/fixtures/README.md) (`m16-*`), the key in
+[`../m13/pins.json`](../m13/pins.json), and the circuit runs in [M14](../m14/README.md#m16-on-mainnet).

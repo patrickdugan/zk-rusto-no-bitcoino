@@ -12,6 +12,9 @@ All produced on 2026-11-07 by `m13` (SP1 6.9.0, x86_64 WSL2) from public inputs.
 | `a-compressed.bin` | 1,273,733 | `18f80209…0500` | 2026-11-08. SP1 6.9.0 compressed proof of guest A, M12's complete Nova verifier (ELF `2db52978…babca`, inputs `k1.vk` and `bundle.nht4`, 72.3 × 10^9 instructions), proved on this laptop's GPU by [`nb3-prove-gpu`](../../prover-gpu/README.md) in 27,058 shard tasks. Committed values SHA-256 `d3b478b0…2fa0`, guest key `5df3760f…f46b`. |
 | `a-wrap-blake3-v2.bin` | 1,099,173 | `79c4af11…daad` | Guest A's final proof: `m13 shrink-wrap` then `m13 wrap-only-v2` over `a-compressed.bin`. Same wrap key and shape as the c4 proof. |
 | `a-statement.json` | 408 | `06fa3156…b007` | Guest A's statement: the same wrap key and recursion key root as c4, guest A's key and committed-values digest. Every field equals [`../pins.json`](../pins.json). |
+| `m16-compressed.bin` | 1,273,861 | `8a5aac01…3dee` | 2026-11-11. SP1 6.9.0 compressed proof of [M16](../../m16/README.md)'s guest (ELF `bb7d51b0…4790`) on mainnet: the Nova header chain from genesis to 975,072 and a payment in block 975,067, 34.1 × 10^9 instructions, proved by `nb3-prove-gpu` in 13,290 shard tasks. Committed values SHA-256 `cae6068f…c869`, guest key `dfc68a5d…cb60`. |
+| `m16-wrap-blake3-v2.bin` | 1,099,173 | `97871e86…26e3` | M16's final proof: `m13 shrink-wrap` (1 min 52 s) then `m13 wrap-only-v2` (1 min 12 s) over `m16-compressed.bin`, 10.2 GiB peak RAM. Same wrap key and shape as the c4 proof. |
+| `m16-statement.json` | 408 | `9f282490…4528` | M16's statement: the same wrap key and recursion key root, M16's key and the mainnet committed-values digest. Every field equals [`../pins.json`](../pins.json). |
 
 Reproduce the wrap from the compressed proof (3.5 min, 7 GiB RAM plus 3.5 GB swap here):
 

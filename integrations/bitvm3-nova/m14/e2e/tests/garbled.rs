@@ -143,3 +143,20 @@ fn garbled_final_verifier_accepts_guest_a() {
     eprintln!("M14-E2E guest A garbled+evaluated: {gates} ciphertexts, {:.1} s", t.elapsed().as_secs_f64());
     assert!(accept && !reject, "evaluator did not obtain the accept label for guest A's proof");
 }
+
+const M16_PROOF: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../m13/fixtures/m16-wrap-blake3-v2.bin");
+const M16_STATEMENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../m13/fixtures/m16-statement.json");
+
+/// M16 on mainnet (Nova chain from genesis to 975,072 and a payment at 975,067): garbled from the
+/// control proof's shape and M16's statement; the evaluator holding only the labels of the M16
+/// proof's bits obtains "accept".
+#[test]
+fn garbled_final_verifier_accepts_m16_mainnet() {
+    let reference = native::load(native::FIXTURE_V2);
+    let p = native::load(M16_PROOF);
+    let expect: m13_verify::FinalStatement = serde_json::from_slice(&std::fs::read(M16_STATEMENT).unwrap()).unwrap();
+    let t = std::time::Instant::now();
+    let (accept, reject, gates) = garble_and_evaluate(&reference, &expect, native::bits(&full::items(&p)));
+    eprintln!("M14-E2E M16 mainnet garbled+evaluated: {gates} ciphertexts, {:.1} s", t.elapsed().as_secs_f64());
+    assert!(accept && !reject, "evaluator did not obtain the accept label for the M16 mainnet proof");
+}
