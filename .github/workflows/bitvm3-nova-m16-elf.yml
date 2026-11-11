@@ -1,0 +1,57 @@
+name: Nova M16 guest ELF hash
+on:
+  push:
+    branches: ['main', 'feat/nova-bitvm3-*']
+    paths: ['integrations/bitvm3-nova/m16/**', 'integrations/bitvm3-nova/m15/vendor/**', '.github/workflows/bitvm3-nova-m16-elf.yml']
+  pull_request:
+    paths: ['integrations/bitvm3-nova/m16/**', 'integrations/bitvm3-nova/m15/vendor/**', '.github/workflows/bitvm3-nova-m16-elf.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nova-m16-elf-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  m16-elf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: '4'
+      EXPECTED_ELF_SHA256: bb7d51b0352db50512ce4c6485d1a0b255a97dc05c3ebaf10ef7201604584790
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swap on the runner's temporary disk (SP1 host crates exceed 16 GB RAM at link time)
+        run: |
+          sudo fallocate -l 16G /mnt/ci-swap && sudo chmod 600 /mnt/ci-swap && sudo mkswap /mnt/ci-swap && sudo swapon /mnt/ci-swap
+          free -g
+      - name: SP1 toolchain
+        run: |
+          mkdir -p integrations/bitvm3-nova/m16/ci
+          curl -L https://sp1up.succinct.xyz | bash
+          export PATH="$HOME/.sp1/bin:$PATH"
+          sp1up --version v6.9.0
+          cargo prove --version | tee integrations/bitvm3-nova/m16/ci/cargo-prove.txt
+          rustup toolchain list | tee integrations/bitvm3-nova/m16/ci/toolchains.txt
+          rustc +succinct --version -v | tee -a integrations/bitvm3-nova/m16/ci/toolchains.txt
+      - name: Build the host script and the guest ELF
+        run: |
+          set -o pipefail
+          export PATH="$HOME/.sp1/bin:$PATH"
+          cd integrations/bitvm3-nova/m16/sp1/script
+          cargo build --release 2>&1 | tail -20
+          ./target/release/m16-nova-spv-script elf "$GITHUB_WORKSPACE/integrations/bitvm3-nova/m16/ci/m16.elf"
+      - name: Check the ELF hash
+        run: |
+          cd integrations/bitvm3-nova/m16/ci
+          ls -l m16.elf
+          sha256sum m16.elf | tee elf.sha256
+          got=$(cut -d' ' -f1 elf.sha256)
+          if [ "$got" != "$EXPECTED_ELF_SHA256" ]; then
+            echo "::error::M16 ELF sha256 $got differs from the pinned $EXPECTED_ELF_SHA256"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-m16-elf-${{ github.sha }}
+          path: integrations/bitvm3-nova/m16/ci/

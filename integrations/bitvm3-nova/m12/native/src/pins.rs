@@ -8,7 +8,8 @@ use nova_header_chain::native::{self, Network};
 /// Each is the SHA-256 of the bincode 1.x key written by
 /// `btc-header-fold vk-export K OUT --network NET` at de607d3; see
 /// `../fixtures/README.md` for how each digest was reproduced.
-pub const M12_PINNED_KEYS: [(Network, usize, &str); 2] = [
+pub const M12_PINNED_KEYS: [(Network, usize, &str); 3] = [
+  (Network::Mainnet, 1, "6aa50d09397c51d0b89d78b3a918d3fe0962251225c8b6ca91e83199a4e6da1d"),
   (Network::Testnet4, 1, "6894f4903a9ff9713111bb1076b61663ac3592ad3d51b697d58125403fc5c12a"),
   (Network::Testnet4, 20, "9e94b9083b5be30e796e974218804214b7106284c071eeec9b15945735321727"),
 ];
