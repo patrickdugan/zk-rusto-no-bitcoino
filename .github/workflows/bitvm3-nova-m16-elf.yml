@@ -38,7 +38,11 @@ jobs:
           set -o pipefail
           export PATH="$HOME/.sp1/bin:$PATH"
           cd integrations/bitvm3-nova/m16/sp1/script
-          cargo build --release 2>&1 | tail -20
+          cargo build --release > ../../ci/build.log 2>&1 || {
+            echo "::error title=M16 build failed::$(tail -40 ../../ci/build.log | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
+            exit 1
+          }
+          tail -5 ../../ci/build.log
           ./target/release/m16-nova-spv-script elf "$GITHUB_WORKSPACE/integrations/bitvm3-nova/m16/ci/m16.elf"
       - name: Check the ELF hash
         run: |
