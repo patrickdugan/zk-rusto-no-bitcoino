@@ -28,9 +28,12 @@ jobs:
         run: |
           mkdir -p integrations/bitvm3-nova/m16/ci
           sudo apt-get update && sudo apt-get install -y protobuf-compiler
-          curl -L https://sp1up.succinct.xyz | bash
-          export PATH="$HOME/.sp1/bin:$PATH"
-          sp1up --version v6.9.0
+          for try in 1 2 3; do
+            curl -L https://sp1up.succinct.xyz | bash
+            export PATH="$HOME/.sp1/bin:$PATH"
+            sp1up --version v6.9.0 && break
+            sleep 20
+          done
           cargo prove --version | tee integrations/bitvm3-nova/m16/ci/cargo-prove.txt
           rustup toolchain list | tee integrations/bitvm3-nova/m16/ci/toolchains.txt
           rustc +succinct --version -v | tee -a integrations/bitvm3-nova/m16/ci/toolchains.txt
