@@ -56,6 +56,10 @@ jobs:
             echo "::notice title=runner toolchain::$(cargo prove --version | head -1) | $(rustc +succinct -vV | tr '\n' ' ') | size $(stat -c %s m16.elf) | runner-path strings $(strings -a m16.elf | grep -c '/home/runner') | rustc strings $(strings -a m16.elf | grep -m3 'rustc ' | tr '\n' ' ')"
             echo "::notice title=runner sections::$(readelf -SW m16.elf | awk '/\[ *[0-9]+\]/ {printf "%s:%s ", $2, $6}')"
             echo "::notice title=runner path set::paths $(strings -a m16.elf | grep -oE '/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.+-]+)+\.rs' | sort -u | wc -l) sha $(strings -a m16.elf | grep -oE '/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.+-]+)+\.rs' | sort -u | sha256sum | cut -c1-16) all-strings $(strings -a m16.elf | wc -l) $(strings -a m16.elf | sort | sha256sum | cut -c1-16)"
+            strings -a m16.elf | grep -v '\.rs' | sort | gzip -9 | base64 -w0 > strings.b64
+            wc -c strings.b64
+            split -b 3000 -d strings.b64 strpart.
+            for f in strpart.*; do echo "::notice title=strings $f::$(cat $f)"; done
             echo "::notice title=runner path samples::$(strings -a m16.elf | grep -m6 -E '/home/runner|/m16-sp1|/cargo/' | tr '\n' ' ')"
             echo "::error::M16 ELF sha256 $got differs from the pinned $EXPECTED_ELF_SHA256"
             exit 1
