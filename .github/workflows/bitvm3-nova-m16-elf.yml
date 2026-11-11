@@ -1,4 +1,8 @@
 name: Nova M16 guest ELF hash
+# Rebuilds the M16 guest the way the proven ELF was built: as root, at /root/nb3/m16/sp1 with M15's
+# vendored halo2curves at /root/nb3/m15/vendor and CARGO_HOME=/root/.cargo. The ELF depends on those
+# absolute paths (integrations/bitvm3-nova/m16/README.md, "Rebuilding the ELF"). Checks the rebuilt
+# ELF and the committed m16.elf against the pinned hash, and both program keys against the pin.
 on:
   push:
     branches: ['main', 'feat/nova-bitvm3-*']
@@ -14,59 +18,64 @@ concurrency:
 jobs:
   m16-elf:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
-      CARGO_BUILD_JOBS: '4'
       EXPECTED_ELF_SHA256: bb7d51b0352db50512ce4c6485d1a0b255a97dc05c3ebaf10ef7201604584790
+      EXPECTED_PROGRAM_VK: dfc68a5d579b86244a60ba0baee7852348cf0d2a3bb13910ebb95a3e625fcb60
     steps:
       - uses: actions/checkout@v4
       - name: Swap on the runner's temporary disk (SP1 host crates exceed 16 GB RAM at link time)
         run: |
           sudo fallocate -l 16G /mnt/ci-swap && sudo chmod 600 /mnt/ci-swap && sudo mkswap /mnt/ci-swap && sudo swapon /mnt/ci-swap
           free -g
-      - name: SP1 toolchain
+      - name: Rust and SP1 v6.9.0 for root
         run: |
-          mkdir -p integrations/bitvm3-nova/m16/ci
           sudo apt-get update && sudo apt-get install -y protobuf-compiler
-          for try in 1 2 3; do
-            curl -L https://sp1up.succinct.xyz | bash
-            export PATH="$HOME/.sp1/bin:$PATH"
-            sp1up --version v6.9.0 && break
-            sleep 20
-          done
-          cargo prove --version | tee integrations/bitvm3-nova/m16/ci/cargo-prove.txt
-          rustup toolchain list | tee integrations/bitvm3-nova/m16/ci/toolchains.txt
-          rustc +succinct --version -v | tee -a integrations/bitvm3-nova/m16/ci/toolchains.txt
-      - name: Build the host script and the guest ELF
+          sudo -H bash -eo pipefail -c '
+            curl --proto "=https" -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+            export PATH=/root/.sp1/bin:/root/.cargo/bin:$PATH
+            for try in 1 2 3; do
+              curl -L https://sp1up.succinct.xyz | bash && sp1up --version v6.9.0 && break
+              sleep 20
+            done
+            cargo prove --version
+            rustc +succinct -vV'
+      - name: Build at the proven build's paths and derive program keys
         run: |
-          set -o pipefail
-          export PATH="$HOME/.sp1/bin:$PATH"
-          cd integrations/bitvm3-nova/m16/sp1/script
-          cargo build --release > ../../ci/build.log 2>&1 || {
-            echo "::error title=M16 build failed::$(tail -40 ../../ci/build.log | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
-            exit 1
-          }
-          tail -5 ../../ci/build.log
-          ./target/release/m16-nova-spv-script elf "$GITHUB_WORKSPACE/integrations/bitvm3-nova/m16/ci/m16.elf"
-      - name: Check the ELF hash
+          sudo mkdir -p /root/nb3/m16 /root/nb3/m15
+          sudo rsync -a --exclude target integrations/bitvm3-nova/m16/sp1/ /root/nb3/m16/sp1/
+          sudo rsync -a --exclude target integrations/bitvm3-nova/m15/vendor/ /root/nb3/m15/vendor/
+          sudo cp integrations/bitvm3-nova/m16/m16.elf /root/nb3/m16/committed.elf
+          sudo -H bash -eo pipefail -c '
+            export PATH=/root/.sp1/bin:/root/.cargo/bin:$PATH CARGO_BUILD_JOBS=4
+            cd /root/nb3/m16/sp1/script
+            cargo build --release > /root/nb3/m16/build.log 2>&1 || { tail -40 /root/nb3/m16/build.log; exit 1; }
+            tail -3 /root/nb3/m16/build.log
+            ./target/release/m16-nova-spv-script elf /root/nb3/m16/rebuilt.elf
+            ./target/release/m16-nova-spv-script program-vk /root/nb3/m16/rebuilt.elf | tail -1 > /root/nb3/m16/rebuilt-vk.json
+            ./target/release/m16-nova-spv-script program-vk /root/nb3/m16/committed.elf | tail -1 > /root/nb3/m16/committed-vk.json'
+          mkdir -p integrations/bitvm3-nova/m16/ci
+          sudo cp /root/nb3/m16/rebuilt.elf /root/nb3/m16/rebuilt-vk.json /root/nb3/m16/committed-vk.json /root/nb3/m16/build.log integrations/bitvm3-nova/m16/ci/
+          sudo chown -R "$USER" integrations/bitvm3-nova/m16/ci
+      - name: Check ELF hashes and program keys against the pins
         run: |
           cd integrations/bitvm3-nova/m16/ci
-          ls -l m16.elf
-          sha256sum m16.elf | tee elf.sha256
-          got=$(cut -d' ' -f1 elf.sha256)
-          if [ "$got" != "$EXPECTED_ELF_SHA256" ]; then
-            export PATH="$HOME/.sp1/bin:$PATH"
-            echo "::notice title=runner toolchain::$(cargo prove --version | head -1) | $(rustc +succinct -vV | tr '\n' ' ') | size $(stat -c %s m16.elf) | runner-path strings $(strings -a m16.elf | grep -c '/home/runner') | rustc strings $(strings -a m16.elf | grep -m3 'rustc ' | tr '\n' ' ')"
-            echo "::notice title=runner sections::$(readelf -SW m16.elf | awk '/\[ *[0-9]+\]/ {printf "%s:%s ", $2, $6}')"
-            echo "::notice title=runner path set::paths $(strings -a m16.elf | grep -oE '/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.+-]+)+\.rs' | sort -u | wc -l) sha $(strings -a m16.elf | grep -oE '/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.+-]+)+\.rs' | sort -u | sha256sum | cut -c1-16) all-strings $(strings -a m16.elf | wc -l) $(strings -a m16.elf | sort | sha256sum | cut -c1-16)"
-            strings -a m16.elf | grep -v '\.rs' | sort | gzip -9 | base64 -w0 > strings.b64
-            wc -c strings.b64
-            split -b 3000 -d strings.b64 strpart.
-            for f in strpart.*; do echo "::notice title=strings $f::$(cat $f)"; done
-            echo "::notice title=runner path samples::$(strings -a m16.elf | grep -m6 -E '/home/runner|/m16-sp1|/cargo/' | tr '\n' ' ')"
-            echo "::error::M16 ELF sha256 $got differs from the pinned $EXPECTED_ELF_SHA256"
-            exit 1
-          fi
+          cat rebuilt-vk.json committed-vk.json
+          python3 - <<'PY'
+          import json, os
+          exp_elf, exp_vk = os.environ["EXPECTED_ELF_SHA256"], os.environ["EXPECTED_PROGRAM_VK"]
+          bad = []
+          for name in ("rebuilt", "committed"):
+              r = json.load(open(f"{name}-vk.json"))
+              if r["elf_sha256"] != exp_elf:
+                  bad.append(f"{name} ELF sha256 {r['elf_sha256']} ({r['bytes']} bytes), pinned {exp_elf}")
+              if r["program_vk_digest"] != exp_vk:
+                  bad.append(f"{name} program key {r['program_vk_digest']}, pinned {exp_vk}")
+          for b in bad:
+              print(f"::error::{b}")
+          assert not bad, "M16 ELF or program key differs from the pins"
+          print("rebuilt and committed M16 ELF equal the pinned hash and program key")
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:

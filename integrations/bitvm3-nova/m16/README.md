@@ -33,11 +33,30 @@ proofs digest), followed by a 128-byte payment record:
 The genesis anchor is z0 in the statement, the same as in guest A.
 
 Tools:
-- [`sp1/script`](sp1/script) (`m16-nova-spv-script`): `elf`, `segments`, `execute`, `mutations`
-  and `decode`.
+- [`sp1/script`](sp1/script) (`m16-nova-spv-script`): `elf`, `segments`, `execute`, `mutations`,
+  `decode`, and `program-vk ELF` (the SP1 program key digest of an ELF file, setup only).
 - [`fetch_mainnet.py`](fetch_mainnet.py): reads every header from a Bitcoin Core node (pruned is
   fine) and builds the payment input.
 - [`scripts`](scripts): the WSL build and the two-shard mainnet fold.
+- [`m16.elf`](m16.elf): the proven guest, 1,240,008 bytes, SHA-256 `bb7d51b0…4790`; its program
+  key digest is `dfc68a5d…cb60` (`m16-nova-spv-script program-vk m16.elf`, 3 s).
+
+### Rebuilding the ELF
+
+The guest ELF depends on the absolute paths it is built at. `scripts/build.sh` builds as root at
+`/root/nb3/m16/sp1`, with M15's vendored halo2curves at `/root/nb3/m15/vendor` and
+`CARGO_HOME=/root/.cargo` (SP1 6.9.0, `cargo prove` b8387fa). Measured in WSL on 2026-11-11:
+
+| Build | ELF SHA-256 | Bytes | Program key |
+| --- | --- | ---: | --- |
+| at the paths above, from this tree | `bb7d51b0…4790` (equal to `m16.elf`) | 1,240,008 | `dfc68a5d…cb60` |
+| `/root/repro/w/…`, built twice | `0453cdca…d659` both times | 1,239,856 | `bd8a0210…bb61` |
+| `/root/repro/w/…` with `codegen-units = 1`, built twice | `88a9f7ff…30b7` both times | 1,014,456 | `8413655b…1954` |
+
+A build is deterministic at a fixed path, and any other checkout path gives a different ELF and a
+different program key, although panic-location paths are remapped. The CI job
+`bitvm3-nova-m16-elf.yml` in zk-rusto-no-bitcoino builds at the paths above and checks the ELF hash
+and the program key.
 
 ## Test chain: block 170, two segments
 

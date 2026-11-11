@@ -11,9 +11,12 @@
 //!       Execute the guest on altered segment and payment inputs; every one must be refused.
 //!   m16-spv decode PUBLIC_VALUES.bin
 //!       Decode a committed statement (as saved by nb3-prove next to its proof, or by `execute`).
+//!   m16-spv program-vk ELF
+//!       The SP1 program key digest of an ELF file (setup only, no proving): the value
+//!       `m13/pins.json` pins as `program_vk_digest`.
 use anyhow::{bail, ensure, Result};
 use sha2::{Digest, Sha256};
-use sp1_sdk::{include_elf, Elf, Prover, ProverClient, SP1Stdin};
+use sp1_sdk::{include_elf, Elf, HashableKey, Prover, ProverClient, ProvingKey, SP1Stdin};
 use std::time::Instant;
 
 const ELF: Elf = include_elf!("m16-nova-spv-program");
@@ -119,6 +122,16 @@ async fn main() -> Result<()> {
             println!("{}", serde_json::json!({"segments": bundles.len(), "bytes": out.len(), "sha256": sha_hex(&out)}));
         }
         "decode" => println!("{}", serde_json::to_string_pretty(&decode(&std::fs::read(&a[2])?)?)?),
+        "program-vk" => {
+            let elf = Elf::from(std::fs::read(&a[2])?);
+            let pk = ProverClient::builder().light().build().await.setup(elf.clone()).await?;
+            let d: Vec<u8> = pk.verifying_key().hash_u32().iter().flat_map(|x| x.to_le_bytes()).collect();
+            println!(
+                "{}",
+                serde_json::json!({"elf": a[2], "elf_sha256": sha_hex(elf.as_ref()), "bytes": elf.as_ref().len(),
+                                   "program_vk_digest": hex::encode(d)})
+            );
+        }
         "execute" => {
             let (vk, bundle, pay) = (std::fs::read(&a[2])?, std::fs::read(&a[3])?, std::fs::read(&a[4])?);
             let client = ProverClient::builder().light().build().await;
