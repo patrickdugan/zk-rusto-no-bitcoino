@@ -52,6 +52,9 @@ jobs:
           sha256sum m16.elf | tee elf.sha256
           got=$(cut -d' ' -f1 elf.sha256)
           if [ "$got" != "$EXPECTED_ELF_SHA256" ]; then
+            export PATH="$HOME/.sp1/bin:$PATH"
+            echo "::notice title=runner toolchain::$(cargo prove --version | head -1) | $(rustc +succinct -vV | tr '\n' ' ') | size $(stat -c %s m16.elf) | runner-path strings $(strings -a m16.elf | grep -c '/home/runner') | rustc strings $(strings -a m16.elf | grep -m3 'rustc ' | tr '\n' ' ')"
+            echo "::notice title=runner path samples::$(strings -a m16.elf | grep -m6 -E '/home/runner|/m16-sp1|/cargo/' | tr '\n' ' ')"
             echo "::error::M16 ELF sha256 $got differs from the pinned $EXPECTED_ELF_SHA256"
             exit 1
           fi
