@@ -17,7 +17,7 @@ fixed Boolean circuit that is garbled and evaluated.
 | [`m15/`](m15/README.md) | Guest A with the verifier key in raw form: 21.2 × 10^9 SP1 instructions instead of 72.3 × 10^9, same statement |
 | [`m16/`](m16/README.md) | One SP1 guest for the mainnet header chain from genesis plus an SPV payment; proved on mainnet (tip 975,072, payment at 975,067) on the laptop GPU, wrapped, and accepted by the plain and garbled M14 circuit |
 | [`m17/`](m17/README.md) | Bitcoin Script (legacy, P2SH, witness v0) as a Nova step circuit, following Shinigami's engine; agrees with Core on all 2,756 non-Taproot vectors |
-| [`m18/`](m18/README.md) | A windowed UTXO map (indexed Merkle tree, Poseidon) folded in Nova over mainnet blocks H..T, sealed at T and bound to the M16 tip, for balance proofs; segmented folding and its verifier |
+| [`m18/`](m18/README.md) | A windowed UTXO map (indexed Merkle tree, Poseidon) folded in Nova over mainnet blocks H..T, sealed at T and bound to the M16 tip, for balance proofs; segmented folding proved and verified on mainnet 975,067..975,072 (8 segments, 224,790 steps) |
 | [`prover/`](prover/README.md) | `nb3-prove`: resumable, disk-backed SP1 6.9 proving on one machine (CPU provers) |
 | [`prover-gpu/`](prover-gpu/README.md) | `nb3-prove-gpu`: the same prover on SP1's CUDA provers, sized for GPUs below 24 GB |
 
@@ -27,7 +27,7 @@ Developed in `nova-bitvm3/` on `patrickdugan/garbled-snark-verifier` (a fork of 
 garbled-snark-verifier) and copied here at commit
 `8fa7efe495ea1bd4675f9c8bbd29f0b6e8bee051`, so the work lives in this repository rather than in
 the fork. Paths written `nova-bitvm3/...` in the documents below mean this directory. M15–M17
-were copied from the fork on 2026-11-10 and M18 on 2026-11-11 (fork commit 9069761); their
+were copied from the fork on 2026-11-10 and M18 on 2026-11-11 (fork commit 8e36a29); their
 crates are standalone workspaces and do not depend on the fork.
 
 The circuit crates (the root crate, `m12/gates`, `m14/circuit`, `m14/e2e`) build on the

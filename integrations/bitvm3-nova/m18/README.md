@@ -371,15 +371,20 @@ byte changed (segment 2 does not start where segment 1 ended), and a wrong `--vk
 Resume: segment 1 killed after its step-3 checkpoint restarted at step 3 and reached the traced
 zn, and its CompressedSNARK verifies.
 
-Window 975,067..975,072, traced (`results/trace-975067-975072.json`, 1,743 s native): 224,790
-steps in 8 segments of 28,099 steps (the last 28,097), 29.95 MB of witnesses each, final root
-`7e18b083…2d1c` with 74,593 leaves. `m18 check-trace` on the traced states: the window starts at
-the initial state for hash(975,066) and height 975,067, the segments chain, the last state is
-sealed, hash(T) and T = 975,072 equal the tip of the M16 statement `cae6068f…c869`, and the
-PAY1 output `a652ab0c…0045:0` verifies from its transaction and membership path
-(`results/balance-975067-975072.json`, leaf 8): unspent, 940,000 sats, the only window output
-paying its script. The fold runs as 8 processes of 2 threads each (`scripts/fold-window.sh`,
-checkpoint every 250 steps).
+Window 975,067..975,072, traced, folded and verified (`results/trace-975067-975072.json`,
+`results/segmented-975067-975072.json`): 224,790 steps in 8 segments of 28,099 steps (the last
+28,097), 29.95 MB of witnesses each, traced in 1,743 s natively. The 8 `fold-seg` processes
+(2 threads each, `scripts/fold-window.sh`, checkpoint every 250 steps, shared `pp.bin` digest
+`2a19124c…3101`) finished in 35,615 to 35,839 s (9.96 h wall, 1.27 s per step per segment,
+6.27 steps/s aggregate), each `zn` matching the trace (`recursive_verify` 0.30 to 0.69 s), and
+each segment compressed to a 13,800-byte Spartan-IPA proof (setup 1.61 to 3.41 s, prove 5.94 to
+10.27 s, verify 0.13 to 0.32 s; 110,400 bytes across the 8 proofs). `m18 verify-window
+--from-circuit` rebuilds the verifier key from the circuit in 3.61 s (`a259c50c…1939`), verifies
+all 8 CompressedSNARKs, segment chaining, initial state for hash(975,066) at height 975,067,
+sealing at root `7e18b083…2d1c` (74,593 leaves, `r_s` `efec1a32…5b10`), equality of hash(T) and
+T = 975,072 with the M16 statement `cae6068f…c869`, and the PAY1 output `a652ab0c…0045:0` from
+its transaction and membership path (`results/balance-975067-975072.json`, leaf 8: unspent,
+940,000 sats, the only window output paying its script) in 1.47 s.
 
 The earlier bench step (c compressions plus one create at depth 32, `m18 fold`,
 `results/fold-timing*.json`, `results/cost-model.json`, `scripts/cost_model.py`) stays as the
