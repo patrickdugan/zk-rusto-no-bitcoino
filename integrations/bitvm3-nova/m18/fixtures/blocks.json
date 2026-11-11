@@ -1,0 +1,52 @@
+{
+  "blocks": [
+    {
+      "hash": "000000000000000000017809af97fdd5530149e411b2ab091db4f405e355fe22",
+      "height": 975067,
+      "prev_hash": "000000000000000000017d86fef42423ab8a51b2e87e352cd7ef225e354cc148",
+      "raw_bytes": 1473789,
+      "raw_sha256": "41600bb84396062d369d92f88a0cd6d4783aa37c64e2dc54dc023efa16efaae8"
+    },
+    {
+      "hash": "000000000000000000011fa7b50d5bfc06de8fdc89066d9d20a47129a312b986",
+      "height": 975068,
+      "prev_hash": "000000000000000000017809af97fdd5530149e411b2ab091db4f405e355fe22",
+      "raw_bytes": 1665380,
+      "raw_sha256": "0ce8ce471c43bfdf8b837958df1147be041f18b29dc1412b83d44da44a144cbe"
+    },
+    {
+      "hash": "000000000000000000013fe406e36a1394a237ae240073c29a3f6e15062e6e5e",
+      "height": 975069,
+      "prev_hash": "000000000000000000011fa7b50d5bfc06de8fdc89066d9d20a47129a312b986",
+      "raw_bytes": 1598176,
+      "raw_sha256": "41adf25b7be3f6d0855d1961a4f18784a97f71d1bb762b56e0572df15f798f4c"
+    },
+    {
+      "hash": "000000000000000000010e9478d851c1b45ea5ffc6d2e1bb75159a6e22c14065",
+      "height": 975070,
+      "prev_hash": "000000000000000000013fe406e36a1394a237ae240073c29a3f6e15062e6e5e",
+      "raw_bytes": 1599952,
+      "raw_sha256": "9df87384d9c1250dd1a02d5a1dcffde9d4e17e99f1962003d8d4ae034cf645a3"
+    },
+    {
+      "hash": "0000000000000000000111c2ae7e128735832b8bdb11462029226f63ffdf1153",
+      "height": 975071,
+      "prev_hash": "000000000000000000010e9478d851c1b45ea5ffc6d2e1bb75159a6e22c14065",
+      "raw_bytes": 1503637,
+      "raw_sha256": "39d222fdd2758d659f396db3df53e7c7fa79fe940a021553abc99a2f162ae1b5"
+    },
+    {
+      "hash": "000000000000000000013ec209c5510205d35f80f657c20ef1ea16f73f6ff792",
+      "height": 975072,
+      "prev_hash": "0000000000000000000111c2ae7e128735832b8bdb11462029226f63ffdf1153",
+      "raw_bytes": 1527879,
+      "raw_sha256": "2dfef40d533a7a9245af257fb30aa9c2d029f8d92361a0389f81051987f4273d"
+    }
+  ],
+  "note": "raw blocks are not committed; headers match the six headers of the M16 payment input",
+  "previous_block": {
+    "hash": "000000000000000000017d86fef42423ab8a51b2e87e352cd7ef225e354cc148",
+    "height": 975066
+  },
+  "source": "mempool.space /api/block-height/{h} and /api/block/{hash}/raw, mainnet"
+}

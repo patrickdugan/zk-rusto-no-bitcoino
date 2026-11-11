@@ -1,0 +1,69 @@
+{
+  "blocks": [
+    {
+      "compressions": 16,
+      "height": 170,
+      "idle_steps": 0,
+      "leaf_updates": 8,
+      "steps": 16,
+      "transactions": 2
+    },
+    {
+      "compressions": 7,
+      "height": 171,
+      "idle_steps": 0,
+      "leaf_updates": 3,
+      "steps": 7,
+      "transactions": 1
+    }
+  ],
+  "compressed_bytes": 13800,
+  "compressed_prove_seconds": 109.504321754,
+  "compressed_setup_seconds": 20.862300993,
+  "compressed_verify_seconds": 2.669391213,
+  "final_root_le_hex": "5fde007a0454f29613de1281a09ca4ba61d74a0dbf7dea153cec555f40b58a1f",
+  "final_root_matches_native": true,
+  "first_step_seconds": 2.334e-6,
+  "leaves": 5,
+  "public_params_seconds": 53.007790819,
+  "r_le_hex": "fbf1a5582d1897e4479b49c25beedaa059872937e4fd039c915ee1d971df5901",
+  "r_s_le_hex": "ec98be98452e852e419b57455218019192e585455714d3cfc32b6fa6c135dc27",
+  "recursive_prove_seconds": 49.739898053,
+  "recursive_verify_seconds": 2.504191401,
+  "sealed": true,
+  "seconds_per_step_steady": 2.2316013199090907,
+  "state_length": 72,
+  "step_constraints": 51404,
+  "step_seconds": [
+    2.334e-6,
+    1.188328191,
+    1.295120248,
+    1.450935613,
+    1.63378052,
+    2.864587142,
+    2.273855793,
+    1.7635392840000002,
+    2.72639249,
+    3.770356507,
+    1.449684465,
+    1.235805278,
+    2.336591266,
+    3.131019315,
+    1.597843631,
+    2.036666247,
+    2.783501465,
+    1.808974005,
+    2.123177774,
+    2.295067403,
+    2.832550663,
+    2.838706869,
+    3.658744869
+  ],
+  "steps": 23,
+  "window": {
+    "first": 170,
+    "last": 171,
+    "last_hash": "00000000c9ec538cab7f38ef9c67a95742f56ab07b0a37c5be6b02808dbfb4e0",
+    "previous_hash": "000000002a22cfee1f2c846adbd12b3e183d4f97683f85dad08a79780a84bd55"
+  }
+}

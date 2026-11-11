@@ -1,0 +1,118 @@
+{
+  "window": {
+    "first": 170,
+    "last": 171,
+    "last_hash": "00000000c9ec538cab7f38ef9c67a95742f56ab07b0a37c5be6b02808dbfb4e0",
+    "previous_hash": "000000002a22cfee1f2c846adbd12b3e183d4f97683f85dad08a79780a84bd55"
+  },
+  "steps": 23,
+  "segment_steps": 10,
+  "segments": [
+    {
+      "index": 0,
+      "start": 0,
+      "steps": 10,
+      "z0_sha256": "3dc71923a6972c50810b8e4223d5c84d7308d6358b09ec38c295a748b79778d2",
+      "zn_sha256": "be639036fa4f31faa360f6e7951451d694580404175595839f583effea93a3fb",
+      "fold": {
+        "fold_seconds_this_run": 20.630304931,
+        "recursive_verify_seconds": 1.714137727,
+        "resumed_at": 0,
+        "segment": 0,
+        "steps": 10,
+        "zn_matches_trace": true
+      },
+      "compress": {
+        "proof_bytes": 13800,
+        "proof_sha256": "b61fef3de8e34f413631f7ec0df3954ac890ae8c9994a511b20e5700b7548282",
+        "prove_seconds": 77.947743166,
+        "segment": 0,
+        "setup_seconds": 17.515642801,
+        "steps": 10,
+        "verify_seconds": 4.539256567,
+        "vk_sha256": "a259c50c559c768e929bf4df09a70279afdd180d1dd3b947dcf38bea95231939"
+      }
+    },
+    {
+      "index": 1,
+      "start": 10,
+      "steps": 10,
+      "z0_sha256": "be639036fa4f31faa360f6e7951451d694580404175595839f583effea93a3fb",
+      "zn_sha256": "d95ac3e43e0a64698e4312cf8a92e357d4af5b7e8dcb68cd5203fe2113def712",
+      "fold": {
+        "fold_seconds_this_run": 16.405618325,
+        "recursive_verify_seconds": 1.113491929,
+        "resumed_at": 3,
+        "segment": 1,
+        "steps": 10,
+        "zn_matches_trace": true
+      },
+      "compress": {
+        "proof_bytes": 13800,
+        "proof_sha256": "b73b3d9ab4b7d7de6d97f7e48336813b3ec386a32594da4cd6e05323d90ecc49",
+        "prove_seconds": 34.236683474,
+        "segment": 1,
+        "setup_seconds": 10.940327124,
+        "steps": 10,
+        "verify_seconds": 1.3656474109999999,
+        "vk_sha256": "a259c50c559c768e929bf4df09a70279afdd180d1dd3b947dcf38bea95231939"
+      }
+    },
+    {
+      "index": 2,
+      "start": 20,
+      "steps": 3,
+      "z0_sha256": "d95ac3e43e0a64698e4312cf8a92e357d4af5b7e8dcb68cd5203fe2113def712",
+      "zn_sha256": "0f158a5c96d3ba6980f509e7ba337879d2afad0b0313d5eb82cd28d069ebcf2b",
+      "fold": {
+        "fold_seconds_this_run": 4.193759686,
+        "recursive_verify_seconds": 1.005878198,
+        "resumed_at": 0,
+        "segment": 2,
+        "steps": 3,
+        "zn_matches_trace": true
+      },
+      "compress": {
+        "proof_bytes": 13800,
+        "proof_sha256": "d08d719633e886232d0b88052dbab9f8b533b739386c1ae064be44bc2c1f8b3a",
+        "prove_seconds": 91.149228308,
+        "segment": 2,
+        "setup_seconds": 12.056174196,
+        "steps": 3,
+        "verify_seconds": 1.9647077670000002,
+        "vk_sha256": "a259c50c559c768e929bf4df09a70279afdd180d1dd3b947dcf38bea95231939"
+      }
+    }
+  ],
+  "public_params": {
+    "bytes": 72704152,
+    "constraints": {
+      "primary": 70617,
+      "secondary": 10349
+    },
+    "digest": "2a19124c8cbf6119f610b94ed7f949036bec9c08517f68cacc416b8639af3101",
+    "setup_seconds": 33.911774849,
+    "sha256": "5492510ddb2b0a5b184f87e2fdbcc5d5e75e4e25711d9e70d42ead589b50a174",
+    "step_constraints": 51404
+  },
+  "verify": {
+    "key_seconds": 17.216256162,
+    "leaves": 5,
+    "r_s": "ec98be98452e852e419b57455218019192e585455714d3cfc32b6fa6c135dc27",
+    "root": "5fde007a0454f29613de1281a09ca4ba61d74a0dbf7dea153cec555f40b58a1f",
+    "segments": 3,
+    "steps": 23,
+    "verify_seconds": 14.52825545,
+    "vk_from_circuit": false,
+    "vk_sha256": "a259c50c559c768e929bf4df09a70279afdd180d1dd3b947dcf38bea95231939",
+    "window": {
+      "first": 170,
+      "last": 171,
+      "previous_hash": "000000002a22cfee1f2c846adbd12b3e183d4f97683f85dad08a79780a84bd55",
+      "tip_hash": "00000000c9ec538cab7f38ef9c67a95742f56ab07b0a37c5be6b02808dbfb4e0"
+    }
+  },
+  "resume_test": "segment 1 killed after its step-3 checkpoint, resumed at 3, zn matched the trace, compressed and verified",
+  "tampered_z0_refused": true,
+  "wrong_vk_pin_refused": true
+}

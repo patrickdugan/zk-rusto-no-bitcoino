@@ -1,0 +1,174 @@
+{
+  "sha256_compression": 25840,
+  "pooled_seconds_per_million_constraints": 12.141701710295031,
+  "rows": [
+    {
+      "c": 1,
+      "constraints_per_step": 251160,
+      "seconds_per_million_constraints": 12.141701710295031,
+      "seconds_per_step": 3.0495098015577,
+      "steps_per_block_avg": 20304.0,
+      "constraints_per_block_avg": 5099552640.0,
+      "minutes_per_block_avg": 1031.9541168471258,
+      "window_steps": 121824,
+      "window_constraints": 30597315840,
+      "window_hours": 103.19541168471257,
+      "blocks": [
+        {
+          "height": 975067,
+          "events": 22104,
+          "steps": 22104,
+          "constraints": 5551640640,
+          "minutes": 1123.4394108938566
+        },
+        {
+          "height": 975068,
+          "events": 22082,
+          "steps": 22082,
+          "constraints": 5546115120,
+          "minutes": 1122.321257299952
+        },
+        {
+          "height": 975069,
+          "events": 21649,
+          "steps": 21649,
+          "constraints": 5437362840,
+          "minutes": 1100.3139615653774
+        },
+        {
+          "height": 975070,
+          "events": 21329,
+          "steps": 21329,
+          "constraints": 5356991640,
+          "minutes": 1084.049909290403
+        },
+        {
+          "height": 975071,
+          "events": 15482,
+          "steps": 15482,
+          "constraints": 3888459120,
+          "minutes": 786.8751791286052
+        },
+        {
+          "height": 975072,
+          "events": 19178,
+          "steps": 19178,
+          "constraints": 4816746480,
+          "minutes": 974.7249829045595
+        }
+      ]
+    },
+    {
+      "c": 4,
+      "constraints_per_step": 331272,
+      "seconds_per_million_constraints": 12.141701710295031,
+      "seconds_per_step": 4.022205808972855,
+      "steps_per_block_avg": 20304.0,
+      "constraints_per_block_avg": 6726146688.0,
+      "minutes_per_block_avg": 1361.1144457564144,
+      "window_steps": 121824,
+      "window_constraints": 40356880128,
+      "window_hours": 136.11144457564143,
+      "blocks": [
+        {
+          "height": 975067,
+          "events": 22104,
+          "steps": 22104,
+          "constraints": 7322436288,
+          "minutes": 1481.7806200255998
+        },
+        {
+          "height": 975068,
+          "events": 22082,
+          "steps": 22082,
+          "constraints": 7315148304,
+          "minutes": 1480.3058112289766
+        },
+        {
+          "height": 975069,
+          "events": 21649,
+          "steps": 21649,
+          "constraints": 7171707528,
+          "minutes": 1451.2788926408891
+        },
+        {
+          "height": 975070,
+          "events": 21329,
+          "steps": 21329,
+          "constraints": 7065700488,
+          "minutes": 1429.8271283263673
+        },
+        {
+          "height": 975071,
+          "events": 15482,
+          "steps": 15482,
+          "constraints": 5128753104,
+          "minutes": 1037.8631722419625
+        },
+        {
+          "height": 975072,
+          "events": 19178,
+          "steps": 19178,
+          "constraints": 6353134416,
+          "minutes": 1285.6310500746904
+        }
+      ]
+    },
+    {
+      "c": 8,
+      "constraints_per_step": 438088,
+      "seconds_per_million_constraints": 12.141701710295031,
+      "seconds_per_step": 5.319133818859729,
+      "steps_per_block_avg": 20304.0,
+      "constraints_per_block_avg": 8894938752.0,
+      "minutes_per_block_avg": 1799.9948843021327,
+      "window_steps": 121824,
+      "window_constraints": 53369632512,
+      "window_hours": 179.99948843021326,
+      "blocks": [
+        {
+          "height": 975067,
+          "events": 22104,
+          "steps": 22104,
+          "constraints": 9683497152,
+          "minutes": 1959.5688988679244
+        },
+        {
+          "height": 975068,
+          "events": 22082,
+          "steps": 22082,
+          "constraints": 9673859216,
+          "minutes": 1957.6185498010093
+        },
+        {
+          "height": 975069,
+          "events": 21649,
+          "steps": 21649,
+          "constraints": 9484167112,
+          "minutes": 1919.2321340749045
+        },
+        {
+          "height": 975070,
+          "events": 21329,
+          "steps": 21329,
+          "constraints": 9343978952,
+          "minutes": 1890.8634203743195
+        },
+        {
+          "height": 975071,
+          "events": 15482,
+          "steps": 15482,
+          "constraints": 6782478416,
+          "minutes": 1372.5138297264389
+        },
+        {
+          "height": 975072,
+          "events": 19178,
+          "steps": 19178,
+          "constraints": 8401651664,
+          "minutes": 1700.1724729681985
+        }
+      ]
+    }
+  ]
+}

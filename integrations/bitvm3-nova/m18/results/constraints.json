@@ -1,0 +1,31 @@
+{
+  "bench_step_constraints_by_c": [
+    {
+      "c": 0,
+      "constraints": 28480
+    },
+    {
+      "c": 1,
+      "constraints": 55184
+    },
+    {
+      "c": 4,
+      "constraints": 135296
+    },
+    {
+      "c": 8,
+      "constraints": 242112
+    }
+  ],
+  "create_gadget_satisfied_and_root_matches_native": true,
+  "depth": 20,
+  "false_before_window_claim_unsatisfiable": true,
+  "m18_step_constraints": 51404,
+  "map_create": 28220,
+  "map_nonmember_before_window": 8042,
+  "map_spend_in_window": 14447,
+  "poseidon_2_inputs": 313,
+  "poseidon_3_inputs": 313,
+  "poseidon_6_inputs": 625,
+  "sha256_compression": 25840
+}

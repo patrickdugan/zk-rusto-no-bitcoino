@@ -1,0 +1,11 @@
+{
+  "bytes": 72704152,
+  "constraints": {
+    "primary": 70617,
+    "secondary": 10349
+  },
+  "digest": "2a19124c8cbf6119f610b94ed7f949036bec9c08517f68cacc416b8639af3101",
+  "setup_seconds": 20.125266444,
+  "sha256": "5492510ddb2b0a5b184f87e2fdbcc5d5e75e4e25711d9e70d42ead589b50a174",
+  "step_constraints": 51404
+}
