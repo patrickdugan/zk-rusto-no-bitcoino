@@ -29,7 +29,7 @@ use bitcoin::{
     consensus::encode::{deserialize, serialize_hex},
     hashes::Hash,
     key::{Keypair, Secp256k1},
-    opcodes::all::{OP_2DROP, OP_CHECKSIG, OP_CHECKSIGVERIFY, OP_CSV, OP_DROP, OP_EQUALVERIFY, OP_SHA256},
+    opcodes::all::{OP_2DROP, OP_CHECKSIG, OP_CHECKSIGVERIFY, OP_CSV, OP_DROP, OP_EQUALVERIFY, OP_RETURN, OP_SHA256},
     script::{Builder, PushBytesBuf},
     secp256k1::{All, Message, SecretKey, XOnlyPublicKey},
     sighash::{Prevouts, SighashCache, TapSighashType},
@@ -235,8 +235,10 @@ struct RowGraph {
     seed: u64,
 }
 
-/// Bitcoin Core policy: initial tapscript stack items above 80 bytes are non-standard
-/// (MAX_STANDARD_TAPSCRIPT_STACK_ITEM_SIZE), so payloads travel as 80-byte pushes.
+/// Bitcoin Core relay policy caps each initial tapscript stack item at 80 bytes
+/// (MAX_STANDARD_TAPSCRIPT_STACK_ITEM_SIZE in policy.h). This is separate from the OP_RETURN
+/// data-carrier limit, which Core 30 raised (-datacarriersize defaults to 100,000 bytes in 31.1).
+/// Response payloads therefore travel in the witness as 80-byte pushes.
 pub const CHUNK: usize = 80;
 
 fn payload_chunks(b: &[u8]) -> Vec<Vec<u8>> {
@@ -553,10 +555,6 @@ pub fn run(bitcoind: &str, cli: &str, root: &str) -> Result<Value, String> {
     }))
 }
 
-fn chunks_len(p: &[u8], full: bool) -> usize {
-    if full { 1 } else { p.len().div_ceil(CHUNK) }
-}
-
 fn publication(node: &Node, secp: &Secp256k1<All>, toy: &Toy<E>, op: &Keypair, addr: &str, dest: &ScriptBuf) -> Result<Value, String> {
     let tc = &toy.pinned.tc;
     let c = &toy.committed;
@@ -587,13 +585,33 @@ fn publication(node: &Node, secp: &Secp256k1<All>, toy: &Toy<E>, op: &Keypair, a
     let mut out = json!({"row": 3, "flatmerkle_payload_bytes": flat.len(), "merkle_payload_bytes": mk.len()});
     let stream = flatmerkle::payload(&toy.pinned.matrix.items).unwrap();
     let full_leaf = hashlock_leaf(&toy.pinned.matrix.digest, &op.x_only_public_key().0);
-    for (name, payload, full) in [
-        ("flatmerkle-row-response", flat.clone(), false),
-        ("merkle-row-response", mk.clone(), false),
-        ("flatmerkle-full-matrix-stream-OP_SHA256", stream.clone(), true),
+    // Carriers: tapscript witness pushes of 80 bytes (the per-item policy limit) or 520 bytes
+    // (the consensus element limit), one witness item (needed for OP_SHA256 over a whole stream),
+    // or an OP_RETURN output (Core 30+ relays up to -datacarriersize = 100,000 bytes, but output
+    // bytes weigh 4 WU each and Script cannot read them).
+    #[derive(PartialEq)]
+    enum Carrier {
+        Witness(usize),
+        WholeItem,
+        OpReturn,
+    }
+    for (name, payload, carrier) in [
+        ("flatmerkle-row-response", flat.clone(), Carrier::Witness(CHUNK)),
+        ("merkle-row-response", mk.clone(), Carrier::Witness(CHUNK)),
+        ("flatmerkle-row-response-520-byte-pushes", flat.clone(), Carrier::Witness(520)),
+        ("flatmerkle-row-response-op_return", flat.clone(), Carrier::OpReturn),
+        ("flatmerkle-full-matrix-stream-OP_SHA256", stream.clone(), Carrier::WholeItem),
     ] {
         let opk = op.x_only_public_key().0;
-        let leaf = if full { full_leaf.clone() } else { drops(Builder::new(), payload_chunks(&payload).len()).push_x_only_key(&opk).push_opcode(OP_CHECKSIG).into_script() };
+        let chunks: Vec<Vec<u8>> = match carrier {
+            Carrier::Witness(n) => payload.chunks(n).map(|c| c.to_vec()).collect(),
+            Carrier::WholeItem => vec![payload.clone()],
+            Carrier::OpReturn => Vec::new(),
+        };
+        let leaf = match carrier {
+            Carrier::WholeItem => full_leaf.clone(),
+            _ => drops(Builder::new(), chunks.len()).push_x_only_key(&opk).push_opcode(OP_CHECKSIG).into_script(),
+        };
         let info = tree(secp, &[leaf.clone()]);
         let a = bitcoin::Address::p2tr_tweaked(info.output_key(), bitcoin::Network::Regtest).to_string();
         let txid = node.w(&["sendtoaddress", &a, "0.0005"])?;
@@ -601,19 +619,24 @@ fn publication(node: &Node, secp: &Secp256k1<All>, toy: &Toy<E>, op: &Keypair, a
         let ftx = tx_of(node, &txid);
         let vout = ftx.output.iter().position(|o| o.script_pubkey == spk(&info)).unwrap() as u32;
         let prev = ftx.output[vout as usize].clone();
-        let chunks = if full { vec![payload.clone()] } else { payload_chunks(&payload) };
+        let mut outs = vec![TxOut { value: Amount::ZERO, script_pubkey: dest.clone() }];
+        if carrier == Carrier::OpReturn {
+            let mut b = Builder::new().push_opcode(OP_RETURN);
+            for c in payload.chunks(520) {
+                b = b.push_slice(push(c));
+            }
+            outs.push(TxOut { value: Amount::ZERO, script_pubkey: b.into_script() });
+        }
         let mut dummy = vec![vec![0u8; 64]];
         dummy.extend(chunks.iter().cloned());
-        let mut tx = spend(OutPoint { txid: ftx.compute_txid(), vout }, prev.value.to_sat(), Sequence::ENABLE_RBF_NO_LOCKTIME, vec![TxOut { value: Amount::ZERO, script_pubkey: dest.clone() }], &dummy, &leaf, &info);
+        let mut tx = spend(OutPoint { txid: ftx.compute_txid(), vout }, prev.value.to_sat(), Sequence::ENABLE_RBF_NO_LOCKTIME, outs, &dummy, &leaf, &info);
         let sig = sign(secp, &tx, &prev, &leaf, op);
         let mut items = vec![sig];
-        if full {
-            // stack: sig, stream (top): SHA256(stream) == matrix root, then the signature.
-            items.push(payload.clone());
-        } else {
-            items.extend(chunks);
-        }
+        // WholeItem stack: sig, stream (top): SHA256(stream) == matrix root, then the signature.
+        items.extend(chunks.iter().cloned());
         tx.input[0].witness = witness(&items, &leaf, &info);
+        let full = carrier == Carrier::WholeItem;
+        let n_items = chunks.len();
         let policy = send(node, &tx);
         let mined = if policy.is_err() {
             // Consensus check without mempool policy: mine it directly.
@@ -621,7 +644,7 @@ fn publication(node: &Node, secp: &Secp256k1<All>, toy: &Toy<E>, op: &Keypair, a
         } else {
             Ok("relayed".into())
         };
-        out[name] = json!({"policy": match &policy { Ok(_) => "standard".to_string(), Err(e) => e.replace(['\r', '\n'], " ") }, "consensus": match &mined { Ok(m) => m.clone(), Err(e) => format!("rejected: {e}") }, "payload_bytes": payload.len(), "stack_items": chunks_len(&payload, full), "measure": measure(&tx, prev.value.to_sat())});
+        out[name] = json!({"policy": match &policy { Ok(_) => "standard".to_string(), Err(e) => e.replace(['\r', '\n'], " ") }, "consensus": match &mined { Ok(m) => m.clone(), Err(e) => format!("rejected: {e}") }, "payload_bytes": payload.len(), "payload_witness_items": n_items, "whole_item": full, "measure": measure(&tx, prev.value.to_sat())});
     }
     node.mine(1, addr)?;
     Ok(out)

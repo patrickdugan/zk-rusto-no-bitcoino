@@ -129,10 +129,20 @@ What the numbers show:
 
 **Binding to a Bitcoin transaction (measured on regtest).**
 - Both roots are 32 bytes in the claim, whose id rides in an OP_RETURN.
-- The same row-3 response:
-  - with FlatMerkle openings: 2,044 bytes, 649 vB / 2,596 WU;
-  - with Merkle openings: 1,756 bytes, 576 vB / 2,302 WU.
-- Because a FlatMerkle digest is plain SHA-256 of the stream, `OP_SHA256 <root> OP_EQUALVERIFY` checks a whole commitment when the stream fits one stack item (n = 4, 384 bytes). This is consensus-valid (mined with `generateblock`, 234 vB) but not relayed: Core rejects tapscript stack items above 80 bytes (`bad-witness-nonstandard`).
+- Two different Core 31.1 relay limits apply, and they are easy to conflate:
+  - each initial tapscript witness stack item is capped at 80 bytes (`MAX_STANDARD_TAPSCRIPT_STACK_ITEM_SIZE`); larger items give `bad-witness-nonstandard`;
+  - OP_RETURN data was raised in Core 30: `-datacarriersize` defaults to 100,000 bytes in 31.1, summed over multiple outputs.
+- The same row-3 response on each carrier:
+
+  | Payload and carrier | Relay | vsize / weight |
+  | --- | --- | ---: |
+  | FlatMerkle openings, 2,044 bytes, witness in 80-byte pushes | standard | 649 / 2,596 |
+  | Merkle openings, 1,756 bytes, witness in 80-byte pushes | standard | 576 / 2,302 |
+  | FlatMerkle, witness in 520-byte pushes | `bad-witness-nonstandard` (consensus-valid, mined with `generateblock`) | 643 / 2,571 |
+  | FlatMerkle, one OP_RETURN output | standard | 2,197 / 8,785 |
+
+- OP_RETURN relays the payload but costs 3.4 × the weight of the witness carrier: output bytes weigh 4 WU each, witness bytes 1 WU. Script also cannot read output data. Splitting into 80-byte pushes costs 6 vB more than 520-byte pushes.
+- Because a FlatMerkle digest is plain SHA-256 of the stream, `OP_SHA256 <root> OP_EQUALVERIFY` checks a whole commitment when the stream fits one stack item (n = 4, 384 bytes). This is consensus-valid (234 vB, mined with `generateblock`) but not relayed, because of the 80-byte tapscript item limit. The larger OP_RETURN limit does not help here: OP_SHA256 needs the stream on the stack.
 - For n ≥ 8, and for any Merkle root, Script would need OP_CAT.
 
 ## 6. The dispute circuits (`fc03/src/circuit/`, `results/fc03_circuits.json`)
@@ -184,7 +194,7 @@ Bitcoin Core 31.1 regtest, 2 sat/vB, bond 200,000 sat. Every output is Taproot w
 | Output | Leaves |
 | --- | --- |
 | claim C | `<6> CSV DROP <op> CHECKSIG`; per row i: `<i> DROP <op> CHECKSIGVERIFY <ch> CHECKSIG` |
-| challenge X_i (operator pre-signed tx, OP_RETURN challenge id) | `2DROP… <ch> CHECKSIGVERIFY <op> CHECKSIG` (response payload as 80-byte pushes); `<6> CSV DROP <ch> CHECKSIG` |
+| challenge X_i (operator pre-signed tx, OP_RETURN challenge id) | `2DROP… <ch> CHECKSIGVERIFY <op> CHECKSIG` (response payload as 80-byte witness pushes: the tapscript stack-item policy limit, not the OP_RETURN one); `<6> CSV DROP <ch> CHECKSIG` |
 | response R_i (challenger pre-signed tx) | `SHA256 <H(refute label_i)> EQUALVERIFY <ch> CHECKSIG`; `<6> CSV DROP <op> CHECKSIG` |
 
 | Transaction | vsize | weight | fee (sat) |

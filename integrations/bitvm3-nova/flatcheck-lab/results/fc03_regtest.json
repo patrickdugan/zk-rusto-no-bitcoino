@@ -40,12 +40,12 @@
       "pass": true
     },
     {
-      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation), input 0 of 45f7273ee81ba3f2905aad39f8dc7b61c42da3f1355a2aa699f6ba5a6801b6d4 (wtxid d042d9eafd2c75f8208805b807e74eeca137a11fd2baa36ba0e59bb4e04647d2), spending b8b1abcaad33616fafd0f7d8fb7c0021afae9099f403649f544462059df4de1e:0",
+      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation), input 0 of d2c913bc2da35a0c19c78736711cd9a0d26a42a974d0b5a7e94e360b4c07e592 (wtxid 63833302098d268c434f7339a652b083332eff676b15f9a6176a78acf9ade545), spending 79035fbc715b166cc1cb9caeae7ebfce83b1e2868f7ea392c891feadbe49c672:0",
       "check": "disprove with the label an honest response yields",
       "detail": {
         "ciphertexts": 2683971,
         "evaluator_got": "accept label",
-        "garble_and_evaluate_seconds": 0.9846179,
+        "garble_and_evaluate_seconds": 2.0463627,
         "labels_match_committed": true
       },
       "expected": "rejected",
@@ -86,7 +86,7 @@
       "pass": true
     },
     {
-      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of 3f6b8f14ec2fe1e2ad72ea2b561daa0e2d925aaf4ff8b531541361d94ba0ed1e (wtxid dddb40c28ad3cdb189b89459a1815b6dd2e28d091c2564607d8cce9278508a0a), spending 416f0d3dad8816417464482f120dcd349e56dade2a72851dd89a7e1ac4232190:0",
+      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of f1173a51dfc92291b423aaf84fd199e860f90847e0b9bf9d654469df0b95ec7b (wtxid 618d749dc3282289e7fac358b0d16233cd6a3e28cd9dab8e2499d87b6fa11042), spending aa11e184271e300487f779aca998a69d824a8058942037b608d98bcd7646c899:0",
       "check": "disprove signed by the operator's key",
       "detail": {},
       "expected": "rejected",
@@ -110,21 +110,21 @@
       "pass": true
     },
     {
-      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of 24d3378fe0e5b8ca50c8ac1e53c69314a135032560fbbeeb948110fa13aed056 (wtxid 9fea9b4eed0f73c1df8ec6e01ebb3d869ee94bac129816cde496c53cd6db6ed0), spending e86c5af57ab007116888ee03aa90ccbf93caf55dda02b2a205d932d8497b77a6:1",
+      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of a07ab449a060178969ccf09ef71a7ed4165a6068486c87e6a73548746a095e6d (wtxid c9b83ddfa9700fc6f1c51d8435c4f151d62c153d9f5141527330f11ec0df382c), spending babe97a01c4b01587d81b5f2764a64d4e4bce35dd21adca145bc4655cd5152c2:1",
       "check": "challenge with a corrupted challenger signature",
       "detail": {},
       "expected": "rejected",
       "pass": true
     },
     {
-      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of 24d3378fe0e5b8ca50c8ac1e53c69314a135032560fbbeeb948110fa13aed056 (wtxid 2afc01214fd7bcfeefe4e1107eb835318abdbf2674159d5b4783fea771c619fa), spending e86c5af57ab007116888ee03aa90ccbf93caf55dda02b2a205d932d8497b77a6:1",
+      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of a07ab449a060178969ccf09ef71a7ed4165a6068486c87e6a73548746a095e6d (wtxid 98eaef5c2b03907e6a4f20a7c684b59a69251f759a3137bce989647e43ea83f7), spending babe97a01c4b01587d81b5f2764a64d4e4bce35dd21adca145bc4655cd5152c2:1",
       "check": "operator pre-signature of another row's leaf",
       "detail": {},
       "expected": "rejected",
       "pass": true
     },
     {
-      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of 5c31f4ff662d4daf030d826f931d3503caef14439471e4d6cfc20efee3c9d86f (wtxid 89322ad0ff0bb41071d4dcf75f9a416ae1dc87ff6ee7ac7b85af4b41649ee290), spending e86c5af57ab007116888ee03aa90ccbf93caf55dda02b2a205d932d8497b77a6:1",
+      "actual": "rejected: error code: -26\r\nerror message:\r\nmempool-script-verify-flag-failed (Invalid Schnorr signature), input 0 of 905e8ba74725b13dff4ad71891710ab66857d11e3377a7d302e19a49989e4ba6 (wtxid f252158ae0630b6edc51ab7ff7f5f552709891824e4f8f2360a3cc248d8975eb), spending babe97a01c4b01587d81b5f2764a64d4e4bce35dd21adca145bc4655cd5152c2:1",
       "check": "challenge pre-signed for another claim replayed on this claim's output",
       "detail": {},
       "expected": "rejected",
@@ -177,41 +177,72 @@
       "consensus": "mined by generateblock (consensus-valid)",
       "measure": {
         "fee_sats": 468,
-        "txid": "96f5ebcfc341f4c5f17f305c0bd0c8dc315f67b18f73af2dc68b8622f555528a",
+        "txid": "9698d314691fb252596e325eeb36eea170a76359c246304fa166d21e4844eef1",
         "vsize": 234,
         "weight": 935,
         "witness_items": 4
       },
       "payload_bytes": 384,
+      "payload_witness_items": 1,
       "policy": "error code: -26  error message:  bad-witness-nonstandard",
-      "stack_items": 1
+      "whole_item": true
     },
     "flatmerkle-row-response": {
       "consensus": "relayed",
       "measure": {
         "fee_sats": 1298,
-        "txid": "d5b496ac07928ab648c4ac86ac699925ee6e7e97f43ce6df19fcb6ca4b96b548",
+        "txid": "fcb5bf2e2d5c0545ce3e33d2526a2fbb4909ae480531432a52bda4c95a6a8add",
         "vsize": 649,
         "weight": 2596,
         "witness_items": 29
       },
       "payload_bytes": 2044,
+      "payload_witness_items": 26,
       "policy": "standard",
-      "stack_items": 26
+      "whole_item": false
+    },
+    "flatmerkle-row-response-520-byte-pushes": {
+      "consensus": "mined by generateblock (consensus-valid)",
+      "measure": {
+        "fee_sats": 1286,
+        "txid": "12c5696944f8bc456a096df535fbcd8b2aaf4c9e2875a5f487bd58dfcca3a1bf",
+        "vsize": 643,
+        "weight": 2571,
+        "witness_items": 7
+      },
+      "payload_bytes": 2044,
+      "payload_witness_items": 4,
+      "policy": "error code: -26  error message:  bad-witness-nonstandard",
+      "whole_item": false
+    },
+    "flatmerkle-row-response-op_return": {
+      "consensus": "relayed",
+      "measure": {
+        "fee_sats": 4394,
+        "txid": "f3530970f282819817f54ec9c3d553703c180fde0623d153d03204796a0d2c61",
+        "vsize": 2197,
+        "weight": 8785,
+        "witness_items": 3
+      },
+      "payload_bytes": 2044,
+      "payload_witness_items": 0,
+      "policy": "standard",
+      "whole_item": false
     },
     "flatmerkle_payload_bytes": 2044,
     "merkle-row-response": {
       "consensus": "relayed",
       "measure": {
         "fee_sats": 1152,
-        "txid": "4ef26a18a634ef631307c5d6e4b3a7f98bb7173ab0234520ed296df89a641916",
+        "txid": "c00dd68977b499a22c132a2a00b125351ed82944fc73f53243ecba024adddc43",
         "vsize": 576,
         "weight": 2302,
         "witness_items": 25
       },
       "payload_bytes": 1756,
+      "payload_witness_items": 22,
       "policy": "standard",
-      "stack_items": 22
+      "whole_item": false
     },
     "merkle_payload_bytes": 1756,
     "row": 3
@@ -222,7 +253,7 @@
         "fee_sats": 396,
         "op_return_claim_id": "ee4ced6e866224e2a822e2f2478b14af3f7c9d84b93373563158f7638bc6acac",
         "taptree_leaves": 5,
-        "txid": "ad44684a46b256b878ce3083cfd94a3e5236c65111e816e765df6bdaaaae42e8",
+        "txid": "4e8480416708d9d34156f55be9091dfaafc554302d13fb34db0fc33ddc948b7e",
         "vsize": 197,
         "weight": 788
       },
@@ -233,7 +264,7 @@
         "fee_sats": 396,
         "op_return_claim_id": "b3da487e61f0ff46a108338e194f4ebfcec7b4bc108b753ee1b3187fa311feed",
         "taptree_leaves": 5,
-        "txid": "665a2902ea12a0f898abf109498f430d7108256e7d88aae112f3ae60a6fc9276",
+        "txid": "09d4d824fd7de176a2e99cc8d2a260b9a5773f0077181ca002bbffbc917eef44",
         "vsize": 197,
         "weight": 788
       },
@@ -244,7 +275,7 @@
         "fee_sats": 396,
         "op_return_claim_id": "f3911bce3bd75c4602df169d132e40604e73207a96f351e655bafbf10328d7c4",
         "taptree_leaves": 5,
-        "txid": "e86c5af57ab007116888ee03aa90ccbf93caf55dda02b2a205d932d8497b77a6",
+        "txid": "babe97a01c4b01587d81b5f2764a64d4e4bce35dd21adca145bc4655cd5152c2",
         "vsize": 197,
         "weight": 788
       },
@@ -255,7 +286,7 @@
         "fee_sats": 396,
         "op_return_claim_id": "be820a62791b35b82c9a0f04b91a57d938ec9c24022357b9e930732501c08ca7",
         "taptree_leaves": 5,
-        "txid": "eeb4540fae769e414c388e35c58354bfa0d075649b44e2aea07559301db014de",
+        "txid": "9f70d785e74be7dc15bbb0ca0088d70fbae2090b3c68077e064430b1de48bf21",
         "vsize": 197,
         "weight": 788
       },
@@ -264,7 +295,7 @@
     {
       "measure": {
         "fee_sats": 290,
-        "txid": "6ac20693e892cb9a5467ee54a2be9fd09c21607498332a1d1dea29db49bb6151",
+        "txid": "bf4eb64ee83c702878923397291744f98158b9d06f3ff2ec2c314f5032aa1795",
         "vsize": 145,
         "weight": 580,
         "witness_items": 3
@@ -274,7 +305,7 @@
     {
       "measure": {
         "fee_sats": 426,
-        "txid": "e9490b73c56efe67406dae309551075e24db4425a77a16054e9a3505bb2c9eda",
+        "txid": "8bc8ff6ef376bb252b0bf5ece5ba5dbfd9efbcf98fb321a1861edbc0c1b298ec",
         "vsize": 213,
         "weight": 850,
         "witness_items": 4
@@ -284,7 +315,7 @@
     {
       "measure": {
         "fee_sats": 1364,
-        "txid": "b8b1abcaad33616fafd0f7d8fb7c0021afae9099f403649f544462059df4de1e",
+        "txid": "79035fbc715b166cc1cb9caeae7ebfce83b1e2868f7ea392c891feadbe49c672",
         "vsize": 682,
         "weight": 2727,
         "witness_items": 30
@@ -295,7 +326,7 @@
     {
       "measure": {
         "fee_sats": 274,
-        "txid": "124694b3aadb3e6d72782e081580a9b3c1678309ffffc61679c3af9b2363ba59",
+        "txid": "650981c7bcc114de81827c8d40d986a1cb0d86d78972c2b8d0091a005321ac2b",
         "vsize": 137,
         "weight": 548,
         "witness_items": 3
@@ -305,7 +336,7 @@
     {
       "measure": {
         "fee_sats": 442,
-        "txid": "8b29de2f85c8a14024c329e7db797284005281f3c7d877c1b42d53b27d7ca583",
+        "txid": "6aefab455d85909904fe0b6a3cd240fd7e537738d2a42ff012a9b36cd9529b39",
         "vsize": 221,
         "weight": 882,
         "witness_items": 4
@@ -315,7 +346,7 @@
     {
       "measure": {
         "fee_sats": 1364,
-        "txid": "416f0d3dad8816417464482f120dcd349e56dade2a72851dd89a7e1ac4232190",
+        "txid": "aa11e184271e300487f779aca998a69d824a8058942037b608d98bcd7646c899",
         "vsize": 682,
         "weight": 2727,
         "witness_items": 30
@@ -325,7 +356,7 @@
     {
       "measure": {
         "fee_sats": 300,
-        "txid": "3f6b8f14ec2fe1e2ad72ea2b561daa0e2d925aaf4ff8b531541361d94ba0ed1e",
+        "txid": "f1173a51dfc92291b423aaf84fd199e860f90847e0b9bf9d654469df0b95ec7b",
         "vsize": 150,
         "weight": 597,
         "witness_items": 4
@@ -335,7 +366,7 @@
     {
       "measure": {
         "fee_sats": 274,
-        "txid": "ed81e25246e20b3f4dbe032b06cea1084c400fe45962b1788039346eb0d30d40",
+        "txid": "511c2b739a584aa7d0d4b95feb35777fe479c10eb1a86fdd1c7cc189dd80434b",
         "vsize": 137,
         "weight": 548,
         "witness_items": 3
