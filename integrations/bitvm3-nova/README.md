@@ -17,6 +17,7 @@ fixed Boolean circuit that is garbled and evaluated.
 | [`m15/`](m15/README.md) | Guest A with the verifier key in raw form: 21.2 × 10^9 SP1 instructions instead of 72.3 × 10^9, same statement |
 | [`m16/`](m16/README.md) | One SP1 guest for the mainnet header chain from genesis plus an SPV payment; executed on mainnet to tip 975,072 with a payment at 975,067 |
 | [`m17/`](m17/README.md) | Bitcoin Script (legacy, P2SH, witness v0) as a Nova step circuit, following Shinigami's engine; agrees with Core on all 2,756 non-Taproot vectors |
+| [`flatcheck-lab/`](flatcheck-lab/README.md) | FlatMerkle (Lerner) openings and FC03: one-row and one-binding-step refutations of a Nova relaxed instance as fixed garbled circuits, enforced in a Bitcoin regtest dispute |
 | [`prover/`](prover/README.md) | `nb3-prove`: resumable, disk-backed SP1 6.9 proving on one machine (CPU provers) |
 | [`prover-gpu/`](prover-gpu/README.md) | `nb3-prove-gpu`: the same prover on SP1's CUDA provers, sized for GPUs below 24 GB |
 

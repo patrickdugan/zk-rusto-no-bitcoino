@@ -1,0 +1,87 @@
+name: flatmerkle-bitvm3-reference
+on:
+  pull_request:
+    paths:
+      - 'integrations/bitvm3-nova/flatcheck-lab/**'
+      - 'integrations/bitvm3-nova/m12/gates/**'
+      - '.github/workflows/flatmerkle-bitvm3-reference.yml'
+  push:
+    branches: ['feat/flatmerkle-bitvm3-checks']
+    paths:
+      - 'integrations/bitvm3-nova/flatcheck-lab/**'
+      - '.github/workflows/flatmerkle-bitvm3-reference.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: flatcheck-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  python:
+    # FlatMerkle reference plus the FC03 Python differential against the frozen Rust vectors.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reference and differential tests
+        working-directory: integrations/bitvm3-nova/flatcheck-lab
+        run: |
+          set -o pipefail
+          python -m unittest discover -p 'test_*.py' -v 2>&1 | tee py.log
+          grep -h "FC03-PY" py.log | sed 's/^/::notice title=FC03 python::/' || true
+  native-and-circuits:
+    # Native adjudicator on the adversarial suite (both Pasta engines), frozen vectors, the
+    # circuit-vs-native differential, and garbling/evaluation of honest and refuted cases.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '4'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: rustup toolchain install 1.90.0 --profile minimal
+      - name: cargo test (bounded; no Nova or SP1 proving)
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/flatcheck-lab/fc03/Cargo.toml -- --test-threads=2 --nocapture 2>&1 | tee fc03-test.log
+      - name: Annotations
+        if: always()
+        run: grep -h "FC03-\|test result" fc03-test.log | sed 's/^/::notice title=FC03::/' || true
+  regtest:
+    # One bounded dispute on a throwaway bitcoind -regtest: claim, challenge, response, disprove,
+    # timeouts, invalid signatures, replay. The harness refuses any node that is not regtest.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CORE_VERSION: '31.1'
+      # bitcoin-31.1-x86_64-linux-gnu.tar.gz, from bitcoincore.org/bin/bitcoin-core-31.1/SHA256SUMS
+      CORE_SHA256: b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e
+      CARGO_BUILD_JOBS: '4'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Bitcoin Core (SHA-256 pinned)
+        run: |
+          tarball="bitcoin-${CORE_VERSION}-x86_64-linux-gnu.tar.gz"
+          curl -fsSLO "https://bitcoincore.org/bin/bitcoin-core-${CORE_VERSION}/${tarball}"
+          echo "${CORE_SHA256}  ${tarball}" | sha256sum -c -
+          tar -xzf "${tarball}"
+          echo "CORE_BIN=${PWD}/bitcoin-${CORE_VERSION}/bin" >> "$GITHUB_ENV"
+      - name: Toolchain
+        run: rustup toolchain install 1.90.0 --profile minimal
+      - name: Regtest dispute
+        run: |
+          set -o pipefail
+          cargo +1.90.0 build --release --locked --bin fc03 --manifest-path integrations/bitvm3-nova/flatcheck-lab/fc03/Cargo.toml
+          mkdir -p "${RUNNER_TEMP}/fc03-regtest"
+          integrations/bitvm3-nova/flatcheck-lab/fc03/target/release/fc03 regtest "${CORE_BIN}/bitcoind" "${CORE_BIN}/bitcoin-cli" "${RUNNER_TEMP}/fc03-regtest" regtest.json 2>&1 | tee regtest.log
+          python3 -c "import json,sys; d=json.load(open('regtest.json')); print('all_checks_pass', d['all_checks_pass']); sys.exit(0 if d['all_checks_pass'] else 1)"
+      - name: Annotations
+        if: always()
+        run: |
+          grep -h "^\[" regtest.log | sed 's/^/::notice title=FC03 regtest::/' || true
+          python3 -c "import json; d=json.load(open('regtest.json')); [print('::notice title=FC03 tx::'+t['tx']+' vsize='+str(t['measure']['vsize'])+' weight='+str(t['measure']['weight'])) for t in d['transactions']]" || true

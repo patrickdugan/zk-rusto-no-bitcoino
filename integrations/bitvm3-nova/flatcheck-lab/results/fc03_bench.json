@@ -1,0 +1,222 @@
+{
+  "bitcoin_binding": {
+    "claim_id_op_return_script_bytes": 34,
+    "root_in_claim_bytes": 32,
+    "tapscript_full_stream_check": "FlatMerkle digest is plain SHA-256 of the stream, so OP_SHA256 <root> OP_EQUAL checks a whole commitment when the stream fits one 520-byte push: n = 4 (384 bytes). n >= 8 needs OP_CAT or chunked hashing, which Script lacks; a Merkle root needs OP_CAT at every n."
+  },
+  "flatmerkle_scheme": "Lerner linear SHA-256 stream, digest = SHA256(stream); port of flatmerkle.py",
+  "merkle_scheme": "leaf = SHA256(0x00 || item), node = SHA256(0x01 || L || R)",
+  "process_peak_rss_bytes": 8429568,
+  "records_are": "FC03 64-byte W items (enc::item), identical input to both schemes",
+  "shared_operand_set": "indices [3, 3, n/2, n/2+1, n-1, 7, 7]: 7 reads, 5 distinct",
+  "sizes": [
+    {
+      "flatmerkle": {
+        "build_compressions": 31,
+        "build_peak_heap_bytes": 3296,
+        "build_us_median": 3.9,
+        "malformed_mid_checkpoint": {
+          "openable_items": 8,
+          "rebuild_from_items_detects": true,
+          "unopenable_items": 8
+        },
+        "multiproof": {
+          "bytes": 656,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 1140,
+          "verify_compressions": 20
+        },
+        "opening_bytes": 228,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 1147,
+        "stream_bytes": 1920,
+        "substitution": {
+          "attempts": 64,
+          "rejected": 64
+        },
+        "verify_compressions": 8,
+        "verify_us_median": 0.33125
+      },
+      "merkle": {
+        "build_compressions": 62,
+        "build_peak_heap_bytes": 1218,
+        "build_us_median": 8.2,
+        "full_publication_bytes": 1024,
+        "multiproof": {
+          "bytes": 564,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 980,
+          "verify_compressions": 32
+        },
+        "opening_bytes": 196,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 986,
+        "substitution": {
+          "attempts": 64,
+          "rejected": 64
+        },
+        "verify_compressions": 10,
+        "verify_us_median": 1.0687499999999999
+      },
+      "records": 16
+    },
+    {
+      "flatmerkle": {
+        "build_compressions": 127,
+        "build_peak_heap_bytes": 19312,
+        "build_us_median": 19.0,
+        "malformed_mid_checkpoint": {
+          "openable_items": 32,
+          "rebuild_from_items_detects": true,
+          "unopenable_items": 32
+        },
+        "multiproof": {
+          "bytes": 848,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 1460,
+          "verify_compressions": 30
+        },
+        "opening_bytes": 292,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 1469,
+        "stream_bytes": 8064,
+        "substitution": {
+          "attempts": 256,
+          "rejected": 256
+        },
+        "verify_compressions": 12,
+        "verify_us_median": 0.47812499999999997
+      },
+      "merkle": {
+        "build_compressions": 254,
+        "build_peak_heap_bytes": 4386,
+        "build_us_median": 32.8,
+        "full_publication_bytes": 4096,
+        "multiproof": {
+          "bytes": 756,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 1300,
+          "verify_compressions": 44
+        },
+        "opening_bytes": 260,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 1309,
+        "substitution": {
+          "attempts": 256,
+          "rejected": 256
+        },
+        "verify_compressions": 14,
+        "verify_us_median": 1.696875
+      },
+      "records": 64
+    },
+    {
+      "flatmerkle": {
+        "build_compressions": 511,
+        "build_peak_heap_bytes": 77104,
+        "build_us_median": 160.70000000000002,
+        "malformed_mid_checkpoint": {
+          "openable_items": 128,
+          "rebuild_from_items_detects": true,
+          "unopenable_items": 128
+        },
+        "multiproof": {
+          "bytes": 1040,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 1780,
+          "verify_compressions": 40
+        },
+        "opening_bytes": 356,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 1790,
+        "stream_bytes": 32640,
+        "substitution": {
+          "attempts": 1024,
+          "rejected": 1024
+        },
+        "verify_compressions": 16,
+        "verify_us_median": 0.6628906250000001
+      },
+      "merkle": {
+        "build_compressions": 1022,
+        "build_peak_heap_bytes": 16736,
+        "build_us_median": 129.9,
+        "full_publication_bytes": 16384,
+        "multiproof": {
+          "bytes": 948,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 1620,
+          "verify_compressions": 56
+        },
+        "opening_bytes": 324,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 1630,
+        "substitution": {
+          "attempts": 1024,
+          "rejected": 1024
+        },
+        "verify_compressions": 18,
+        "verify_us_median": 2.3375
+      },
+      "records": 256
+    },
+    {
+      "flatmerkle": {
+        "build_compressions": 2047,
+        "build_peak_heap_bytes": 308272,
+        "build_us_median": 655.9,
+        "malformed_mid_checkpoint": {
+          "openable_items": 512,
+          "rebuild_from_items_detects": true,
+          "unopenable_items": 512
+        },
+        "multiproof": {
+          "bytes": 1232,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 2100,
+          "verify_compressions": 50
+        },
+        "opening_bytes": 420,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 2113,
+        "stream_bytes": 130944,
+        "substitution": {
+          "attempts": 4096,
+          "rejected": 4096
+        },
+        "verify_compressions": 20,
+        "verify_us_median": 1.609375
+      },
+      "merkle": {
+        "build_compressions": 4094,
+        "build_peak_heap_bytes": 66018,
+        "build_us_median": 501.09999999999997,
+        "full_publication_bytes": 65536,
+        "multiproof": {
+          "bytes": 1140,
+          "distinct": 5,
+          "reads": 7,
+          "singles_bytes": 1940,
+          "verify_compressions": 68
+        },
+        "opening_bytes": 388,
+        "root_bytes": 32,
+        "row_response_witness_bytes": 1952,
+        "substitution": {
+          "attempts": 4096,
+          "rejected": 4096
+        },
+        "verify_compressions": 22,
+        "verify_us_median": 2.866796875
+      },
+      "records": 1024
+    }
+  ]
+}
