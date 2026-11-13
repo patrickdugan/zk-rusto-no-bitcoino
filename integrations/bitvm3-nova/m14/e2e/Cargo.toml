@@ -36,10 +36,11 @@ itertools = "0.14"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-[dev-dependencies]
+# m14-claim (src/bin): garble and evaluate one claim instance.
 crossbeam = "0.8"
 rand = "0.8"
 rand_chacha = "0.3"
+sha2 = "0.10"
 
 [profile.test]
 opt-level = 3
