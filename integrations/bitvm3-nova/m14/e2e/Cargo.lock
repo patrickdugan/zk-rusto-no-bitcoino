@@ -993,6 +993,7 @@ dependencies = [
  "rand_chacha",
  "serde",
  "serde_json",
+ "sha2",
  "slop-air",
  "slop-algebra",
  "slop-basefold",
