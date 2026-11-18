@@ -517,8 +517,8 @@ button {
 }
 
 .bus-wire-active {
-  stroke-dasharray: 8 6;
-  animation: busDash 0.85s linear infinite;
+  opacity: 0.62;
+  transition: stroke 0.3s ease;
 }
 
 .cockpit-right {

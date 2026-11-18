@@ -283,7 +283,7 @@
       setTimeout(() => toast.remove(), 1950);
     });
 
-    // 2. Launch high-energy comet particle along the Proof Bus SVG
+    // 2. Single subtle pulse along the active segment only when a task completes
     // EXEC (205) -> SHARD (340) for shard; SHARD (340) -> 3:1 REDUCE (475) for reduce
     const fromX = isReduce ? 340 : 205;
     const toX = isReduce ? 475 : 340;
@@ -293,8 +293,8 @@
       toX,
       y: 38,
       progress: 0,
-      speed: 0.032,
-      r: 5.5,
+      speed: 0.024,
+      r: 4.2,
       color,
       burstOnArrive: true,
     });
@@ -346,16 +346,12 @@
     state.replayTimers.push(endTid);
   }
 
-  // --- 60fps Continuous Animation Loop (Stopwatch, Radial Ring, Bus, Mosaic) ---
+  // --- 60fps Continuous Animation Loop (Stopwatch, Radial Ring, Event Bus, Mosaic) ---
   function startAnimationLoop() {
-    let lastAmbientSpawn = 0;
-
     function frame(nowMs) {
       const dtSec = Math.max(0, (nowMs - state.lastSamplePerfMs) / 1000);
       updateCockpitTick(dtSec, nowMs);
-      updateProofBusParticles(nowMs, lastAmbientSpawn, (ts) => {
-        lastAmbientSpawn = ts;
-      });
+      updateProofBusParticles();
       drawShardMosaic(nowMs);
       requestAnimationFrame(frame);
     }
@@ -427,43 +423,15 @@
     }
   }
 
-  function updateProofBusParticles(nowMs, lastSpawn, setLastSpawn) {
+  function updateProofBusParticles() {
     const layer = $("bus-particles-layer");
     if (!layer) return;
 
-    const isRunning =
-      state.opMode === "proving_inflight" ||
-      state.opMode === "replaying_memo" ||
-      state.opMode === "cuda_init" ||
-      state.replayingPreview;
-
-    const spawnEvery = state.opMode === "replaying_memo" ? 280 : isRunning ? 750 : 1800;
-    if (nowMs - lastSpawn > spawnEvery) {
-      setLastSpawn(nowMs);
-      if (isRunning) {
-        state.busParticles.push({
-          fromX: 70,
-          toX: 475,
-          y: 38,
-          progress: 0,
-          speed: state.opMode === "replaying_memo" ? 0.022 : 0.009,
-          r: 3.0,
-          color: "#38bdf8",
-          burstOnArrive: false,
-        });
-      } else {
-        // Gentle heartbeat probe between NOVA (70) and EXEC (205) during headroom hold
-        state.busParticles.push({
-          fromX: 70,
-          toX: 205,
-          y: 38,
-          progress: 0,
-          speed: 0.012,
-          r: 2.8,
-          color: "#fbbf24",
-          burstOnArrive: false,
-        });
+    if (!state.busParticles.length && !state.busRings.length) {
+      if (layer.innerHTML !== "") {
+        layer.innerHTML = "";
       }
+      return;
     }
 
     const nextParticles = [];
@@ -473,28 +441,28 @@
       p.progress += p.speed;
       if (p.progress >= 1) {
         if (p.burstOnArrive) {
-          state.busRings.push({ x: p.toX, y: p.y, r: 12, alpha: 0.95, color: p.color });
+          state.busRings.push({ x: p.toX, y: p.y, r: 13, alpha: 0.75, color: p.color });
         }
         continue;
       }
       nextParticles.push(p);
       const x = p.fromX + (p.toX - p.fromX) * p.progress;
       svgParts.push(
-        `<circle cx="${x.toFixed(1)}" cy="${p.y}" r="${p.r}" fill="${p.color}" opacity="0.95"/>`
+        `<circle cx="${x.toFixed(1)}" cy="${p.y}" r="${p.r}" fill="${p.color}" opacity="0.9"/>`
       );
     }
     state.busParticles = nextParticles;
 
     const nextRings = [];
     for (const rg of state.busRings) {
-      rg.r += 0.85;
-      rg.alpha -= 0.032;
+      rg.r += 0.55;
+      rg.alpha -= 0.036;
       if (rg.alpha <= 0) continue;
       nextRings.push(rg);
       svgParts.push(
         `<circle cx="${rg.x}" cy="${rg.y}" r="${rg.r.toFixed(1)}" fill="none" stroke="${
           rg.color
-        }" stroke-width="2.2" opacity="${rg.alpha.toFixed(2)}"/>`
+        }" stroke-width="1.8" opacity="${rg.alpha.toFixed(2)}"/>`
       );
     }
     state.busRings = nextRings;

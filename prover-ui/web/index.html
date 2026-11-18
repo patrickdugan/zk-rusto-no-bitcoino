@@ -208,18 +208,25 @@
                   </div>
                 </div>
 
-                <!-- Animated Proof Packet Bus -->
-                <svg class="bus-svg" id="proof-bus-svg" viewBox="0 0 680 76" aria-label="Animated proof pipeline packet bus">
+                <!-- Proof Pipeline Stage Bus (calm static connector; pulses only on completion) -->
+                <svg class="bus-svg" id="proof-bus-svg" viewBox="0 0 680 76" aria-label="Proof pipeline stage bus">
                   <defs>
                     <filter id="glow">
-                      <feGaussianBlur stdDeviation="2.5" result="b"/>
+                      <feGaussianBlur stdDeviation="2.0" result="b"/>
                       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
                     </filter>
                   </defs>
                   <!-- Base wires -->
-                  <line x1="70" y1="38" x2="610" y2="38" stroke="var(--line-strong)" stroke-width="3"/>
-                  <line id="bus-active-wire" class="bus-wire-active" x1="70" y1="38" x2="475" y2="38" stroke="var(--cyan)" stroke-width="2.5"/>
-                  <!-- Dynamic packet & burst layer -->
+                  <line x1="70" y1="38" x2="610" y2="38" stroke="var(--line-strong)" stroke-width="2"/>
+                  <line id="bus-active-wire" class="bus-wire-active" x1="70" y1="38" x2="475" y2="38" stroke="var(--cyan)" stroke-width="2"/>
+                  <!-- Static stage chevrons -->
+                  <g fill="none" stroke="var(--ink-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.65">
+                    <polyline points="135,34.5 139.5,38 135,41.5"/>
+                    <polyline points="270,34.5 274.5,38 270,41.5"/>
+                    <polyline points="405,34.5 409.5,38 405,41.5"/>
+                    <polyline points="540,34.5 544.5,38 540,41.5"/>
+                  </g>
+                  <!-- Event-only completion pulse layer -->
                   <g id="bus-particles-layer" filter="url(#glow)"></g>
                   <!-- Nodes -->
                   <g transform="translate(70,38)">
