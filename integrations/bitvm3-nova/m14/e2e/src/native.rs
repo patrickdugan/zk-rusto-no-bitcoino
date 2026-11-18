@@ -97,6 +97,14 @@ pub fn load(path: &str) -> Proof {
 /// a well-formed proof with incorrect arithmetic or Merkle data must reach garbled rejection.
 /// Call this before extracting items or constructing a shape from untrusted proof metadata.
 pub fn validate_proof_shape(reference: &Proof, proof: &Proof) -> Result<()> {
+    validate_proof_shape_with_used_pv(reference, proof, num_pv(&machine()))
+}
+
+fn validate_proof_shape_with_used_pv(
+    reference: &Proof,
+    proof: &Proof,
+    used_pv: usize,
+) -> Result<()> {
     macro_rules! tensor_shape {
         ($reference:expr, $proof:expr, $name:literal) => {{
             let (expected, actual) = ($reference, $proof);
@@ -144,6 +152,18 @@ pub fn validate_proof_shape(reference: &Proof, proof: &Proof) -> Result<()> {
     ensure!(
         p.public_values.len() == r.public_values.len(),
         "public-value length differs from reference"
+    );
+    ensure!(
+        used_pv <= r.public_values.len(),
+        "used public-value count exceeds proof public-value length"
+    );
+    ensure!(
+        r.public_values[used_pv..].iter().all(|x| *x == F::zero()),
+        "reference trailing public values are non-zero"
+    );
+    ensure!(
+        p.public_values[used_pv..].iter().all(|x| *x == F::zero()),
+        "unused trailing public values must be zero"
     );
 
     let (rg, pg) = (&r.logup_gkr_proof, &p.logup_gkr_proof);
@@ -624,6 +644,26 @@ mod proof_io_tests {
                 "accepted shape mutation {index}"
             );
         }
+    }
+
+    #[test]
+    fn shape_guard_covers_all_wrap_public_values_and_refuses_nonzero_unused_slots() {
+        let reference = try_load(FIXTURE_V2).unwrap();
+        let used = num_pv(&machine());
+        assert_eq!(used, sp1_hypercube::PROOF_MAX_NUM_PVS);
+
+        let reduced_used = used - 1;
+        let mut baseline = reference.clone();
+        baseline.proof.public_values[reduced_used] = F::zero();
+        validate_proof_shape_with_used_pv(&baseline, &baseline, reduced_used).unwrap();
+
+        let mut mutated = baseline.clone();
+        mutated.proof.public_values[reduced_used] = F::one();
+        let err = validate_proof_shape_with_used_pv(&baseline, &mutated, reduced_used).unwrap_err();
+        assert!(
+            err.to_string().contains("unused trailing public values"),
+            "{err}"
+        );
     }
 
     #[test]

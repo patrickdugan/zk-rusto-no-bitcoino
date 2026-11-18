@@ -8,17 +8,20 @@ use std::{
 use anyhow::{ensure, Context, Result};
 use serde::{de::DeserializeOwned, Serialize};
 use sha2::{Digest, Sha256};
+use zeroize::Zeroizing;
 
 use crate::Artifact;
 
 pub const MAX_JSON_BYTES: u64 = 64 * 1024;
 
-/// Inspect the path before opening it, and the handle after opening it. O_NONBLOCK also closes
-/// the race where a regular file is replaced by a FIFO between those checks.
+/// Inspect the path without following symlinks before opening it, and inspect the handle after
+/// opening it. On Unix, `O_NONBLOCK | O_NOFOLLOW` also closes symlink/FIFO replacement races.
 pub fn open_regular(path: &Path) -> Result<File> {
+    let pre = std::fs::symlink_metadata(path)
+        .with_context(|| format!("inspect {}", path.display()))?;
     ensure!(
-        std::fs::metadata(path)?.is_file(),
-        "expected a regular file: {}",
+        pre.file_type().is_file(),
+        "expected a regular non-symlink file: {}",
         path.display()
     );
     let mut options = OpenOptions::new();
@@ -26,7 +29,7 @@ pub fn open_regular(path: &Path) -> Result<File> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        options.custom_flags(libc::O_NONBLOCK);
+        options.custom_flags(libc::O_NONBLOCK | libc::O_NOFOLLOW);
     }
     let file = options
         .open(path)
@@ -39,9 +42,76 @@ pub fn open_regular(path: &Path) -> Result<File> {
     Ok(file)
 }
 
+pub fn verify_private_directory(path: &Path) -> Result<()> {
+    let meta = std::fs::symlink_metadata(path)
+        .with_context(|| format!("inspect private directory {}", path.display()))?;
+    ensure!(
+        meta.file_type().is_dir(),
+        "expected a non-symlink private directory: {}",
+        path.display()
+    );
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        ensure!(
+            meta.permissions().mode() & 0o077 == 0,
+            "private directory permissions are too permissive: {}",
+            path.display()
+        );
+    }
+    #[cfg(not(unix))]
+    anyhow::bail!("private claim state currently requires Unix file permissions");
+    #[cfg(unix)]
+    Ok(())
+}
+
+pub fn verify_private_file(path: &Path) -> Result<()> {
+    let meta = std::fs::symlink_metadata(path)
+        .with_context(|| format!("inspect private file {}", path.display()))?;
+    ensure!(
+        meta.file_type().is_file(),
+        "expected a regular non-symlink private file: {}",
+        path.display()
+    );
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        ensure!(
+            meta.permissions().mode() & 0o177 == 0,
+            "private file permissions are too permissive: {}",
+            path.display()
+        );
+    }
+    #[cfg(not(unix))]
+    anyhow::bail!("private claim state currently requires Unix file permissions");
+    #[cfg(unix)]
+    Ok(())
+}
+
 pub fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T> {
     let file = open_regular(path)?;
     let mut bytes = Vec::new();
+    file.take(MAX_JSON_BYTES + 1).read_to_end(&mut bytes)?;
+    ensure!(
+        bytes.len() as u64 <= MAX_JSON_BYTES,
+        "JSON exceeds size limit"
+    );
+    Ok(serde_json::from_slice(&bytes)?)
+}
+
+pub fn read_json_private<T: DeserializeOwned>(path: &Path) -> Result<T> {
+    verify_private_file(path)?;
+    let file = open_regular(path)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        ensure!(
+            file.metadata()?.permissions().mode() & 0o177 == 0,
+            "private file permissions are too permissive: {}",
+            path.display()
+        );
+    }
+    let mut bytes = Zeroizing::new(Vec::new());
     file.take(MAX_JSON_BYTES + 1).read_to_end(&mut bytes)?;
     ensure!(
         bytes.len() as u64 <= MAX_JSON_BYTES,
@@ -71,7 +141,29 @@ pub fn create_new(path: &Path, private: bool) -> Result<File> {
 pub fn sync_directory(path: &Path) -> Result<()> {
     // Persist the directory entry before any label can be released. Unsupported platforms fail
     // closed rather than silently weakening crash durability.
-    File::open(path)?.sync_all()?;
+    let pre = std::fs::symlink_metadata(path)
+        .with_context(|| format!("inspect directory {}", path.display()))?;
+    ensure!(
+        pre.file_type().is_dir(),
+        "expected a non-symlink directory: {}",
+        path.display()
+    );
+    let mut options = OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW);
+    }
+    let dir = options
+        .open(path)
+        .with_context(|| format!("open directory {}", path.display()))?;
+    ensure!(
+        dir.metadata()?.is_dir(),
+        "expected a directory handle: {}",
+        path.display()
+    );
+    dir.sync_all()?;
     Ok(())
 }
 

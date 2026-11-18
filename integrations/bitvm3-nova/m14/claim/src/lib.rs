@@ -18,6 +18,7 @@ use m13_statement::FinalStatement;
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 use io::{ArtifactWriter, CheckedReader};
 
@@ -123,7 +124,7 @@ impl Manifest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 #[serde(deny_unknown_fields)]
 struct PrivateState {
     format: String,
@@ -197,8 +198,17 @@ pub fn load_manifest(public: &Path, pin: [u8; 32], supported: &CircuitSpec) -> R
     Ok(manifest)
 }
 
-pub fn verify_artifacts(public: &Path, manifest: &Manifest) -> Result<()> {
-    manifest.validate(&manifest.circuit)?;
+pub fn verify_artifacts(
+    public: &Path,
+    manifest: &Manifest,
+    supported: &CircuitSpec,
+    pin: [u8; 32],
+) -> Result<()> {
+    manifest.validate(supported)?;
+    ensure!(
+        manifest.digest()? == pin,
+        "manifest hash differs from the independently supplied pin"
+    );
     for (name, expected) in [
         (CIPHERTEXTS, &manifest.ciphertexts),
         (INPUT_COMMITMENTS, &manifest.input_commitments),
@@ -386,10 +396,10 @@ where
     }
     #[cfg(not(unix))]
     bail!("private claim setup currently requires Unix file permissions");
-    let mut seed = [0; 32];
+    let mut seed = Zeroizing::new([0; 32]);
     let mut instance_id = [0; 32];
     OsRng
-        .try_fill_bytes(&mut seed)
+        .try_fill_bytes(&mut *seed)
         .context("OS randomness for garbler seed")?;
     OsRng
         .try_fill_bytes(&mut instance_id)
@@ -398,7 +408,7 @@ where
         writer: ArtifactWriter::new(&public.join(CIPHERTEXTS))?,
         error: None,
     };
-    let mode = GarbleMode::<AesCcrGateHasher, _>::new_with_seed(capacity, seed, handler);
+    let mode = GarbleMode::<AesCcrGateHasher, _>::new_with_seed(capacity, *seed, handler);
     let public_salt = mode.gate_hasher_seed().to_le_bytes();
     let garbled: StreamingResult<_, _, Vec<GarbledWire>> =
         CircuitBuilder::run_streaming(GIn(spec.input_bits as usize), mode, circuit);
@@ -444,10 +454,11 @@ where
             format: FORMAT.into(),
             instance_id,
             manifest_sha256: manifest.digest()?,
-            seed,
+            seed: *seed,
         },
         true,
     )?;
+    seed.zeroize();
     io::sync_directory(io::parent_directory(private))?;
     // Publish the manifest last. Interrupted setup cannot present a complete claim instance.
     io::sync_directory(public)?;
@@ -457,6 +468,7 @@ where
 }
 
 fn reserve(private: &Path, wanted: &Binding) -> Result<()> {
+    io::verify_private_directory(private)?;
     let path = private.join(RESERVATION);
     match io::create_new(&path, true) {
         Ok(mut file) => {
@@ -468,6 +480,7 @@ fn reserve(private: &Path, wanted: &Binding) -> Result<()> {
                 .downcast_ref::<std::io::Error>()
                 .is_some_and(|e| e.kind() == std::io::ErrorKind::AlreadyExists) =>
         {
+            io::verify_private_file(&path)?;
             let existing: Binding = io::read_json(&path)
                 .context("release reservation is incomplete; instance remains locked")?;
             ensure!(
@@ -493,7 +506,8 @@ pub fn release(
     bits: &[bool],
 ) -> Result<Release> {
     let wanted = binding(manifest, supported, pin, proof_sha256, bits)?;
-    let state: PrivateState = io::read_json(&private.join(PRIVATE))?;
+    io::verify_private_directory(private)?;
+    let state: PrivateState = io::read_json_private(&private.join(PRIVATE))?;
     ensure!(
         state.format == FORMAT
             && state.instance_id == manifest.instance_id
@@ -540,6 +554,7 @@ pub fn release(
         binding: wanted,
         labels: labels.finish()?,
     };
+    io::sync_directory(out)?;
     io::write_json_new(&out.join(RELEASE), &released, false)?;
     io::sync_directory(io::parent_directory(out))?;
     Ok(released)

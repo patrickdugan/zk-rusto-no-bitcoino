@@ -44,9 +44,12 @@ through an authenticated channel or protocol commitment, with the same care as t
 the first release attempt, a durable reservation. The evaluator accepts selected 16-byte labels,
 public constant labels and a public AES salt. Its input type cannot store paired labels.
 
-Private state creation currently requires Unix permissions and directory fsync support. Use
-Linux or WSL. The directory is created with mode 0700 and private files with mode 0600. The CLI
-does not accept secret seeds in process arguments. Existing output files/directories are refused.
+Private state creation and release currently require Unix permissions and directory fsync support.
+Use Linux or WSL. The directory is created and checked for mode 0700 (non-symlink) and private
+files are created and checked for mode 0600 (non-symlink); regular artifact and JSON readers use
+`symlink_metadata` plus `O_NOFOLLOW` so symlinks inside artifact directories are rejected. Secret
+seed buffers and private JSON reads are zeroized on drop. The CLI does not accept secret seeds in
+process arguments. Existing output files/directories are refused.
 
 ## What the manifest binds
 
@@ -75,7 +78,12 @@ from the proof's canonical circuit inputs and checks every selected label agains
 The input digest binds `m14-claim/input-bits/v1` plus a zero byte, the little-endian u64 bit count,
 and packed bits in least-significant-bit-first order, with zero padding in the final byte.
 The exact proof file has a separate SHA-256 digest. M14 derives some redundant transcript
-values instead of taking them as circuit inputs, so these commitments serve different purposes.
+values (such as sumcheck claimed sums and evaluation points) instead of taking them as circuit
+inputs, while unused trailing public-value slots are rejected if non-zero during shape validation.
+Leaving derived transcript values out of shape validation ensures a malformed proof still reaches
+garbled evaluation and produces a slashable `reject` verdict, while `accept` attests existence of a
+valid wrap proof matching `input_sha256` and `statement`. Output-label commitments use raw
+16-byte SHA-256 digests (`SHA256(label_le16)`) for direct `OP_SHA256` Tapscript compatibility.
 The release-header hash is SHA-256 of `m14-claim/release/v1` plus a zero byte and compact typed
 JSON serialization, using the same conventions as the manifest. The header binds the instance,
 manifest hash, proof-file hash, canonical input hash and selected-label artifact. This separate

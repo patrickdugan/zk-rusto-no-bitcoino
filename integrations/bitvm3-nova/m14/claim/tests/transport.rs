@@ -471,3 +471,89 @@ fn fifos_are_rejected_without_waiting_for_a_writer() {
     assert!(claim::io::read_json::<Manifest>(&fifo).is_err());
     assert!(claim::io::open_regular(&fifo).is_err());
 }
+
+#[test]
+fn verify_artifacts_enforces_pin_and_supported_circuit_directly() {
+    let i = Instance::new();
+    claim::verify_artifacts(&i.public, &i.manifest, &spec(), i.pin).unwrap();
+
+    let mut wrong_pin = i.pin;
+    wrong_pin[0] ^= 1;
+    assert!(claim::verify_artifacts(&i.public, &i.manifest, &spec(), wrong_pin).is_err());
+
+    let mut unsupported = spec();
+    unsupported.source_sha256[0] ^= 1;
+    assert!(claim::verify_artifacts(&i.public, &i.manifest, &unsupported, i.pin).is_err());
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinks_are_rejected_across_public_released_and_private_paths() {
+    use std::os::unix::fs::symlink;
+
+    let i = Instance::new();
+    let release = i.release("release", &[true, true]).unwrap();
+
+    // Symlink replacement in public manifest
+    let real_manifest = i.temp.path().join("real-manifest.json");
+    fs::rename(i.public.join(claim::MANIFEST), &real_manifest).unwrap();
+    symlink(&real_manifest, i.public.join(claim::MANIFEST)).unwrap();
+    assert!(claim::load_manifest(&i.public, i.pin, &spec()).is_err());
+    fs::remove_file(i.public.join(claim::MANIFEST)).unwrap();
+    fs::rename(&real_manifest, i.public.join(claim::MANIFEST)).unwrap();
+
+    // Symlink replacement in ciphertexts
+    let real_ct = i.temp.path().join("real-ciphertexts.bin");
+    fs::rename(i.public.join(claim::CIPHERTEXTS), &real_ct).unwrap();
+    symlink(&real_ct, i.public.join(claim::CIPHERTEXTS)).unwrap();
+    assert!(claim::verify_artifacts(&i.public, &i.manifest, &spec(), i.pin).is_err());
+    assert!(i.evaluate(&release, &[true, true]).is_err());
+    fs::remove_file(i.public.join(claim::CIPHERTEXTS)).unwrap();
+    fs::rename(&real_ct, i.public.join(claim::CIPHERTEXTS)).unwrap();
+
+    // Symlink replacement in selected-labels
+    let real_labels = i.temp.path().join("real-selected-labels.bin");
+    fs::rename(release.join(claim::SELECTED_LABELS), &real_labels).unwrap();
+    symlink(&real_labels, release.join(claim::SELECTED_LABELS)).unwrap();
+    assert!(i.evaluate(&release, &[true, true]).is_err());
+
+    // Symlink replacement in private directory / private.json
+    let j = Instance::new();
+    let real_priv = j.temp.path().join("real-private.json");
+    fs::rename(j.private.join("private.json"), &real_priv).unwrap();
+    symlink(&real_priv, j.private.join("private.json")).unwrap();
+    assert!(j.release("via-symlink-file", &[true, true]).is_err());
+    fs::remove_file(j.private.join("private.json")).unwrap();
+    fs::rename(&real_priv, j.private.join("private.json")).unwrap();
+
+    let real_priv_dir = j.temp.path().join("real-private-dir");
+    fs::rename(&j.private, &real_priv_dir).unwrap();
+    symlink(&real_priv_dir, &j.private).unwrap();
+    assert!(j.release("via-symlink-dir", &[true, true]).is_err());
+}
+
+#[cfg(unix)]
+#[test]
+fn permissive_private_directory_or_seed_file_is_refused_on_release() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let i = Instance::new();
+    fs::set_permissions(&i.private, fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(i.release("group-readable-dir", &[true, true]).is_err());
+    fs::set_permissions(&i.private, fs::Permissions::from_mode(0o700)).unwrap();
+
+    fs::set_permissions(
+        i.private.join("private.json"),
+        fs::Permissions::from_mode(0o644),
+    )
+    .unwrap();
+    assert!(i.release("world-readable-seed", &[true, true]).is_err());
+    assert!(!i.private.join("release-reservation.json").exists());
+
+    fs::set_permissions(
+        i.private.join("private.json"),
+        fs::Permissions::from_mode(0o600),
+    )
+    .unwrap();
+    i.release("restored-permissions", &[true, true]).unwrap();
+}

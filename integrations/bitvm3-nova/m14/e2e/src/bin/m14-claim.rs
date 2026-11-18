@@ -105,7 +105,7 @@ fn main() -> Result<()> {
         let public = Path::new(&args[2]);
         let pin = claim::parse_pin(&args[3])?;
         let manifest = claim::load_manifest(public, pin, &supported)?;
-        claim::verify_artifacts(public, &manifest)?;
+        claim::verify_artifacts(public, &manifest, &supported, pin)?;
         println!("verified artifacts for manifest {}", hex(&pin));
         return Ok(());
     }
@@ -167,4 +167,22 @@ fn main() -> Result<()> {
 
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cli_spec_and_reference_proof_input_match_circuit_constants() {
+        let supported = spec();
+        assert_eq!(supported.input_bits, INPUT_BITS);
+        assert_eq!(supported.ciphertexts, CIPHERTEXTS);
+        assert_eq!(supported.reference_sha256, claim::sha256(REFERENCE));
+
+        let reference = native::try_decode(REFERENCE).unwrap();
+        let (proof_hash, bits) = proof_input(Path::new(native::FIXTURE_V2), &reference).unwrap();
+        assert_eq!(proof_hash, supported.reference_sha256);
+        assert_eq!(bits.len() as u64, INPUT_BITS);
+    }
 }
