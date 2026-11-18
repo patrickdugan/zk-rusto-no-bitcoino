@@ -4,13 +4,13 @@ Current protocol identifier: `RBZK-BABE-NOVA-PILOT-AUTHENTICATED-V2`.
 
 ## 1. Scope and proof configuration
 
-This crate implements a bounded research experiment inspired by Babylon's January 2026 [BABE paper](https://docs.babylonlabs.io/papers/BABE_Research_Paper_Jan_2026.pdf). The protocol module uses a 16-slot Mersenne-31 predicate with 128 input bits, seven generated garblings, four seed openings, and three retained instances. A separate 3,832-bit Pallas addition gadget measures and tests a larger local relation.
+This crate implements a bounded research experiment inspired by Babylon's January 2026 [BABE paper](https://docs.babylonlabs.io/papers/BABE_Research_Paper_Jan_2026.pdf). The default protocol uses a 16-slot Mersenne-31 predicate with 128 input bits, seven generated garblings, four seed openings, and three retained instances. `DisputeProgram` also carries the universal local checker for an independently compiled complete Boolean verifier. A separate 3,832-bit Pallas addition gadget measures and tests a larger local relation.
 
 The soldering certificate uses `nova-snark = 0.76.0`, `PallasEngine`/`VestaEngine`, `CompressedSNARK`, and Spartan's `RelaxedR1CSSNARK` with `ipa_pc::EvaluationEngine`. The selected commitment backend derives transparent parameters. This configuration still relies on its cryptographic assumptions, correct library implementation, authenticated verification parameters, and the program described below.
 
 Nova supplies the certificate's zero-knowledge argument. Poseidon commitments with seed-derived blindings provide computational hiding under the chosen hash and PRG assumptions. The code derives 253-bit blinding values from a domain-separated ChaCha20 stream; it establishes no statistical or information-theoretic hiding theorem. `RecursiveSNARK` remains prover state. The released artifact is `CompressedSNARK`; a different compressor would need its own zero-knowledge analysis.
 
-The experiment's Bitcoin evidence consists of script construction, serialization, native BIP341 sighash and Schnorr verification in a fixture test, and explicit witness-shape checks. Funded consensus execution and the complete dispute transaction graph require further integration.
+The standalone benchmark measures Bitcoin serialization and witness shape. The integrated harness exercises a separate funded sixteen-choice graph against Bitcoin Core, with real Nova session labels and durable release after confirmation. Complete trace composition and its scale limits are described in [INTEGRATION.md](INTEGRATION.md).
 
 ## 2. Ownership of the claim and challenge data
 
@@ -128,14 +128,14 @@ Its use depends on the authentic selected base label, the verified certificate, 
 
 1. The participants agree the session and complete claim specification. The garbler creates all seven headers and publishes `PreChallengeManifest`. The challenger records its `commit1_digest` independently.
 2. After that pin is fixed, the challenger supplies a fresh unpredictable nonce. The partition derives from the pinned digest and nonce using the implementation's deterministic sampling. Four indices are opened; the three retained indices are sorted to select the base.
-3. The garbler's first finalization attempt reserves the nonce before proving. Another nonce is rejected for that in-memory session. Successful finalization returns the opened seeds, retained ciphertext streams, base hashlocks and soldering certificate.
+3. The garbler's first finalization attempt reserves the nonce before proving. Another nonce is rejected. `DurableGarblerSession` persists this reservation and advances an independent authority before producing openings or a proof. Successful finalization returns the opened seeds, retained ciphertext streams, base hashlocks and soldering certificate.
 4. `verify_public_setup` receives the independently expected commitment digest along with the expected session, specification and nonce. It checks the manifest pin, regenerates every opened instance, checks retained stream counts/digests, reconstructs the base root, and verifies the Nova certificate. Success returns an immutable `VerifiedPublicSetup` capability.
 5. The garbler releases a base active-label vector only after successful finalization and for its fixed nonce. The release guard binds the agreed input digest; conflicting requests fail. Retained evaluation and dispute resolution require the verified capability.
 6. The evaluator checks each delivered label against the selected base hashlock and translates it into every retained instance. A matching refutation output returns `AuthenticatedRefutation` with that instance's committed output preimage. Unrecognized outputs remain evaluation failures; an all-corrupt result yields an error.
 
 The independent `expected_commit1` argument supplies a pin comparison. Its caller must establish that the pin was obtained before the nonce. Recomputing it from the candidate after seeing the nonce would leave that ordering unestablished.
 
-Nonce and release reservations are process-local. Durable deployment requires a persistent journal, rollback detection, and coordination across replicas before label release. A process restart or copied secret state falls outside these guards.
+The low-level garbler retains process guards. `DurableGarblerSession` adds a locked, fsynced journal and an independent compare-and-set head, with exact saved-artifact recovery. Its release reservation binds the complete input and the selected funded transaction. Recovery accepts one complete pending transition after validating its saved artifacts. A torn journal fails closed; rollback of both the session and its authority remains outside the guarantee.
 
 A missing or invalid label delivery returns `AwaitingWithholdingTimeout` in the protocol model. Exercising its CSV branch requires an actual funded outpoint and observed deadline maturity. The host function has no chain clock or consensus execution authority.
 
@@ -164,9 +164,9 @@ A caller who permits multiple post-nonce candidate commitments changes the exper
 
 The assertion constructor receives the independently authenticated expected input bits. For wire `i`, the script contains only the hashlock for `h[b,i,expected_bit[i]]`. Its witness supplies the active label. The witness cannot select the opposite hashlock through a free bit selector.
 
-The output's Taproot commitment therefore binds that exact selected vector. The surrounding protocol must commit the corresponding output and bind it to the authorized challenge before label release. Selecting a future challenge dynamically requires an actual connector or presigned transaction mechanism; these standalone constructors leave that mechanism open.
+The output's Taproot commitment binds that exact selected vector. `transaction_graph` supplies a bounded presigned catalogue, and `challenge` authenticates every indexed opening before funding. Selection after funding spends the common assertion output into the chosen label script. The release CLI checks a graph reservation saved in the trusted authority directory before funding and independently observes the confirmed selected transaction. The standalone constructors retain their size-measurement role.
 
-The refutation tree provides a hashlock branch for each retained refutation output and a delayed operator branch. A separate withholding branch uses CSV. Builders can construct their transactions, witnesses and control blocks and measure their sizes. Such serialization evidence does not establish that an integrated funded graph enforces challenge order, reaches the intended outputs, or pays the correct beneficiary.
+The funded graph's response output provides a hashlock branch for each retained refutation output and a delayed operator branch. The selected challenge output has a withholding branch with CSV. Its response leaf requires both role signatures; the challenger's exact SIGHASH_ALL signature fixes the destination even when the operator retains its signing key. The Core harness mines the positive paths and checks malformed witnesses, redirects, competing spends and CSV boundaries.
 
 The garbler knows both output labels. A sound custody protocol must account for who can use a refutation preimage, which party controls each signature, and how branches bind to the same claim and collateral.
 
@@ -174,10 +174,10 @@ The garbler knows both output labels. A sound custody protocol must account for 
 
 | Boundary | Remaining obligation |
 | --- | --- |
-| Full verifier or application trace | Cover every required local relation, bind endpoints and adjacent steps, and use the intended verification parameters and generator sets. |
-| Source data | Authenticate claims, settlement state and the selected challenge; publish enough trace and opening data for an independent challenger. |
-| Bitcoin transaction graph | Fund and exercise assertion, challenge, response, refutation, timeout and payout paths with independently authorized participants and the intended sighash commitments. |
-| Persistence | Journal setup pins, challenge nonces and label-release reservations across failure and recovery. |
+| Full verifier or application trace | The compiler covers every Boolean input, gate and required output with shared wire commitments. Full M14 trace generation, storage and measured cost remain open. |
+| Source data | Complete trace publication and all sixteen indexed openings are checked. Keep them available for the full challenge window and bind application settlement state. |
+| Bitcoin transaction graph | The funded indexed profile covers its sixteen choices and deadlines. Larger trace openings need coordinated chunk transactions and a scalable selector. Adversarial deployment across independent role processes and reorganization recovery remain open. |
+| Persistence | Durable reservations and crash recovery are implemented. Deploy the CAS authority outside the session rollback domain and provide recovery for a torn authority record. |
 | Proof and garbling costs | Measure the corrected relation and complete protocol under matching security and coverage assumptions. |
 | DLC integration | Bind the same accepted application transition to the concrete CET, guardian or BitVM spend path and successor settlement rights. |
 

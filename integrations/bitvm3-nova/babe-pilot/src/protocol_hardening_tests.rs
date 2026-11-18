@@ -3,6 +3,7 @@
 //! Successful public setup verification is covered by the separate end-to-end suite.
 
 use super::*;
+use crate::dispute_circuit::PILOT_INPUT_BITS;
 
 fn header(index: usize) -> InstanceHeader {
     InstanceHeader {

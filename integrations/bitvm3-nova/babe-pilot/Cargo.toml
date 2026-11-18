@@ -9,6 +9,9 @@ description = "BABE-inspired transparent Nova/Spartan input-label soldering pilo
 
 [workspace]
 
+[features]
+m14-trace = ["dep:m14-e2e", "dep:m13-verify"]
+
 [dependencies]
 anyhow = "1"
 bincode = "1.3"
@@ -18,11 +21,14 @@ ff = "0.13"
 garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "af374b4a5bb5a805ecaea749c61ff446986e8f10", default-features = false }
 generic-array = "1.2"
 hex = "0.4"
+m14-e2e = { path = "../m14/e2e", optional = true }
+m13-verify = { path = "../m13/verify", optional = true }
 num-bigint = "0.4"
 num-traits = "0.2"
 nova-snark = "=0.76.0"
 rand = "0.8"
 rand_chacha = "0.3"
+rustix = { version = "1", features = ["fs", "process"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = { version = "0.10", features = ["compress"] }
@@ -37,3 +43,8 @@ debug = false
 [[bin]]
 name = "babe-pilot-bench"
 path = "src/bin/babe-pilot-bench.rs"
+
+[[bin]]
+name = "babe-trace-m14"
+path = "src/bin/babe-trace-m14.rs"
+required-features = ["m14-trace"]

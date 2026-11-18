@@ -68,6 +68,153 @@ fn shared_fixture() -> &'static SharedSessionFixture {
 }
 
 #[test]
+fn authenticated_catalogue_requires_every_committed_row_and_confirmed_exact_spend() {
+    use babe_pilot::{
+        challenge::{AuthenticatedCatalogue, ChainObservation, ChallengeChain},
+        transaction_graph::{tx_hex, GraphConfig, PreparedGraph},
+    };
+    use bitcoin::{
+        hashes::Hash,
+        secp256k1::{Keypair, Secp256k1, SecretKey},
+        Amount, BlockHash, OutPoint, Transaction, TxOut, Txid,
+    };
+
+    let fx = shared_fixture();
+    let verified = verify_public_setup(
+        &fx.session_id,
+        &fx.spec,
+        &fx.commit1,
+        &fx.nonce,
+        &fx.public_setup,
+    )
+    .unwrap();
+    let (_, mut openings) = IndexedDisputeSpec::sample_honest_trace([0xa5; 32]);
+    assert!(AuthenticatedCatalogue::from_openings(&verified, &openings).is_err());
+    openings[5].s_out ^= 1;
+    let catalogue = AuthenticatedCatalogue::from_openings(&verified, &openings).unwrap();
+    assert!(fx.spec.native_refutes(&openings[5]));
+    assert!(AuthenticatedCatalogue::from_openings(&verified, &openings[..15]).is_err());
+    let mut reordered = openings.clone();
+    reordered.swap(3, 4);
+    assert!(AuthenticatedCatalogue::from_openings(&verified, &reordered).is_err());
+    let mut changed = openings.clone();
+    changed[5].witness_quotient ^= 1;
+    assert!(AuthenticatedCatalogue::from_openings(&verified, &changed).is_err());
+
+    let key = |value| {
+        Keypair::from_secret_key(
+            &Secp256k1::new(),
+            &SecretKey::from_slice(&[value; 32]).unwrap(),
+        )
+    };
+    let operator = key(1);
+    let challenger = key(2);
+    let config = GraphConfig {
+        session_id: fx.session_id,
+        commit1: fx.commit1,
+        catalog_hash: catalogue.digest(),
+        choices: catalogue.graph_choices(),
+        base_hashlocks: fx.public_setup.base_tap_hashlocks.clone(),
+        refute_hashes: catalogue.refute_hashes().to_vec(),
+        operator_key: operator.x_only_public_key().0.serialize(),
+        challenger_key: challenger.x_only_public_key().0.serialize(),
+        operator_destination: [vec![0, 20], vec![7; 20]].concat(),
+        challenger_destination: [vec![0, 20], vec![8; 20]].concat(),
+        funding_sats: 1_000_000,
+        challenge_fee_sats: 2_000,
+        response_fee_sats: 5_000,
+        terminal_fee_sats: 2_000,
+        assertion_csv: 12,
+        labels_csv: 4,
+        payout_csv: 5,
+    };
+    catalogue.verify_graph(&config).unwrap();
+    for mutation in 0..4 {
+        let mut changed = config.clone();
+        match mutation {
+            0 => changed.catalog_hash[0] ^= 1,
+            1 => changed.choices[3].input_bits[80] ^= true,
+            2 => changed.base_hashlocks[0].0[0] ^= 1,
+            _ => changed.refute_hashes[0][0] ^= 1,
+        }
+        assert!(catalogue.verify_graph(&changed).is_err());
+    }
+    let graph = PreparedGraph::new(
+        config,
+        OutPoint {
+            txid: Txid::from_byte_array([9; 32]),
+            vout: 1,
+        },
+    )
+    .unwrap();
+    let presigned = graph.presign_operator(&operator).unwrap();
+    let selected = graph
+        .complete_challenge(3, &presigned, &challenger)
+        .unwrap();
+    let alternate = graph
+        .complete_challenge(5, &presigned, &challenger)
+        .unwrap();
+
+    struct Observer {
+        transaction: Transaction,
+        confirmations: u32,
+        current_height: u32,
+        unspent: Option<TxOut>,
+    }
+    impl ChallengeChain for Observer {
+        fn observe_challenge(
+            &mut self,
+            _txid: Txid,
+            _vout: u32,
+        ) -> anyhow::Result<ChainObservation> {
+            Ok(ChainObservation {
+                transaction: self.transaction.clone(),
+                block_hash: BlockHash::from_byte_array([11; 32]),
+                confirmation_height: 100,
+                confirmations: self.confirmations,
+                current_height: self.current_height,
+                unspent_output: self.unspent.clone(),
+            })
+        }
+    }
+    let observed = || Observer {
+        transaction: selected.clone(),
+        confirmations: 1,
+        current_height: 100,
+        unspent: selected.output.first().cloned(),
+    };
+    let authorization = catalogue
+        .authorize_confirmed(&graph, &tx_hex(&selected), &mut observed(), 1)
+        .unwrap();
+    assert_eq!(authorization.selected_index(), 3);
+    assert_eq!(authorization.input_bits(), fx.honest_slot3_bits);
+    for mutation in 0..5 {
+        let mut observer = observed();
+        match mutation {
+            0 => observer.confirmations = 0,
+            1 => observer.current_height = 101,
+            2 => observer.unspent = None,
+            3 => observer.unspent.as_mut().unwrap().value = Amount::from_sat(1),
+            _ => observer.transaction = alternate.clone(),
+        }
+        assert!(catalogue
+            .authorize_confirmed(&graph, &tx_hex(&selected), &mut observer, 1)
+            .is_err());
+    }
+    assert!(catalogue
+        .authorize_confirmed(&graph, &tx_hex(&selected), &mut observed(), 2)
+        .is_err());
+    assert!(catalogue
+        .authorize_confirmed(&graph, &tx_hex(&selected), &mut observed(), 0)
+        .is_err());
+    let mut changed_witness = selected.clone();
+    changed_witness.input[0].witness.clear();
+    assert!(catalogue
+        .authorize_confirmed(&graph, &tx_hex(&changed_witness), &mut observed(), 1)
+        .is_err());
+}
+
+#[test]
 fn e2e_honest_accept_and_dishonest_refute_across_all_retained_instances() {
     let fx = shared_fixture();
 

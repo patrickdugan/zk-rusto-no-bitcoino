@@ -6,7 +6,7 @@ Current protocol: `RBZK-BABE-NOVA-PILOT-AUTHENTICATED-V2`, results schema `2`.
 
 The original preregistration, `RBZK-BABE-NOVA-PILOT-2026-11`, was committed at `23bd390`. The implementation and report reviewed at `991118c8f1cadcc0ae4fa96303bbf65e4f75e00c` are the historical version-one experiment. Subsequent hardening changes the dispute statement, setup API, and Bitcoin label-selection rule. [SPECIFICATION.md](SPECIFICATION.md) defines the corrected relation; [PREREGISTRATION.md](PREREGISTRATION.md) retains the initial predictions and records a later addendum.
 
-The current CPU run in [RESULTS.json](RESULTS.json) identifies source commit `7977c344d620be9199f5699f5344a328e80d51f7` and a 14-file source manifest with SHA-256 `4a31ce04b21c7c24354ca498d4da45df35cf2198184b4f2e73a0018e287ba91a`. The optimized build used Rust 1.90.0 on Linux x86_64 with `RAYON_NUM_THREADS=2`; the host reported nine available logical CPUs. GPU use was false. Seeds were deterministic test fixtures, unsuitable for funded sessions.
+The hardened baseline CPU run in [RESULTS.json](RESULTS.json) identifies source commit `7977c344d620be9199f5699f5344a328e80d51f7` and a 14-file source manifest with SHA-256 `4a31ce04b21c7c24354ca498d4da45df35cf2198184b4f2e73a0018e287ba91a`. The optimized build used Rust 1.90.0 on Linux x86_64 with `RAYON_NUM_THREADS=2`; the host reported nine available logical CPUs. GPU use was false. Seeds were deterministic test fixtures, unsuitable for funded sessions.
 
 Timings describe one recorded run. Variance and deployment throughput remain unmeasured. Serialized bytes and gate counts apply to the fixed claims and source manifest in that run. The security claims depend on the relation and protocol assumptions.
 
@@ -17,9 +17,9 @@ Timings describe one recorded run. Variance and deployment throughput remain unm
 | Arithmetic auxiliaries could be changed by a challenger; authentication failure could yield a refutation | The operator commits the full tuple, including quotient and coordinate data. Refutation requires a matching full SHA-256 opening and an invalid committed transition. |
 | The prechallenge commitment was obtained from the submitted finalized bundle | Verification compares the bundle with an independently supplied `expected_commit1`. Callers establish its pre-nonce provenance. |
 | Retained evaluation accepted unverified setup objects | Evaluation uses an immutable capability produced by complete setup verification. |
-| Session reuse could expose labels across conflicting challenges | In-memory nonce and input-release reservations reject conflicts. Persistence across crashes remains a separate task. |
+| Session reuse could expose labels across conflicting challenges | The baseline has in-memory guards. The integration increment adds a fsynced journal, an independent CAS authority and exact artifact recovery; see INTEGRATION.md. |
 | The Bitcoin witness selected either hashlock for a wire | Each constructed assertion leaf embeds the hashlock selected by the caller's independently agreed input bit. |
-| Serialized transaction fixtures were described as Core-valid and standard | Size and witness-shape checks describe those fixtures. Funded consensus execution and policy acceptance require separate evidence. |
+| Serialized transaction fixtures were described as Core-valid and standard | Size and witness-shape checks describe those fixtures. The integration increment records funded Core execution and policy decisions in a separate receipt. |
 | Small local gadget counts were compared with complete verifiers as speedups | Each relation is identified by its coverage. A common full-verifier experiment remains open. |
 
 ## Historical version-one data
@@ -89,7 +89,7 @@ The following values come from constructed transactions with fixture outpoints a
 
 The 128-wire assertion uses a 4,514-byte script and 129 initial stack items. The chunked Pallas fixture has at most 481 initial stack items per input, a maximum initial item size of 64 bytes, and 134,392 total script bytes. Its configured stack and weight checks pass. These checks describe the serialized fixture's bounds.
 
-Separate tests check the exact selected-hash script template, Taproot commitments, and a native BIP341 sighash with a real Schnorr signature. Full Script execution and relay policy require a Bitcoin Core exercise. A funded integration must also show that the correct leaf becomes available after an authorized challenge and that the withholding or refutation path spends the intended collateral under its actual deadline and signature conditions.
+Separate tests check the exact selected-hash script template, Taproot commitments, and a native BIP341 sighash with a real Schnorr signature. The funded integration records separate Core Script execution and policy results for its real transactions. Its pre-funding graph reservation, post-confirmation release and exact CSV boundary tests are described in INTEGRATION.md. They preserve the serialization-only scope of the baseline samples above.
 
 ## Security parameters and comparison scope
 
@@ -97,6 +97,8 @@ The runnable configuration uses `N=7`, `M=3`. Under one ideal uniform selection 
 
 M14 verifies a full wrapped proof. FC03 investigates authenticated local verifier checks with its own relation and trace requirements. Babylon's BABE paper measures its specified verifier and protocol. The Pallas gadget here checks one fixed-generator addition opening. These artifacts answer different measurement questions. A replacement decision needs the complete common statement, every required local check, setup and retained artifacts, proof cost, challenge data, and the enforceable Bitcoin transaction path.
 
-## Next experiment
+## Integration increment
 
-A useful follow-up binds a complete real verifier trace to these local predicates and exercises an independently authenticated challenge against it. It should measure all generated and retained garblings, certificate keys and proofs, label publication, available opening data and the actual transaction graph under one stated security target. The experiment should also test operator disappearance and stale-state recovery before drawing conclusions about application custody.
+[INTEGRATION.md](INTEGRATION.md) describes the complete Boolean trace compiler, its real Nova certificate test, durable session recovery and funded indexed transaction graph. The optional M14 adapter calls the existing complete final verifier with independently pinned proof, key and public statement. Its current bounded test refuses partial compilation at an explicit resource cap. A complete M14 publication and scalable funded selection across its entire check schedule remain the next measurement boundary.
+
+Application custody also requires the concrete DLC/CET and successor-UTXO mapping, a deployed independent authority, reorganization behavior and a production cut-and-choose parameter choice. The new regtest evidence does not supply a full application proving-time estimate.

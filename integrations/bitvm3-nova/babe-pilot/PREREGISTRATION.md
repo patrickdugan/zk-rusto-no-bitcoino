@@ -106,3 +106,7 @@ Regenerate gate counts and generated/retained artifact bytes for the corrected a
 Constructed Bitcoin transactions provide serialization sizes and local witness-shape evidence. Keep consensus and standardness status unverified until a corresponding Bitcoin Core exercise succeeds. Full graph execution, dynamic challenge selection, data availability, process-restart safety and application custody remain explicit follow-up work.
 
 The hardening regression matrix includes independently wrong precommitment pins, changed nonces, conflicting label releases, altered operator trace fields and digest halves, noncanonical values, a genuinely committed invalid transition, wrong selected labels, malformed ciphertext streams, and an all-corrupt retained result. These additions strengthen the original experiment while keeping its historical record intact.
+
+## Integration increment after authenticated-v2 hardening
+
+The implementation now supplies complete Boolean trace composition, an optional entry point into the full M14 verifier, durable journal recovery, a presigned indexed challenge catalogue and an isolated funded Core harness. [INTEGRATION.md](INTEGRATION.md) records their boundaries and reproduction sequence. Original serialized Bitcoin samples retain their historical scope. The funded graph reaches sixteen indexed choices; full M14 trace publication and a scalable selector remain separate work.

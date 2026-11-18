@@ -24,9 +24,10 @@ use sha2::{Digest, Sha256};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::{
-    dispute_circuit::{eval_indexed_dispute_circuit, IndexedDisputeSpec, PILOT_INPUT_BITS},
+    dispute_circuit::IndexedDisputeSpec,
     elem::{f_from_canonical, f_to_le, F},
     gates::W,
+    program::DisputeProgram,
     soldering::{
         compute_base_tap_root, compute_pos_instance_root, derive_wire_blindings,
         prove_soldering_certificate, tap_label_sha256, unsolder_active_labels,
@@ -63,14 +64,14 @@ pub struct InstanceHeader {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PreChallengeManifest {
+pub struct PreChallengeManifest<P = IndexedDisputeSpec> {
     pub session_id: [u8; 32],
-    pub spec: IndexedDisputeSpec,
+    pub spec: P,
     pub num_wires: usize,
     pub headers: Vec<InstanceHeader>,
 }
 
-impl PreChallengeManifest {
+impl<P: DisputeProgram> PreChallengeManifest<P> {
     /// Computes `Commit_1` binding session ID, circuit spec, and all `N` candidate headers prior to `nonce`.
     pub fn commit1_digest(&self) -> Result<[u8; 32]> {
         let mut h = Sha256::new();
@@ -135,8 +136,8 @@ impl CutAndChoosePartition {
 /// Finalized public artifacts delivered to the challenger/evaluator after Phase 2 (`Commit_2`).
 /// Contains ONLY opened seeds (for `O`) and public ciphertexts / hashlocks / ZK certificate (for `R`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FinalizedPublicSetup {
-    pub manifest: PreChallengeManifest,
+pub struct FinalizedPublicSetup<P = IndexedDisputeSpec> {
+    pub manifest: PreChallengeManifest<P>,
     pub nonce: [u8; 32],
     pub opened_seeds: [([u8; 32], usize); PILOT_OPENED_INSTANCES],
     /// Public `CheckLampSigsMatch` SHA-256 hashlock pairs `(h_{b,i,0}, h_{b,i,1})` for base instance `b`.
@@ -150,15 +151,23 @@ pub struct FinalizedPublicSetup {
 /// Private fields prevent constructing this capability from unverified network data.
 /// The borrow prevents mutation of the artifacts during evaluation.
 #[derive(Debug)]
-pub struct VerifiedPublicSetup<'a> {
-    setup: &'a FinalizedPublicSetup,
+pub struct VerifiedPublicSetup<'a, P = IndexedDisputeSpec> {
+    setup: &'a FinalizedPublicSetup<P>,
     partition: CutAndChoosePartition,
     snark_verify_seconds: f64,
 }
 
-impl VerifiedPublicSetup<'_> {
+impl<P: DisputeProgram> VerifiedPublicSetup<'_, P> {
     pub fn snark_verify_seconds(&self) -> f64 {
         self.snark_verify_seconds
+    }
+
+    pub fn setup(&self) -> &FinalizedPublicSetup<P> {
+        self.setup
+    }
+
+    pub fn partition(&self) -> &CutAndChoosePartition {
+        &self.partition
     }
 }
 
@@ -281,9 +290,9 @@ struct GarbledInstanceMaterial {
     blindings: Vec<(F, F)>,
 }
 
-fn garble_single_instance(
+fn garble_single_instance<P: DisputeProgram>(
     session_id: &[u8; 32],
-    spec: &IndexedDisputeSpec,
+    spec: &P,
     index: usize,
     seed: [u8; 32],
 ) -> GarbledInstanceMaterial {
@@ -294,9 +303,7 @@ fn garble_single_instance(
     );
     let public_salt = mode.gate_hasher_seed().to_le_bytes();
     let res: StreamingResult<_, _, Vec<GarbledWire>> =
-        CircuitBuilder::run_streaming(GInput(PILOT_INPUT_BITS), mode, |c, w| {
-            eval_indexed_dispute_circuit(c, spec, w)
-        });
+        CircuitBuilder::run_streaming(GInput(spec.input_bits()), mode, |c, w| spec.eval(c, w));
     assert_eq!(res.output_value.len(), 1);
     let (ciphertexts, ciphertext_sha256) = res.ciphertext_handler_result;
 
@@ -310,12 +317,12 @@ fn garble_single_instance(
         .iter()
         .map(|&(l0, l1)| (tap_label_sha256(l0), tap_label_sha256(l1)))
         .collect();
-    let tap_root = compute_base_tap_root(session_id, &spec.circuit_id, index, &tap_hashlocks);
+    let tap_root = compute_base_tap_root(session_id, &spec.circuit_id(), index, &tap_hashlocks);
 
-    let blindings = derive_wire_blindings(&seed, index, PILOT_INPUT_BITS);
+    let blindings = derive_wire_blindings(&seed, index, spec.input_bits());
     let pos_root = compute_pos_instance_root(
         session_id,
-        &spec.circuit_id,
+        &spec.circuit_id(),
         index,
         &input_wires,
         &blindings,
@@ -368,10 +375,10 @@ pub fn hash_input_bits(bits: &[bool]) -> [u8; 32] {
 // ============================================================================================
 
 #[derive(Zeroize, ZeroizeOnDrop)]
-pub struct GarblerSession {
+pub struct GarblerSession<P = IndexedDisputeSpec> {
     session_id: [u8; 32],
     #[zeroize(skip)]
-    spec: IndexedDisputeSpec,
+    spec: P,
     seeds: [[u8; 32]; PILOT_TOTAL_INSTANCES],
     #[zeroize(skip)]
     instances: Vec<GarbledInstanceMaterial>,
@@ -380,12 +387,14 @@ pub struct GarblerSession {
     finalized: bool,
 }
 
-impl GarblerSession {
-    pub fn setup(
-        session_id: [u8; 32],
-        spec: IndexedDisputeSpec,
-        master_rng_seed: [u8; 32],
-    ) -> Self {
+impl<P: DisputeProgram> GarblerSession<P> {
+    pub fn setup(session_id: [u8; 32], spec: P, master_rng_seed: [u8; 32]) -> Self {
+        spec.validate()
+            .expect("setup requires a canonical independently selected program");
+        assert!(
+            spec.input_bits() > 0 && spec.input_bits().is_multiple_of(2),
+            "soldering requires a positive even input width"
+        );
         let mut rng = ChaCha20Rng::from_seed(master_rng_seed);
         let seeds: [[u8; 32]; PILOT_TOTAL_INSTANCES] = std::array::from_fn(|_| {
             let mut s = [0u8; 32];
@@ -406,13 +415,49 @@ impl GarblerSession {
         }
     }
 
-    pub fn pre_challenge_manifest(&self) -> PreChallengeManifest {
+    pub fn pre_challenge_manifest(&self) -> PreChallengeManifest<P> {
         PreChallengeManifest {
             session_id: self.session_id,
             spec: self.spec.clone(),
-            num_wires: PILOT_INPUT_BITS,
+            num_wires: self.spec.input_bits(),
             headers: self.instances.iter().map(|m| m.header.clone()).collect(),
         }
+    }
+
+    /// Restore process guards only after the durable wrapper has checked its
+    /// independent head and verified the saved public artifact, when present.
+    pub(crate) fn restore_guards(&mut self, saved: &crate::journal::JournalSnapshot) -> Result<()> {
+        ensure!(
+            self.challenge_nonce.is_none() && !self.finalized && self.released_input.is_none(),
+            "session already active"
+        );
+        let manifest = self.pre_challenge_manifest();
+        ensure!(
+            saved.pins.session_id == self.session_id,
+            "journal session mismatch"
+        );
+        ensure!(
+            saved.pins.circuit_id == self.spec.circuit_id(),
+            "journal circuit mismatch"
+        );
+        ensure!(
+            saved.pins.commit1 == manifest.commit1_digest()?,
+            "journal setup mismatch"
+        );
+        self.challenge_nonce = saved.nonce;
+        self.finalized = saved.finalized_setup_sha256.is_some();
+        self.released_input = saved.input_sha256;
+        Ok(())
+    }
+
+    pub(crate) fn mark_recovered_finalized(&mut self, nonce: [u8; 32]) -> Result<()> {
+        ensure!(
+            self.challenge_nonce.is_none_or(|saved| saved == nonce),
+            "recovered nonce mismatch"
+        );
+        self.challenge_nonce = Some(nonce);
+        self.finalized = true;
+        Ok(())
     }
 
     /// Adversarial test hook: corrupts the Half-Gates ciphertext table of `instance_idx` *prior*
@@ -433,7 +478,7 @@ impl GarblerSession {
     pub fn finalize_cut_and_choose(
         &mut self,
         nonce: [u8; 32],
-    ) -> Result<(FinalizedPublicSetup, SolderingTimings)> {
+    ) -> Result<(FinalizedPublicSetup<P>, SolderingTimings)> {
         // Reserve before proving so a failed attempt cannot open another partition.
         // Persistence across process restarts belongs to the enclosing protocol.
         if let Some(pinned) = self.challenge_nonce {
@@ -464,7 +509,7 @@ impl GarblerSession {
                 .map(|w| w.0.to_u128())
                 .collect(),
             soldered_deltas: std::array::from_fn(|m| self.instances[sj[m]].delta),
-            soldered_labels0: (0..PILOT_INPUT_BITS)
+            soldered_labels0: (0..self.spec.input_bits())
                 .map(|i| std::array::from_fn(|m| self.instances[sj[m]].input_wires[i].0.to_u128()))
                 .collect(),
             soldered_blindings: std::array::from_fn(|m| self.instances[sj[m]].blindings.clone()),
@@ -472,7 +517,7 @@ impl GarblerSession {
 
         let (certificate, timings) = prove_soldering_certificate(
             &self.session_id,
-            &self.spec.circuit_id,
+            &self.spec.circuit_id(),
             &nonce,
             b,
             sj,
@@ -511,7 +556,7 @@ impl GarblerSession {
             "challenger nonce mismatch"
         );
         ensure!(
-            input_bits.len() == PILOT_INPUT_BITS,
+            input_bits.len() == self.spec.input_bits(),
             "input bit count mismatch"
         );
         let input_hash = hash_input_bits(input_bits);
@@ -549,13 +594,13 @@ impl GarblerSession {
 
 /// Independently verifies the entire finalized setup (`Commit_1`, `N - M` opened C&C seeds,
 /// retained ciphertext SHA-256 commitments, base `OP_SHA256` hashlock table, and ZK `CompressedSNARK`).
-pub fn verify_public_setup<'a>(
+pub fn verify_public_setup<'a, P: DisputeProgram>(
     expected_session_id: &[u8; 32],
-    expected_spec: &IndexedDisputeSpec,
+    expected_spec: &P,
     expected_commit1: &[u8; 32],
     expected_nonce: &[u8; 32],
-    setup: &'a FinalizedPublicSetup,
-) -> Result<VerifiedPublicSetup<'a>> {
+    setup: &'a FinalizedPublicSetup<P>,
+) -> Result<VerifiedPublicSetup<'a, P>> {
     ensure!(
         &setup.manifest.session_id == expected_session_id,
         "session ID mismatch (replay rejected)"
@@ -565,7 +610,7 @@ pub fn verify_public_setup<'a>(
         "circuit specification mismatch (substituted circuit rejected)"
     );
     ensure!(
-        setup.manifest.num_wires == PILOT_INPUT_BITS,
+        setup.manifest.num_wires == expected_spec.input_bits(),
         "manifest wire count mismatch"
     );
     ensure!(
@@ -573,19 +618,7 @@ pub fn verify_public_setup<'a>(
         "manifest header count mismatch"
     );
     ensure!(&setup.nonce == expected_nonce, "challenger nonce mismatch");
-    ensure!(
-        expected_spec
-            .generators
-            .iter()
-            .all(|&g| u64::from(g) < crate::dispute_circuit::PILOT_PRIME),
-        "non-canonical fixed generator"
-    );
-    let mut recomputed_spec = expected_spec.clone();
-    recomputed_spec.recompute_circuit_id();
-    ensure!(
-        recomputed_spec.circuit_id == expected_spec.circuit_id,
-        "non-canonical circuit identity"
-    );
+    expected_spec.validate()?;
 
     for (idx, hdr) in setup.manifest.headers.iter().enumerate() {
         ensure!(hdr.index == idx, "non-sequential header index");
@@ -645,14 +678,14 @@ pub fn verify_public_setup<'a>(
 
     // 3. Verify base Tapscript SHA-256 hashlock table folds to Commit_1's `tap_commitment_root[b]`.
     ensure!(
-        setup.base_tap_hashlocks.len() == PILOT_INPUT_BITS,
+        setup.base_tap_hashlocks.len() == expected_spec.input_bits(),
         "base Tapscript hashlock count mismatch"
     );
     let b = part.base_index;
     let expected_base_tap_root = f_from_canonical(&setup.manifest.headers[b].tap_commitment_root)?;
     let recomputed_tap_root = compute_base_tap_root(
         expected_session_id,
-        &expected_spec.circuit_id,
+        &expected_spec.circuit_id(),
         b,
         &setup.base_tap_hashlocks,
     );
@@ -674,11 +707,11 @@ pub fn verify_public_setup<'a>(
 
     let snark_verify_seconds = verify_soldering_certificate(
         expected_session_id,
-        &expected_spec.circuit_id,
+        &expected_spec.circuit_id(),
         expected_nonce,
         b,
         part.soldered_indices,
-        PILOT_INPUT_BITS,
+        expected_spec.input_bits(),
         expected_base_tap_root,
         expected_soldered_pos_roots,
         &setup.certificate,
@@ -697,8 +730,8 @@ impl InstanceHeader {
 }
 
 /// Verifies `CheckLampSigsMatch` on the delivered base active labels against `setup.base_tap_hashlocks`.
-pub fn verify_active_base_labels(
-    verified: &VerifiedPublicSetup<'_>,
+pub fn verify_active_base_labels<P: DisputeProgram>(
+    verified: &VerifiedPublicSetup<'_, P>,
     input_bits: &[bool],
     delivery: &ActiveBaseLabelDelivery,
 ) -> Result<Vec<S>> {
@@ -712,7 +745,8 @@ pub fn verify_active_base_labels(
         "active label delivery base index mismatch"
     );
     ensure!(
-        input_bits.len() == PILOT_INPUT_BITS && delivery.active_labels.len() == PILOT_INPUT_BITS,
+        input_bits.len() == setup.manifest.num_wires
+            && delivery.active_labels.len() == setup.manifest.num_wires,
         "active label count mismatch"
     );
     ensure!(
@@ -720,7 +754,7 @@ pub fn verify_active_base_labels(
         "active label delivery input digest mismatch"
     );
 
-    let mut out = Vec::with_capacity(PILOT_INPUT_BITS);
+    let mut out = Vec::with_capacity(setup.manifest.num_wires);
     for (i, (&raw_lbl, &bit)) in delivery.active_labels.iter().zip(input_bits).enumerate() {
         let lbl = S::from_le_bytes(raw_lbl);
         let got_hash = tap_label_sha256(lbl);
@@ -739,8 +773,8 @@ pub fn verify_active_base_labels(
 }
 
 /// Evaluates all `M` retained garbled circuits using ONLY verified public artifacts + active base labels.
-pub fn evaluate_retained_instances(
-    verified: &VerifiedPublicSetup<'_>,
+pub fn evaluate_retained_instances<P: DisputeProgram>(
+    verified: &VerifiedPublicSetup<'_, P>,
     input_bits: &[bool],
     delivery: &ActiveBaseLabelDelivery,
 ) -> Result<[InstanceVerdict; PILOT_RETAINED_INSTANCES]> {
@@ -748,8 +782,8 @@ pub fn evaluate_retained_instances(
     evaluate_with_verified_labels(verified, input_bits, base_labels)
 }
 
-fn evaluate_with_verified_labels(
-    verified: &VerifiedPublicSetup<'_>,
+fn evaluate_with_verified_labels<P: DisputeProgram>(
+    verified: &VerifiedPublicSetup<'_, P>,
     input_bits: &[bool],
     base_labels: Vec<S>,
 ) -> Result<[InstanceVerdict; PILOT_RETAINED_INSTANCES]> {
@@ -779,7 +813,7 @@ fn evaluate_with_verified_labels(
                     entries: cts,
                     cursor: 0,
                 },
-                |c, w| eval_indexed_dispute_circuit(c, &setup.manifest.spec, w),
+                |c, w| setup.manifest.spec.eval(c, w),
             );
         ensure!(
             evaluated.ciphertext_handler_result == cts.len(),
@@ -809,13 +843,13 @@ fn evaluate_with_verified_labels(
 }
 
 /// Complete challenger dispute resolution with 1-of-`M` fault tolerance and withholding recovery.
-pub fn resolve_dispute(
-    verified: &VerifiedPublicSetup<'_>,
+pub fn resolve_dispute<P: DisputeProgram>(
+    verified: &VerifiedPublicSetup<'_, P>,
     input_bits: &[bool],
     maybe_delivery: Option<&ActiveBaseLabelDelivery>,
 ) -> Result<DisputeResolution> {
     ensure!(
-        input_bits.len() == PILOT_INPUT_BITS,
+        input_bits.len() == verified.setup.manifest.num_wires,
         "input bit count mismatch"
     );
     let Some(delivery) = maybe_delivery else {
@@ -839,8 +873,8 @@ pub fn resolve_dispute(
     resolve_verdicts(verified, &verdicts)
 }
 
-fn resolve_verdicts(
-    verified: &VerifiedPublicSetup<'_>,
+fn resolve_verdicts<P: DisputeProgram>(
+    verified: &VerifiedPublicSetup<'_, P>,
     verdicts: &[InstanceVerdict; PILOT_RETAINED_INSTANCES],
 ) -> Result<DisputeResolution> {
     let setup = verified.setup;

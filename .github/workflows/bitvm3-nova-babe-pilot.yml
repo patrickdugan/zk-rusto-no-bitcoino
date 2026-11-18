@@ -2,9 +2,9 @@ name: Nova BABE transparent soldering pilot
 on:
   push:
     branches: ['main', 'exp/**']
-    paths: ['integrations/bitvm3-nova/babe-pilot/**', '.github/workflows/bitvm3-nova-babe-pilot.yml']
+    paths: ['integrations/bitvm3-nova/babe-pilot/**', 'integrations/bitvm3-nova/m12/**', 'integrations/bitvm3-nova/m13/**', 'integrations/bitvm3-nova/m14/**', '.github/workflows/bitvm3-nova-babe-pilot.yml']
   pull_request:
-    paths: ['integrations/bitvm3-nova/babe-pilot/**', '.github/workflows/bitvm3-nova-babe-pilot.yml']
+    paths: ['integrations/bitvm3-nova/babe-pilot/**', 'integrations/bitvm3-nova/m12/**', 'integrations/bitvm3-nova/m13/**', 'integrations/bitvm3-nova/m14/**', '.github/workflows/bitvm3-nova-babe-pilot.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   babe-pilot:
-    name: Authenticated disputes, Nova soldering and measurements (CPU)
+    name: Complete trace, durable recovery and funded Core disputes (CPU)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -48,8 +48,77 @@ jobs:
         run: |
           set -o pipefail
           cargo +1.90.0 run --release --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml --bin babe-pilot-bench -- integrations/bitvm3-nova/babe-pilot/ci/bench-results.json 2>&1 | tee integrations/bitvm3-nova/babe-pilot/ci/bench.txt
+      - name: Build funded graph and durable session adapters
+        run: cargo +1.90.0 build --release --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml --bin babe-regtest-graph --bin babe-session-fixtures
+      - name: Prepare real Nova sessions without releasing inputs
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess
+          work = pathlib.Path(os.environ['RUNNER_TEMP']) / 'babe-funded'
+          work.mkdir()
+          binary = pathlib.Path('integrations/bitvm3-nova/babe-pilot/target/release/babe-session-fixtures').resolve()
+          output = pathlib.Path('integrations/bitvm3-nova/babe-pilot/ci')
+          for scenario in ('honest', 'refute'):
+              request = {'state_path': str(work/scenario), 'public_fixture_path': str(work/(scenario+'.json')), 'scenario': scenario}
+              result = subprocess.run([str(binary), 'init'], input=json.dumps(request), text=True, capture_output=True, check=True)
+              receipt = json.loads(result.stdout)
+              assert receipt['input_released'] is False
+              (output/(scenario+'-init.json')).write_text(json.dumps(receipt, indent=2)+'\n')
+          PY
+      - name: Download pinned Bitcoin Core and execute funded regtest
+        run: |
+          set -o pipefail
+          BABE_CORE_DIR="$RUNNER_TEMP/babe-core"
+          mkdir -p "$BABE_CORE_DIR"
+          curl --fail --location --retry 3 https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz -o "$BABE_CORE_DIR/core.tar.gz"
+          python3 - "$BABE_CORE_DIR/core.tar.gz" <<'PY'
+          import hashlib, sys, tarfile
+          path = sys.argv[1]
+          assert hashlib.sha256(open(path, 'rb').read()).hexdigest() == 'b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e'
+          with tarfile.open(path) as archive:
+              archive.extractall(path.rsplit('/', 1)[0], filter='data')
+          PY
+          python3 integrations/bitvm3-nova/babe-pilot/scripts/run-regtest.py \
+            --bitcoin-bin "$BABE_CORE_DIR/bitcoin-31.1/bin" --core-archive "$BABE_CORE_DIR/core.tar.gz" \
+            --graph-bin "$GITHUB_WORKSPACE/integrations/bitvm3-nova/babe-pilot/target/release/babe-regtest-graph" \
+            --release-bin "$GITHUB_WORKSPACE/integrations/bitvm3-nova/babe-pilot/target/release/babe-session-fixtures" \
+            --honest-fixture "$RUNNER_TEMP/babe-funded/honest.json" --bad-fixture "$RUNNER_TEMP/babe-funded/refute.json" \
+            --honest-state "$RUNNER_TEMP/babe-funded/honest" --bad-state "$RUNNER_TEMP/babe-funded/refute" \
+            --out integrations/bitvm3-nova/babe-pilot/ci/funded-regtest 2>&1 | tee integrations/bitvm3-nova/babe-pilot/ci/funded-regtest.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: nova-babe-pilot-${{ github.sha }}
           path: integrations/bitvm3-nova/babe-pilot/ci/
+  m14-trace:
+    name: Complete M14 entry point and explicit resource limits (CPU)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: rustup toolchain install 1.90.0 --profile minimal --component clippy
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            integrations/bitvm3-nova/babe-pilot/target
+          key: babe-m14-trace-v1-${{ runner.os }}-rust190-${{ hashFiles('integrations/bitvm3-nova/babe-pilot/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            babe-m14-trace-v1-${{ runner.os }}-rust190-${{ hashFiles('integrations/bitvm3-nova/babe-pilot/Cargo.lock') }}-
+      - name: Compile optional adapter and check its proof and statement pins
+        run: |
+          set -o pipefail
+          mkdir -p integrations/bitvm3-nova/babe-pilot/ci-m14
+          cargo +1.90.0 clippy --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml --features m14-trace --all-targets -- -D warnings
+          cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml --features m14-trace --test trace_m14_adapter -- --test-threads=1 --nocapture 2>&1 | tee integrations/bitvm3-nova/babe-pilot/ci-m14/adapter-tests.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-babe-m14-adapter-${{ github.sha }}
+          path: integrations/bitvm3-nova/babe-pilot/ci-m14/
