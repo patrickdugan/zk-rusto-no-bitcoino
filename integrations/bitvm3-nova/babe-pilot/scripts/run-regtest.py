@@ -14,8 +14,10 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shlex
 import secrets
 import socket
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -26,6 +28,17 @@ import urllib.request
 
 CORE_VERSION = "v31.1.0"
 CORE_ARCHIVE_SHA256 = "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e"
+CORE_SOURCE_COMMIT = "9be056a8a72b624dae9623b2f7bded92c2a21c91"
+CORE_SOURCE_URL = "https://github.com/bitcoin/bitcoin.git"
+CORE_BUILD_SCHEMA = "babe-core-source-build/v1"
+CORE_BUILD_PROFILE = {
+    "CMAKE_BUILD_TYPE": "Release", "CMAKE_CXX_FLAGS_RELEASE": "-O2 -DNDEBUG",
+    "BUILD_DAEMON": "ON", "BUILD_CLI": "ON", "ENABLE_WALLET": "ON",
+    "BUILD_TESTS": "OFF", "BUILD_GUI": "OFF", "BUILD_BENCH": "OFF",
+    "BUILD_FUZZ_BINARY": "OFF", "BUILD_BITCOIN_BIN": "OFF", "BUILD_TX": "OFF",
+    "BUILD_UTIL": "OFF", "BUILD_WALLET_TOOL": "OFF", "ENABLE_IPC": "OFF",
+    "WITH_CCACHE": "OFF",
+}
 PUBLIC_FIELDS = (
     "session_id", "commit1", "catalog_hash", "rows", "base_hashlocks",
     "retained_refute_hashes",
@@ -342,7 +355,7 @@ class Harness:
                                "response_vsize":responses["response"]["vsize"], "response_witness_items":responses["response"]["witness_items"]})
 
 
-def verify_core(args):
+def verify_core_archive(args):
     archive = Path(args.core_archive)
     if digest(archive) != CORE_ARCHIVE_SHA256:
         raise AssertionError("Core archive differs from the official 31.1 SHA256SUMS pin")
@@ -356,15 +369,208 @@ def verify_core(args):
     version = subprocess.run([str(binary), "--version"], capture_output=True, check=True).stdout.decode().splitlines()[0]
     if CORE_VERSION not in version:
         raise AssertionError("unexpected Core version")
-    return {"version":version, "archive_sha256":CORE_ARCHIVE_SHA256, "bitcoind_sha256":digest(binary),
+    return {"evidence_kind":"official-release-archive", "version":version,
+            "archive_sha256":CORE_ARCHIVE_SHA256, "bitcoind_sha256":digest(binary),
+            "bitcoin_cli_sha256":digest(Path(args.bitcoin_bin) / "bitcoin-cli"),
             "official_archive":"https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz",
             "official_checksums":"https://bitcoincore.org/bin/bitcoin-core-31.1/SHA256SUMS"}
+
+
+def core_git(source, *arguments):
+    # The source-build mode uses a fresh checkout controlled by the CI workflow.
+    # Ignore ambient Git repository overrides and disable executable fsmonitor hooks.
+    environment = {key:value for key,value in os.environ.items()
+                   if not key.startswith("GIT_")}
+    environment.update(GIT_NO_REPLACE_OBJECTS="1", GIT_OPTIONAL_LOCKS="0")
+    process = subprocess.run(
+        ["git", "-c", "core.fsmonitor=false", "-C", str(source), *arguments],
+        capture_output=True, check=True, timeout=60, env=environment,
+    )
+    return process.stdout
+
+
+def core_regular_file(path, limit=None):
+    metadata = path.lstat()
+    if not stat.S_ISREG(metadata.st_mode) or path.is_symlink():
+        raise AssertionError(f"Core provenance requires a regular file: {path.name}")
+    if limit is not None and metadata.st_size > limit:
+        raise AssertionError("Core build metadata exceeds size limit")
+    return metadata
+
+
+def core_source_snapshot(source):
+    if Path(core_git(source, "rev-parse", "--show-toplevel").decode().strip()).resolve() != source:
+        raise AssertionError("Core source path must be the checkout root")
+    commit = core_git(source, "rev-parse", "HEAD").decode().strip()
+    if commit != CORE_SOURCE_COMMIT:
+        raise AssertionError("Core source commit differs from the pinned official commit")
+    origin = core_git(source, "remote", "get-url", "--all", "origin").decode().splitlines()
+    if origin != [CORE_SOURCE_URL]:
+        raise AssertionError("Core source origin must be the exact official Git URL")
+    if core_git(source, "status", "--porcelain=v1", "--untracked-files=no"):
+        raise AssertionError("Core tracked source tree or index is dirty")
+    tree = core_git(source, "rev-parse", "HEAD^{tree}").decode().strip()
+    tracked = set()
+    manifest = hashlib.sha256()
+    for entry in core_git(source, "ls-tree", "-rz", "--full-tree", "HEAD").split(b"\0"):
+        if not entry:
+            continue
+        descriptor, raw_name = entry.split(b"\t", 1)
+        mode, kind, object_id = descriptor.split()
+        name = raw_name.decode("utf-8")
+        relative = Path(name)
+        if relative.is_absolute() or ".." in relative.parts or relative.parts[0] in (".git", "build"):
+            raise AssertionError("unexpected path in pinned Core tree")
+        tracked.add(name)
+        path = source / relative
+        for parent in relative.parents:
+            if (source / parent).is_symlink():
+                raise AssertionError("Core source ancestor became a symlink")
+        metadata = path.lstat()
+        if kind != b"blob":
+            raise AssertionError("unsupported Git entry in Core source tree")
+        if mode == b"120000" and stat.S_ISLNK(metadata.st_mode):
+            content = os.fsencode(os.readlink(path))
+        elif mode in (b"100644", b"100755") and stat.S_ISREG(metadata.st_mode):
+            if bool(metadata.st_mode & 0o111) != (mode == b"100755"):
+                raise AssertionError("Core tracked executable mode changed")
+            content = path.read_bytes()
+        else:
+            raise AssertionError("Core tracked file type changed")
+        # Direct contents checks also catch index assume-unchanged/skip-worktree flags.
+        blob = hashlib.sha1(b"blob " + str(len(content)).encode() + b"\0" + content).hexdigest()
+        if blob.encode() != object_id:
+            raise AssertionError("Core tracked file contents differ from the pinned tree")
+        manifest.update(descriptor + b"\t" + raw_name + b"\0")
+        manifest.update(hashlib.sha256(content).digest())
+    for directory, names, files in os.walk(source, followlinks=False):
+        relative = Path(directory).relative_to(source)
+        if relative == Path("."):
+            names[:] = [name for name in names if name not in (".git", "build")]
+            files = [name for name in files if name != ".git"]
+        for name in files + [name for name in names if (Path(directory) / name).is_symlink()]:
+            if (relative / name).as_posix() not in tracked:
+                raise AssertionError("untracked Core source file outside the build directory")
+    return {"source_commit":commit, "source_tree":tree, "source_git_url":origin[0],
+            "tracked_source_sha256":manifest.hexdigest(), "tracked_source_files":len(tracked)}
+
+
+def core_build_metadata(source):
+    build = source / "build"
+    cache_path, info_path = build / "CMakeCache.txt", build / "build-info.json"
+    core_regular_file(cache_path, MAX_JSON_BYTES)
+    core_regular_file(info_path, 256 * 1024)
+    cache = {}
+    for line in cache_path.read_text().splitlines():
+        if not line or line.startswith(("#", "//")):
+            continue
+        key_type, separator, value = line.partition("=")
+        key, colon, _ = key_type.partition(":")
+        if not separator or not colon or not key or key in cache:
+            raise AssertionError("malformed or duplicate CMake cache entry")
+        cache[key] = value
+    if cache.get("CMAKE_HOME_DIRECTORY") != str(source) or cache.get("CMAKE_CACHEFILE_DIR") != str(build):
+        raise AssertionError("CMake cache belongs to another source or build directory")
+    for key, expected in CORE_BUILD_PROFILE.items():
+        if cache.get(key) != expected:
+            raise AssertionError(f"unexpected Core build profile: {key}")
+    for key in ("CMAKE_C_FLAGS", "CMAKE_C_FLAGS_RELEASE", "CMAKE_CXX_FLAGS", "CMAKE_CXX_FLAGS_RELEASE"):
+        if any(flag.startswith("-g") for flag in shlex.split(cache.get(key, ""))):
+            raise AssertionError("Core release build enables debug information")
+    if not cache.get("CMAKE_CXX_COMPILER"):
+        raise AssertionError("CMake cache omits the C++ compiler")
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise AssertionError("duplicate Core build metadata key")
+            result[key] = value
+        return result
+
+    info = json.loads(info_path.read_text(), object_pairs_hook=unique_object)
+    if not isinstance(info, dict) or info.get("schema") != CORE_BUILD_SCHEMA:
+        raise AssertionError("unexpected Core build metadata schema")
+    configure, command = info.get("configure_argv"), info.get("build_argv")
+    for argv in (configure, command):
+        if (not isinstance(argv, list) or len(argv) > 128 or
+                not all(isinstance(arg, str) and 0 < len(arg) <= 4096 and "\0" not in arg for arg in argv)):
+            raise AssertionError("invalid Core build command metadata")
+    if configure[:5] != ["cmake", "-S", str(source), "-B", str(build)]:
+        raise AssertionError("Core configure command uses unexpected paths")
+    definitions = {}
+    for flag in configure[5:]:
+        if not flag.startswith("-D") or "=" not in flag:
+            raise AssertionError("unexpected Core configure argument")
+        key, value = flag[2:].split("=", 1)
+        if key in definitions:
+            raise AssertionError("duplicate Core configure definition")
+        definitions[key] = value
+    if definitions != CORE_BUILD_PROFILE:
+        raise AssertionError("Core configure command differs from required profile")
+    if (command[:6] != ["cmake", "--build", str(build), "--target", "bitcoind", "bitcoin-cli"] or
+            len(command) != 8 or command[6] != "--parallel" or not command[7].isdigit() or
+            not 1 <= int(command[7]) <= 64):
+        raise AssertionError("Core build command must select only bitcoind and bitcoin-cli")
+    if not isinstance(info.get("compiler_version"), str) or not info["compiler_version"].strip():
+        raise AssertionError("Core build metadata omits compiler version")
+    return {"cmake_cache_sha256":digest(cache_path), "build_info_sha256":digest(info_path),
+            "configure_argv":configure, "build_argv":command,
+            "compiler_path":cache["CMAKE_CXX_COMPILER"], "compiler_version":info["compiler_version"]}
+
+
+def verify_core_source(args):
+    source = Path(args.core_source).resolve(strict=True)
+    binaries = source / "build" / "bin"
+    if (source / "build").is_symlink() or binaries.is_symlink() or Path(args.bitcoin_bin).resolve(strict=True) != binaries:
+        raise AssertionError("Core binaries must be in the pinned source/build/bin directory")
+    provenance = {"evidence_kind":"trusted-ci-source-build", **core_source_snapshot(source),
+                  **core_build_metadata(source)}
+    for name, field in (("bitcoind", "bitcoind_sha256"), ("bitcoin-cli", "bitcoin_cli_sha256")):
+        metadata = core_regular_file(binaries / name)
+        if not metadata.st_mode & 0o111:
+            raise AssertionError("Core binary is not executable")
+        provenance[field] = digest(binaries / name)
+    provenance["trust_basis"] = (
+        "Pinned official source and measured local build artifacts from the trusted CI workflow; "
+        "these hashes do not prove that a compiler used the recorded source or commands."
+    )
+    return provenance
+
+
+def verify_core(args, expected=None):
+    archive, source = getattr(args, "core_archive", None), getattr(args, "core_source", None)
+    if bool(archive) == bool(source):
+        raise AssertionError("select exactly one Core archive or source provenance mode")
+    if expected is not None:
+        for name, field in (("bitcoind", "bitcoind_sha256"), ("bitcoin-cli", "bitcoin_cli_sha256")):
+            if digest(Path(args.bitcoin_bin) / name) != expected[field]:
+                raise AssertionError("Core executable changed while the harness ran")
+    if archive:
+        result = verify_core_archive(args)
+    else:
+        result = verify_core_source(args)
+        if expected is not None:
+            if result != {key:value for key,value in expected.items() if key != "version"}:
+                raise AssertionError("Core source/build provenance changed while the harness ran")
+            result["version"] = expected["version"]
+        else:
+            version = subprocess.run([str(Path(args.bitcoin_bin) / "bitcoind"), "--version"],
+                                     capture_output=True, check=True, timeout=30).stdout.decode().splitlines()[0]
+            if CORE_VERSION not in version:
+                raise AssertionError("unexpected Core version")
+            result["version"] = version
+    if expected is not None and result != expected:
+        raise AssertionError("Core provenance changed while the harness ran")
+    return result
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bitcoin-bin", type=Path, required=True)
-    parser.add_argument("--core-archive", type=Path, required=True)
+    provenance = parser.add_mutually_exclusive_group(required=True)
+    provenance.add_argument("--core-archive", type=Path)
+    provenance.add_argument("--core-source", type=Path)
     parser.add_argument("--graph-bin", type=Path, required=True)
     parser.add_argument("--release-bin", type=Path, required=True)
     parser.add_argument("--honest-fixture", type=Path, required=True)
@@ -399,6 +605,7 @@ def main():
             binaries_after = {"graph":digest(args.graph_bin), "release":digest(args.release_bin)}
             if binaries_before != binaries_after:
                 raise AssertionError("adapter binaries changed while the Core test ran")
+            verify_core(args, expected=core)
             receipt = {
                 "schema":"babe-pilot/funded-regtest/v1", "status":"passed", "network":"regtest",
                 "core":core, "source_sha256":before, "source_git":git_before,

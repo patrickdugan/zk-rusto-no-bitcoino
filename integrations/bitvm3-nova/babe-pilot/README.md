@@ -43,4 +43,4 @@ cargo +1.90.0 run --release --locked --manifest-path integrations/bitvm3-nova/ba
 cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml --features m14-trace --test trace_m14_adapter
 ```
 
-The default suite includes real CPU proving for the complete-trace certificate and recovery tests. The BABE CI workflow also creates fresh private sessions, verifies the pinned Bitcoin Core archive and mines the funded graph. Private session files stay outside uploaded artifacts. The preregistration's original runtime targets remain historical predictions.
+The default suite includes real CPU proving for the complete-trace certificate and recovery tests. The BABE CI workflow builds the pinned official Bitcoin Core source, creates fresh private sessions and mines the funded graph. Receipts identify the source commit and executable hashes; the runner also supports the checksum-pinned official archive. Private session files stay outside uploaded artifacts. The preregistration's original runtime targets remain historical predictions.
