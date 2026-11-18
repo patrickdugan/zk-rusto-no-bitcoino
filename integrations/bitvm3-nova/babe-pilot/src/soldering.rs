@@ -5,9 +5,10 @@
 //! Bitcoin Tapscript `OP_SHA256` hashlocks `h_tap[b][i][0..=1]` to every soldered retained
 //! instance's hiding Poseidon wire commitments `R_pos[j]`, bound to `(session_id, circuit_id, nonce)`.
 
-use std::sync::OnceLock;
+use std::{io::Cursor, sync::OnceLock};
 
 use anyhow::{bail, ensure, Context, Result};
+use bincode::Options;
 use ff::Field;
 use garbled_snark_verifier::S;
 use nova_snark::{
@@ -37,6 +38,7 @@ use crate::elem::{
 
 pub const SOLDER_BATCH_WIRES: usize = 2;
 pub const PILOT_SOLDERED_INSTANCES: usize = 2; // M - 1 for M = 3 retained instances
+pub const MAX_COMPRESSED_SNARK_BYTES: usize = 4 * 1024 * 1024;
 
 const TAG_BIND: u64 = 0x4241_4245_534c_4401; // "BABESLD\x01"
 const TAG_BASE_INIT: u64 = 0x4241_4245_4241_5301; // "BABEBAS\x01"
@@ -821,6 +823,38 @@ pub fn prove_soldering_certificate(
     ))
 }
 
+// bincode 1.3's slice decoder drops the configured byte limit. Its reader decoder retains
+// the limit; the explicit cursor check rejects suffixes. Serde bounds vector preallocation.
+// Canonical round-tripping also rejects alternate encodings accepted by upstream serde.
+fn decode_compressed_snark(bytes: &[u8]) -> Result<CsPilot> {
+    ensure!(
+        bytes.len() <= MAX_COMPRESSED_SNARK_BYTES,
+        "CompressedSNARK exceeds bounded size limit"
+    );
+    std::panic::catch_unwind(|| -> Result<CsPilot> {
+        let mut reader = Cursor::new(bytes);
+        let proof: CsPilot = bincode::DefaultOptions::new()
+            .with_fixint_encoding()
+            .with_little_endian()
+            .with_limit(bytes.len() as u64)
+            .deserialize_from(&mut reader)
+            .context("malformed CompressedSNARK bytes")?;
+        ensure!(
+            reader.position() == bytes.len() as u64,
+            "trailing bytes after CompressedSNARK"
+        );
+        let canonical = bincode::DefaultOptions::new()
+            .with_fixint_encoding()
+            .with_little_endian()
+            .with_limit(MAX_COMPRESSED_SNARK_BYTES as u64)
+            .serialize(&proof)
+            .context("serialize CompressedSNARK canonically")?;
+        ensure!(canonical == bytes, "non-canonical CompressedSNARK encoding");
+        Ok(proof)
+    })
+    .map_err(|_| anyhow::anyhow!("malformed CompressedSNARK: deserializer panicked"))?
+}
+
 /// Independently verifies `SolderingCertificate` against public setup roots and session parameters.
 /// Uses ONLY public information (no seeds, deltas, or secret wire labels).
 #[allow(clippy::too_many_arguments)]
@@ -851,14 +885,8 @@ pub fn verify_soldering_certificate(
         expected_num_wires > 0 && expected_num_wires.is_multiple_of(SOLDER_BATCH_WIRES),
         "unsupported wire batch alignment"
     );
-    ensure!(
-        cert.compressed_snark_bytes.len() <= 4 * 1024 * 1024,
-        "CompressedSNARK exceeds bounded size limit"
-    );
-
+    let proof = decode_compressed_snark(&cert.compressed_snark_bytes)?;
     let keys = pilot_soldering_keys();
-    let proof: CsPilot = bincode::deserialize(&cert.compressed_snark_bytes)
-        .context("malformed CompressedSNARK bytes")?;
 
     let z0 = initial_soldering_state(
         session_id,
@@ -873,7 +901,11 @@ pub fn verify_soldering_certificate(
     let num_steps = expected_num_wires / SOLDER_BATCH_WIRES;
 
     let t0 = std::time::Instant::now();
-    let zn = match proof.verify(&keys.vk, num_steps, &z0) {
+    let verified = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        proof.verify(&keys.vk, num_steps, &z0)
+    }))
+    .map_err(|_| anyhow::anyhow!("malformed CompressedSNARK: verifier panicked"))?;
+    let zn = match verified {
         Ok(zn) => zn,
         Err(e) => bail!("CompressedSNARK cryptographic verification failed: {e:?}"),
     };
@@ -915,7 +947,9 @@ pub fn unsolder_active_labels(
 ) -> Result<Vec<S>> {
     ensure!(slot < PILOT_SOLDERED_INSTANCES, "invalid soldered slot");
     ensure!(
-        base_active_labels.len() == cert.num_wires && input_bits.len() == cert.num_wires,
+        base_active_labels.len() == cert.num_wires
+            && input_bits.len() == cert.num_wires
+            && cert.wire_deltas.len() == cert.num_wires,
         "active label / input bit count mismatch"
     );
     let gamma = S::from_u128(cert.gammas[slot]);
@@ -936,6 +970,24 @@ mod tests {
     use nova_snark::frontend::util_cs::test_cs::TestConstraintSystem;
 
     use super::*;
+
+    #[test]
+    fn compressed_snark_decoder_rejects_bounded_malformed_inputs() {
+        for bytes in [
+            vec![],
+            vec![0xff; 8],
+            vec![0; 96],
+            vec![0xff; 4096],
+            vec![0; MAX_COMPRESSED_SNARK_BYTES + 1],
+        ] {
+            assert!(decode_compressed_snark(&bytes).is_err());
+        }
+        // The first relaxed instance has two 32-byte point commitments and a scalar,
+        // followed by its vector length. An impossible count must fail within the input budget.
+        let mut huge_vector = vec![0; 96];
+        huge_vector.extend_from_slice(&u64::MAX.to_le_bytes());
+        assert!(decode_compressed_snark(&huge_vector).is_err());
+    }
 
     #[test]
     fn sha256_label16_gadget_matches_native_sha2() {

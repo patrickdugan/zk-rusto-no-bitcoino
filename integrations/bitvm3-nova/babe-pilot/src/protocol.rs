@@ -8,7 +8,7 @@
 //!   verified `SolderingCertificate`, and active base labels—zero access to retained seeds,
 //!   Free-XOR `Delta_j`, or inactive wire labels.
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{ensure, Context, Result};
 use ff::Field;
 use garbled_snark_verifier::{
     circuit::{
@@ -17,7 +17,7 @@ use garbled_snark_verifier::{
     },
     AesCcrGateHasher, EvaluatedWire, GarbleMode, GarbledWire, GateHasher, S,
 };
-use rand::{RngCore, SeedableRng};
+use rand::{Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -34,6 +34,10 @@ use crate::{
         SolderingTimings, PILOT_SOLDERED_INSTANCES,
     },
 };
+
+#[cfg(test)]
+#[path = "protocol_hardening_tests.rs"]
+mod hardening_tests;
 
 pub const PILOT_TOTAL_INSTANCES: usize = 7; // N = 7
 pub const PILOT_RETAINED_INSTANCES: usize = 3; // M = 3 (1 base + 2 soldered)
@@ -52,7 +56,7 @@ pub struct InstanceHeader {
     pub tap_commitment_root: [u8; 32],
     /// Poseidon accumulator root `R_pos[k]` of hiding Poseidon wire commitments (serialized canonical LE).
     pub pos_commitment_root: [u8; 32],
-    /// Raw `OP_SHA256` commitment to output label `O_{k,0}` (`refute == false` -> claim accepted).
+    /// Raw `OP_SHA256` commitment to output label `O_{k,0}` (no authenticated refutation).
     pub accept_output_sha256: [u8; 32],
     /// Raw `OP_SHA256` commitment to output label `O_{k,1}` (`refute == true` -> claim refuted / slashable).
     pub refute_output_sha256: [u8; 32],
@@ -70,7 +74,7 @@ impl PreChallengeManifest {
     /// Computes `Commit_1` binding session ID, circuit spec, and all `N` candidate headers prior to `nonce`.
     pub fn commit1_digest(&self) -> Result<[u8; 32]> {
         let mut h = Sha256::new();
-        h.update(b"babe-pilot/commit1/v1\0");
+        h.update(b"babe-pilot/commit1/v2\0");
         h.update(bincode::serialize(self).context("serialize PreChallengeManifest")?);
         Ok(h.finalize().into())
     }
@@ -89,7 +93,7 @@ impl CutAndChoosePartition {
     /// Deterministically derives the `(opened, retained)` split and `base = min(retained)` from `(Commit_1, nonce)`.
     pub fn derive(commit1: [u8; 32], nonce: [u8; 32]) -> Self {
         let mut h = Sha256::new();
-        h.update(b"babe-pilot/cc-partition/v1\0");
+        h.update(b"babe-pilot/cc-partition/v2\0");
         h.update(commit1);
         h.update(nonce);
         let rng_seed: [u8; 32] = h.finalize().into();
@@ -97,7 +101,7 @@ impl CutAndChoosePartition {
 
         let mut indices: Vec<usize> = (0..PILOT_TOTAL_INSTANCES).collect();
         for i in (1..indices.len()).rev() {
-            let j = (rng.next_u64() as usize) % (i + 1);
+            let j = rng.gen_range(0..=i);
             indices.swap(i, j);
         }
         let mut opened = [0usize; PILOT_OPENED_INSTANCES];
@@ -142,6 +146,22 @@ pub struct FinalizedPublicSetup {
     pub certificate: SolderingCertificate,
 }
 
+/// A setup verified against a commitment independently recorded before the nonce.
+/// Private fields prevent constructing this capability from unverified network data.
+/// The borrow prevents mutation of the artifacts during evaluation.
+#[derive(Debug)]
+pub struct VerifiedPublicSetup<'a> {
+    setup: &'a FinalizedPublicSetup,
+    partition: CutAndChoosePartition,
+    snark_verify_seconds: f64,
+}
+
+impl VerifiedPublicSetup<'_> {
+    pub fn snark_verify_seconds(&self) -> f64 {
+        self.snark_verify_seconds
+    }
+}
+
 /// Active base labels revealed on-chain (`AssertLabelsTx`) for a challenged dispute input `x`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActiveBaseLabelDelivery {
@@ -153,24 +173,26 @@ pub struct ActiveBaseLabelDelivery {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InstanceVerdict {
-    Accept { output_label: [u8; 16] },
+    NoRefutation { output_label: [u8; 16] },
     Refute { output_label: [u8; 16] },
     CorruptedOutput { raw_label: [u8; 16] },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DisputeResolution {
-    /// All evaluated retained circuits accepted the claim (no `refute` preimage produced).
-    OperatorVindicated,
+    /// At least one circuit produced its zero label and none produced a refutation.
+    /// This includes malformed openings and does not establish global claim validity.
+    NoAuthenticatedRefutation,
     /// At least one retained circuit `instance_index` produced its authentic `refute` preimage,
     /// allowing the challenger to spend leaf `instance_index` of the 1-of-`M` `Disprove` Taptree!
-    ChallengerSlashesViaDisprove {
+    AuthenticatedRefutation {
         winning_instance_index: usize,
         refute_preimage: [u8; 16],
         refute_sha256: [u8; 32],
     },
-    /// Operator failed to deliver valid active base labels before `D_label`; challenger sweeps via CSV timeout.
-    ChallengerSlashesViaWithholdingTimeout { reason: String },
+    /// Delivery is absent or invalid. The enclosing funded graph must enforce and observe
+    /// its CSV deadline before a withholding spend becomes available.
+    AwaitingWithholdingTimeout { reason: String },
 }
 
 // --------------------------------------------------------------------------------------------
@@ -300,7 +322,7 @@ fn garble_single_instance(
     );
 
     let out_wire = &res.output_value[0];
-    // Recall circuit output bit is `refute`: `false` = accept, `true` = refute.
+    // The zero label means this opening supplied no authenticated refutation.
     let accept_output_sha256 = tap_label_sha256(out_wire.select(false));
     let refute_output_sha256 = tap_label_sha256(out_wire.select(true));
 
@@ -342,7 +364,7 @@ pub fn hash_input_bits(bits: &[bool]) -> [u8; 32] {
 }
 
 // ============================================================================================
-// Garbler Session (Private State Isolated & Zeroized on Drop)
+// Garbler Session (Private State Isolated; Master Seeds Zeroized on Drop)
 // ============================================================================================
 
 #[derive(Zeroize, ZeroizeOnDrop)]
@@ -354,6 +376,8 @@ pub struct GarblerSession {
     #[zeroize(skip)]
     instances: Vec<GarbledInstanceMaterial>,
     released_input: Option<[u8; 32]>,
+    challenge_nonce: Option<[u8; 32]>,
+    finalized: bool,
 }
 
 impl GarblerSession {
@@ -377,6 +401,8 @@ impl GarblerSession {
             seeds,
             instances,
             released_input: None,
+            challenge_nonce: None,
+            finalized: false,
         }
     }
 
@@ -393,6 +419,7 @@ impl GarblerSession {
     /// to publishing `Commit_1`, modelling a malicious garbler who attempts to slip corrupted
     /// circuits past Cut-and-Choose while keeping input-wire soldering commitments valid.
     pub fn corrupt_ciphertext_before_commit1(&mut self, instance_idx: usize) {
+        assert!(self.challenge_nonce.is_none(), "setup already challenged");
         let inst = &mut self.instances[instance_idx];
         let mut h = Sha256::new();
         for entry in &mut inst.ciphertexts {
@@ -404,9 +431,19 @@ impl GarblerSession {
 
     /// Responds to challenger randomness `nonce` by opening `N - M` seeds and proving `R_solder` in ZK.
     pub fn finalize_cut_and_choose(
-        &self,
+        &mut self,
         nonce: [u8; 32],
     ) -> Result<(FinalizedPublicSetup, SolderingTimings)> {
+        // Reserve before proving so a failed attempt cannot open another partition.
+        // Persistence across process restarts belongs to the enclosing protocol.
+        if let Some(pinned) = self.challenge_nonce {
+            ensure!(
+                pinned == nonce,
+                "session already bound to another challenger nonce"
+            );
+        } else {
+            self.challenge_nonce = Some(nonce);
+        }
         let manifest = self.pre_challenge_manifest();
         let commit1 = manifest.commit1_digest()?;
         let part = CutAndChoosePartition::derive(commit1, nonce);
@@ -448,6 +485,7 @@ impl GarblerSession {
                 self.instances[retained_indices[r_slot]].ciphertexts.clone()
             });
 
+        self.finalized = true;
         Ok((
             FinalizedPublicSetup {
                 manifest,
@@ -467,6 +505,11 @@ impl GarblerSession {
         nonce: [u8; 32],
         input_bits: &[bool],
     ) -> Result<ActiveBaseLabelDelivery> {
+        ensure!(self.finalized, "session has no finalized public setup");
+        ensure!(
+            self.challenge_nonce == Some(nonce),
+            "challenger nonce mismatch"
+        );
         ensure!(
             input_bits.len() == PILOT_INPUT_BITS,
             "input bit count mismatch"
@@ -506,12 +549,13 @@ impl GarblerSession {
 
 /// Independently verifies the entire finalized setup (`Commit_1`, `N - M` opened C&C seeds,
 /// retained ciphertext SHA-256 commitments, base `OP_SHA256` hashlock table, and ZK `CompressedSNARK`).
-pub fn verify_public_setup(
+pub fn verify_public_setup<'a>(
     expected_session_id: &[u8; 32],
     expected_spec: &IndexedDisputeSpec,
+    expected_commit1: &[u8; 32],
     expected_nonce: &[u8; 32],
-    setup: &FinalizedPublicSetup,
-) -> Result<f64> {
+    setup: &'a FinalizedPublicSetup,
+) -> Result<VerifiedPublicSetup<'a>> {
     ensure!(
         &setup.manifest.session_id == expected_session_id,
         "session ID mismatch (replay rejected)"
@@ -529,6 +573,19 @@ pub fn verify_public_setup(
         "manifest header count mismatch"
     );
     ensure!(&setup.nonce == expected_nonce, "challenger nonce mismatch");
+    ensure!(
+        expected_spec
+            .generators
+            .iter()
+            .all(|&g| u64::from(g) < crate::dispute_circuit::PILOT_PRIME),
+        "non-canonical fixed generator"
+    );
+    let mut recomputed_spec = expected_spec.clone();
+    recomputed_spec.recompute_circuit_id();
+    ensure!(
+        recomputed_spec.circuit_id == expected_spec.circuit_id,
+        "non-canonical circuit identity"
+    );
 
     for (idx, hdr) in setup.manifest.headers.iter().enumerate() {
         ensure!(hdr.index == idx, "non-sequential header index");
@@ -539,6 +596,10 @@ pub fn verify_public_setup(
     }
 
     let commit1 = setup.manifest.commit1_digest()?;
+    ensure!(
+        &commit1 == expected_commit1,
+        "pre-challenge commitment mismatch"
+    );
     let part = CutAndChoosePartition::derive(commit1, setup.nonce);
 
     // 1. Deterministically regarble all N - M opened instances from their seeds and verify exact header match!
@@ -551,6 +612,14 @@ pub fn verify_public_setup(
         ensure!(
             regarbled.header == setup.manifest.headers[idx],
             "Cut-and-Choose check failed: opened instance {idx} diverges from Commit_1 header"
+        );
+        ensure!(
+            setup
+                .manifest
+                .headers
+                .iter()
+                .all(|h| h.ciphertext_count == regarbled.header.ciphertext_count),
+            "ciphertext count differs from the pinned circuit shape"
         );
     }
 
@@ -603,7 +672,7 @@ pub fn verify_public_setup(
         )?;
     }
 
-    verify_soldering_certificate(
+    let snark_verify_seconds = verify_soldering_certificate(
         expected_session_id,
         &expected_spec.circuit_id,
         expected_nonce,
@@ -613,7 +682,12 @@ pub fn verify_public_setup(
         expected_base_tap_root,
         expected_soldered_pos_roots,
         &setup.certificate,
-    )
+    )?;
+    Ok(VerifiedPublicSetup {
+        setup,
+        partition: part,
+        snark_verify_seconds,
+    })
 }
 
 impl InstanceHeader {
@@ -624,10 +698,11 @@ impl InstanceHeader {
 
 /// Verifies `CheckLampSigsMatch` on the delivered base active labels against `setup.base_tap_hashlocks`.
 pub fn verify_active_base_labels(
-    setup: &FinalizedPublicSetup,
+    verified: &VerifiedPublicSetup<'_>,
     input_bits: &[bool],
     delivery: &ActiveBaseLabelDelivery,
 ) -> Result<Vec<S>> {
+    let setup = verified.setup;
     ensure!(
         delivery.session_id == setup.manifest.session_id,
         "active label delivery session mismatch"
@@ -665,14 +740,21 @@ pub fn verify_active_base_labels(
 
 /// Evaluates all `M` retained garbled circuits using ONLY verified public artifacts + active base labels.
 pub fn evaluate_retained_instances(
-    setup: &FinalizedPublicSetup,
+    verified: &VerifiedPublicSetup<'_>,
     input_bits: &[bool],
     delivery: &ActiveBaseLabelDelivery,
 ) -> Result<[InstanceVerdict; PILOT_RETAINED_INSTANCES]> {
-    let base_labels = verify_active_base_labels(setup, input_bits, delivery)?;
-    let commit1 = setup.manifest.commit1_digest()?;
-    let part = CutAndChoosePartition::derive(commit1, setup.nonce);
-    let retained_indices = part.retained_indices();
+    let base_labels = verify_active_base_labels(verified, input_bits, delivery)?;
+    evaluate_with_verified_labels(verified, input_bits, base_labels)
+}
+
+fn evaluate_with_verified_labels(
+    verified: &VerifiedPublicSetup<'_>,
+    input_bits: &[bool],
+    base_labels: Vec<S>,
+) -> Result<[InstanceVerdict; PILOT_RETAINED_INSTANCES]> {
+    let setup = verified.setup;
+    let retained_indices = verified.partition.retained_indices();
 
     let mut verdicts = Vec::with_capacity(PILOT_RETAINED_INSTANCES);
     for (r_slot, &inst_idx) in retained_indices.iter().enumerate() {
@@ -707,7 +789,7 @@ pub fn evaluate_retained_instances(
         let out_bytes = out_lbl.to_le_bytes();
         let out_sha = tap_label_sha256(out_lbl);
         if out_sha == hdr.accept_output_sha256 {
-            verdicts.push(InstanceVerdict::Accept {
+            verdicts.push(InstanceVerdict::NoRefutation {
                 output_label: out_bytes,
             });
         } else if out_sha == hdr.refute_output_sha256 {
@@ -728,40 +810,46 @@ pub fn evaluate_retained_instances(
 
 /// Complete challenger dispute resolution with 1-of-`M` fault tolerance and withholding recovery.
 pub fn resolve_dispute(
-    setup: &FinalizedPublicSetup,
+    verified: &VerifiedPublicSetup<'_>,
     input_bits: &[bool],
     maybe_delivery: Option<&ActiveBaseLabelDelivery>,
 ) -> Result<DisputeResolution> {
+    ensure!(
+        input_bits.len() == PILOT_INPUT_BITS,
+        "input bit count mismatch"
+    );
     let Some(delivery) = maybe_delivery else {
-        return Ok(DisputeResolution::ChallengerSlashesViaWithholdingTimeout {
-            reason: "operator withheld active base labels past CSV timeout D_label".into(),
+        return Ok(DisputeResolution::AwaitingWithholdingTimeout {
+            reason: "active base labels unavailable; CSV deadline requires chain observation"
+                .into(),
         });
     };
 
-    // If the operator delivers malformed/equivocated base labels, `AssertLabelsTx` is invalid under
-    // Bitcoin consensus (`CheckLampSigsMatch` fails), so the protocol also resolves via `D_label` timeout!
-    let verdicts = match evaluate_retained_instances(setup, input_bits, delivery) {
-        Ok(v) => v,
+    let base_labels = match verify_active_base_labels(verified, input_bits, delivery) {
+        Ok(labels) => labels,
         Err(err) => {
-            if err.to_string().contains("CheckLampSigsMatch")
-                || err.to_string().contains("active label")
-            {
-                return Ok(DisputeResolution::ChallengerSlashesViaWithholdingTimeout {
-                    reason: format!("invalid AssertLabelsTx rejected by CheckLampSigsMatch: {err}"),
-                });
-            }
-            bail!(err);
+            return Ok(DisputeResolution::AwaitingWithholdingTimeout {
+                reason: format!(
+                    "invalid active labels; CSV deadline requires chain observation: {err}"
+                ),
+            });
         }
     };
+    let verdicts = evaluate_with_verified_labels(verified, input_bits, base_labels)?;
+    resolve_verdicts(verified, &verdicts)
+}
 
-    let commit1 = setup.manifest.commit1_digest()?;
-    let part = CutAndChoosePartition::derive(commit1, setup.nonce);
-    let retained_indices = part.retained_indices();
+fn resolve_verdicts(
+    verified: &VerifiedPublicSetup<'_>,
+    verdicts: &[InstanceVerdict; PILOT_RETAINED_INSTANCES],
+) -> Result<DisputeResolution> {
+    let setup = verified.setup;
+    let retained_indices = verified.partition.retained_indices();
 
     for (r_slot, verdict) in verdicts.iter().enumerate() {
         if let InstanceVerdict::Refute { output_label } = verdict {
             let inst_idx = retained_indices[r_slot];
-            return Ok(DisputeResolution::ChallengerSlashesViaDisprove {
+            return Ok(DisputeResolution::AuthenticatedRefutation {
                 winning_instance_index: inst_idx,
                 refute_preimage: *output_label,
                 refute_sha256: setup.manifest.headers[inst_idx].refute_output_sha256,
@@ -769,5 +857,11 @@ pub fn resolve_dispute(
         }
     }
 
-    Ok(DisputeResolution::OperatorVindicated)
+    ensure!(
+        verdicts
+            .iter()
+            .any(|v| matches!(v, InstanceVerdict::NoRefutation { .. })),
+        "inconclusive dispute: every retained circuit produced an unauthenticated output"
+    );
+    Ok(DisputeResolution::NoAuthenticatedRefutation)
 }

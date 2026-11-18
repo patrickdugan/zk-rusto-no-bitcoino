@@ -1,35 +1,40 @@
-# `babe-pilot`: BABE-Inspired Transparent Nova/Spartan Soldering Pilot
+# `babe-pilot`: transparent Nova soldering research
 
-Experimental CPU-scale adaptation of Babylon's January 2026 **BABE** (*Bitcoin-Authenticated Bytecode Execution*) garbled-verification architecture to a **100% transparent Nova + Spartan/IPA stack** (`nova-snark = 0.76.0` over the Pallas/Vesta cycle, zero trusted setup).
+This CPU pilot studies input-label soldering with `nova-snark = 0.76.0`, the Pallas/Vesta cycle, and Spartan with IPA commitments. Its inspiration is Babylon's January 2026 [BABE research paper](https://docs.babylonlabs.io/papers/BABE_Research_Paper_Jan_2026.pdf). BABE is used as the paper's name; this repository assigns it no expanded acronym.
 
-## Documents in This Crate
+The implemented experiment opens four of seven committed garblings, retains three, and proves that one base label vector can be translated into the other retained instances. A corrected local dispute predicate authenticates the operator's complete committed arithmetic tuple before it can produce a refutation. The larger Pallas addition gadget is a separate local experiment.
 
-- [`PREREGISTRATION.md`](PREREGISTRATION.md): Preregistered experimental protocol (`RBZK-BABE-NOVA-PILOT-2026-11`), hypotheses `H1`–`H4`, fixed CPU CI parameters, and adversarial acceptance matrix (committed prior to Phase 4 benchmarking).
-- [`SPECIFICATION.md`](SPECIFICATION.md): Formal relations ($\mathcal{R}_{\text{C\&C}}$, $\mathcal{R}_{\text{solder}}$, $\mathcal{R}_{\text{ped-chunk}}$), Unsoldering Algebra Soundness Lemma, `CompressedSNARK` vs `DirectSNARK` zero-knowledge requirement, malicious-garbler defense analysis (including the Hybrid Base-SHA256 + Soldered-Poseidon fix closing the $1/N$ base-equivocation gap), and Bitcoin Taproot spending enforcement.
-- [`REPORT.md`](REPORT.md): Phase 4 empirical architecture comparison against committed `M14` (`785,442,492` gates, `12.57 GB`/circuit), `FC03` (`7,285,647`-gate 1-bit `BindingStep`), and optional Groth16 (`BABE` paper).
-- [`RESULTS.json`](RESULTS.json): Machine-readable benchmark output produced by `babe-pilot-bench`.
+Current measurements use protocol `RBZK-BABE-NOVA-PILOT-AUTHENTICATED-V2`, results schema `2`, and a source manifest recorded in `RESULTS.json`.
 
-## Crate Layout
+## Documents
 
-- [`src/soldering.rs`](src/soldering.rs): Zero-knowledge Nova IVC + Spartan/IPA (`CompressedSNARK`) soldering relation $\mathcal{R}_{\text{solder}}$, verifying in-circuit `SHA-256` hashlocks on base retained instance $b = \min(\mathcal{R})$ and blinded Poseidon wire commitments on all $M - 1$ soldered retained instances $j \in \mathcal{R} \setminus \{b\}$.
-- [`src/protocol.rs`](src/protocol.rs): Two-phase `(N = 7, M = 3)` Cut-and-Choose setup (`Commit_1` $\rightarrow$ challenger `nonce` $\rightarrow$ `N - M` deterministic 256-bit ChaCha20 seed openings + `SolderingCertificate`), single-use active base label delivery, isolated stateless evaluator unsoldering, and 1-of-`M` fault-tolerant dispute resolution with withholding recovery.
-- [`src/dispute_circuit.rs`](src/dispute_circuit.rs):
-  - `eval_indexed_dispute_circuit` (`W = 128` wires, `39,378` non-free gates): 16-slot SHA-256 authenticated trace-chunk check with witness-assisted Mersenne-31 modular arithmetic.
-  - `eval_pasta_window_ec_step` (`W = 3,832` wires): Full 255-bit Pallas/Vesta `w = 4`-bit windowed witness-assisted complete affine point-addition + SHA-256 chunk authentication (`4x` shorter Pedersen binding trace than 1-bit `FC03`).
-- [`src/bitcoin_script.rs`](src/bitcoin_script.rs): Real `bitcoin` v0.32 Taproot `CheckLampSigsMatch` (`AssertLabelsTx`), `WithholdingTimeoutTx`, balanced `(M + 1)`-leaf `DisproveTx` (`1-of-M` refute preimage locks), and `OperatorPayoutTx` builders and `vsize`/`WU` standardness analyzers.
-- [`tests/pilot_adversarial.rs`](tests/pilot_adversarial.rs): End-to-end honest/dishonest evaluation, commitment/delta mutation rejection, `session_id`/`circuit_id`/`nonce` replay rejection, `M - 1` corrupted retained-instance malicious-garbler slashing, and withholding/malformed-artifact tests.
-- [`src/bin/babe-pilot-bench.rs`](src/bin/babe-pilot-bench.rs): Deterministic CPU release benchmark runner generating `RESULTS.json`.
+- [SPECIFICATION.md](SPECIFICATION.md) defines the implemented relations, role boundaries, and remaining protocol work.
+- [REPORT.md](REPORT.md) records measurement scope and separates the original experiment from the hardened relation.
+- [PREREGISTRATION.md](PREREGISTRATION.md) preserves the original hypotheses and includes a subsequent audit addendum.
+- [RESULTS.json](RESULTS.json) contains the benchmark output for the source version and evidence scope identified in that file.
 
-## Reproduce on CPU (No GPU Required)
+## Modules and evidence
+
+| Module | Implemented responsibility |
+| --- | --- |
+| `src/dispute_circuit.rs` | A 16-slot arithmetic dispute predicate over Mersenne-31, plus a separate 255-bit Pallas addition predicate. Each hashes the full operator-owned opening and returns `authenticated && !valid`. |
+| `src/soldering.rs` | A Nova `CompressedSNARK` certificate linking base SHA-256 label hashlocks to the retained instances' blinded Poseidon label commitments. |
+| `src/protocol.rs` | Prechallenge commitment checking against a caller-supplied pin, deterministic seed openings, certificate verification, and evaluation through a verified public-setup capability. The garbler's nonce and label-release guards live in memory. |
+| `src/bitcoin_script.rs` | Taproot leaf and transaction constructors. The assertion leaf selects the label hash for each independently agreed challenge bit at construction. Transaction size and witness-shape measurements concern serialized fixtures. |
+| `tests/pilot_adversarial.rs` | Integration and mutation checks covering the implemented setup, certificate, release, and evaluation boundaries. |
+| `src/bin/babe-pilot-bench.rs` | CPU measurements with relation and artifact scope recorded in `RESULTS.json`. |
+
+The seven-instance configuration is a test parameter: the idealized probability that all three retained instances are corrupt while all opened instances pass is `1 / 35` for a fixed malicious set of size three. A production parameter choice needs a complete security analysis and an authenticated commitment-before-randomness protocol.
+
+Bitcoin consensus execution, a funded transaction graph, dynamic challenge selection, and application settlement remain separate integration work. The local circuit establishes one committed step's status. A complete Nova verifier or application trace also requires endpoint binding, authenticated adjacency, coverage of its checks, and data availability for challenges.
+
+## Reproduce on CPU
 
 ```bash
-# Lint & format checks
 cargo +1.90.0 fmt --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml -- --check
 cargo +1.90.0 clippy --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml --all-targets -- -D warnings
-
-# Run all unit, integration, and adversarial tests
 cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml -- --test-threads=1 --nocapture
-
-# Regenerate RESULTS.json
 cargo +1.90.0 run --release --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml --bin babe-pilot-bench
 ```
+
+The benchmark performs real CPU proving. Its output records measured time; the preregistration's original runtime targets remain historical predictions.

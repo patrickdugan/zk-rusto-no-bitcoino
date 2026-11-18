@@ -5,7 +5,7 @@ edition = "2021"
 rust-version = "1.90"
 publish = false
 license = "GPL-3.0-only"
-description = "BABE-inspired transparent Nova/Spartan input-label soldering pilot with Cut-and-Choose and Taproot enforcement"
+description = "BABE-inspired transparent Nova/Spartan input-label soldering pilot with authenticated local disputes and Taproot constructors"
 
 [workspace]
 

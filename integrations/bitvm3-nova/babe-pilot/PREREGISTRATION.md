@@ -1,3 +1,5 @@
+> Historical preregistration. The text below records the original hypotheses and predictions as committed before the first benchmark. It contains assumptions and estimates revised during the later audit. The **Post-audit hardening addendum** at the end records those revisions; `SPECIFICATION.md` defines the current implemented relation.
+
 # Preregistered Experimental Protocol: BABE-Inspired Transparent Nova Soldering Pilot
 
 - **Protocol ID**: `RBZK-BABE-NOVA-PILOT-2026-11`
@@ -70,3 +72,37 @@ All measurements will be collected on CPU via a deterministic release binary (`c
 3. **Nova `CompressedSNARK` metrics**: step R1CS constraint count (`|A|, |B|, |C|`, variables, constraints), number of IVC folding steps, `PublicParams` + `CompressedSNARK::setup` time, `RecursiveSNARK` folding time, `CompressedSNARK::prove` time, `CompressedSNARK::verify` time, serialized certificate byte size.
 4. **System resource metrics**: peak process RSS (`VmHWM` on Linux / `GetProcessMemoryInfo` on Windows) and on-disk artifact directory byte sizes.
 5. **Bitcoin witness & transaction metrics**: exact serialized Taproot transaction virtual bytes (`vsize`) and witness weight units (`WU`) for `Claim`, `Challenge`, `AssertLabels` (`CheckLampSigsMatch`), `Disprove` (`1-of-M` Taptree leaf), and `WithholdingTimeout`, distinguishing directly constructed script witnesses from scaled `(N=115, M=39)` analytical projections.
+
+
+## Post-audit hardening addendum
+
+The revised experiment uses protocol identifier `RBZK-BABE-NOVA-PILOT-AUTHENTICATED-V2` and results schema `2`. The original identifier and predictions above remain part of the historical preregistration.
+
+This section was added after review of implementation `991118c8f1cadcc0ae4fa96303bbf65e4f75e00c`. It preserves the timing and content of the original preregistration above. The revised checks below were selected in response to observed defects and overclaims, so they are subsequent hardening requirements rather than preregistered predictions.
+
+### Corrected claim and protocol
+
+The local predicate authenticates the operator's complete committed tuple, including every quotient and arithmetic auxiliary, using a full 32-byte SHA-256 digest. Its output is `authenticated_opening && !valid_committed_transition`. A changed opening supplies no authenticated refutation; an invalid tuple committed by the operator can be challenged.
+
+Setup verification requires an independently pinned prechallenge commitment. The API returns a verified immutable capability which retained evaluation consumes. Garbler finalization and release enforce process-local nonce and input reservations. Durable recovery and coordination among copied sessions remain open.
+
+The Bitcoin assertion leaf selects the expected hashlock for each independently agreed input bit at construction. A funded transaction graph must establish how that exact vector becomes authorized. CSV withholding outcomes require an observed mature funded outpoint before a transaction can exercise them.
+
+### Revised interpretation of the original hypotheses
+
+| Original hypothesis | Post-audit requirement and scope |
+| --- | --- |
+| H1 | Authenticate the complete committed input and preserve the unsoldering identity across a verified setup. Genuine refutation tests commit the invalid operator step before generating its setup. |
+| H2 | Use the selected Nova `CompressedSNARK` construction with Spartan/IPA. Treat seeded Poseidon blinding as computational hiding. Tests establish functional checks and mutation rejection; the zero-knowledge claim relies on the selected proof system's assumptions and analysis. |
+| H3 | Establish precommitment-before-nonce ordering through a caller pin, reject replay and conflicting releases, and retain failure states for missing or corrupt outputs. The toy seven-instance experiment supplies bounded protocol evidence. |
+| H4 | Measure the corrected local relations independently. Gate counts from different statements cannot establish a complete-verifier speedup. Any claim about fewer trace steps requires a complete authenticated generator, scalar and accumulator schedule. |
+
+For a fixed bad set and one ideal uniform challenge, the event that all retained instances are bad while all opened instances pass has factor `1 / binomial(N,M)`. It is `1/35` for `(7,3)` and approximately `2^-102.585` for `(115,39)`. The original table's production security label does not describe a proven bound for this implementation. Retry/grinding policy, cryptographic failures and the Bitcoin graph need inclusion in a full analysis.
+
+### Measurements and regression evidence
+
+Regenerate gate counts and generated/retained artifact bytes for the corrected authentication relation. Report exact relation identifiers and fixed claim data. Preserve original runtime targets as predictions, and use fresh CPU measurements for the current implementation.
+
+Constructed Bitcoin transactions provide serialization sizes and local witness-shape evidence. Keep consensus and standardness status unverified until a corresponding Bitcoin Core exercise succeeds. Full graph execution, dynamic challenge selection, data availability, process-restart safety and application custody remain explicit follow-up work.
+
+The hardening regression matrix includes independently wrong precommitment pins, changed nonces, conflicting label releases, altered operator trace fields and digest halves, noncanonical values, a genuinely committed invalid transition, wrong selected labels, malformed ciphertext streams, and an all-corrupt retained result. These additions strengthen the original experiment while keeping its historical record intact.

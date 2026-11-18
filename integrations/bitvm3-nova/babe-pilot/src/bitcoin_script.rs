@@ -1,15 +1,17 @@
 //! Bitcoin Taproot (`BIP-341` / `BIP-342`) Script & Witness Construction for BABE-Nova Disputes.
 //!
 //! Constructs real `bitcoin` v0.32 Taproot script trees, control blocks, and witness-bearing
-//! transactions to measure exact virtual bytes (`vsize`), weight units (`WU`), and Bitcoin Core
-//! 31.1 relay policy compliance (`MAX_STANDARD_TAPSCRIPT_STACK_ITEM_SIZE = 80`).
+//! transactions to measure virtual bytes (`vsize`), weight units (`WU`), and selected witness
+//! bounds. The measurement transactions use dummy outpoints and signatures. They provide
+//! serialization evidence; Script execution, consensus validity, and relay acceptance require
+//! separate checks against funded transactions.
 
 use anyhow::{ensure, Result};
 use bitcoin::{
     absolute::LockTime,
     hashes::Hash,
     key::Secp256k1,
-    opcodes::{all::*, OP_0, OP_TRUE},
+    opcodes::all::*,
     script::Builder,
     secp256k1::XOnlyPublicKey,
     taproot::{LeafVersion, TaprootBuilder, TaprootSpendInfo},
@@ -20,6 +22,11 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 pub const MAX_STANDARD_TAPSCRIPT_STACK_ITEM_SIZE: usize = 80;
+pub const MAX_TAPSCRIPT_INITIAL_STACK_ITEMS: usize = 1_000;
+/// Local construction cap for one label-revelation leaf. Larger inputs must be split across
+/// separately committed outputs. This is a pilot resource bound, not a consensus script limit.
+pub const MAX_ASSERT_LABELS_PER_LEAF: usize = 480;
+pub const MAX_ASSERT_LABELS_SCRIPT_BYTES: usize = 35 * MAX_ASSERT_LABELS_PER_LEAF + 34;
 
 /// BIP-341 standard unspendable NUMS x-only internal public key.
 pub fn nums_internal_key() -> XOnlyPublicKey {
@@ -38,31 +45,46 @@ pub fn sample_xonly_pubkey(tag: u8) -> XOnlyPublicKey {
     kp.x_only_public_key().0
 }
 
-/// Builds the `CheckLampSigsMatch` Tapscript leaf verifying `W` active base labels against
-/// pre-committed SHA-256 hashlock pairs `(h_{b,i,0}, h_{b,i,1})`.
+/// Builds a label-revelation leaf for an independently authenticated, fixed challenge input.
 ///
-/// Stack execution order: consumes `(bit_0, label_0)` from top of stack up to `(bit_{W-1}, label_{W-1})`,
-/// finishing with `<operator_pk> OP_CHECKSIG`.
+/// The caller must obtain `expected_input_bits` from the agreed challenge, rather than from
+/// the spending witness, and commit this tree in the funding/challenge graph before exposing
+/// funds. Each wire commits only the hashlock selected by that expected bit. The spending
+/// witness cannot choose another bit or substitute labels for a different challenge input.
+///
+/// The stack is `[operator_signature, label_{W-1}, ..., label_0]`, bottom to top. Execution
+/// consumes one label per wire, then checks the operator signature. The enclosing protocol
+/// still has to authorize the challenge and bind the transaction's destinations.
 pub fn build_check_lamp_sigs_script(
     hashlocks: &[([u8; 32], [u8; 32])],
+    expected_input_bits: &[bool],
     operator_pk: &XOnlyPublicKey,
-) -> ScriptBuf {
+) -> Result<ScriptBuf> {
+    ensure!(
+        hashlocks.len() == expected_input_bits.len(),
+        "hashlock / expected input length mismatch"
+    );
+    ensure!(
+        (1..=MAX_ASSERT_LABELS_PER_LEAF).contains(&hashlocks.len()),
+        "label count must be in 1..={MAX_ASSERT_LABELS_PER_LEAF}"
+    );
     let mut b = Builder::new();
-    for &(h0, h1) in hashlocks {
+    for (i, (&(h0, h1), &expected_bit)) in hashlocks.iter().zip(expected_input_bits).enumerate() {
+        ensure!(h0 != h1, "coinciding bit hashlocks at wire {i}");
         b = b
-            .push_opcode(OP_IF)
             .push_opcode(OP_SHA256)
-            .push_slice(h1)
-            .push_opcode(OP_EQUALVERIFY)
-            .push_opcode(OP_ELSE)
-            .push_opcode(OP_SHA256)
-            .push_slice(h0)
-            .push_opcode(OP_EQUALVERIFY)
-            .push_opcode(OP_ENDIF);
+            .push_slice(if expected_bit { h1 } else { h0 })
+            .push_opcode(OP_EQUALVERIFY);
     }
-    b.push_x_only_key(operator_pk)
+    let script = b
+        .push_x_only_key(operator_pk)
         .push_opcode(OP_CHECKSIG)
-        .into_script()
+        .into_script();
+    ensure!(
+        script.len() <= MAX_ASSERT_LABELS_SCRIPT_BYTES,
+        "label-revelation script exceeds local construction bound"
+    );
+    Ok(script)
 }
 
 pub fn build_csv_timeout_script(csv_blocks: u16, sweep_pk: &XOnlyPublicKey) -> ScriptBuf {
@@ -89,16 +111,24 @@ pub fn build_disprove_leaf_script(
 }
 
 /// Builds the 2-leaf `Challenge` output Taptree:
-/// - Depth 1 left: `CheckLampSigsMatch` (operator reveals active base labels);
+/// - Depth 1 left: fixed-input label revelation (operator reveals the selected base labels);
 /// - Depth 1 right: `WithholdingTimeout` (challenger sweeps bond after `D_label` blocks if withheld).
+///
+/// This commits to `expected_input_bits` through the selected hashlocks. Constructing a tree
+/// does not establish that a challenge was authorized or that the enclosing graph funds it.
 pub fn build_assert_labels_taptree(
     hashlocks: &[([u8; 32], [u8; 32])],
+    expected_input_bits: &[bool],
     operator_pk: &XOnlyPublicKey,
     challenger_pk: &XOnlyPublicKey,
     d_label_blocks: u16,
-) -> (TaprootSpendInfo, ScriptBuf, ScriptBuf) {
+) -> Result<(TaprootSpendInfo, ScriptBuf, ScriptBuf)> {
+    ensure!(
+        d_label_blocks > 0,
+        "label withholding delay must be positive"
+    );
     let secp = Secp256k1::verification_only();
-    let lamp_script = build_check_lamp_sigs_script(hashlocks, operator_pk);
+    let lamp_script = build_check_lamp_sigs_script(hashlocks, expected_input_bits, operator_pk)?;
     let timeout_script = build_csv_timeout_script(d_label_blocks, challenger_pk);
     let info = TaprootBuilder::new()
         .add_leaf(1, lamp_script.clone())
@@ -107,7 +137,7 @@ pub fn build_assert_labels_taptree(
         .expect("leaf 1")
         .finalize(&secp, nums_internal_key())
         .expect("finalize AssertLabels Taptree");
-    (info, lamp_script, timeout_script)
+    Ok((info, lamp_script, timeout_script))
 }
 
 /// Builds a balanced `(M + 1)`-leaf `Disprove` Taptree (`M` instance refute leaves + `1` operator CSV payout leaf).
@@ -160,8 +190,12 @@ pub struct TxMeasurement {
     pub witness_items: usize,
     pub script_bytes: usize,
     pub control_block_bytes: usize,
+    pub initial_stack_items: usize,
     pub max_initial_stack_item_bytes: usize,
-    pub core_31_standard_stack_items: bool,
+    pub initial_stack_items_within_policy_bounds: bool,
+    pub evidence_kind: String,
+    pub consensus_verified: bool,
+    pub standardness_verified: bool,
 }
 
 fn dummy_tx(sequence: Sequence, witness: Witness, out_script: ScriptBuf) -> Transaction {
@@ -191,6 +225,7 @@ fn measure_tapscript_tx(
     leaf_script: &ScriptBuf,
     spend_info: &TaprootSpendInfo,
 ) -> Result<TxMeasurement> {
+    let initial_stack_items = stack_items.len();
     let max_initial_stack_item_bytes = stack_items.iter().map(|it| it.len()).max().unwrap_or(0);
     let control_block = spend_info
         .control_block(&(leaf_script.clone(), LeafVersion::TapScript))
@@ -216,9 +251,14 @@ fn measure_tapscript_tx(
         witness_items: stack_items.len(),
         script_bytes: leaf_script.len(),
         control_block_bytes: control_bytes.len(),
+        initial_stack_items,
         max_initial_stack_item_bytes,
-        core_31_standard_stack_items: max_initial_stack_item_bytes
-            <= MAX_STANDARD_TAPSCRIPT_STACK_ITEM_SIZE,
+        initial_stack_items_within_policy_bounds: max_initial_stack_item_bytes
+            <= MAX_STANDARD_TAPSCRIPT_STACK_ITEM_SIZE
+            && initial_stack_items <= MAX_TAPSCRIPT_INITIAL_STACK_ITEMS,
+        evidence_kind: "serialization-only".into(),
+        consensus_verified: false,
+        standardness_verified: false,
     })
 }
 
@@ -230,7 +270,9 @@ pub struct BitcoinDisputeMeasurements {
     pub operator_payout_tx: TxMeasurement,
 }
 
-/// Constructs and verifies all four Taproot spending paths for a real dispute session.
+/// Measures four standalone Taproot templates using dummy outpoints and signatures.
+/// Checks label/hashlock consistency before serialization. Full transaction validity and
+/// the connected funding, challenge, and exit graph remain outside this measurement.
 pub fn measure_pilot_bitcoin_paths(
     base_hashlocks: &[([u8; 32], [u8; 32])],
     input_bits: &[bool],
@@ -258,13 +300,13 @@ pub fn measure_pilot_bitcoin_paths(
     let dummy_schnorr_sig = vec![0x42u8; 64];
 
     let (assert_info, lamp_script, timeout_script) =
-        build_assert_labels_taptree(base_hashlocks, &op_pk, &ch_pk, 6);
+        build_assert_labels_taptree(base_hashlocks, input_bits, &op_pk, &ch_pk, 6)?;
 
     // Witness stack bottom-to-top:
     // `[op_sig]` is consumed last by `<op_pk> OP_CHECKSIG`.
     // Above it, wire `W-1` down to wire `0` so wire `0` is at the top of stack when execution starts:
-    // for each wire `i`, `label_i` is below `bit_i` so `OP_IF` pops `bit_i` and `OP_SHA256` hashes `label_i`!
-    let mut assert_stack = Vec::with_capacity(1 + 2 * input_bits.len());
+    // Each wire consumes only its fixed-input label; there are no witness-selected bit flags.
+    let mut assert_stack = Vec::with_capacity(1 + input_bits.len());
     assert_stack.push(dummy_schnorr_sig.clone());
     for i in (0..input_bits.len()).rev() {
         let got_h: [u8; 32] = Sha256::digest(active_base_labels[i]).into();
@@ -278,9 +320,6 @@ pub fn measure_pilot_bitcoin_paths(
             "AssertLabels witness preimage mismatch at wire {i}"
         );
         assert_stack.push(active_base_labels[i].to_vec());
-        // Minimal push encoding in Tapscript: empty byte vec `[]` for `0` (`OP_0`), `[1]` for `1` (`OP_TRUE`).
-        let _ = (OP_0, OP_TRUE);
-        assert_stack.push(if input_bits[i] { vec![1u8] } else { vec![] });
     }
     let assert_labels_tx = measure_tapscript_tx(
         "AssertLabelsTx (CheckLampSigsMatch)",

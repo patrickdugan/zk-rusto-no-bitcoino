@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   babe-pilot:
-    name: Transparent Nova soldering pilot and benchmarks (CPU)
+    name: Authenticated disputes, Nova soldering and measurements (CPU)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -27,15 +27,24 @@ jobs:
           mkdir -p integrations/bitvm3-nova/babe-pilot/ci
           rustup toolchain install 1.90.0 --profile minimal --component clippy,rustfmt
           rustc +1.90.0 --version | tee integrations/bitvm3-nova/babe-pilot/ci/rustc.txt
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            integrations/bitvm3-nova/babe-pilot/target
+          key: babe-pilot-v2-${{ runner.os }}-rust190-${{ hashFiles('integrations/bitvm3-nova/babe-pilot/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            babe-pilot-v2-${{ runner.os }}-rust190-${{ hashFiles('integrations/bitvm3-nova/babe-pilot/Cargo.lock') }}-
       - name: Format and clippy checks
         run: |
           cargo +1.90.0 fmt --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml -- --check
           cargo +1.90.0 clippy --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml --all-targets -- -D warnings
-      - name: Acceptance and adversarial test suite
+      - name: Soundness, commitment binding, malformed input and end-to-end regressions
         run: |
           set -o pipefail
           cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml -- --test-threads=1 --nocapture 2>&1 | tee integrations/bitvm3-nova/babe-pilot/ci/tests.txt
-      - name: Phase 4 architecture benchmark harness
+      - name: Measure authenticated relations and serialized Bitcoin samples
         run: |
           set -o pipefail
           cargo +1.90.0 run --release --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml --bin babe-pilot-bench -- integrations/bitvm3-nova/babe-pilot/ci/bench-results.json 2>&1 | tee integrations/bitvm3-nova/babe-pilot/ci/bench.txt
