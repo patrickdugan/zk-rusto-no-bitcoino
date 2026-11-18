@@ -28,6 +28,7 @@
     // Smooth monotonic ETA countdown state (seconds)
     eta: {
       initialized: false,
+      lastSeq: null,
       anchorPerfMs: performance.now(),
       coreSec: 0,
       sp1Sec: 0,
@@ -922,9 +923,12 @@
     state.baseCooldownRemS = Number(lv.cooldown_remaining_s || 0);
     state.baseTaskElapsedS = Number(lv.current_task_elapsed_s || 0);
 
-    // Smoothly slew client-side monotonic countdowns so 1s SSE frames never jitter backwards
+    // Lock client-side countdown anchor between task completions so 1s SSE frames
+    // never reset or bump HH:MM:SS upwards; recalibrate only on initial load, pause toggle, or new task seq.
     const comp = wsl.completion || {};
+    const curSeq = Number(prog.seq || 0);
     const isPaused = state.opMode === "waiting_headroom" || state.opMode === "cooldown_backoff";
+    state.eta.expectedTaskS = Number(lv.expected_task_s || 95);
     if (comp.sp1_eta_seconds !== undefined && comp.sp1_eta_seconds !== null) {
       const nowPerf = performance.now();
       const prevElapsed = state.eta.paused ? 0 : Math.max(0, (nowPerf - state.eta.anchorPerfMs) / 1000);
@@ -936,20 +940,29 @@
       const srvSp1 = Number(comp.sp1_eta_seconds || 0);
       const srvE2e = Number(comp.e2e_eta_seconds || 0);
 
-      if (!state.eta.initialized || Math.abs(srvSp1 - curSp1) > 900) {
+      if (!state.eta.initialized) {
         state.eta.coreSec = srvCore;
         state.eta.sp1Sec = srvSp1;
         state.eta.e2eSec = srvE2e;
+        state.eta.anchorPerfMs = nowPerf;
+        state.eta.lastSeq = curSeq;
+        state.eta.paused = isPaused;
         state.eta.initialized = true;
-      } else {
-        // Gentle 6% slew per frame keeps seconds ticking monotonically downward
-        state.eta.coreSec = 0.94 * curCore + 0.06 * srvCore;
-        state.eta.sp1Sec = 0.94 * curSp1 + 0.06 * srvSp1;
-        state.eta.e2eSec = 0.94 * curE2e + 0.06 * srvE2e;
+      } else if (isPaused !== state.eta.paused) {
+        // Freeze or resume from current displayed value without jumping
+        state.eta.coreSec = curCore;
+        state.eta.sp1Sec = curSp1;
+        state.eta.e2eSec = curE2e;
+        state.eta.anchorPerfMs = nowPerf;
+        state.eta.paused = isPaused;
+      } else if (curSeq !== state.eta.lastSeq) {
+        // A shard or reduce actually completed: gently blend 20% toward fresh server calibration
+        state.eta.coreSec = 0.8 * curCore + 0.2 * srvCore;
+        state.eta.sp1Sec = 0.8 * curSp1 + 0.2 * srvSp1;
+        state.eta.e2eSec = 0.8 * curE2e + 0.2 * srvE2e;
+        state.eta.anchorPerfMs = nowPerf;
+        state.eta.lastSeq = curSeq;
       }
-      state.eta.anchorPerfMs = nowPerf;
-      state.eta.expectedTaskS = Number(lv.expected_task_s || 95);
-      state.eta.paused = isPaused;
     }
 
     // Pulse SSE frame indicator

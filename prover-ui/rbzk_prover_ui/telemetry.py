@@ -364,9 +364,14 @@ class ProgressTailCache:
                     rates[f"{kind}_per_min_15m"] = rates[f"{kind}_per_min_5m"]
 
                 recent_30m = [t for t in stamps if now - t <= 1800]
-                if len(recent_30m) >= 2:
-                    span30 = max(120.0, now - recent_30m[0])
-                    rates[f"{kind}_per_min_30m"] = round(len(recent_30m) * 60.0 / span30, 3)
+                if len(recent_30m) >= 3 and (recent_30m[-1] - recent_30m[0]) >= 60:
+                    # Use completed inter-arrival span so rate does not drift between task completions
+                    inter_span = float(recent_30m[-1] - recent_30m[0])
+                    tail_gap = max(0.0, now - recent_30m[-1])
+                    eff_span = inter_span + (tail_gap if tail_gap > 240.0 else 0.0)
+                    rates[f"{kind}_per_min_30m"] = round(
+                        (len(recent_30m) - 1) * 60.0 / max(60.0, eff_span), 3
+                    )
                 else:
                     rates[f"{kind}_per_min_30m"] = rates[f"{kind}_per_min_15m"]
 
