@@ -1,0 +1,46 @@
+name: Nova BABE transparent soldering pilot
+on:
+  push:
+    branches: ['main', 'exp/**']
+    paths: ['integrations/bitvm3-nova/babe-pilot/**', '.github/workflows/bitvm3-nova-babe-pilot.yml']
+  pull_request:
+    paths: ['integrations/bitvm3-nova/babe-pilot/**', '.github/workflows/bitvm3-nova-babe-pilot.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nova-babe-pilot-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  babe-pilot:
+    name: Transparent Nova soldering pilot and benchmarks (CPU)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '4'
+      RAYON_NUM_THREADS: '4'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          mkdir -p integrations/bitvm3-nova/babe-pilot/ci
+          rustup toolchain install 1.90.0 --profile minimal --component clippy,rustfmt
+          rustc +1.90.0 --version | tee integrations/bitvm3-nova/babe-pilot/ci/rustc.txt
+      - name: Format and clippy checks
+        run: |
+          cargo +1.90.0 fmt --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml -- --check
+          cargo +1.90.0 clippy --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml --all-targets -- -D warnings
+      - name: Acceptance and adversarial test suite
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml -- --test-threads=1 --nocapture 2>&1 | tee integrations/bitvm3-nova/babe-pilot/ci/tests.txt
+      - name: Phase 4 architecture benchmark harness
+        run: |
+          set -o pipefail
+          cargo +1.90.0 run --release --locked --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml --bin babe-pilot-bench -- integrations/bitvm3-nova/babe-pilot/ci/bench-results.json 2>&1 | tee integrations/bitvm3-nova/babe-pilot/ci/bench.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-babe-pilot-${{ github.sha }}
+          path: integrations/bitvm3-nova/babe-pilot/ci/
