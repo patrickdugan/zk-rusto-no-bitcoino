@@ -1,0 +1,26 @@
+[package]
+name = "m14-claim"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+description = "Manifest-bound, single-use artifact transport for an M14 claim"
+
+[workspace]
+
+[dependencies]
+anyhow = "1"
+garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "02a22685ae2f4e530a19f7bd6dcbce287f56d922", default-features = false }
+hex = "0.4"
+libc = "0.2"
+m13-statement = { path = "../../m13/statement" }
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.test]
+opt-level = 1

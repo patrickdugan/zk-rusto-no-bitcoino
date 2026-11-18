@@ -11,7 +11,7 @@ use std::borrow::Borrow;
 
 use garbled_snark_verifier::CircuitContext;
 use m12_gates::W;
-use m13_verify::FinalStatement;
+use m13_verify::{FinalStatement, ValidatedFinalStatement};
 use m14_circuit::{
     field::{self as f, Fe},
     hash::Transcript,
@@ -33,23 +33,32 @@ pub struct Known {
     pub pcs: PcsShape,
     pub constraints: Vec<Vec<SymbolicExpression<F>>>,
     pub vk_preprocessed_commit: [u8; 32],
-    pub expect: FinalStatement,
+    expect: ValidatedFinalStatement,
 }
 
 impl Known {
     /// From the pinned proof (key and shape) and the pinned statement.
     pub fn new(reference: &Proof, expect: &FinalStatement) -> Self {
-        assert_eq!(m13_verify::vk_sha256(&reference.vk), expect.wrap_vk_sha256, "reference proof is not under the pinned key");
+        Self::try_new(reference, expect).expect("valid statement and reference key")
+    }
+
+    /// Validate all pins before reading the reference shape or building any circuit objects.
+    pub fn try_new(reference: &Proof, expect: &FinalStatement) -> anyhow::Result<Self> {
+        let expect = expect.validate()?;
+        anyhow::ensure!(
+            &m13_verify::vk_sha256_bytes(&reference.vk) == expect.wrap_vk_sha256(),
+            "reference proof is not under the pinned key"
+        );
         let machine = native::machine();
         let shape = Shape::new(&machine, &reference.vk, &reference.proof);
         let constraints = shape.chips.iter().map(verifier::chip_constraints).collect();
-        Known {
+        Ok(Known {
             shape,
             pcs: PcsShape::new(&reference.proof),
             constraints,
             vk_preprocessed_commit: reference.vk.preprocessed_commit.into(),
-            expect: expect.clone(),
-        }
+            expect,
+        })
     }
 }
 
@@ -70,16 +79,9 @@ fn pv_offsets() -> RecursionPublicValues<u32> {
     pv.clone()
 }
 
-fn hex_felts(h: &str) -> Vec<u32> {
-    let b = hex_bytes(h);
-    b.chunks(4).map(|c| u32::from_le_bytes(c.try_into().unwrap())).collect()
-}
-fn hex_bytes(h: &str) -> Vec<u8> {
-    (0..h.len()).step_by(2).map(|i| u8::from_str_radix(&h[i..i + 2], 16).unwrap()).collect()
-}
-
 /// The statement checks of `verify_final` on the public values.
-pub fn statement<C: CircuitContext>(c: &mut C, pv: &[Fe], e: &FinalStatement) -> W {
+pub fn statement<C: CircuitContext>(c: &mut C, pv: &[Fe], e: &ValidatedFinalStatement) -> W {
+    assert_eq!(pv.len(), std::mem::size_of::<RecursionPublicValues<u8>>(), "public-value shape");
     let o = pv_offsets();
     let mut oks = Vec::new();
     let mut is = |c: &mut C, at: u32, v: u32| {
@@ -88,17 +90,14 @@ pub fn statement<C: CircuitContext>(c: &mut C, pv: &[Fe], e: &FinalStatement) ->
     };
     is(c, o.exit_code, 0);
     is(c, o.is_complete, 1);
-    assert_eq!(e.exit_code, 0);
-    assert_eq!(e.is_complete, 1);
-    for (at, v) in o.sp1_vk_digest.iter().zip(hex_felts(&e.program_vk_digest)) {
-        is(c, *at, v);
+    for i in 0..8 {
+        is(c, o.sp1_vk_digest[i], e.program_vk_digest()[i]);
     }
-    for (at, v) in o.vk_root.iter().zip(hex_felts(&e.recursion_vk_root)) {
-        is(c, *at, v);
+    for i in 0..8 {
+        is(c, o.vk_root[i], e.recursion_vk_root()[i]);
     }
-    let digest = hex_bytes(&e.committed_values_sha256);
-    for (at, v) in o.committed_value_digest.iter().flatten().zip(digest) {
-        is(c, *at, v as u32);
+    for i in 0..32 {
+        is(c, o.committed_value_digest[i / 4][i % 4], e.committed_values_sha256()[i] as u32);
     }
     f::and_all(c, &oks)
 }

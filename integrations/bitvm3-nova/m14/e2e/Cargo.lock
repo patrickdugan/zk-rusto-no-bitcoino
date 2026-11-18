@@ -426,7 +426,7 @@ dependencies = [
 [[package]]
 name = "circuit_component_macro"
 version = "0.1.0"
-source = "git+https://github.com/patrickdugan/garbled-snark-verifier?rev=8fa7efe495ea1bd4675f9c8bbd29f0b6e8bee051#8fa7efe495ea1bd4675f9c8bbd29f0b6e8bee051"
+source = "git+https://github.com/patrickdugan/garbled-snark-verifier?rev=02a22685ae2f4e530a19f7bd6dcbce287f56d922#02a22685ae2f4e530a19f7bd6dcbce287f56d922"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -755,7 +755,7 @@ dependencies = [
 [[package]]
 name = "garbled-snark-verifier"
 version = "0.5.0"
-source = "git+https://github.com/patrickdugan/garbled-snark-verifier?rev=8fa7efe495ea1bd4675f9c8bbd29f0b6e8bee051#8fa7efe495ea1bd4675f9c8bbd29f0b6e8bee051"
+source = "git+https://github.com/patrickdugan/garbled-snark-verifier?rev=02a22685ae2f4e530a19f7bd6dcbce287f56d922#02a22685ae2f4e530a19f7bd6dcbce287f56d922"
 dependencies = [
  "aes",
  "ark-bn254",
@@ -948,6 +948,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "m13-statement"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "m13-verify"
 version = "0.1.0"
 dependencies = [
@@ -955,6 +962,7 @@ dependencies = [
  "bincode",
  "blake3",
  "hex",
+ "m13-statement",
  "p3-koala-bear",
  "serde",
  "serde_json",
@@ -978,6 +986,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "m14-claim"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "garbled-snark-verifier",
+ "hex",
+ "libc",
+ "m13-statement",
+ "rand",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "m14-e2e"
 version = "0.1.0"
 dependencies = [
@@ -989,10 +1012,12 @@ dependencies = [
  "m12-gates",
  "m13-verify",
  "m14-circuit",
+ "m14-claim",
  "rand",
  "rand_chacha",
  "serde",
  "serde_json",
+ "sha2",
  "slop-air",
  "slop-algebra",
  "slop-basefold",

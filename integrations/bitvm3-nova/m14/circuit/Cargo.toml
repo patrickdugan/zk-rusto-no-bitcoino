@@ -10,7 +10,7 @@ description = "M14: KoalaBear and degree-4 extension gadgets of the garbled BLAK
 [workspace]
 
 [dependencies]
-garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "8fa7efe495ea1bd4675f9c8bbd29f0b6e8bee051", default-features = false }
+garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "02a22685ae2f4e530a19f7bd6dcbce287f56d922", default-features = false }
 m12-gates = { path = "../../m12/gates" }
 
 [dev-dependencies]

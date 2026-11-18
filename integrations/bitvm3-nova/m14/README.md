@@ -16,6 +16,24 @@ Steps 1 and 2 are in [`circuit/`](circuit). Steps 3 and 4 are in [`e2e/`](e2e): 
 verifier, run on real proofs in plain execution and garbled (see
 [The complete final verifier](#the-complete-final-verifier)).
 
+## Claim artifacts and separate roles
+
+The `m14-claim` CLI now has `setup`, `verify-artifacts`, `release`, and `evaluate` commands.
+Setup retains the ciphertext stream and input-label commitments, with a versioned manifest
+binding the statement, supported circuit build, public evaluator parameters and output-label
+hashes. A new instance uses a fresh 32-byte secret seed. Evaluation takes the independently
+agreed manifest and release hashes, the proof and one selected label per input wire.
+
+The garbler writes a durable single-use reservation before releasing labels. An identical proof
+can be retried into a new output directory. Another proof requires a fresh setup. The public and
+private artifact directories must be separate, and evaluator code does not receive paired
+labels or the garbler seed.
+
+See [`claim/SECURITY.md`](claim/SECURITY.md) for commands, file formats, resource limits, recovery,
+and remaining setup/dispute obligations. The previous seed-based `setup`/`evaluate` CLI and its
+JSON reports are incompatible with this format. The new `claim` crate tests transport with a
+tiny circuit; the existing full M14 suites continue to check the complete verifier.
+
 ## The complete final verifier
 
 [`e2e/src`](e2e/src) builds `verify_final` with transcript v2 as one circuit with one output wire.
