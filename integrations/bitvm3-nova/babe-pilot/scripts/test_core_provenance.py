@@ -52,7 +52,6 @@ class CoreProvenanceTests(unittest.TestCase):
             "CMAKE_CACHEFILE_DIR": str(self.build),
             "CMAKE_CXX_COMPILER": "/usr/bin/c++",
             "CMAKE_C_FLAGS": "", "CMAKE_CXX_FLAGS": "",
-            "CMAKE_C_FLAGS_RELEASE": "-O3 -DNDEBUG",
             **runner.CORE_BUILD_PROFILE,
         }
         self.info = {
@@ -147,7 +146,10 @@ class CoreProvenanceTests(unittest.TestCase):
         for key, value in (("CMAKE_HOME_DIRECTORY", "/another/source"),
                            ("CMAKE_BUILD_TYPE", "Debug"), ("ENABLE_WALLET", "OFF"),
                            ("ENABLE_IPC", "ON"), ("CMAKE_CXX_FLAGS", "-g"),
-                           ("CMAKE_CXX_FLAGS_RELEASE", "-O2 -DNDEBUG -g")):
+                           ("CMAKE_CXX_FLAGS_RELEASE", "-O2 -DNDEBUG"),
+                           ("CMAKE_CXX_FLAGS_RELEASE", "-O2 -g"),
+                           ("CMAKE_C_FLAGS_RELEASE", "-O2 -g"),
+                           ("CMAKE_C_FLAGS_RELWITHDEBINFO", "-O2 -g")):
             with self.subTest(key=key):
                 self.cache = {**original, key:value}
                 self.write_cache()

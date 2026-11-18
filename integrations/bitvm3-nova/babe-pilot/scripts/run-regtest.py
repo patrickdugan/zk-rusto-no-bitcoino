@@ -32,7 +32,9 @@ CORE_SOURCE_COMMIT = "9be056a8a72b624dae9623b2f7bded92c2a21c91"
 CORE_SOURCE_URL = "https://github.com/bitcoin/bitcoin.git"
 CORE_BUILD_SCHEMA = "babe-core-source-build/v1"
 CORE_BUILD_PROFILE = {
-    "CMAKE_BUILD_TYPE": "Release", "CMAKE_CXX_FLAGS_RELEASE": "-O2 -DNDEBUG",
+    # Core preserves assertions and builds secp using the RelWithDebInfo C flags.
+    "CMAKE_BUILD_TYPE": "Release", "CMAKE_CXX_FLAGS_RELEASE": "-O2",
+    "CMAKE_C_FLAGS_RELEASE": "-O2", "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O2",
     "BUILD_DAEMON": "ON", "BUILD_CLI": "ON", "ENABLE_WALLET": "ON",
     "BUILD_TESTS": "OFF", "BUILD_GUI": "OFF", "BUILD_BENCH": "OFF",
     "BUILD_FUZZ_BINARY": "OFF", "BUILD_BITCOIN_BIN": "OFF", "BUILD_TX": "OFF",
@@ -473,7 +475,7 @@ def core_build_metadata(source):
         raise AssertionError("CMake cache belongs to another source or build directory")
     for key, expected in CORE_BUILD_PROFILE.items():
         if cache.get(key) != expected:
-            raise AssertionError(f"unexpected Core build profile: {key}")
+            raise AssertionError(f"unexpected Core build profile: {key}={cache.get(key)!r}; expected {expected!r}")
     for key in ("CMAKE_C_FLAGS", "CMAKE_C_FLAGS_RELEASE", "CMAKE_CXX_FLAGS", "CMAKE_CXX_FLAGS_RELEASE"):
         if any(flag.startswith("-g") for flag in shlex.split(cache.get(key, ""))):
             raise AssertionError("Core release build enables debug information")

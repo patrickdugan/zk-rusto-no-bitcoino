@@ -70,17 +70,18 @@ jobs:
           test "$(git -C "$BABE_CORE_SOURCE" remote get-url origin)" = https://github.com/bitcoin/bitcoin.git
           test -z "$(git -C "$BABE_CORE_SOURCE" status --porcelain=v1 --untracked-files=all)"
           python3 - "$BABE_CORE_SOURCE" <<'PY'
-          import importlib.util, json, pathlib, subprocess, sys, types
+          import importlib.util, json, pathlib, shutil, subprocess, sys, types
           source = pathlib.Path(sys.argv[1])
           output = pathlib.Path('integrations/bitvm3-nova/babe-pilot/ci')
           configure = ['cmake', '-S', str(source), '-B', str(source/'build'),
-                       '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_CXX_FLAGS_RELEASE=-O2 -DNDEBUG',
+                       '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_CXX_FLAGS_RELEASE=-O2',
+                       '-DCMAKE_C_FLAGS_RELEASE=-O2', '-DCMAKE_C_FLAGS_RELWITHDEBINFO=-O2',
                        '-DBUILD_DAEMON=ON', '-DBUILD_CLI=ON', '-DENABLE_WALLET=ON',
                        '-DBUILD_TESTS=OFF', '-DBUILD_GUI=OFF', '-DBUILD_BENCH=OFF',
                        '-DBUILD_FUZZ_BINARY=OFF', '-DBUILD_BITCOIN_BIN=OFF', '-DBUILD_TX=OFF',
                        '-DBUILD_UTIL=OFF', '-DBUILD_WALLET_TOOL=OFF', '-DENABLE_IPC=OFF', '-DWITH_CCACHE=OFF']
           build = ['cmake', '--build', str(source/'build'), '--target', 'bitcoind', 'bitcoin-cli', '--parallel', '4']
-          for command, name in ((configure, 'core-configure.txt'), (build, 'core-build.txt')):
+          def execute(command, name):
               with (output/name).open('w') as log:
                   process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                   for line in process.stdout:
@@ -88,15 +89,21 @@ jobs:
                       log.write(line)
                   if process.wait():
                       raise SystemExit(process.returncode)
+          execute(configure, 'core-configure.txt')
+          shutil.copyfile(source/'build/CMakeCache.txt', output/'core-CMakeCache.txt')
           cache = (source/'build/CMakeCache.txt').read_text().splitlines()
           compiler = next(line.split('=', 1)[1] for line in cache if line.startswith('CMAKE_CXX_COMPILER:FILEPATH='))
           metadata = {'schema':'babe-core-source-build/v1', 'configure_argv':configure, 'build_argv':build,
                       'compiler_version':subprocess.run([compiler, '--version'], capture_output=True, text=True, check=True).stdout}
           (source/'build/build-info.json').write_text(json.dumps(metadata, indent=2)+'\n')
+          shutil.copyfile(source/'build/build-info.json', output/'core-build-info.json')
           script = pathlib.Path('integrations/bitvm3-nova/babe-pilot/scripts/run-regtest.py')
           spec = importlib.util.spec_from_file_location('regtest', script)
           module = importlib.util.module_from_spec(spec)
           spec.loader.exec_module(module)
+          module.core_source_snapshot(source)
+          module.core_build_metadata(source)
+          execute(build, 'core-build.txt')
           receipt = module.verify_core(types.SimpleNamespace(bitcoin_bin=source/'build/bin', core_source=source, core_archive=None))
           (output/'core-provenance.json').write_text(json.dumps(receipt, indent=2)+'\n')
           PY
