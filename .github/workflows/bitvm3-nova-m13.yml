@@ -34,6 +34,8 @@ jobs:
         run: |
           set -o pipefail
           cp -r integrations/bitvm3-nova/m13/verify "$RUNNER_TEMP/verify-opcount"
+          # Keep the verifier's ../statement path dependency beside the counting copy.
+          cp -r integrations/bitvm3-nova/m13/statement "$RUNNER_TEMP/statement"
           python3 integrations/bitvm3-nova/m13/verify/opcount/patch_koala_bear.py "$(ls -d ~/.cargo/registry/src/index.crates.io-*/ | head -1)" "$RUNNER_TEMP/p3-koala-bear-opcount"
           cargo +1.90.0 build --release --features opcount --manifest-path "$RUNNER_TEMP/verify-opcount/Cargo.toml" \
             --config "patch.crates-io.p3-koala-bear.path=\"$RUNNER_TEMP/p3-koala-bear-opcount\""
