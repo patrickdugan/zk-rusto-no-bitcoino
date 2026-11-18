@@ -1,3 +1,6 @@
 /target
 **/*.rs.bk
 Cargo.lock
+
+# groth16-gym checkpoint proof bundles
+integrations/groth16-gym/.proofs/
