@@ -1,10 +1,12 @@
-"""Loopback HTTP server for the ZK Rusto no Bitcoino Prover UI."""
+"""Loopback HTTP + SSE server for the ZK Rusto no Bitcoino Prover UI."""
 from __future__ import annotations
 
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
+import threading
+import time
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
@@ -39,12 +41,12 @@ class ProverUIApp:
         )
         self._ark_dir = ark_dir
         self._campaigns_base = load_campaigns(ark_dir=ark_dir)
+        self.stop_event = threading.Event()
 
     def live_payload(self) -> dict[str, Any]:
         return self.telemetry.snapshot()
 
     def campaigns_payload(self) -> dict[str, Any]:
-        # Hydrate live shard/recursion counts into the active Ark campaign copy
         data = json.loads(json.dumps(self._campaigns_base))
         wsl = self.telemetry.query_wsl_prover()
         prog = wsl.get("progress") or {}
@@ -60,12 +62,24 @@ class ProverUIApp:
         return data
 
 
+class StoppableThreadingHTTPServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def __init__(self, server_address: tuple[str, int], RequestHandlerClass: Any, ui_app: ProverUIApp) -> None:
+        super().__init__(server_address, RequestHandlerClass)
+        self.ui_app = ui_app
+
+    def shutdown(self) -> None:
+        self.ui_app.stop_event.set()
+        super().shutdown()
+
+
 def make_handler(app: ProverUIApp) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
-        server_version = "RBZKProverUI/0.1"
+        server_version = "RBZKProverUI/0.2"
 
         def log_message(self, fmt: str, *args: Any) -> None:
-            return  # Keep terminal quiet and low-overhead
+            return
 
         def _check_loopback_host(self) -> bool:
             host = (self.headers.get("Host") or "").split(":")[0].lower()
@@ -99,6 +113,24 @@ def make_handler(app: ProverUIApp) -> type[BaseHTTPRequestHandler]:
             self.end_headers()
             self.wfile.write(body)
 
+        def _serve_sse(self) -> None:
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache, no-store")
+            self.send_header("Connection", "keep-alive")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            try:
+                while not app.stop_event.is_set():
+                    snap = app.live_payload()
+                    frame = f"event: telemetry\ndata: {json.dumps(snap, separators=(',', ':'))}\n\n"
+                    self.wfile.write(frame.encode("utf-8"))
+                    self.wfile.flush()
+                    if app.stop_event.wait(1.0):
+                        break
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
+                return
+
         def do_GET(self) -> None:
             if not self._check_loopback_host():
                 self._send_json({"error": "invalid_host"}, HTTPStatus.FORBIDDEN)
@@ -114,6 +146,10 @@ def make_handler(app: ProverUIApp) -> type[BaseHTTPRequestHandler]:
 
             if route == "/api/health":
                 self._send_json({"ok": True, "service": "rbzk-prover-ui"})
+                return
+
+            if route == "/api/stream":
+                self._serve_sse()
                 return
 
             if route == "/api/live":
@@ -169,4 +205,4 @@ def create_server(
     app: ProverUIApp | None = None,
 ) -> ThreadingHTTPServer:
     ui_app = app or ProverUIApp()
-    return ThreadingHTTPServer((host, port), make_handler(ui_app))
+    return StoppableThreadingHTTPServer((host, port), make_handler(ui_app), ui_app)

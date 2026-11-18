@@ -105,7 +105,7 @@
           </div>
         </article>
 
-        <article class="ribbon-card">
+        <article class="ribbon-card" id="ribbon-shard-card">
           <div class="ribbon-head">
             <span>Active SP1 Shard Memo</span>
             <span id="shard-rate-badge">--/min</span>
@@ -147,12 +147,12 @@
             <strong class="kpi-value" id="kpi-nova">--</strong>
             <span class="kpi-foot" id="kpi-nova-foot">-- R1CS / step</span>
           </article>
-          <article class="kpi-card">
+          <article class="kpi-card" id="kpi-core-card">
             <span class="kpi-label">SP1 Core Shards (ProveShard)</span>
             <strong class="kpi-value" id="kpi-core-shards">--</strong>
             <span class="kpi-foot" id="kpi-threshold-foot">Threshold --</span>
           </article>
-          <article class="kpi-card">
+          <article class="kpi-card" id="kpi-rec-card">
             <span class="kpi-label">Recursive Shards (Reduce)</span>
             <strong class="kpi-value" id="kpi-rec-shards">--</strong>
             <span class="kpi-foot" id="kpi-fanin-foot">~3:1 compress tree</span>
@@ -166,6 +166,112 @@
 
         <!-- TAB 01: LIVE PROVER & HARDWARE TELEMETRY -->
         <section class="tab-panel" id="tab-live">
+          <!-- Real-Time Liveness Cockpit & Animated Shard Mosaic -->
+          <section class="liveness-cockpit mode-proving" id="liveness-cockpit" aria-label="Live ongoing prover operation">
+            <div class="cockpit-scanline"></div>
+            <div class="cockpit-grid">
+              <div class="cockpit-left">
+                <div class="cockpit-hero">
+                  <div class="ring-wrap" aria-hidden="true">
+                    <svg class="ring-svg" viewBox="0 0 84 84">
+                      <circle cx="42" cy="42" r="35" fill="none" stroke="var(--line-strong)" stroke-width="5"/>
+                      <circle id="cockpit-ring-arc" cx="42" cy="42" r="35" fill="none" stroke="var(--cyan)"
+                        stroke-width="5" stroke-linecap="round" stroke-dasharray="219.9" stroke-dashoffset="110"/>
+                      <circle id="cockpit-ring-orbit" cx="42" cy="7" r="3.5" fill="var(--amber)"/>
+                    </svg>
+                    <div class="ring-center">
+                      <strong id="cockpit-timer-val">0.0s</strong>
+                      <small id="cockpit-timer-sub">LIVE</small>
+                    </div>
+                  </div>
+                  <div class="cockpit-status-copy">
+                    <div class="cockpit-eyebrow-row">
+                      <span class="sse-pill" id="sse-heartbeat-pill">
+                        <span class="dot live"></span>
+                        <span id="sse-frame-label">SSE STREAM · 1.0s</span>
+                      </span>
+                      <span class="tag-mono" id="cockpit-attempt-tag">Attempt #1</span>
+                      <span class="replay-pill" id="replay-mode-pill" hidden>REPLAY PREVIEW · REAL MEMO STREAM</span>
+                    </div>
+                    <h2 id="cockpit-headline">Connecting to WSL prover stream…</h2>
+                    <p id="cockpit-detail">Subscribing to real-time 1s SSE telemetry from ark-prove-gpu, host.json, and progress.jsonl.</p>
+                  </div>
+                </div>
+
+                <div class="headroom-progress-box">
+                  <div class="headroom-top">
+                    <span id="cockpit-bar-left">In-Flight Task / Headroom Progress</span>
+                    <strong id="cockpit-bar-right">--</strong>
+                  </div>
+                  <div class="meter" style="height:8px">
+                    <div class="meter-fill cyan" id="cockpit-progress-fill" style="width:25%"></div>
+                  </div>
+                </div>
+
+                <!-- Animated Proof Packet Bus -->
+                <svg class="bus-svg" id="proof-bus-svg" viewBox="0 0 680 76" aria-label="Animated proof pipeline packet bus">
+                  <defs>
+                    <filter id="glow">
+                      <feGaussianBlur stdDeviation="2.5" result="b"/>
+                      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
+                  </defs>
+                  <!-- Base wires -->
+                  <line x1="70" y1="38" x2="610" y2="38" stroke="var(--line-strong)" stroke-width="3"/>
+                  <line id="bus-active-wire" class="bus-wire-active" x1="70" y1="38" x2="475" y2="38" stroke="var(--cyan)" stroke-width="2.5"/>
+                  <!-- Dynamic packet & burst layer -->
+                  <g id="bus-particles-layer" filter="url(#glow)"></g>
+                  <!-- Nodes -->
+                  <g transform="translate(70,38)">
+                    <circle r="13" fill="var(--bg-card)" stroke="var(--accent)" stroke-width="2"/>
+                    <text y="3.5" text-anchor="middle" fill="var(--accent)" font-size="9" font-family="monospace">NOVA</text>
+                    <text y="27" text-anchor="middle" fill="var(--ink-muted)" font-size="8.5" font-family="monospace">4-Step Fold</text>
+                  </g>
+                  <g transform="translate(205,38)">
+                    <circle id="bus-node-exec" r="13" fill="var(--bg-card)" stroke="var(--cyan)" stroke-width="2"/>
+                    <text y="3.5" text-anchor="middle" fill="var(--cyan)" font-size="9" font-family="monospace">EXEC</text>
+                    <text y="27" text-anchor="middle" fill="var(--ink-muted)" font-size="8.5" font-family="monospace">RISC-V Stream</text>
+                  </g>
+                  <g transform="translate(340,38)">
+                    <circle id="bus-node-shard" r="15" fill="var(--bg-card)" stroke="var(--amber)" stroke-width="2.3"/>
+                    <text y="3.5" text-anchor="middle" fill="var(--amber)" font-size="9" font-family="monospace">SHARD</text>
+                    <text y="28" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" id="bus-shard-count">1,131 core</text>
+                  </g>
+                  <g transform="translate(475,38)">
+                    <circle id="bus-node-reduce" r="15" fill="var(--bg-card)" stroke="var(--violet)" stroke-width="2.3"/>
+                    <text y="3.5" text-anchor="middle" fill="var(--violet)" font-size="9" font-family="monospace">3:1</text>
+                    <text y="28" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" id="bus-reduce-count">1,032 reduce</text>
+                  </g>
+                  <g transform="translate(610,38)">
+                    <circle id="bus-node-final" r="13" fill="var(--bg-card)" stroke="var(--line-strong)" stroke-width="2"/>
+                    <text y="3.5" text-anchor="middle" fill="var(--ink-muted)" font-size="9" font-family="monospace">M14</text>
+                    <text y="27" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace">785.4M Gates</text>
+                  </g>
+                </svg>
+              </div>
+
+              <!-- Right: Live 60fps Shard Mosaic + Sliding Completion Feed -->
+              <div class="cockpit-right">
+                <div class="mosaic-head">
+                  <div>
+                    <h3>Live Shard &amp; Recursion Mosaic (<span id="mosaic-total-count">--</span> Checkpoints)</h3>
+                  </div>
+                  <button type="button" class="replay-btn" id="replay-completions-btn" title="Visually replay the last 12 recorded shard/recursion completions from progress.jsonl">
+                    ▶ Replay Last 12 Shards
+                  </button>
+                </div>
+                <div class="mosaic-canvas-wrap">
+                  <canvas id="shard-mosaic-canvas" width="540" height="108" aria-label="Live shard and recursion completion mosaic"></canvas>
+                </div>
+                <div class="mosaic-tooltip">
+                  <span id="mosaic-hover-label">Hover any tile to inspect task digest &amp; proving latency · Leading slot pulses while proving</span>
+                  <span><b style="color:var(--amber)">■</b> Core Shard &nbsp;<b style="color:var(--violet)">■</b> Reduce &nbsp;<b style="color:var(--cyan)">◉</b> In-Flight</span>
+                </div>
+                <div class="completion-feed" id="completion-feed" aria-live="polite"></div>
+              </div>
+            </div>
+          </section>
+
           <section class="panel">
             <div class="panel-head">
               <div>
