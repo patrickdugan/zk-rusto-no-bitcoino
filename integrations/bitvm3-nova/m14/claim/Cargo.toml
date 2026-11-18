@@ -10,7 +10,7 @@ description = "Manifest-bound, single-use artifact transport for an M14 claim"
 
 [dependencies]
 anyhow = "1"
-garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "02a22685ae2f4e530a19f7bd6dcbce287f56d922", default-features = false }
+garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "af374b4a5bb5a805ecaea749c61ff446986e8f10", default-features = false }
 hex = "0.4"
 libc = "0.2"
 m13-statement = { path = "../../m13/statement" }

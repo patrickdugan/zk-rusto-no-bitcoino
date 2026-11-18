@@ -9,7 +9,7 @@ license = "GPL-3.0-only"
 [workspace]
 
 [dependencies]
-garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "02a22685ae2f4e530a19f7bd6dcbce287f56d922", default-features = false }
+garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "af374b4a5bb5a805ecaea749c61ff446986e8f10", default-features = false }
 num-bigint = "0.4"
 
 [dev-dependencies]
