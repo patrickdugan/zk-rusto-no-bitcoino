@@ -1,0 +1,269 @@
+{
+  "protocol_id": "RBZK-BABE-NOVA-PILOT-AUTHENTICATED-V2",
+  "schema_version": 2,
+  "provenance": {
+    "architecture": "x86_64",
+    "available_cpu_parallelism": 9,
+    "fixture_randomness": "deterministic test seeds; unsuitable for funded sessions",
+    "gpu_used": false,
+    "optimized_build": true,
+    "platform": "linux",
+    "rayon_num_threads": "2",
+    "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+    "source_commit": "7977c344d620be9199f5699f5344a328e80d51f7",
+    "source_files": [
+      {
+        "path": "Cargo.lock",
+        "sha256": "0b2ada942cd65e1bab7f0d95a181fa675180513aae9268f06ad3418ed366ec4b"
+      },
+      {
+        "path": "Cargo.toml",
+        "sha256": "d900ab6143ad65371584d0ef581cce1945d188bd9db4f82545e656e67fe751db"
+      },
+      {
+        "path": "src/bin/babe-pilot-bench.rs",
+        "sha256": "4751487e4e108ef61810c4ef62723cdc7a846f8e32665129673a116746846b93"
+      },
+      {
+        "path": "src/bitcoin_script.rs",
+        "sha256": "9f057d355df50b1c279230c09faa2538d5343d01f87c25f39f5c4020461fe011"
+      },
+      {
+        "path": "src/dispute_circuit.rs",
+        "sha256": "5b34be1740789bbc4c9f0df1279f17df0bb9c672ddb6cae8a1ce9bc8ff11082c"
+      },
+      {
+        "path": "src/elem.rs",
+        "sha256": "32204d5d0b1bda9b5d2e5b30632609383a1917972db155bc0385fd0b6f4a881b"
+      },
+      {
+        "path": "src/gates.rs",
+        "sha256": "5c3ffdf0c93be5b8baa7a086e60f6f38d787fe5e7728597fc35a4cbdb69fd40f"
+      },
+      {
+        "path": "src/lib.rs",
+        "sha256": "58779813448bf45e37f216e3adca1ff28476547691956ea2c5603b7a646a1874"
+      },
+      {
+        "path": "src/protocol.rs",
+        "sha256": "208050cea93e478587b1684740ce539fcbe6027a7a8d268fbf9d3ac8779cb2f8"
+      },
+      {
+        "path": "src/protocol_hardening_tests.rs",
+        "sha256": "41e29ca0ae56d4da5ae630f2272fb454940623a402c394749bf0c3f9bde8e331"
+      },
+      {
+        "path": "src/soldering.rs",
+        "sha256": "369845b961b1b68d430ea1af760fbcfe26f4026478b19c04a8eb4fc4e2858339"
+      },
+      {
+        "path": "tests/bitcoin_binding.rs",
+        "sha256": "fe045998f5c6528fd276514212434616bb8326f4da16a273a31c6e56a8bd8911"
+      },
+      {
+        "path": "tests/dispute_soundness.rs",
+        "sha256": "70f87b477f36e79a71faeed6d8198d9bdbbfd56c06eb3e0a7d4e5c9768cf0b8b"
+      },
+      {
+        "path": "tests/pilot_adversarial.rs",
+        "sha256": "e8cfe8688df16fa1dabc7a03e3721f5145ba6bb428942368bc0856c32a2811e1"
+      }
+    ],
+    "source_files_sha256": "4a31ce04b21c7c24354ca498d4da45df35cf2198184b4f2e73a0018e287ba91a",
+    "unix_timestamp_seconds": 1795020923
+  },
+  "scope_limitations": [
+    "N=7/M=3 CPU label-soldering and local-adjudication experiment; weak C&C parameters",
+    "Pasta sample checks one authenticated Pallas addition; no complete Nova verifier or application proof",
+    "Bitcoin measurements use dummy outpoints/signatures; consensus and relay acceptance unverified",
+    "Fixed-input label leaf requires an enclosing graph to bind the selected input before funding",
+    "Session nonce and input reservations are process-local; no crash/restart persistence",
+    "No end-to-end speed or security comparison with M14, FC03, or BABE"
+  ],
+  "single_circuit_measurements": [
+    {
+      "circuit_name": "babe_pilot::eval_indexed_dispute_circuit (16-slot SHA-256 + M31 witness check)",
+      "scope": "single_garbled_circuit",
+      "measurement_kind": "measured_cpu_execution",
+      "input_wires": 128,
+      "non_free_gates_execute": 44566,
+      "non_free_gates_garble_ciphertexts": 44566,
+      "ciphertext_bytes_per_circuit": 713056,
+      "base_tap_hashlock_bytes_per_circuit": 8192,
+      "active_label_delivery_raw_bytes": 2048,
+      "plain_execute_seconds": 0.009647102,
+      "single_garble_seconds": 0.01005127,
+      "single_evaluate_seconds": 0.007682749
+    },
+    {
+      "circuit_name": "babe_pilot::eval_pasta_window_ec_step (255-bit Pasta w=4 witness-assisted affine EC + SHA-256)",
+      "scope": "single_garbled_circuit",
+      "measurement_kind": "measured_cpu_execution",
+      "input_wires": 3832,
+      "non_free_gates_execute": 2738804,
+      "non_free_gates_garble_ciphertexts": 2738804,
+      "ciphertext_bytes_per_circuit": 43820864,
+      "base_tap_hashlock_bytes_per_circuit": 245248,
+      "active_label_delivery_raw_bytes": 61312,
+      "plain_execute_seconds": 0.296025067,
+      "single_garble_seconds": 0.517067551,
+      "single_evaluate_seconds": 0.439636841
+    }
+  ],
+  "local_protocol": {
+    "scope": "local_authenticated_adjudication_and_soldering_N7_M3",
+    "measurement_kind": "measured_cpu_execution",
+    "total_instances_n": 7,
+    "retained_instances_m": 3,
+    "opened_instances": 4,
+    "input_wires": 128,
+    "total_generated_ciphertext_bytes": 4991392,
+    "generated_ciphertexts_headers_and_hashlocks_bytes_all_n": 5050992,
+    "retained_ciphertext_bytes": 2139168,
+    "opened_seeds_payload_bytes": 160,
+    "base_tap_hashlock_table_bytes": 8192,
+    "soldering_deltas_payload_bytes": 4128,
+    "compressed_snark_proof_bytes": 11688,
+    "compressed_snark_vk_bytes": 52884552,
+    "finalized_public_setup_bincode_bytes": 2165704,
+    "active_base_label_delivery_raw_bytes": 2048,
+    "active_base_label_delivery_bincode_bytes": 2128,
+    "naive_unsoldered_m_label_delivery_raw_bytes": 6144,
+    "active_label_payload_reduction_factor": 3.0,
+    "garble_all_n_seconds": 0.285608046,
+    "nova_certificate_timings": {
+      "num_steps": 64,
+      "primary_constraints": 122856,
+      "secondary_constraints": 10349,
+      "setup_pp_seconds": 8.78837785,
+      "setup_cs_seconds": 0.408526965,
+      "recursive_fold_seconds": 26.771975408,
+      "compress_prove_seconds": 28.740674688,
+      "verify_seconds": 0.637004302,
+      "proof_bytes": 11688,
+      "vk_bytes": 52884552
+    },
+    "challenger_setup_verify_total_seconds": 0.814666255,
+    "challenger_dispute_eval_all_m_seconds": 0.022497414,
+    "public_setup_and_verifier_key_bytes": 55050256
+  },
+  "system_resources": {
+    "peak_rss_kib": 465320,
+    "current_rss_kib": 465320,
+    "peak_rss_mib": 454.4140625,
+    "on_disk_public_setup_bytes": 2165704,
+    "on_disk_verifier_key_bytes": 52884552,
+    "on_disk_active_label_delivery_bytes": 2128,
+    "on_disk_total_artifact_dir_bytes": 55052384
+  },
+  "bitcoin_witness_measured_pilot_n7_m3_w128": {
+    "assert_labels_tx": {
+      "name": "AssertLabelsTx (CheckLampSigsMatch)",
+      "vsize": 1801,
+      "weight_wu": 7203,
+      "total_bytes": 6921,
+      "witness_items": 131,
+      "script_bytes": 4514,
+      "control_block_bytes": 65,
+      "initial_stack_items": 129,
+      "max_initial_stack_item_bytes": 64,
+      "initial_stack_items_within_policy_bounds": true,
+      "evidence_kind": "serialization-only",
+      "consensus_verified": false,
+      "standardness_verified": false
+    },
+    "withholding_timeout_tx": {
+      "name": "WithholdingTimeoutTx (CSV D_label=6)",
+      "vsize": 137,
+      "weight_wu": 548,
+      "total_bytes": 266,
+      "witness_items": 3,
+      "script_bytes": 37,
+      "control_block_bytes": 65,
+      "initial_stack_items": 1,
+      "max_initial_stack_item_bytes": 64,
+      "initial_stack_items_within_policy_bounds": true,
+      "evidence_kind": "serialization-only",
+      "consensus_verified": false,
+      "standardness_verified": false
+    },
+    "disprove_tx": {
+      "name": "DisproveTx (1-of-M refute hashlock)",
+      "vsize": 158,
+      "weight_wu": 629,
+      "total_bytes": 347,
+      "witness_items": 4,
+      "script_bytes": 69,
+      "control_block_bytes": 97,
+      "initial_stack_items": 2,
+      "max_initial_stack_item_bytes": 64,
+      "initial_stack_items_within_policy_bounds": true,
+      "evidence_kind": "serialization-only",
+      "consensus_verified": false,
+      "standardness_verified": false
+    },
+    "operator_payout_tx": {
+      "name": "OperatorPayoutTx (CSV D_3=6)",
+      "vsize": 145,
+      "weight_wu": 580,
+      "total_bytes": 298,
+      "witness_items": 3,
+      "script_bytes": 37,
+      "control_block_bytes": 97,
+      "initial_stack_items": 1,
+      "max_initial_stack_item_bytes": 64,
+      "initial_stack_items_within_policy_bounds": true,
+      "evidence_kind": "serialization-only",
+      "consensus_verified": false,
+      "standardness_verified": false
+    }
+  },
+  "bitcoin_witness_measured_pasta_ec_w3832_chunked": {
+    "name": "AssertLabelsTx_PastaWindowEC_W3832_chunked480 (8 Taproot inputs)",
+    "measurement_kind": "serialization-only",
+    "num_inputs": 8,
+    "wires_per_input_max": 480,
+    "total_wires": 3832,
+    "vsize": 50540,
+    "weight_wu": 202158,
+    "total_bytes": 201015,
+    "total_script_bytes": 134392,
+    "max_initial_stack_items_per_input": 481,
+    "max_initial_stack_item_bytes": 64,
+    "initial_stack_count_within_limit": true,
+    "initial_stack_items_within_policy_bounds": true,
+    "transaction_weight_within_policy_bound": true,
+    "consensus_verified": false,
+    "standardness_verified": false
+  },
+  "bitcoin_witness_measured_m39_disprove": {
+    "name": "DisproveTx_M39_worst_case_depth6 (1-of-39 refute hashlock)",
+    "vsize": 190,
+    "weight_wu": 757,
+    "total_bytes": 475,
+    "witness_items": 4,
+    "script_bytes": 69,
+    "control_block_bytes": 225,
+    "initial_stack_items": 2,
+    "max_initial_stack_item_bytes": 64,
+    "initial_stack_items_within_policy_bounds": true,
+    "evidence_kind": "serialization-only",
+    "consensus_verified": false,
+    "standardness_verified": false
+  },
+  "bitcoin_witness_measured_m39_operator_payout": {
+    "name": "OperatorPayoutTx_M39_depth6 (CSV D_3=6)",
+    "vsize": 177,
+    "weight_wu": 708,
+    "total_bytes": 426,
+    "witness_items": 3,
+    "script_bytes": 37,
+    "control_block_bytes": 225,
+    "initial_stack_items": 1,
+    "max_initial_stack_item_bytes": 64,
+    "initial_stack_items_within_policy_bounds": true,
+    "evidence_kind": "serialization-only",
+    "consensus_verified": false,
+    "standardness_verified": false
+  }
+}
