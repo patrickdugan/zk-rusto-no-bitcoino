@@ -150,6 +150,9 @@ class ProverUITestSuite(unittest.TestCase):
         self.assertGreater(comp["overall_pct"], 15.0)
         self.assertLess(comp["overall_pct"], 25.0)
         self.assertIsNotNone(comp["eta_hours_est"])
+        self.assertGreater(comp["core_eta_seconds"], 0)
+        self.assertGreater(comp["sp1_eta_seconds"], comp["core_eta_seconds"])
+        self.assertGreater(comp["e2e_eta_seconds"], comp["sp1_eta_seconds"])
 
     def test_http_endpoints_and_host_header_guard(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

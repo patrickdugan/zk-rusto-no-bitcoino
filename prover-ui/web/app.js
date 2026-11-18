@@ -25,6 +25,16 @@
     replayingPreview: false,
     replayTimers: [],
     highlightedSeqs: new Set(),
+    // Smooth monotonic ETA countdown state (seconds)
+    eta: {
+      initialized: false,
+      anchorPerfMs: performance.now(),
+      coreSec: 0,
+      sp1Sec: 0,
+      e2eSec: 0,
+      expectedTaskS: 95,
+      paused: false,
+    },
   };
 
   const PRESETS = {
@@ -103,6 +113,21 @@
     if (diff < 60) return `${diff}s ago`;
     if (diff < 3600) return `${Math.floor(diff / 60)}m ${diff % 60}s ago`;
     return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m ago`;
+  }
+
+  function fmtCountdown(sec) {
+    const s = Math.max(0, Math.floor(Number(sec) || 0));
+    const hh = Math.floor(s / 3600);
+    const mm = Math.floor((s % 3600) / 60);
+    const ss = s % 60;
+    return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+  }
+
+  function fmtShortTimer(sec) {
+    const s = Math.max(0, Math.floor(Number(sec) || 0));
+    const mm = Math.floor(s / 60);
+    const ss = s % 60;
+    return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
   }
 
   function shortHex(h, head = 10, tail = 6) {
@@ -355,6 +380,7 @@
     function frame(nowMs) {
       const dtSec = Math.max(0, (nowMs - state.lastSamplePerfMs) / 1000);
       updateCockpitTick(dtSec, nowMs);
+      updateTopCardCountdowns(dtSec, nowMs);
       updateProofBusParticles();
       drawShardMosaic(nowMs);
       requestAnimationFrame(frame);
@@ -424,6 +450,156 @@
       const oy = 42 + 35 * Math.sin(angleRad);
       orbit.setAttribute("cx", ox.toFixed(1));
       orbit.setAttribute("cy", oy.toFixed(1));
+    }
+  }
+
+  function updateTopCardCountdowns(dtSec, nowMs) {
+    if (!state.live) return;
+    const wsl = state.live.wsl_prover || {};
+    const comp = wsl.completion || {};
+    const mode = state.opMode;
+    const isHold = mode === "waiting_headroom" || mode === "cooldown_backoff";
+    const isDone = Boolean(comp.is_exact && comp.e2e_eta_seconds === 0);
+
+    const etaElapsed = state.eta.paused ? 0 : Math.max(0, (nowMs - state.eta.anchorPerfMs) / 1000);
+    const coreRem = Math.max(0, state.eta.coreSec - etaElapsed);
+    const sp1Rem = Math.max(0, state.eta.sp1Sec - etaElapsed);
+    const e2eRem = Math.max(0, state.eta.e2eSec - etaElapsed);
+
+    // 1. Top Sticky Telemetry Ribbon Card Countdowns (always reflect live hardware/prover)
+    const gpuPill = $("gpu-eta-pill");
+    if (gpuPill) {
+      if (isDone) {
+        gpuPill.textContent = "✓ 00:00 DONE";
+        gpuPill.className = "eta-badge done";
+      } else if (isHold) {
+        gpuPill.textContent = "⏸ PAUSED";
+        gpuPill.className = "eta-badge amber";
+      } else {
+        const curTaskS = state.baseTaskElapsedS + dtSec;
+        const expS = Math.max(20, state.eta.expectedTaskS || 95);
+        if (curTaskS <= expS) {
+          gpuPill.textContent = `⏱ Next ~${fmtShortTimer(expS - curTaskS)}`;
+          gpuPill.className = "eta-badge cyan";
+        } else {
+          gpuPill.textContent = `⏱ +${fmtShortTimer(curTaskS - expS)} long`;
+          gpuPill.className = "eta-badge amber";
+        }
+      }
+    }
+
+    const hostPill = $("host-eta-pill");
+    if (hostPill) {
+      if (mode === "cooldown_backoff") {
+        const rem = Math.max(0, state.baseCooldownRemS - dtSec);
+        hostPill.textContent = `⏱ Retry ${fmtShortTimer(rem)}`;
+        hostPill.className = "eta-badge amber";
+      } else if (mode === "waiting_headroom") {
+        const waitS = state.basePhaseElapsedS + dtSec;
+        hostPill.textContent = `⏱ Hold ${fmtShortTimer(waitS)}`;
+        hostPill.className = "eta-badge amber";
+      } else {
+        const guardRem = Math.max(0, 2.0 - (dtSec % 2.0));
+        hostPill.textContent = `⏱ Poll 00:0${Math.ceil(guardRem)}`;
+        hostPill.className = "eta-badge emerald";
+      }
+    }
+
+    const cgPill = $("cgroup-eta-pill");
+    if (cgPill) {
+      if (mode === "cooldown_backoff") {
+        const rem = Math.max(0, state.baseCooldownRemS - dtSec);
+        cgPill.textContent = `⏱ Backoff ${fmtShortTimer(rem)}`;
+        cgPill.className = "eta-badge amber";
+      } else if (isHold) {
+        cgPill.textContent = "⏸ 00:00:00";
+        cgPill.className = "eta-badge amber";
+      } else {
+        const upS = state.basePhaseElapsedS + dtSec;
+        cgPill.textContent = `⏱ Up ${fmtCountdown(upS)}`;
+        cgPill.className = "eta-badge violet";
+      }
+    }
+
+    const ribPill = $("ribbon-eta-pill");
+    if (ribPill) {
+      if (isDone) {
+        ribPill.textContent = "✓ 00:00:00";
+        ribPill.className = "eta-badge done";
+      } else if (isHold) {
+        ribPill.textContent = `⏸ ~${fmtCountdown(sp1Rem)}`;
+        ribPill.className = "eta-badge amber";
+      } else {
+        ribPill.textContent = `⏱ ~${fmtCountdown(sp1Rem)}`;
+        ribPill.className = "eta-badge amber";
+      }
+    }
+
+    // Update Cockpit Overall Completion Bar with ticking HH:MM:SS ETA
+    if (comp.tasks_total_est && $("cockpit-overall-right")) {
+      const tilde = comp.is_exact ? "" : "~";
+      const etaStr = isDone
+        ? " · ✓ 00:00:00"
+        : ` · ${isHold ? "⏸" : "⏱"} ETA ~${fmtCountdown(sp1Rem)}`;
+      $("cockpit-overall-right").textContent = `${fmtInt(comp.tasks_done)} / ${tilde}${fmtInt(
+        comp.tasks_total_est
+      )} tasks (${tilde}${comp.overall_pct}%)${etaStr}`;
+    }
+
+    // 2. Top-Level Campaign Banner & 5 KPI Card Countdowns
+    const isLiveCamp = state.selectedCampaignId === "ark-cashu-live";
+    const campBannerPill = $("campaign-eta-pill");
+    if (isLiveCamp) {
+      if (campBannerPill) {
+        campBannerPill.textContent = isDone
+          ? "✓ E2E VERIFIED · 00:00:00"
+          : `${isHold ? "⏸ HOLD" : "⏱ E2E ETA"} · ~${fmtCountdown(e2eRem)}`;
+        campBannerPill.className = "status-pill " + (isDone ? "" : isHold ? "live" : "cyan");
+      }
+      if ($("kpi-eta-domain")) {
+        $("kpi-eta-domain").textContent = "✓ 00:00:00";
+        $("kpi-eta-domain").className = "eta-badge done";
+      }
+      if ($("kpi-eta-nova")) {
+        $("kpi-eta-nova").textContent = "✓ 00:00:00";
+        $("kpi-eta-nova").className = "eta-badge done";
+      }
+      if ($("kpi-eta-core")) {
+        $("kpi-eta-core").textContent =
+          coreRem <= 0
+            ? "✓ 00:00:00"
+            : `${isHold ? "⏸" : "⏱"} ~${fmtCountdown(coreRem)}`;
+        $("kpi-eta-core").className = "eta-badge " + (coreRem <= 0 ? "done" : "cyan");
+      }
+      if ($("kpi-eta-rec")) {
+        $("kpi-eta-rec").textContent =
+          sp1Rem <= 0
+            ? "✓ 00:00:00"
+            : `${isHold ? "⏸" : "⏱"} ~${fmtCountdown(sp1Rem)}`;
+        $("kpi-eta-rec").className = "eta-badge " + (sp1Rem <= 0 ? "done" : "violet");
+      }
+      if ($("kpi-eta-m14")) {
+        $("kpi-eta-m14").textContent =
+          e2eRem <= 0
+            ? "✓ 00:00:00"
+            : `${isHold ? "⏸" : "⏱"} ~${fmtCountdown(e2eRem)}`;
+        $("kpi-eta-m14").className = "eta-badge " + (e2eRem <= 0 ? "done" : "amber");
+      }
+    } else {
+      // Completed historical campaigns show verified 00:00:00 status
+      if (campBannerPill) {
+        campBannerPill.textContent = "✓ COMPLETED · 00:00:00 REM";
+        campBannerPill.className = "status-pill";
+      }
+      ["kpi-eta-domain", "kpi-eta-nova", "kpi-eta-core", "kpi-eta-rec", "kpi-eta-m14"].forEach(
+        (id) => {
+          const el = $(id);
+          if (el) {
+            el.textContent = "✓ 00:00:00";
+            el.className = "eta-badge done";
+          }
+        }
+      );
     }
   }
 
@@ -726,6 +902,10 @@
       .join("");
 
     renderShardHierarchy(c, coreShards, recShards);
+    if (state.live) {
+      const nowPerf = performance.now();
+      updateTopCardCountdowns(Math.max(0, (nowPerf - state.lastSamplePerfMs) / 1000), nowPerf);
+    }
   }
 
   // --- Live Telemetry Ingestion ---
@@ -741,6 +921,36 @@
     state.basePhaseElapsedS = Number(lv.phase_elapsed_s || 0);
     state.baseCooldownRemS = Number(lv.cooldown_remaining_s || 0);
     state.baseTaskElapsedS = Number(lv.current_task_elapsed_s || 0);
+
+    // Smoothly slew client-side monotonic countdowns so 1s SSE frames never jitter backwards
+    const comp = wsl.completion || {};
+    const isPaused = state.opMode === "waiting_headroom" || state.opMode === "cooldown_backoff";
+    if (comp.sp1_eta_seconds !== undefined && comp.sp1_eta_seconds !== null) {
+      const nowPerf = performance.now();
+      const prevElapsed = state.eta.paused ? 0 : Math.max(0, (nowPerf - state.eta.anchorPerfMs) / 1000);
+      const curCore = Math.max(0, state.eta.coreSec - prevElapsed);
+      const curSp1 = Math.max(0, state.eta.sp1Sec - prevElapsed);
+      const curE2e = Math.max(0, state.eta.e2eSec - prevElapsed);
+
+      const srvCore = Number(comp.core_eta_seconds || 0);
+      const srvSp1 = Number(comp.sp1_eta_seconds || 0);
+      const srvE2e = Number(comp.e2e_eta_seconds || 0);
+
+      if (!state.eta.initialized || Math.abs(srvSp1 - curSp1) > 900) {
+        state.eta.coreSec = srvCore;
+        state.eta.sp1Sec = srvSp1;
+        state.eta.e2eSec = srvE2e;
+        state.eta.initialized = true;
+      } else {
+        // Gentle 6% slew per frame keeps seconds ticking monotonically downward
+        state.eta.coreSec = 0.94 * curCore + 0.06 * srvCore;
+        state.eta.sp1Sec = 0.94 * curSp1 + 0.06 * srvSp1;
+        state.eta.e2eSec = 0.94 * curE2e + 0.06 * srvE2e;
+      }
+      state.eta.anchorPerfMs = nowPerf;
+      state.eta.expectedTaskS = Number(lv.expected_task_s || 95);
+      state.eta.paused = isPaused;
+    }
 
     // Pulse SSE frame indicator
     const pill = $("sse-heartbeat-pill");
@@ -791,14 +1001,9 @@
 
       // Overall campaign n / ~total (% completion) bar
       if (comp.tasks_total_est) {
-        const tilde = comp.is_exact ? "" : "~";
-        const etaSuffix = comp.eta_hours_est ? ` · ETA ~${comp.eta_hours_est}h` : "";
         $("cockpit-overall-left").textContent = comp.is_exact
           ? "Verified Campaign Completion (Core + 3:1 Tree)"
           : "Est. Campaign Progress (ARK1 R1CS 2^15+2^14 @ 2^26)";
-        $("cockpit-overall-right").textContent = `${fmtInt(comp.tasks_done)} / ${tilde}${fmtInt(
-          comp.tasks_total_est
-        )} tasks (${tilde}${comp.overall_pct}%)${etaSuffix}`;
         $("cockpit-overall-fill").style.width = `${Math.max(2, comp.overall_pct || 0).toFixed(1)}%`;
       }
 
@@ -829,14 +1034,13 @@
     // 1. GPU Card
     if (gpu.available) {
       $("gpu-name-label").textContent = gpu.name.replace("NVIDIA GeForce ", "");
-      $("gpu-pstate-label").textContent = gpu.pstate || "CUDA";
       $("gpu-util-val").textContent = `${Math.round(gpu.util_gpu_pct)}% GPU`;
       const vUsed = Math.round(gpu.vram_used_mib);
       const vTot = Math.round(gpu.vram_total_mib || 16303);
       $("gpu-vram-val").textContent = `${fmtInt(vUsed)} / ${fmtInt(vTot)} MiB`;
       $("gpu-vram-bar").style.width = `${Math.min(100, (vUsed / vTot) * 100).toFixed(1)}%`;
       $("gpu-temp-power").textContent = `${gpu.temp_c}°C · ${Number(gpu.power_draw_w || 0).toFixed(1)}W`;
-      $("gpu-clock-pool").textContent = `${gpu.clock_sm_mhz}MHz · 256M cap`;
+      $("gpu-clock-pool").textContent = `${gpu.pstate || "CUDA"} · ${gpu.clock_sm_mhz}MHz`;
     } else {
       $("gpu-util-val").textContent = "N/A";
     }
@@ -852,19 +1056,19 @@
       const bar = $("host-ram-bar");
       bar.style.width = `${pct.toFixed(1)}%`;
       bar.className = "meter-fill " + (availGiB < 3.2 ? "red" : availGiB < 5.0 ? "amber" : "emerald");
-      $("host-guard-badge").textContent = hg.stop_reason
+      const guardTxt = hg.stop_reason
         ? hg.stop_reason === "host_memory_floor"
-          ? "TRIP · 3G FLOOR"
-          : `TRIP · ${hg.stop_reason}`
+          ? "TRIP · 3G"
+          : `TRIP`
         : `FLOOR ${(Number(hg.memory_floor_bytes || 3221225472) / 1073741824).toFixed(1)}G`;
 
       const vm = hm.vmmem_wsl;
       if (vm && vm.working_set_bytes !== undefined) {
         $("vmmem-ws-label").textContent = `WSL WS: ${fmtGiB(vm.working_set_bytes, 2)}G`;
-        $("vmmem-commit-label").textContent = `Commit: ${fmtGiB(vm.private_commit_bytes, 2)}G`;
+        $("vmmem-commit-label").textContent = `Commit ${fmtGiB(vm.private_commit_bytes, 1)}G · ${guardTxt}`;
       } else {
         $("vmmem-ws-label").textContent = "vmmemWSL: idle";
-        $("vmmem-commit-label").textContent = `SysCommit: ${fmtGiB(hm.used_commit_bytes, 1)}G`;
+        $("vmmem-commit-label").textContent = guardTxt;
       }
     }
 
@@ -872,15 +1076,12 @@
     const rawPhase = wsl.reachable ? String(wsl.status || "idle") : "offline";
     const phasePretty =
       !wsl.phase_running && rawPhase.startsWith("waiting_for_headroom")
-        ? "HOLD · HEADROOM"
+        ? "HOLD"
         : !wsl.phase_running
-        ? "PAUSED · HOLD"
+        ? "PAUSED"
         : rawPhase === "gpu"
-        ? "GPU · CUDA"
-        : rawPhase === "cpu"
-        ? "CPU · RESUME"
+        ? "CUDA"
         : rawPhase.toUpperCase();
-    $("wsl-phase-badge").textContent = phasePretty;
     const cgRam = latestRes.cgroup_ram_mib ?? 0;
     const cgHard = limits.linux_ram_hard_mib || 2048;
     const cgSwap = latestRes.cgroup_swap_mib ?? 0;
@@ -895,7 +1096,7 @@
     const dFree =
       latestRes.d_free_gib ??
       (hm.disks && hm.disks["D:\\"] ? Number(fmtGiB(hm.disks["D:\\"].free_bytes, 1)) : "--");
-    $("disk-free-label").textContent = `D: ${dFree}G free`;
+    $("disk-free-label").textContent = `${phasePretty} · D: ${dFree}G`;
 
     // 4. Active Shard Stream Card & Bus Counts (n / ~total + % completion)
     const uShards = prog.unique_shards ?? 0;
@@ -935,22 +1136,13 @@
     const combinedRate = Number(
       (rates.shard_per_min_15m || 0) + (rates.reduce_per_min_15m || 0)
     ).toFixed(1);
-    $("shard-rate-badge").textContent = coreTot
-      ? `${tilde}${ovPct}% · ${combinedRate}/m`
-      : `${combinedRate} tasks/m`;
     $("live-shard-bar").style.width = coreTot
       ? `${Math.max(2, ovPct).toFixed(1)}%`
       : `${(uShards + uReduces > 0 ? (uShards / (uShards + uReduces)) * 100 : 50).toFixed(1)}%`;
     $("session-proved-label").textContent = comp.tasks_total_est
-      ? `${fmtInt(comp.tasks_done)}/${tilde}${fmtInt(comp.tasks_total_est)} tasks`
-      : sess.session_shards_proved !== undefined
-      ? `+${sess.session_shards_proved} sh / +${sess.session_recursion_proved} rec`
-      : `${fmtInt((prog.proved_rows_by_kind || {}).shard || 0)} proved`;
-    $("store-mib-label").textContent = comp.eta_hours_est
-      ? `ETA ~${comp.eta_hours_est}h`
-      : sess.artifact_store_mib !== undefined
-      ? `Store: ${fmtInt(sess.artifact_store_mib)}M`
-      : `${fmtInt(prog.total_rows || 0)} rows`;
+      ? `${fmtInt(comp.tasks_done)}/${tilde}${fmtInt(comp.tasks_total_est)} (${tilde}${ovPct}%)`
+      : `${fmtInt(uShards)} proved`;
+    $("store-mib-label").textContent = `${combinedRate} tasks/m`;
 
     $("active-phase-name").textContent = wsl.active_phase_dir || wsl.status || "--";
     if (wsl.phase_log_tail) {
@@ -985,6 +1177,7 @@
     if (state.selectedCampaignId === "ark-cashu-live") {
       renderSelectedCampaign();
     }
+    updateTopCardCountdowns(0, performance.now());
   }
 
   function renderCompletionFeed(events) {

@@ -59,8 +59,8 @@
       <header class="telemetry-ribbon" aria-label="Live hardware and shard metrics">
         <article class="ribbon-card">
           <div class="ribbon-head">
-            <span id="gpu-name-label">GPU · RTX 5080 (16 GB)</span>
-            <span id="gpu-pstate-label">--</span>
+            <span id="gpu-name-label">GPU · RTX 5080</span>
+            <span class="eta-badge cyan" id="gpu-eta-pill" title="Estimated countdown to next CUDA shard/recursion checkpoint">⏱ --:--</span>
           </div>
           <div class="ribbon-main">
             <span class="ribbon-val" id="gpu-util-val">--%</span>
@@ -69,14 +69,14 @@
           <div class="meter"><div class="meter-fill cyan" id="gpu-vram-bar" style="width:0%"></div></div>
           <div class="ribbon-sub">
             <span id="gpu-temp-power">--°C · -- W</span>
-            <span id="gpu-clock-pool">-- MHz · 256M pool cap</span>
+            <span id="gpu-clock-pool">-- MHz · 256M cap</span>
           </div>
         </article>
 
         <article class="ribbon-card">
           <div class="ribbon-head">
-            <span>Windows Host &amp; WSL RAM</span>
-            <span id="host-guard-badge">FLOOR 3.0 GiB</span>
+            <span>Host &amp; WSL RAM</span>
+            <span class="eta-badge emerald" id="host-eta-pill" title="Host memory guard poll / cooldown retry countdown">⏱ --:--</span>
           </div>
           <div class="ribbon-main">
             <span class="ribbon-val" id="host-avail-val">-- GiB free</span>
@@ -85,39 +85,39 @@
           <div class="meter"><div class="meter-fill emerald" id="host-ram-bar" style="width:0%"></div></div>
           <div class="ribbon-sub">
             <span id="vmmem-ws-label">vmmem WS: --</span>
-            <span id="vmmem-commit-label">Commit: --</span>
+            <span id="vmmem-commit-label">FLOOR 3.0G</span>
           </div>
         </article>
 
         <article class="ribbon-card">
           <div class="ribbon-head">
-            <span>WSL Prover Cgroup v2</span>
-            <span id="wsl-phase-badge">--</span>
+            <span>WSL Cgroup v2</span>
+            <span class="eta-badge violet" id="cgroup-eta-pill" title="Active cgroup phase runtime / cooldown countdown">⏱ --:--:--</span>
           </div>
           <div class="ribbon-main">
             <span class="ribbon-val" id="cgroup-ram-val">-- MiB</span>
-            <span class="ribbon-unit" id="cgroup-cap-val">/ 2,048 MiB hard</span>
+            <span class="ribbon-unit" id="cgroup-cap-val">/ 2,048 MiB</span>
           </div>
           <div class="meter"><div class="meter-fill violet" id="cgroup-ram-bar" style="width:0%"></div></div>
           <div class="ribbon-sub">
-            <span id="cgroup-swap-label">Swap: -- / 4,096 MiB</span>
-            <span id="disk-free-label">D:\ -- GiB free</span>
+            <span id="cgroup-swap-label">Swap: -- / 4,096M</span>
+            <span id="disk-free-label">D: --G free</span>
           </div>
         </article>
 
         <article class="ribbon-card" id="ribbon-shard-card">
           <div class="ribbon-head">
-            <span>Active SP1 Shard Memo</span>
-            <span id="shard-rate-badge">--/min</span>
+            <span>SP1 Shard Stream</span>
+            <span class="eta-badge amber" id="ribbon-eta-pill" title="Estimated remaining countdown to compressed SP1 proof">⏱ --:--:--</span>
           </div>
           <div class="ribbon-main">
             <span class="ribbon-val" id="live-shards-val">--</span>
-            <span class="ribbon-unit" id="live-reduces-val">+ -- recursion</span>
+            <span class="ribbon-unit" id="live-reduces-val">+ -- rec</span>
           </div>
           <div class="meter"><div class="meter-fill amber" id="live-shard-bar" style="width:50%"></div></div>
           <div class="ribbon-sub">
             <span id="session-proved-label">Session: --</span>
-            <span id="store-mib-label">Store: -- MiB</span>
+            <span id="store-mib-label">--/m</span>
           </div>
         </article>
       </header>
@@ -132,35 +132,51 @@
           </div>
           <div class="badge-stack">
             <span class="status-pill" id="campaign-badge">VERIFYING</span>
+            <span class="status-pill cyan" id="campaign-eta-pill">⏱ E2E ETA --:--:--</span>
             <span class="hw-caption" id="campaign-hw"></span>
           </div>
         </section>
 
         <section class="kpi-grid" aria-label="Campaign key metrics">
           <article class="kpi-card">
-            <span class="kpi-label">Bitcoin Domain Workload</span>
+            <div class="kpi-head">
+              <span class="kpi-label">Bitcoin Workload</span>
+              <span class="eta-badge done" id="kpi-eta-domain">✓ 00:00:00</span>
+            </div>
             <strong class="kpi-value" id="kpi-domain">--</strong>
             <span class="kpi-foot" id="kpi-domain-foot">Pinned inputs</span>
           </article>
           <article class="kpi-card">
-            <span class="kpi-label">Nova 0.76 Folding</span>
+            <div class="kpi-head">
+              <span class="kpi-label">Nova 0.76 Fold</span>
+              <span class="eta-badge done" id="kpi-eta-nova">✓ 00:00:00</span>
+            </div>
             <strong class="kpi-value" id="kpi-nova">--</strong>
             <span class="kpi-foot" id="kpi-nova-foot">-- R1CS / step</span>
           </article>
           <article class="kpi-card" id="kpi-core-card">
-            <span class="kpi-label">SP1 Core Shards (ProveShard)</span>
+            <div class="kpi-head">
+              <span class="kpi-label">SP1 Core Shards</span>
+              <span class="eta-badge cyan" id="kpi-eta-core" title="Countdown until all ProveShard tasks complete">⏱ --:--:--</span>
+            </div>
             <strong class="kpi-value" id="kpi-core-shards">--</strong>
             <div class="meter kpi-meter"><div class="meter-fill emerald" id="kpi-core-bar" style="width:0%"></div></div>
             <span class="kpi-foot" id="kpi-threshold-foot">Threshold --</span>
           </article>
           <article class="kpi-card" id="kpi-rec-card">
-            <span class="kpi-label">Recursive Shards (Reduce)</span>
+            <div class="kpi-head">
+              <span class="kpi-label">Recursive Reduce</span>
+              <span class="eta-badge violet" id="kpi-eta-rec" title="Countdown until 3:1 recursion tree root completes">⏱ --:--:--</span>
+            </div>
             <strong class="kpi-value" id="kpi-rec-shards">--</strong>
             <div class="meter kpi-meter"><div class="meter-fill violet" id="kpi-rec-bar" style="width:0%"></div></div>
             <span class="kpi-foot" id="kpi-fanin-foot">~3:1 compress tree</span>
           </article>
-          <article class="kpi-card">
-            <span class="kpi-label">BitVM3 Final Verifier (M14)</span>
+          <article class="kpi-card" id="kpi-m14-card">
+            <div class="kpi-head">
+              <span class="kpi-label">BitVM3 Final (M14)</span>
+              <span class="eta-badge amber" id="kpi-eta-m14" title="End-to-end countdown including M13 BLAKE3 wrap + M14 785.44M-gate garbled verifier">⏱ --:--:--</span>
+            </div>
             <strong class="kpi-value" id="kpi-gates">785.44M</strong>
             <span class="kpi-foot" id="kpi-mem-foot">--</span>
           </article>

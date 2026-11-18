@@ -363,6 +363,13 @@ class ProgressTailCache:
                 else:
                     rates[f"{kind}_per_min_15m"] = rates[f"{kind}_per_min_5m"]
 
+                recent_30m = [t for t in stamps if now - t <= 1800]
+                if len(recent_30m) >= 2:
+                    span30 = max(120.0, now - recent_30m[0])
+                    rates[f"{kind}_per_min_30m"] = round(len(recent_30m) * 60.0 / span30, 3)
+                else:
+                    rates[f"{kind}_per_min_30m"] = rates[f"{kind}_per_min_15m"]
+
                 durs = list(self._proved_durations_ms[kind])
                 mean_ms[kind] = int(sum(durs) / len(durs)) if durs else 0
 
@@ -787,6 +794,12 @@ class TelemetryCollector:
             or (mean_ms_map.get("reduce", 0) / 1000.0 if mean_ms_map.get("reduce") else 300.0)
         )
 
+        cur_task_elapsed_s = (
+            round(min(phase_elapsed_s, float(progress.get("last_event_age_s", 0.0))), 1)
+            if not phase_finished and active_phase_name in ("gpu", "cpu")
+            else 0.0
+        )
+
         completion_est = estimate_ark_live_completion(
             unique_shards=int(progress.get("unique_shards", 0)),
             unique_reduces=int(progress.get("unique_reduces", 0)),
@@ -794,7 +807,11 @@ class TelemetryCollector:
             ark_vtxos=4,
             session_summary=latest_progress_line,
             rates=progress.get("rates"),
+            mean_proved_ms=mean_ms_map,
+            in_flight_elapsed_s=cur_task_elapsed_s,
+            expected_task_s=float(est_task_s),
             compressed_verified=bool(compressed_exists or wrap_exists or run_verified),
+            all_verified=bool(active_phase_name == "all_proof_checks_passed" or wrap_exists),
         )
 
         return {

@@ -337,7 +337,11 @@ def estimate_ark_live_completion(
     ark_vtxos: int = 4,
     session_summary: dict[str, Any] | None = None,
     rates: dict[str, Any] | None = None,
+    mean_proved_ms: dict[str, Any] | None = None,
+    in_flight_elapsed_s: float = 0.0,
+    expected_task_s: float = 95.0,
     compressed_verified: bool = False,
+    all_verified: bool = False,
 ) -> dict[str, Any]:
     """Compute n / ~total (% completion) for the live Ark ASP SP1 CUDA run.
 
@@ -397,12 +401,51 @@ def estimate_ark_live_completion(
     rem_reduce = max(0, reduce_total - active_tree_reduce)
     rem_tasks = rem_core + rem_reduce
 
-    shard_rate_m = float((rates or {}).get("shard_per_min_15m") or 0.0)
-    eta_hours = (
-        round(rem_core / (shard_rate_m * 60.0), 1)
-        if (not compressed_verified and shard_rate_m >= 0.05 and rem_core > 0)
-        else None
-    )
+    # Smooth wall-clock ETA countdowns (in seconds) across pipeline stages:
+    # Prefer 30-minute rolling rate for stability, falling back to 15m rate, then mean_proved_ms.
+    rate_30m = float((rates or {}).get("shard_per_min_30m") or 0.0)
+    rate_15m = float((rates or {}).get("shard_per_min_15m") or 0.0)
+    shard_rate_m = rate_30m if rate_30m >= 0.05 else rate_15m
+
+    mean_shard_s = float((mean_proved_ms or {}).get("shard") or 0.0) / 1000.0
+    mean_reduce_s = float((mean_proved_ms or {}).get("reduce") or 0.0) / 1000.0
+    if mean_reduce_s <= 1.0:
+        mean_reduce_s = 36.0
+    if mean_shard_s <= 1.0:
+        mean_shard_s = 45.0
+
+    # Measured M13 shrink-wrap (112s) + wrap-only-v2 (72s) + M14 plain+garbled eval (264s) = 448s
+    m13_m14_tail_s = 448.0
+    tree_levels = max(3, math.ceil(math.log(max(3, core_total), RECURSION_FAN_IN)))
+    tree_tail_s = round(tree_levels * mean_reduce_s, 1)
+
+    in_flight_credit_s = min(max(0.0, in_flight_elapsed_s), max(15.0, expected_task_s))
+
+    if all_verified:
+        core_eta_s: float | None = 0.0
+        sp1_eta_s: float | None = 0.0
+        e2e_eta_s: float | None = 0.0
+    elif compressed_verified:
+        core_eta_s = 0.0
+        sp1_eta_s = 0.0
+        e2e_eta_s = m13_m14_tail_s
+    else:
+        if shard_rate_m >= 0.05:
+            core_wall_rate_s = shard_rate_m / 60.0
+        else:
+            # Fallback pace when paused or right after restart (~2.0 shards/min steady state on RTX 5080 2 GiB)
+            core_wall_rate_s = 1.0 / max(24.0, min(60.0, mean_shard_s * 0.5))
+
+        if rem_core > 0:
+            core_eta_s = round(max(0.0, rem_core / core_wall_rate_s - in_flight_credit_s), 1)
+            sp1_eta_s = round(core_eta_s + tree_tail_s, 1)
+        else:
+            core_eta_s = 0.0
+            sp1_eta_s = round(max(0.0, rem_reduce * mean_reduce_s - in_flight_credit_s), 1)
+        e2e_eta_s = round(sp1_eta_s + m13_m14_tail_s, 1)
+
+    eta_hours = round(sp1_eta_s / 3600.0, 1) if (sp1_eta_s is not None and sp1_eta_s > 0) else None
+    next_task_rem_s = round(max(0.0, expected_task_s - in_flight_elapsed_s), 1)
 
     return {
         "basis": "verified-receipt" if is_exact else "r1cs-commitment-basis-estimate",
@@ -424,4 +467,9 @@ def estimate_ark_live_completion(
         "remaining_core_est": rem_core,
         "remaining_tasks_est": rem_tasks,
         "eta_hours_est": eta_hours,
+        "core_eta_seconds": core_eta_s,
+        "sp1_eta_seconds": sp1_eta_s,
+        "e2e_eta_seconds": e2e_eta_s,
+        "m13_m14_tail_seconds": m13_m14_tail_s,
+        "next_task_eta_seconds": next_task_rem_s,
     }

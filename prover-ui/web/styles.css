@@ -881,11 +881,66 @@ button {
   padding: 14px 16px;
 }
 
+.kpi-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
 .kpi-label {
   font: 10.5px var(--mono);
   color: var(--ink-muted);
   display: block;
-  margin-bottom: 6px;
+}
+
+.eta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font: 9.5px var(--mono);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  text-transform: none;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-subtle);
+  color: var(--ink);
+}
+
+.eta-badge.done, .eta-badge.emerald {
+  border-color: rgba(52, 211, 153, 0.45);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.eta-badge.cyan {
+  border-color: rgba(56, 189, 248, 0.48);
+  background: var(--cyan-soft);
+  color: var(--cyan);
+}
+
+.eta-badge.violet {
+  border-color: rgba(167, 139, 250, 0.48);
+  background: var(--violet-soft);
+  color: var(--violet);
+}
+
+.eta-badge.amber {
+  border-color: rgba(251, 191, 36, 0.48);
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.eta-badge.red {
+  border-color: rgba(248, 113, 113, 0.55);
+  background: var(--red-soft);
+  color: var(--red);
 }
 
 .kpi-value {
