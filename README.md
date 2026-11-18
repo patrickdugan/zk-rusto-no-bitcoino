@@ -26,6 +26,10 @@ The [BitVM3 route for Nova header-chain proofs](integrations/bitvm3-nova/README.
 separately: the Nova verifier inside SP1, SP1's final proof with BLAKE3, that proof's verifier as
 a garbled circuit, and a resumable SP1 prover for one machine (CPU or GPU).
 
+The [local Prover & Recursive Shard UI](prover-ui/README.md) provides a zero-dependency telemetry
+and shard-attribution console (`http://127.0.0.1:8788`) covering RAM/WSL/GPU utilization and
+recursive shard counts across blocks, Shinigami script/Taproot leaves, payment UTXOs, and Ark/Cashu.
+
 ## Bitcoin Supernode RPC
 
 The [read-only Supernode RPC service](services/supernode-rpc/README.md)
