@@ -6,7 +6,7 @@ Current protocol: `RBZK-BABE-NOVA-PILOT-AUTHENTICATED-V2`, results schema `2`.
 
 The original preregistration, `RBZK-BABE-NOVA-PILOT-2026-11`, was committed at `23bd390`. The implementation and report reviewed at `991118c8f1cadcc0ae4fa96303bbf65e4f75e00c` are the historical version-one experiment. Subsequent hardening changes the dispute statement, setup API, and Bitcoin label-selection rule. [SPECIFICATION.md](SPECIFICATION.md) defines the corrected relation; [PREREGISTRATION.md](PREREGISTRATION.md) retains the initial predictions and records a later addendum.
 
-The current CPU run in [RESULTS.json](RESULTS.json) identifies source commit `5a9c8221b7a0cafda368930ae63aab6567d1c34b` and a 14-file source manifest with SHA-256 `8a91b07e2e775ba6535c263681f62996d90be7639e57bdcbd0cb4cc2548aedaa`. The optimized build used Rust 1.90.0 on Linux x86_64 with `RAYON_NUM_THREADS=2`; the host reported nine available logical CPUs. GPU use was false. Seeds were deterministic test fixtures, unsuitable for funded sessions.
+The current CPU run in [RESULTS.json](RESULTS.json) identifies source commit `7977c344d620be9199f5699f5344a328e80d51f7` and a 14-file source manifest with SHA-256 `4a31ce04b21c7c24354ca498d4da45df35cf2198184b4f2e73a0018e287ba91a`. The optimized build used Rust 1.90.0 on Linux x86_64 with `RAYON_NUM_THREADS=2`; the host reported nine available logical CPUs. GPU use was false. Seeds were deterministic test fixtures, unsuitable for funded sessions.
 
 Timings describe one recorded run. Variance and deployment throughput remain unmeasured. Serialized bytes and gate counts apply to the fixed claims and source manifest in that run. The security claims depend on the relation and protocol assumptions.
 
@@ -32,8 +32,8 @@ The runs used different execution environments, so their timing differences do n
 
 | Measured relation | Input bits | Non-free gates | Ciphertext bytes | Garble seconds | Evaluate seconds |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Indexed Mersenne-31 opening with complete SHA-256 authentication | 128 | 44,566 | 713,056 | 0.010409 | 0.011275 |
-| One Pallas addition opening with complete authentication, canonical encodings and on-curve endpoints | 3,832 | 2,738,804 | 43,820,864 | 0.737042 | 0.390090 |
+| Indexed Mersenne-31 opening with complete SHA-256 authentication | 128 | 44,566 | 713,056 | 0.010051 | 0.007683 |
+| One Pallas addition opening with complete authentication, canonical encodings and on-curve endpoints | 3,832 | 2,738,804 | 43,820,864 | 0.517068 | 0.439637 |
 
 For both rows, `ExecuteMode` gate counts equal the measured garbling ciphertext counts. Each ciphertext is 16 bytes. The benchmark's constant claim commitments affect constant folding, so reproduction must retain the fixed claim specification. The Pallas row checks one step with the fixed generator `(-1,2)`; the full seven-instance soldering run below uses the 128-bit indexed relation.
 
@@ -56,22 +56,22 @@ The run generated `N=7` instances, opened four seeds and retained `M=3` instance
 | Public setup and verifier key | 55,050,256 bytes | Excludes the separately serialized active-label delivery |
 | Artifact directory total | 55,052,384 bytes | Public setup, verifier key and active-label delivery |
 | Nova primary / secondary constraints | 122,856 / 10,349 | Counts returned by the selected public parameters |
-| Peak resident memory | 452,392 KiB, or 441.789 MiB | Process high-water mark for this run |
+| Peak resident memory | 465,320 KiB, or 454.414 MiB | Process high-water mark for this run |
 
 Three independent selected-label vectors would contain 6,144 raw bytes. The soldered delivery uses 2,048 raw bytes while adding the certificate and translation artifacts reported above. This payload accounting covers label delivery within the measured local experiment.
 
 | Measured operation | Seconds |
 | --- | ---: |
-| Generate all seven garblings and roots | 0.294746 |
-| Nova public-parameter setup | 8.714230 |
-| Compressed-proof key setup | 0.471508 |
-| Recursive folding, 64 steps | 25.550094 |
-| Compression proving | 27.324332 |
-| Certificate verification | 0.489956 |
-| Challenger verification of the complete public setup | 0.652308 |
-| Evaluation of all three retained instances | 0.022526 |
+| Generate all seven garblings and roots | 0.285608 |
+| Nova public-parameter setup | 8.788378 |
+| Compressed-proof key setup | 0.408527 |
+| Recursive folding, 64 steps | 26.771975 |
+| Compression proving | 28.740675 |
+| Certificate verification | 0.637004 |
+| Challenger verification of the complete public setup | 0.814666 |
+| Evaluation of all three retained instances | 0.022497 |
 
-Folding and compression total 52.874426 seconds for this fixture. Key setup has its own rows because it can be reused for this circuit shape. This measurement supplies no estimate for a full application proving job or a production-size soldering configuration.
+Folding and compression total 55.512650 seconds for this fixture. Key setup has its own rows because it can be reused for this circuit shape. This measurement supplies no estimate for a full application proving job or a production-size soldering configuration.
 
 ## Bitcoin serialization evidence
 
