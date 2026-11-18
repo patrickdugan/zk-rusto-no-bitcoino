@@ -22,6 +22,37 @@ jobs:
       RUSTFLAGS: '-C debuginfo=0'
     steps:
       - uses: actions/checkout@v4
+      - name: Restore pinned Bitcoin Core archive
+        id: core-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/babe-core/core.tar.gz
+          key: bitcoin-core-31.1-linux-x86_64-b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e
+      - name: Prepare pinned Bitcoin Core before proving
+        timeout-minutes: 5
+        run: |
+          set -o pipefail
+          BABE_CORE_DIR="$RUNNER_TEMP/babe-core"
+          mkdir -p "$BABE_CORE_DIR" integrations/bitvm3-nova/babe-pilot/ci
+          if [ ! -f "$BABE_CORE_DIR/core.tar.gz" ]; then
+            curl --ipv4 --fail --location --retry 5 --retry-all-errors --retry-delay 5 \
+              --connect-timeout 15 --max-time 120 --retry-max-time 180 \
+              https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz \
+              -o "$BABE_CORE_DIR/core.tar.gz" 2>&1 | tee integrations/bitvm3-nova/babe-pilot/ci/core-download.txt
+          fi
+          python3 - "$BABE_CORE_DIR/core.tar.gz" <<'PY'
+          import hashlib, sys, tarfile
+          path = sys.argv[1]
+          assert hashlib.sha256(open(path, 'rb').read()).hexdigest() == 'b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e'
+          with tarfile.open(path) as archive:
+              archive.extractall(path.rsplit('/', 1)[0], filter='data')
+          PY
+      - name: Cache verified Bitcoin Core archive
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/babe-core/core.tar.gz
+          key: bitcoin-core-31.1-linux-x86_64-b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e
       - name: Toolchain
         run: |
           mkdir -p integrations/bitvm3-nova/babe-pilot/ci
@@ -36,6 +67,7 @@ jobs:
           key: babe-pilot-v2-${{ runner.os }}-rust190-${{ hashFiles('integrations/bitvm3-nova/babe-pilot/Cargo.lock') }}-${{ github.sha }}
           restore-keys: |
             babe-pilot-v2-${{ runner.os }}-rust190-${{ hashFiles('integrations/bitvm3-nova/babe-pilot/Cargo.lock') }}-
+            babe-m14-trace-v1-${{ runner.os }}-rust190-${{ hashFiles('integrations/bitvm3-nova/babe-pilot/Cargo.lock') }}-
       - name: Format and clippy checks
         run: |
           cargo +1.90.0 fmt --manifest-path integrations/bitvm3-nova/babe-pilot/Cargo.toml -- --check
@@ -65,19 +97,10 @@ jobs:
               assert receipt['input_released'] is False
               (output/(scenario+'-init.json')).write_text(json.dumps(receipt, indent=2)+'\n')
           PY
-      - name: Download pinned Bitcoin Core and execute funded regtest
+      - name: Execute funded Bitcoin Core regtest
         run: |
           set -o pipefail
           BABE_CORE_DIR="$RUNNER_TEMP/babe-core"
-          mkdir -p "$BABE_CORE_DIR"
-          curl --fail --location --retry 3 https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz -o "$BABE_CORE_DIR/core.tar.gz"
-          python3 - "$BABE_CORE_DIR/core.tar.gz" <<'PY'
-          import hashlib, sys, tarfile
-          path = sys.argv[1]
-          assert hashlib.sha256(open(path, 'rb').read()).hexdigest() == 'b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e'
-          with tarfile.open(path) as archive:
-              archive.extractall(path.rsplit('/', 1)[0], filter='data')
-          PY
           python3 integrations/bitvm3-nova/babe-pilot/scripts/run-regtest.py \
             --bitcoin-bin "$BABE_CORE_DIR/bitcoin-31.1/bin" --core-archive "$BABE_CORE_DIR/core.tar.gz" \
             --graph-bin "$GITHUB_WORKSPACE/integrations/bitvm3-nova/babe-pilot/target/release/babe-regtest-graph" \
