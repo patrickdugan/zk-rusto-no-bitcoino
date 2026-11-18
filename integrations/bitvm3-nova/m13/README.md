@@ -261,6 +261,7 @@ and SP1's GPU prover requires 24 GB of device memory. `run_full_a.sh` is written
 # verifier, tests, counts (CI runs these)
 cargo test --release --locked --manifest-path nova-bitvm3/m13/verify/Cargo.toml
 python3 nova-bitvm3/m13/verify/opcount/patch_koala_bear.py ~/.cargo/registry/src/index.crates.io-*/ /tmp/p3kb
+# Copy statement/ beside the verifier copy so its ../statement path dependency resolves.
 cargo build --release --features opcount --manifest-path <copy of verify>/Cargo.toml --config 'patch.crates-io.p3-koala-bear.path="/tmp/p3kb"'
 m13-verify verify nova-bitvm3/m13/fixtures/c4-wrap-blake3.bin nova-bitvm3/m13/fixtures/c4-statement.json
 python3 nova-bitvm3/m13/price_m13.py

@@ -12,6 +12,40 @@ concurrency:
   group: nova-m14-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 jobs:
+  m14-hardening:
+    name: Bounded statement, parser and claim checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/m14-hardening
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          mkdir -p integrations/bitvm3-nova/m14/ci
+          rustup toolchain install 1.90.0 --profile minimal
+      - name: Strict statement format and single-use artifact transport
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --locked --manifest-path integrations/bitvm3-nova/m13/statement/Cargo.toml 2>&1 | tee integrations/bitvm3-nova/m14/ci/hardening-statement-format.txt
+          cargo +1.90.0 test --locked --manifest-path integrations/bitvm3-nova/m14/claim/Cargo.toml -- --test-threads=2 2>&1 | tee integrations/bitvm3-nova/m14/ci/hardening-transport.txt
+      - name: Native verification, bounded proof parsing and isolated statement circuit
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --locked --manifest-path integrations/bitvm3-nova/m13/verify/Cargo.toml --test final_verifier -- --test-threads=2 2>&1 | tee integrations/bitvm3-nova/m14/ci/hardening-native.txt
+          cargo +1.90.0 test --locked --manifest-path integrations/bitvm3-nova/m14/e2e/Cargo.toml --lib native::proof_io_tests -- --test-threads=2 2>&1 | tee integrations/bitvm3-nova/m14/ci/hardening-proof-io.txt
+          cargo +1.90.0 test --locked --manifest-path integrations/bitvm3-nova/m14/e2e/Cargo.toml --test statement -- --test-threads=2 2>&1 | tee integrations/bitvm3-nova/m14/ci/hardening-statement-circuit.txt
+      - name: Build and unit-test the separated CLI roles
+        run: |
+          set -o pipefail
+          cargo +1.90.0 test --locked --manifest-path integrations/bitvm3-nova/m14/e2e/Cargo.toml --bin m14-claim -- --test-threads=2 2>&1 | tee integrations/bitvm3-nova/m14/ci/hardening-cli.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-m14-hardening-${{ github.sha }}
+          path: integrations/bitvm3-nova/m14/ci/hardening-*.txt
   m14:
     runs-on: ubuntu-latest
     timeout-minutes: 60
