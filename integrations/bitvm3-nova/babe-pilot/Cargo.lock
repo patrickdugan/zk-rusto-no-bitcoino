@@ -530,7 +530,7 @@ dependencies = [
 [[package]]
 name = "circuit_component_macro"
 version = "0.1.0"
-source = "git+https://github.com/patrickdugan/garbled-snark-verifier?rev=f9da9f8372d9608acefcb8c1f84c748e043ed596#f9da9f8372d9608acefcb8c1f84c748e043ed596"
+source = "git+https://github.com/patrickdugan/garbled-snark-verifier?rev=af374b4a5bb5a805ecaea749c61ff446986e8f10#af374b4a5bb5a805ecaea749c61ff446986e8f10"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -856,7 +856,7 @@ dependencies = [
 [[package]]
 name = "garbled-snark-verifier"
 version = "0.5.0"
-source = "git+https://github.com/patrickdugan/garbled-snark-verifier?rev=f9da9f8372d9608acefcb8c1f84c748e043ed596#f9da9f8372d9608acefcb8c1f84c748e043ed596"
+source = "git+https://github.com/patrickdugan/garbled-snark-verifier?rev=af374b4a5bb5a805ecaea749c61ff446986e8f10#af374b4a5bb5a805ecaea749c61ff446986e8f10"
 dependencies = [
  "aes",
  "ark-bn254",
