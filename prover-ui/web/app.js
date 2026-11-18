@@ -201,6 +201,7 @@
       ["est-header-blocks", "out-header-blocks"],
       ["est-header-shards", "out-header-shards"],
       ["est-window-blocks", "out-window-blocks"],
+      ["est-tx-per-block", "out-tx-per-block"],
       ["est-payment-utxos", "out-payment-utxos"],
       ["est-shinigami-leaves", "out-shinigami-leaves"],
       ["est-ark-vtxos", "out-ark-vtxos"],
@@ -242,6 +243,9 @@
     $("out-header-shards").textContent = fmtInt(p.nova_header_shards);
     $("est-window-blocks").value = p.utxo_window_blocks;
     $("out-window-blocks").textContent = fmtInt(p.utxo_window_blocks);
+    const txBlk = p.avg_tx_per_block || 5449;
+    $("est-tx-per-block").value = txBlk;
+    $("out-tx-per-block").textContent = fmtInt(txBlk);
     $("est-payment-utxos").value = p.payment_utxos;
     $("out-payment-utxos").textContent = fmtInt(p.payment_utxos);
     $("est-shinigami-leaves").value = p.shinigami_leaves;
@@ -600,18 +604,26 @@
   // --- Campaign Sidebar & Banner ---
   function renderCampaignList() {
     const list = $("campaign-list");
+    const liveComp = ((state.live && state.live.wsl_prover) || {}).completion || {};
     list.innerHTML = state.campaigns
       .map((c) => {
         const isLive = c.id === "ark-cashu-live";
         const active = c.id === state.selectedCampaignId ? "active" : "";
         const sm = c.summary_metrics || {};
+        const pct = isLive
+          ? liveComp.overall_pct !== undefined
+            ? `~${liveComp.overall_pct}%`
+            : sm.completion_pct !== undefined
+            ? `~${sm.completion_pct}%`
+            : "live"
+          : `${sm.completion_pct ?? 100}%`;
         return `
           <button type="button" class="campaign-btn ${active}" data-cid="${esc(c.id)}">
             <div class="campaign-btn-top">
               <span>${esc(c.title.split("(")[0].trim())}</span>
               <span class="dot ${isLive ? "live" : "cyan"}"></span>
             </div>
-            <span class="campaign-btn-sub">${esc(sm.domain_items_label || c.network)}</span>
+            <span class="campaign-btn-sub">${esc(sm.domain_items_label || c.network)} · ${esc(pct)}</span>
           </button>`;
       })
       .join("");
@@ -631,6 +643,7 @@
     const sm = c.summary_metrics || {};
     const wsl = (state.live && state.live.wsl_prover) || {};
     const prog = wsl.progress || {};
+    const comp = wsl.completion || {};
 
     $("campaign-network").textContent = c.network;
     $("campaign-title").textContent = c.title;
@@ -641,28 +654,58 @@
     badge.textContent = c.evidence_badge;
     badge.className = "status-pill " + (c.id === "ark-cashu-live" ? "live" : "cyan");
 
+    const isLive = c.id === "ark-cashu-live";
     const coreShards =
-      c.id === "ark-cashu-live" && prog.unique_shards !== undefined
-        ? prog.unique_shards
-        : sm.sp1_core_shards;
+      isLive && prog.unique_shards !== undefined ? prog.unique_shards : sm.sp1_core_shards;
+    const coreTotal =
+      isLive && comp.core_total_est ? comp.core_total_est : sm.sp1_core_shards_total || coreShards;
+    const isEst = isLive ? !comp.is_exact : Boolean(sm.sp1_core_shards_is_est);
+
     const recShards =
-      c.id === "ark-cashu-live" && prog.unique_reduces !== undefined
-        ? prog.unique_reduces
+      isLive && comp.active_tree_reduce_done !== undefined
+        ? comp.active_tree_reduce_done
         : sm.sp1_recursion_shards;
+    const recTotal =
+      isLive && comp.reduce_total_est
+        ? comp.reduce_total_est
+        : sm.sp1_recursion_shards_total || recShards;
+
+    const corePct =
+      coreTotal > 0 ? Math.min(100, (Number(coreShards || 0) / Number(coreTotal)) * 100) : 0;
+    const recPct =
+      recTotal > 0 ? Math.min(100, (Number(recShards || 0) / Number(recTotal)) * 100) : 0;
 
     $("kpi-domain").textContent = sm.domain_items_label || "--";
     $("kpi-domain-foot").textContent = c.evidence_level;
     $("kpi-nova").textContent = `${fmtInt(sm.nova_segments)} seg · ${fmtInt(sm.nova_steps)} steps`;
     $("kpi-nova-foot").textContent = `${fmtInt(sm.constraints_per_step)} R1CS / step`;
-    $("kpi-core-shards").textContent = fmtInt(coreShards);
+
+    $("kpi-core-shards").textContent = coreTotal
+      ? `${fmtInt(coreShards)} / ${isEst ? "~" : ""}${fmtInt(coreTotal)}`
+      : fmtInt(coreShards);
+    if ($("kpi-core-bar")) $("kpi-core-bar").style.width = `${corePct.toFixed(1)}%`;
+
     const exp = sm.sp1_element_threshold ? Math.round(Math.log2(sm.sp1_element_threshold)) : 27;
-    $("kpi-threshold-foot").textContent = `Threshold 2^${exp} (${fmtInt(sm.sp1_element_threshold)})`;
-    $("kpi-rec-shards").textContent = fmtInt(recShards);
-    const ratio =
-      coreShards && recShards
-        ? `${(coreShards / recShards).toFixed(2)}:1 shard:reduce`
-        : "~3:1 compress tree";
-    $("kpi-fanin-foot").textContent = ratio;
+    $("kpi-threshold-foot").textContent = isEst
+      ? `~${corePct.toFixed(1)}% est. · Threshold 2^${exp}`
+      : `${corePct.toFixed(0)}% verified · Threshold 2^${exp}`;
+
+    $("kpi-rec-shards").textContent = recTotal
+      ? `${fmtInt(recShards)} / ${isEst ? "~" : ""}${fmtInt(recTotal)}`
+      : fmtInt(recShards);
+    if ($("kpi-rec-bar")) $("kpi-rec-bar").style.width = `${recPct.toFixed(1)}%`;
+
+    if (isLive && comp.regrouped_extra_reduces > 0) {
+      $("kpi-fanin-foot").textContent = `~${recPct.toFixed(1)}% tree (${fmtInt(
+        comp.cumulative_memo_reduce
+      )} memo w/ restarts)`;
+    } else {
+      const ratio =
+        coreShards && recShards
+          ? `${(coreShards / recShards).toFixed(2)}:1 · ${recPct.toFixed(isEst ? 1 : 0)}%`
+          : "~3:1 compress tree";
+      $("kpi-fanin-foot").textContent = ratio;
+    }
     $("kpi-gates").textContent = `${(Number(sm.final_gates || 785442492) / 1e6).toFixed(2)}M`;
     $("kpi-mem-foot").textContent = sm.ram_peak_label || "M14 non-free AND gates";
 
@@ -730,6 +773,7 @@
     const wsl = d.wsl_prover || {};
     const lv = wsl.liveness || {};
     const prog = wsl.progress || {};
+    const comp = wsl.completion || {};
     const sess = wsl.session_summary || {};
     const latestRes = wsl.latest_resource || {};
     const limits = wsl.limits || {};
@@ -744,6 +788,19 @@
       } holds`;
       $("cockpit-headline").textContent = lv.headline || "Monitoring WSL prover…";
       $("cockpit-detail").textContent = lv.detail || "";
+
+      // Overall campaign n / ~total (% completion) bar
+      if (comp.tasks_total_est) {
+        const tilde = comp.is_exact ? "" : "~";
+        const etaSuffix = comp.eta_hours_est ? ` · ETA ~${comp.eta_hours_est}h` : "";
+        $("cockpit-overall-left").textContent = comp.is_exact
+          ? "Verified Campaign Completion (Core + 3:1 Tree)"
+          : "Est. Campaign Progress (ARK1 R1CS 2^15+2^14 @ 2^26)";
+        $("cockpit-overall-right").textContent = `${fmtInt(comp.tasks_done)} / ${tilde}${fmtInt(
+          comp.tasks_total_est
+        )} tasks (${tilde}${comp.overall_pct}%)${etaSuffix}`;
+        $("cockpit-overall-fill").style.width = `${Math.max(2, comp.overall_pct || 0).toFixed(1)}%`;
+      }
 
       const wire = $("bus-active-wire");
       if (wire) {
@@ -840,30 +897,60 @@
       (hm.disks && hm.disks["D:\\"] ? Number(fmtGiB(hm.disks["D:\\"].free_bytes, 1)) : "--");
     $("disk-free-label").textContent = `D: ${dFree}G free`;
 
-    // 4. Active Shard Stream Card & Bus Counts
+    // 4. Active Shard Stream Card & Bus Counts (n / ~total + % completion)
     const uShards = prog.unique_shards ?? 0;
     const uReduces = prog.unique_reduces ?? 0;
-    $("live-shards-val").textContent = `${fmtInt(uShards)} shards`;
-    $("live-reduces-val").textContent = `+ ${fmtInt(uReduces)} reduce`;
-    if ($("bus-shard-count")) $("bus-shard-count").textContent = `${fmtInt(uShards)} core`;
-    if ($("bus-reduce-count")) $("bus-reduce-count").textContent = `${fmtInt(uReduces)} reduce`;
-    if ($("mosaic-total-count")) $("mosaic-total-count").textContent = fmtInt(uShards + uReduces);
+    const treeReduces = comp.active_tree_reduce_done ?? uReduces;
+    const coreTot = comp.core_total_est || 0;
+    const redTot = comp.reduce_total_est || 0;
+    const tilde = comp.is_exact ? "" : "~";
+    const ovPct = comp.overall_pct ?? 0;
+
+    $("live-shards-val").textContent = coreTot
+      ? `${fmtInt(uShards)} / ${tilde}${fmtInt(coreTot)}`
+      : `${fmtInt(uShards)} shards`;
+    $("live-reduces-val").textContent = redTot
+      ? `${fmtInt(treeReduces)} / ${tilde}${fmtInt(redTot)} rec`
+      : `+ ${fmtInt(uReduces)} reduce`;
+
+    if ($("bus-shard-count")) {
+      $("bus-shard-count").textContent = coreTot
+        ? `${fmtInt(uShards)}/${tilde}${fmtInt(coreTot)}`
+        : `${fmtInt(uShards)} core`;
+    }
+    if ($("bus-reduce-count")) {
+      $("bus-reduce-count").textContent = redTot
+        ? `${fmtInt(treeReduces)}/${tilde}${fmtInt(redTot)}`
+        : `${fmtInt(uReduces)} reduce`;
+    }
+    if ($("mosaic-total-count")) {
+      $("mosaic-total-count").textContent = coreTot
+        ? `${fmtInt(uShards)} / ${tilde}${fmtInt(coreTot)} Core · ${tilde}${ovPct}% · ${fmtInt(
+            uShards + uReduces
+          )} Memo`
+        : `${fmtInt(uShards + uReduces)} Checkpoints`;
+    }
 
     const rates = prog.rates || {};
     const combinedRate = Number(
       (rates.shard_per_min_15m || 0) + (rates.reduce_per_min_15m || 0)
     ).toFixed(1);
-    $("shard-rate-badge").textContent = `${combinedRate} tasks/m`;
-    const ratioPct = uShards + uReduces > 0 ? (uShards / (uShards + uReduces)) * 100 : 50;
-    $("live-shard-bar").style.width = `${ratioPct.toFixed(1)}%`;
-    $("session-proved-label").textContent =
-      sess.session_shards_proved !== undefined
-        ? `+${sess.session_shards_proved} sh / +${sess.session_recursion_proved} rec`
-        : `${fmtInt((prog.proved_rows_by_kind || {}).shard || 0)} proved`;
-    $("store-mib-label").textContent =
-      sess.artifact_store_mib !== undefined
-        ? `Store: ${fmtInt(sess.artifact_store_mib)} MiB`
-        : `${fmtInt(prog.total_rows || 0)} rows`;
+    $("shard-rate-badge").textContent = coreTot
+      ? `${tilde}${ovPct}% · ${combinedRate}/m`
+      : `${combinedRate} tasks/m`;
+    $("live-shard-bar").style.width = coreTot
+      ? `${Math.max(2, ovPct).toFixed(1)}%`
+      : `${(uShards + uReduces > 0 ? (uShards / (uShards + uReduces)) * 100 : 50).toFixed(1)}%`;
+    $("session-proved-label").textContent = comp.tasks_total_est
+      ? `${fmtInt(comp.tasks_done)}/${tilde}${fmtInt(comp.tasks_total_est)} tasks`
+      : sess.session_shards_proved !== undefined
+      ? `+${sess.session_shards_proved} sh / +${sess.session_recursion_proved} rec`
+      : `${fmtInt((prog.proved_rows_by_kind || {}).shard || 0)} proved`;
+    $("store-mib-label").textContent = comp.eta_hours_est
+      ? `ETA ~${comp.eta_hours_est}h`
+      : sess.artifact_store_mib !== undefined
+      ? `Store: ${fmtInt(sess.artifact_store_mib)}M`
+      : `${fmtInt(prog.total_rows || 0)} rows`;
 
     $("active-phase-name").textContent = wsl.active_phase_dir || wsl.status || "--";
     if (wsl.phase_log_tail) {
@@ -894,6 +981,7 @@
     renderMemoryChart(wsl.resources_series || []);
     renderTaskAndGpuChart(prog.recent_events || [], gpu.history || []);
 
+    renderCampaignList();
     if (state.selectedCampaignId === "ark-cashu-live") {
       renderSelectedCampaign();
     }
@@ -1459,6 +1547,7 @@
       header_blocks: Number($("est-header-blocks").value),
       nova_header_shards: Number($("est-header-shards").value),
       utxo_window_blocks: Number($("est-window-blocks").value),
+      avg_tx_per_block: Number($("est-tx-per-block").value),
       payment_utxos: Number($("est-payment-utxos").value),
       shinigami_leaves: Number($("est-shinigami-leaves").value),
       ark_vtxos: Number($("est-ark-vtxos").value),
@@ -1487,7 +1576,10 @@
     const rc = res.resources || {};
     const cards = [
       ["Nova Segments & Steps", `${fmtInt(nv.total_segments)} segs · ${fmtInt(nv.total_steps)} steps`],
-      ["Total R1CS Constraints", fmtInt(nv.total_r1cs_constraints)],
+      [
+        "R1CS & Commitment Basis",
+        `${fmtInt(nv.total_r1cs_constraints)} R1CS (${fmtInt(nv.dominant_basis_points)} G-pts)`,
+      ],
       ["M18 Indexed UTXO Leaves", fmtInt(nv.m18_indexed_utxo_leaves)],
       ["SP1 Guest Instructions", fmtInt(sp.total_instructions)],
       ["SP1 Core Shards (ProveShard)", fmtInt(sp.core_shards)],

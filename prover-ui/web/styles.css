@@ -737,9 +737,10 @@ button {
 }
 
 .ribbon-val {
-  font-size: 19px;
+  font-size: clamp(15px, 1.25vw, 18.5px);
   font-weight: 650;
   letter-spacing: -0.5px;
+  white-space: nowrap;
 }
 
 .ribbon-unit {
@@ -888,10 +889,16 @@ button {
 }
 
 .kpi-value {
-  font-size: 22px;
+  font-size: clamp(16px, 1.35vw, 20.5px);
   font-weight: 650;
   letter-spacing: -0.6px;
   display: block;
+  white-space: nowrap;
+}
+
+.kpi-meter {
+  height: 4px;
+  margin-top: 6px;
 }
 
 .kpi-foot {

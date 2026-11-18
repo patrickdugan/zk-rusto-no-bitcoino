@@ -150,11 +150,13 @@
           <article class="kpi-card" id="kpi-core-card">
             <span class="kpi-label">SP1 Core Shards (ProveShard)</span>
             <strong class="kpi-value" id="kpi-core-shards">--</strong>
+            <div class="meter kpi-meter"><div class="meter-fill emerald" id="kpi-core-bar" style="width:0%"></div></div>
             <span class="kpi-foot" id="kpi-threshold-foot">Threshold --</span>
           </article>
           <article class="kpi-card" id="kpi-rec-card">
             <span class="kpi-label">Recursive Shards (Reduce)</span>
             <strong class="kpi-value" id="kpi-rec-shards">--</strong>
+            <div class="meter kpi-meter"><div class="meter-fill violet" id="kpi-rec-bar" style="width:0%"></div></div>
             <span class="kpi-foot" id="kpi-fanin-foot">~3:1 compress tree</span>
           </article>
           <article class="kpi-card">
@@ -200,10 +202,17 @@
 
                 <div class="headroom-progress-box">
                   <div class="headroom-top">
+                    <span id="cockpit-overall-left">Estimated Task Completion (Core + Active 3:1 Tree)</span>
+                    <strong id="cockpit-overall-right">-- / -- (--%)</strong>
+                  </div>
+                  <div class="meter" style="height:8px;margin-bottom:9px">
+                    <div class="meter-fill emerald" id="cockpit-overall-fill" style="width:0%"></div>
+                  </div>
+                  <div class="headroom-top">
                     <span id="cockpit-bar-left">In-Flight Task / Headroom Progress</span>
                     <strong id="cockpit-bar-right">--</strong>
                   </div>
-                  <div class="meter" style="height:8px">
+                  <div class="meter" style="height:7px">
                     <div class="meter-fill cyan" id="cockpit-progress-fill" style="width:25%"></div>
                   </div>
                 </div>
@@ -261,7 +270,7 @@
               <div class="cockpit-right">
                 <div class="mosaic-head">
                   <div>
-                    <h3>Live Shard &amp; Recursion Mosaic (<span id="mosaic-total-count">--</span> Checkpoints)</h3>
+                    <h3>Live Shard &amp; Recursion Mosaic (<span id="mosaic-total-count">--</span>)</h3>
                   </div>
                   <button type="button" class="replay-btn" id="replay-completions-btn" title="Visually replay the last 12 recorded shard/recursion completions from progress.jsonl">
                     ▶ Replay Last 12 Shards
@@ -607,6 +616,14 @@
                     <output id="out-window-blocks">0</output>
                   </div>
                   <input type="range" id="est-window-blocks" min="0" max="80" step="1" value="0">
+                </div>
+
+                <div class="slider-field">
+                  <div class="slider-head">
+                    <label for="est-tx-per-block">M18 Avg Transactions / Block (<code>max(sha256, in+2·out)</code>)</label>
+                    <output id="out-tx-per-block">5,449</output>
+                  </div>
+                  <input type="range" id="est-tx-per-block" min="500" max="12000" step="100" value="5449">
                 </div>
 
                 <div class="slider-field">

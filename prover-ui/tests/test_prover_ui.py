@@ -10,7 +10,11 @@ import time
 import unittest
 
 from rbzk_prover_ui.campaigns import load_campaigns
-from rbzk_prover_ui.correlator import estimate_workload
+from rbzk_prover_ui.correlator import (
+    circuit_basis_points,
+    estimate_ark_live_completion,
+    estimate_workload,
+)
 from rbzk_prover_ui.server import ProverUIApp, create_server
 from rbzk_prover_ui.telemetry import ProgressTailCache, TelemetryCollector
 
@@ -120,6 +124,33 @@ class ProverUITestSuite(unittest.TestCase):
         self.assertGreater(combo["sp1"]["shard_attribution"]["shinigami_leaves"], 0)
         self.assertGreater(combo["sp1"]["shard_attribution"]["ark_vtxo_policy"], 0)
 
+        # Commitment-basis scaling: ARK1 (19,113 -> 2^15+2^14=49,152) is 1/3 of NHC1 (82,809 -> 147,456)
+        self.assertEqual(circuit_basis_points(82_809), 147_456)
+        self.assertEqual(circuit_basis_points(19_113), 49_152)
+
+        comp = estimate_ark_live_completion(
+            unique_shards=1247,
+            unique_reduces=1201,
+            element_threshold=67_108_864,
+            ark_vtxos=4,
+            session_summary={
+                "session_shards_proved": 116,
+                "session_shards_replayed": 1131,
+                "session_recursion_proved": 169,
+                "session_recursion_replayed": 236,
+            },
+            rates={"shard_per_min_15m": 2.4},
+            compressed_verified=False,
+        )
+        self.assertFalse(comp["is_exact"])
+        self.assertEqual(comp["active_tree_reduce_done"], 405)
+        self.assertEqual(comp["regrouped_extra_reduces"], 796)
+        self.assertGreater(comp["core_total_est"], 5500)
+        self.assertLess(comp["core_total_est"], 7200)
+        self.assertGreater(comp["overall_pct"], 15.0)
+        self.assertLess(comp["overall_pct"], 25.0)
+        self.assertIsNotNone(comp["eta_hours_est"])
+
     def test_http_endpoints_and_host_header_guard(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -181,6 +212,9 @@ class ProverUITestSuite(unittest.TestCase):
                 self.assertEqual(len(live["wsl_prover"]["progress"]["mosaic_tail"]), 1)
                 self.assertTrue(live["wsl_prover"]["phase_running"])
                 self.assertIn("mode", live["wsl_prover"]["liveness"])
+                self.assertIn("completion", live["wsl_prover"])
+                self.assertEqual(live["wsl_prover"]["completion"]["core_done"], 1)
+                self.assertGreater(live["wsl_prover"]["completion"]["core_total_est"], 5000)
                 self.assertTrue(live["host_guard"]["fresh"])
 
                 # Test SSE /api/stream emits a telemetry frame immediately

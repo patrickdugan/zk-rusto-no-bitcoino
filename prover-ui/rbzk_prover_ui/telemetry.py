@@ -18,6 +18,8 @@ import threading
 import time
 from typing import Any
 
+from .correlator import estimate_ark_live_completion
+
 
 DEFAULT_WSL_ARK_BASE = Path(r"\\wsl.localhost\Ubuntu-24.04\var\tmp\ark-asp-full-20261117")
 DEFAULT_HOST_HEARTBEAT = Path(
@@ -511,6 +513,16 @@ class TelemetryCollector:
             run_dir = base / "prover"
         progress = self._progress_cache.read(run_dir / "progress.jsonl")
 
+        run_cfg_element_threshold = 67_108_864
+        run_cfg_path = run_dir / "run.json"
+        if run_cfg_path.exists():
+            try:
+                rcfg_obj = json.loads(run_cfg_path.read_text(encoding="utf-8", errors="replace"))
+                run_cfg_element_threshold = int(rcfg_obj.get("element_threshold", 67_108_864))
+            except (OSError, ValueError):
+                pass
+        run_verified = (run_dir / "result.json").exists()
+
         # Count live in-flight artifacts & trash artifacts
         inflight_artifacts = 0
         trash_artifacts = 0
@@ -775,6 +787,16 @@ class TelemetryCollector:
             or (mean_ms_map.get("reduce", 0) / 1000.0 if mean_ms_map.get("reduce") else 300.0)
         )
 
+        completion_est = estimate_ark_live_completion(
+            unique_shards=int(progress.get("unique_shards", 0)),
+            unique_reduces=int(progress.get("unique_reduces", 0)),
+            element_threshold=run_cfg_element_threshold,
+            ark_vtxos=4,
+            session_summary=latest_progress_line,
+            rates=progress.get("rates"),
+            compressed_verified=bool(compressed_exists or wrap_exists or run_verified),
+        )
+
         return {
             "reachable": True,
             "base_dir": str(base),
@@ -793,6 +815,7 @@ class TelemetryCollector:
             "inflight_artifacts": inflight_artifacts,
             "trash_artifacts": trash_artifacts,
             "last_resource_age_s": last_resource_age_s,
+            "completion": completion_est,
             "liveness": {
                 "mode": op_mode,
                 "headline": op_headline,
@@ -817,7 +840,7 @@ class TelemetryCollector:
                 "host_free_floor_mib": 3072,
                 "host_start_reserve_mib": startup_reserve_mib,
                 "cuda_pool_release_mib": 256,
-                "element_threshold": 67108864,
+                "element_threshold": run_cfg_element_threshold,
             },
             "progress": progress,
             "session_summary": latest_progress_line,

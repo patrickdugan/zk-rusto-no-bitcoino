@@ -46,4 +46,5 @@ python -m unittest discover -s tests -v
    - **Ark ASP Policy (`ARK1`) & Cashu Proof Grove**: Displays the `4` Proof Grove Bark VTXOs at height `679` (`79,440 sats` managed → `1` refresh + `3` liquidity deferrals), the `25,000 sat` Cashu NUT-09/20 DLEQ → `10,000 sat` Bark VTXO → `9,165 sat` offline exit flow, and SHA-256 verifier pins (including cross-program `M16 → ARK1` refusal).
 
 4. **Shard & Hardware Planner (`04`)**
-   - Interactive workload estimator computing Nova segments/constraints, SP1 instructions, core & recursive shard counts, and RAM/swap/VRAM envelopes across `2^26`..`2^28` shard thresholds. Projections are explicitly badged `ANALYTICAL PROJECTION · MEASURED UNIT CONSTANTS` and never conflated with verified proof receipts.
+   - Interactive workload estimator computing Nova segments/constraints, R1CS commitment basis ($2^{\lceil\log_2 C_1\rceil} + 2^{\lceil\log_2 C_2\rceil}$), SP1 instructions, core & recursive shard counts, and RAM/swap/VRAM envelopes across `2^26`..`2^28` shard thresholds. Projections are explicitly badged `ANALYTICAL PROJECTION · MEASURED UNIT CONSTANTS` and never conflated with verified proof receipts.
+   - See [`SHARD_ESTIMATION.md`](SHARD_ESTIMATION.md) for the full 3-stage shard estimation derivation, measured `M15`/`M16`/`M18`/`ARK1` constants, and restart recursion-regrouping accounting.
