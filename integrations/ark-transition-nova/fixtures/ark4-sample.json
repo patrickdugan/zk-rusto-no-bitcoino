@@ -1,0 +1,28 @@
+{
+  "schema": "ark-transition-nova-witness-v1",
+  "statement_digest": "b1a1e2ebf6a194805c3e614a946b390b8eb492464c926d6d9d45fe9f935b175d",
+  "fee_bound_sat": 5000,
+  "items": [
+    {"kind": "input", "spend_id": "da9147950c317949debf93036bdd2984e09e6eb2559944986a2de7a42d954dcd", "value_sat": 2000},
+    {"kind": "input", "spend_id": "a64ed5f2055a77326fc75a74b5d4a563dd523cb524b31cf4f0f3baeef79ec263", "value_sat": 2000},
+    {"kind": "input", "spend_id": "3827c23f06fe46a647912681d359436cd16cf02a130aff1d66616d9bcd822d3d", "value_sat": 2000},
+    {"kind": "input", "spend_id": "56afc487259c5c39394fc5211809a5f35d757751deee84f055767a66715f7da7", "value_sat": 2000},
+    {"kind": "input", "spend_id": "77805e3f219c7741fa629667e76426f3376812f42c21527dc66f074f83071736", "value_sat": 50000},
+    {"kind": "output", "value_sat": 4300, "commit": "2bd841ae9ffc643e1a312667623d96239a909e63c35e1b6909e0790e52fd04d5"},
+    {"kind": "output", "value_sat": 53200, "commit": "f5eb0b603c0bf5fba821fab0a4b4230ef4263db12ebb87848e6f2a50ab84236c"},
+    {"kind": "close", "fee_sat": 500},
+    {"kind": "input", "spend_id": "06dd0c3bb259c1eb89857a12b5fa287999089f261b794bceff6784d37631c657", "value_sat": 4300},
+    {"kind": "output", "value_sat": 2100, "commit": "ec1386c3bc059c71a23d82d373139d4bd2854bea32cb6ab6fe15872be1c72a8b"},
+    {"kind": "output", "value_sat": 2100, "commit": "ec3e2c6134f0d059aaa0120e8399593feb5648368957d2cc34b448ecde06ca28"},
+    {"kind": "close", "fee_sat": 100},
+    {"kind": "input", "spend_id": "ac3be1e1e30f9032387c67d1abfa733531776459964639be6fe4662b85f39150", "value_sat": 2100},
+    {"kind": "output", "value_sat": 1000, "commit": "d9f6d54144ca4b92d402b815442448b17e1352a290cc2423b56eeeceee087a57"},
+    {"kind": "output", "value_sat": 1000, "commit": "6c83902e7c541d8963e57ae834ecc8f62e74e1e5b40dacc6a7b31a69bcca4b75"},
+    {"kind": "close", "fee_sat": 100},
+    {"kind": "input", "spend_id": "c0e141f0ab7099a87ad4ee7e352aea71ad9e24fb6aa6436518e402c52e6592b2", "value_sat": 2100},
+    {"kind": "output", "value_sat": 1000, "commit": "bcc580639ff9b5c5c51fc548d4b4afb6882038328b48f664d2e21ff0f078c684"},
+    {"kind": "output", "value_sat": 1000, "commit": "351ed2d93cc41883f829c44fc82bcf2f0227d2e18c03b9b324a9e9bccc29d11e"},
+    {"kind": "close", "fee_sat": 100}
+  ],
+  "expect": {"tx_count": 4, "input_count": 8, "sum_in_sat": 66500, "sum_out_sat": 65700, "sum_fee_sat": 800}
+}
