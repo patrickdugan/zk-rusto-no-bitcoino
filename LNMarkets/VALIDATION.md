@@ -1,4 +1,4 @@
-> **Architecture note (2026-11-20):** Results below document the original native and SP1 experiments. The designated next proof is the **Nova 0.76 fold through BitVM3** in [nova/](nova/README.md). The standalone SP1 Groth16 experiment is retired from active CI. Its successful RISC-V guest execution was 24,133,337 instructions with a matching 276-byte journal, which does not establish a Nova proof.
+> **Current work:** The active Nova relation and local proof workflow are documented in [nova/README.md](nova/README.md). This file preserves the earlier native/SP1 validation record. Its historical status labels apply to those experiments. The previous opaque-digest Nova circuit was superseded by v2 after constraint review; its old measurements cannot establish v2 correctness or performance.
 
 # Validation record
 

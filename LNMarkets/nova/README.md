@@ -1,123 +1,167 @@
-# LNMarkets on BitVM3/Nova
+# LNMarkets Nova prototypes
 
-The primary LNMarkets proof architecture is **Nova 0.76 folding in BitVM3**, matching
-[integrations/bitvm3-nova](../../integrations/bitvm3-nova/README.md).
-The old standalone SP1 guest and Groth16 harness are retained under
-[../sp1](../sp1/README.md) as a non-default experiment. They are separate from
-this architecture.
+The active batch relation is **`lnmarkets/sha256-transcript-accounting/v2`**.
+It uses Nova 0.76 over Pallas/Vesta, with M18's Poseidon sponge. Each step hashes
+an exact private signed transcript inside R1CS and binds its outpoint and
+amounts to the accumulated settlement state. A separate Secq/Secp circuit
+verifies a BIP340 signature over a 32-byte message.
 
-## The first folding step
+These are separate proof statements. The current batch proof needs native
+signature validation and independently prepared expectations. Combining the
+signature circuit with the batch requires proving signer membership and signed
+message derivation against the same contract records. Bitcoin spending and
+BitVM3 final verification remain further integration work.
 
-The verified batch certificate comes from
-[../statement](../statement/src/lib.rs). Its native verifier checks the actual
-BIP340 summary and batch-consent co-signatures, the indexed outcome and
-two-of-three oracle signatures, the original UTXORef Taproot funding template,
-the SHA-256 sparse nullifier transition, and the exact unsigned Bitcoin batch.
+## Current Pallas statement
 
-For each row, a new Nova step receives an **opaque SHA-256 digest of the signed
-transcript**, the funding outpoint limbs, outcome index, collateral and payouts.
-Inside R1CS, the step enforces satoshi conservation and 51-bit ranges, advances
-cumulative totals and absorbs those inputs into M18's existing Pallas Poseidon
-sponge. Eight field elements carry the state across steps:
+The native [batch verifier](../statement/src/lib.rs) checks all six BIP340
+signatures per contract, the selected payout membership, two-of-three oracle
+policy, UTXORef Taproot template, SHA256 replay transition and exact unsigned
+Bitcoin transaction. It returns the 276-byte journal used by this experiment.
 
-```
-z[0] = step count
-z[1] = total collateral
-z[2] = total payouts including anchor
-z[3] = total fee
-z[4] = Poseidon chain of private signed-row digests and economics
-z[5] = native journal SHA-256 low 128 bits
-z[6] = native journal SHA-256 high 128 bits
-z[7] = epoch
-```
+The Nova circuit now recomputes SHA256 of the **600-byte signed-row transcript**
+using the existing SHA gadget. That transcript contains the summary and batch
+consent digests, party and oracle signature bytes, outcome data and funding
+outpoint. Exact byte constraints tie the payout amounts, outcome index and
+outpoint to the same allocated values used in accounting and Poseidon. Each
+step has a fixed shape independent of witness values.
 
-The initial Poseidon root includes the same journal digest and epoch. The fold
-is checked against a separately calculated native final state.
+Eight field elements carry the batch state:
 
-**Security boundary:** This first R1CS step treats the signed-row SHA-256
-digest as an opaque witness, so a prover could invent another digest. An R1CS
-proof alone does *not* prove either party's BIP340 signature, an oracle
-attestation, full original DLC signature verification, a Merkle SHA256 path, or
-Bitcoin spendability. The native exporter currently validates those claims
-before trace construction; a malicious exporter is an explicit threat.
-An independent BitVM3 verifier needs these claims constrained in the Nova
-circuit or verified through a separately pinned proof with exact shared inputs.
-Do not accept the fold as a funded-execution authorization.
+| Index | Meaning |
+| ---: | --- |
+| 0 | Count, incremented by a literal one; at most 32 steps |
+| 1 | Total collateral |
+| 2 | Total trader, maker and anchor payouts |
+| 3 | Total miner fee |
+| 4 | Poseidon chain of signed transcript digests and economic fields |
+| 5, 6 | SHA256 of the native journal, split into 128-bit limbs |
+| 7 | Epoch |
 
-## Why this is the BitVM3 route
+Row amounts fit 51 bits. Conservation and bounded 56-bit running totals prevent
+field-wrap ambiguity. The journal hash halves and epoch carry unchanged. The
+receiver reconstructs the initial commitment and checks the final count and
+amounts against its independently pinned journal.
 
-- **Nova is the repeated prover:** one contract contributes a state-transition
-  step. The node folds through 1, 2, 8 or 32 contracts rather than running
-  a single SP1 guest over the entire private batch.
-- **M18** is the pinned model for Pallas/Vesta, Poseidon and UTXO map folding.
-  Its chain/window result is a distinct proof requiring a binding to the same
-  funding outpoints and observed Bitcoin tip.
-- **M17 Shinigami** currently handles legacy/P2SH/witness-v0 script execution
-  and leaves Taproot/script-path signature semantics for a separate extension.
-  Treat witness-v0 proof costs as unrelated to Taproot costs.
-- **BitVM3 final verification:** M12–M15 currently put the Nova verifier in an
-  SP1 guest and pass its wrapped final proof through the garbled M14 verifier.
-  That architecture can still use SP1 for proof shrinkage. The LNMarkets
-  *application* is a Nova fold, with its own verifier key and public state,
-  not a standalone SP1/Groth16 DLC application proof.
+The summary and batch-consent digests inside the transcript still need their
+own derivation proof. The Pallas circuit commits the signature bytes but does
+not establish signature validity. It also leaves outcome/nullifier membership,
+transaction serialization, funding and spendability outside R1CS.
+[SOUNDNESS.md](SOUNDNESS.md) gives the exact byte offsets and trust boundaries.
 
-The existing 276-byte journal is a native statement. Its SHA256 is carried in
-the folding state and must be pinned independently by the receiver. A final
-BitVM3 composite proof must verify both the Nova output and the native
-statement's missing cryptographic checks against exact shared commitments.
+## Separate BIP340 relation
 
-## Run
+[src/bip340.rs](src/bip340.rs) uses Nova's existing secp256k1 ECC gadgets over
+the Secq scalar field. It constrains canonical x-only public keys, curve
+membership, even-y lifts, `s < n`, the tagged SHA256 challenge and
+`sG − eP`. The resulting point must be finite, have even y and match the
+signature's canonical r. All 256 challenge bits enter scalar multiplication.
 
-From the repository root:
+A one-step proof starts at `[0, 0, 0]` and outputs
+`[1, claim_low128, claim_high128]`, where the claim commits to the exact key,
+32-byte message and 64-byte signature. Its R1CS has 135,730 constraints,
+including the claim hash. The test suite includes all 15 official BIP340
+vectors for 32-byte messages, boundary scalars and a complete shape comparison.
+
+The proving benchmark is explicit:
 
 ```sh
-cargo test --manifest-path LNMarkets/nova/Cargo.toml --lib
-cargo run --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova -- trace 2
-cargo run --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova -- prove 1
-cargo run --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova -- prove 2 --compressed
+mkdir -p LNMarkets/.local
+RAYON_NUM_THREADS=2 CARGO_BUILD_JOBS=2 LNM_BIP340_REPORT=LNMarkets/.local/bip340-proof.json cargo test --locked --release --manifest-path LNMarkets/nova/Cargo.toml --lib bip340::tests::real_recursive_and_compressed_signature_proof -- --ignored --exact --nocapture --test-threads=1
 ```
 
-The native test is an R1CS conformance check. Only `prove` calls Nova's
-RecursiveSNARK prover and verifier. `--compressed` additionally creates and
-verifies a Spartan/IPA CompressedSNARK. All fixtures have public test keys,
-synthetic outpoints and zero live Bitcoin exposure.
+A signature proof under a supplied key does not establish that the key belongs
+to the correct DLC party or oracle. The next bridge must open the canonical
+summary, select its authorized keys and recompute each application message.
+The Pallas and Secq commitments live in different fields; a composed verifier
+needs an explicit common byte commitment or a constrained bridge.
 
+## Prepare, prove and verify locally
 
-## First verified Nova results (20 November 2026)
+Use a current stable Rust toolchain. A two-thread starting point keeps the
+initial CPU experiment reproducible:
 
-The [Nova CI run](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/44701459434) passed actual Nova 0.76 recursive proofs for 1, 2, 8 and 32 synthetic contracts and verified a **10,816-byte** serialized Spartan/IPA compressed proof for two contracts.
+```sh
+cargo test --locked --manifest-path LNMarkets/nova/Cargo.toml --all-targets -- --test-threads=1
+CARGO_BUILD_JOBS=2 cargo build --locked --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova
+mkdir -p LNMarkets/.local/nova-v2
+RAYON_NUM_THREADS=2 LNMarkets/nova/target/release/lnm-nova prepare 2 --out LNMarkets/.local/nova-v2/expected.json
+RAYON_NUM_THREADS=2 LNMarkets/nova/target/release/lnm-nova prove 2 --compressed --out LNMarkets/.local/nova-v2/bundle
+RAYON_NUM_THREADS=2 LNMarkets/nova/target/release/lnm-nova verify --bundle LNMarkets/.local/nova-v2/bundle --expect LNMarkets/.local/nova-v2/expected.json
+```
 
-| Rows | Recursive prove | Recursive verify |
-| ---: | ---: | ---: |
-| 1 | 0.0449 s | 0.0561 s |
-| 2 | 0.1308 s | 0.0856 s |
-| 8 | 0.7522 s | 0.1164 s |
-| 32 | 3.0828 s | 0.1098 s |
+Run from the repository root. Parent directories must exist; output paths must
+be new. Fixture counts 1, 2, 8 and 32 are accepted. A wallet exporter can replace
+the count with `--witness FILE`, using the bounded 512-KiB native format.
+The command always native-validates a supplied witness before preparing or
+proving. `trace ROWS` only calculates the native trace.
 
-The two-row compressed proof took **3.674 seconds** to produce and **0.088 seconds** to verify. The experiment reuses the 276-byte journal and eight-field Nova state. [Machine-readable measurements](results/ci-2026-11-20.json) retain the exact timings, revision and evidence limits.
+`prepare` retains the expected journal hash, exact initial/final state, step
+count and verifier-key identity. Protect that file through a trusted workflow.
+Accepting expectations copied from a received proof bundle lets its producer
+choose the statement.
 
-**These numbers measure the initial folding envelope.** It only proves its R1CS accounting and Poseidon relations; the source co-signatures, oracle signatures, SHA256 replay paths and Bitcoin spending relation were validated natively or left for later cryptographic composition. The compressed proof's size is therefore a cost baseline for this narrower statement. A complete private noncustodial settlement proof will have a larger circuit and different resources.
+`prove --compressed --out` writes:
 
-## Security work in sequence
+| File | Contents |
+| --- | --- |
+| `proof.bin` | Spartan/IPA compressed proof |
+| `journal.bin` | Exact 276-byte public journal |
+| `manifest.json` | Claim fields and proof integrity hash |
+| `report.json` | Public measurements and explicit scope/status flags |
 
-1. Commit exact signed-row bytes to the field digest *inside the circuit*
-   (or bind the digest to a reviewed external SHA-256/BIP340 proof) and verify
-   real co-signatures and indexed oracle authorization. Compare cost against
-   M17's deferred-claims approach with its trust requirements written out.
-2. Move the consumed-outpoint nonmembership/update relation into the Nova step
-   under the M18 Poseidon map, with a proof of exact input identity. Bridge
-   any legacy SHA256 nullifier root through explicit constraints.
-3. Extend the Shinigami/M17 circuit to the actual UTXORef Taproot script path,
-   BIP341 sighashes, adaptor completion, CSV refund and fresh batch signatures.
-4. Bind M18's funding UTXO proof to the LNMarkets state and the M16 proven
-   Bitcoin chain tip. Add real signed transaction and spend-acceptance tests.
-5. Prove the folded trace, compress and route its *pinned Nova verifier* through
-   the established M12–M15 BitVM3 garbled verifier. Measure privacy, wire
-   bytes, verifier gates, prover memory, time, and confirmation latency.
+The compressed verifier key includes large R1CS matrices. Both processes
+rebuild it from the compiled circuit, stream its serialization into SHA256 and
+compare the retained identity. The bundle carries its hash and serialized
+size. No private witness, recursive checkpoint or full verifier key is exported.
 
-The proof cannot authorize new signatures, bypass the original DLC refund
-path, or turn two off-chain promises into a Bitcoin covenant. Every external
-consent and chain claim remains a separately enforced acceptance condition.
+The separate `verify` process uses bounded parsers, checks the expected
+statement and rebuilds the current verifier key before cryptographic
+verification. It does not rerun source signature checks and reports that fact.
+A malformed Nova structure returns an error even when upstream verification
+would panic. Builds with `panic=abort` are rejected because they would bypass
+that containment.
 
-This crate is GPL-3.0-only, matching its M18 dependency; the standalone
-LNMarkets statement remains MIT.
+After generating a bundle, run the proof-aware corruption checks:
+
+```sh
+LNM_NOVA_BUNDLE=LNMarkets/.local/nova-v2/bundle cargo test --locked --release --manifest-path LNMarkets/nova/Cargo.toml --test persisted_artifact -- --ignored --test-threads=1
+```
+
+They reject truncated/trailing bytes and malformed internal sumcheck/evaluation
+vectors constructed from the real compressed proof.
+
+## Evidence and version changes
+
+[The historical CI measurements](results/ci-2026-11-20.json) belong to the first
+opaque-digest relation at `faad8aa27a1fb7b5b8ac5aabb72e4751f16ea8b5`. That
+circuit produced real proofs, but a later review found unconstrained count and
+domain witnesses and separate hash/accounting allocations. The new circuit
+fixes those gaps and adds SHA transcript binding. Its verifier key differs.
+The old 10,816-byte result and 1–32-row timings cannot establish v2 performance
+or security. They remain in the repository as historical measurements.
+
+Current checks cover assignment-level attacks, official signature vectors,
+exact native/circuit transcript agreement and persisted proof handling.
+[The workflow](../../.github/workflows/lnmarkets-nova.yml) runs a two-contract
+persisted Pallas proof and a separate BIP340 proof. Its manual entry point can
+select a larger batch. Public fixture artifacts are retained for seven days.
+
+## BitVM3 integration work
+
+The [M18](../../integrations/bitvm3-nova/m18/README.md) map and chain window
+provide separate funding evidence that must refer to the same outpoints.
+M17's current script experiment covers legacy/P2SH/witness-v0 rules; the
+actual UTXORef Taproot spending path needs BIP341, adaptor/refund and fresh
+batch-signature support.
+
+M12's existing header verifier expects 17 state fields. This application uses
+eight fields for the Pallas batch and three for the single-signature experiment.
+A composite verifier requires new pinned verification keys, shared-input
+constraints and the matching M12–M15 final verifier artifacts.
+
+The standalone SP1 application code under [../sp1](../sp1/README.md) remains
+historical research. SP1 may still shrink the final Nova verifier in BitVM3.
+The active application proof work lives here.
+
+This crate is GPL-3.0-only, matching M18. The native statement remains MIT.

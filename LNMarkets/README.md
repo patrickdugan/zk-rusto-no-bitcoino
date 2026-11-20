@@ -1,153 +1,128 @@
-> **Architecture update (2026-11-20):** LNMarkets uses **Nova folding on BitVM3**, following [LNMarkets/nova](nova/README.md) and [M17/M18](../integrations/bitvm3-nova/README.md). The older one-shot SP1 6.9 guest/host under `sp1/` is archived research evidence. SP1 may still appear inside BitVM3's pinned final Nova-verifier shrinkage path (M12–M15); it is no longer the application prover for LNMarkets. The native 276-byte certificate remains a bridge input, and the first Nova circuit only constrains per-row accounting and opaque transcript commitments. It does **not** yet prove signatures, script execution, or funding independently.
-
 # LN Markets: private DLC batches
 
-This prototype checks a batch of privately exchanged DLC summaries and binds
-the agreed payouts to one exact unsigned Bitcoin transaction. Both parties
-sign each summary and give fresh consent to the batch. The shared Rust
-relation checks those signatures, selected oracle outcomes, collateral
-conservation and a replay-state transition, then emits a **276-byte journal**.
+This folder prototypes a venue-side batch coordinator for privately exchanged
+DLCs. Wallets co-sign a contract summary and later authorize an exact settlement
+proposal. The native verifier checks those signatures and produces a 276-byte
+journal. The active proof backend uses **Nova 0.76**, with Pallas/Vesta and M18's
+Poseidon parameters, as a component for the repository's BitVM3 architecture.
 
-The implementation is an isolated application experiment requested for this
-repository. The default `rust-bitcoin-zk-adapter` crate keeps its existing
-dependencies and scope. This folder has its own Cargo workspaces, with an
-optional SP1 backend compiled separately.
+The current Pallas relation, `lnmarkets/sha256-transcript-accounting/v2`, proves
+SHA-256 of each fixed 600-byte signed transcript, binds the transcript's payout
+amounts and funding outpoint to the accounting equations, and folds an ordered
+commitment through at most 32 rows. Its local CLI saves a compressed proof and
+verifies that file in a separate process against expectations prepared before
+proving. [Nova documentation](nova/README.md) defines the precise statement,
+commands and evidence.
 
-**Current evidence:** native execution over deterministic regtest fixtures.
-The SP1 guest, host and local runner prepare the next prover experiment.
-Consult [VALIDATION.md](VALIDATION.md) for the commands that ran and their
-results. A native journal certifies no zkVM execution; obtaining a private
-proof requires running and verifying the final Groth16 wrapper.
+The native verifier still establishes the authority of the supplied signatures.
+Summary serialization, oracle selection, Bitcoin transaction reconstruction,
+nullifier paths and funding/spend validity remain outside the Pallas relation.
+A receiver that accepts a proof without those claims also accepts their absence.
+The prototype cannot authorize funded settlement on its own.
 
-## What LN Markets could integrate
+## Where the work lives
 
-A venue can keep its order and quote system while adding wallet-held DLC
-recovery material and a batch coordinator. For each accepted position, the
-wallets retain the original plan and recovery pins. They sign the new summary
-after checking the actual package. When an oracle event matures, the
-coordinator proposes an exact settlement batch and collects fresh consent.
-An internal verifier checks the proof against its previously accepted batch
-manifest and advances the consumed-authorization root atomically.
+| Path | Purpose |
+| --- | --- |
+| [statement/](statement/src/lib.rs) | Native DLC summary, oracle, consent, transaction and replay verifier |
+| [nova/](nova/README.md) | Active SHA transcript/accounting circuit, proof producer and independent file verifier |
+| [PROTOCOL.md](PROTOCOL.md) | Native batch format and wallet/coordinator responsibilities |
+| [VALIDATION.md](VALIDATION.md) | Earlier native/SP1 experiment record, with links to current Nova evidence |
+| [SOURCES.md](SOURCES.md) | Source revisions and external references |
+| [sp1/](sp1/README.md) | Historical standalone SP1 application experiment |
 
-This is a proposed interface. It has no access to LN Markets' production
-backend and provides no migration of existing customer balances. The source
-relationship and integration requirements are recorded in
-[PROTOCOL.md](PROTOCOL.md) and [SOURCES.md](SOURCES.md).
+Each expensive backend has an isolated Cargo workspace. The default
+`rust-bitcoin-zk-adapter` crate keeps its current dependency graph. The existing
+M12–M15 BitVM3 path may use SP1 to shrink a final Nova verifier proof; its
+integration with this application's eight-field state remains unfinished.
 
-```mermaid
-flowchart TD
-    A["Wallets: retained DLC recovery"] --> B["Signed summaries and batch consent"]
-    O["Pinned oracle attestations"] --> P["Private batch witness"]
-    B --> P
-    P --> G["SP1 guest and Groth16 wrapper"]
-    G --> V["Venue verifier: pinned state"]
-    B --> S["Fresh Bitcoin transaction signatures"]
-    S --> C["Bitcoin Core: transaction validation"]
-    C --> V
-    A --> R["Unilateral CET or refund"]
-    R --> C
-```
+## Proposed venue integration
 
-The proof certifies an agreed proposal. Spending the collateral requires
-valid Bitcoin witnesses for that transaction. The original per-contract
-recovery path stays available while the batch remains unconfirmed.
+A venue could keep its quote and order system while adding a coordinator that
+collects wallet-held DLC recovery material and signed summaries. Each wallet
+checks its own original recovery package before signing the summary. At the
+selected oracle outcome, the coordinator builds the settlement transaction and
+asks both parties for fresh consent to that exact proposal.
 
-## Implemented relation
+The receiver needs the independently accepted batch context and selected
+contract set before accepting any proof. Consuming authorization state must be
+atomic, with a defined policy for aborted signing, rejected transactions and
+reorgs. The original contract's recovery path stays available until the
+relevant Bitcoin funding output is spent.
+
+This interface has not been connected to LN Markets' production backend. All
+bundled fixtures use public test keys and synthetic outpoints. The experiment
+has moved no customer funds.
+
+## What the native verifier checks
 
 | Check | Binding |
 | --- | --- |
-| Two-party summary consent | BIP340 signatures on a salted, domain-separated summary covering the funding outpoint, keys, scripts, payout root, oracle event, timeouts and original package digests |
-| Funding template | Derivation of the UTXORef NUMS-keyed Taproot output with the two-party CET leaf and CSV refund leaf |
-| Selected payout | SHA-256 Merkle membership for an indexed outcome plus two distinct signatures from the three pinned oracle keys |
-| Amounts | Checked integer arithmetic; each row's trader payout, maker payout, anchor and fee sum to its committed collateral |
-| Exact batch consent | Fresh signatures from both parties over the complete batch context, exact transaction digest and old/new authorization roots |
-| Replay state | Full-depth 256-bit sparse Merkle nonmembership and insertion for each funding outpoint, with sequential roots |
-| Accepted set | Canonically ordered, unique outpoints and an exact commitment to every submitted summary |
-| Receiver context | Comparison with independently retained epoch, batch ID, selected-contract root, old root, transaction digest and height window |
+| Summary consent | Two BIP340 signatures over a salted summary containing the outpoint, keys, scripts, payout root, oracle event, timeouts and package digests |
+| Funding template | UTXORef's NUMS-keyed Taproot output with a two-party CET leaf and CSV refund leaf |
+| Selected outcome | SHA-256 payout membership and two distinct signatures from three pinned oracle keys |
+| Amounts | Exact integer conservation of trader, maker, anchor and fee amounts |
+| Batch consent | Fresh party signatures over the full context, exact transaction digest and old/new authorization roots |
+| Replay state | Full 256-bit sparse nonmembership/update paths keyed by the funding outpoint |
+| Accepted set | Unique sorted outpoints and the exact selected-summary root |
+| Receiver context | Retained epoch, batch ID, selected set, old root, transaction digest and height window |
 
-The guest accepts 1–32 rows and at most 512 KiB of witness bytes. It emits a
-fixed binary journal. Identical payout scripts are aggregated into one
-transaction output; the transaction still needs one input per funding UTXO.
-Every input's Bitcoin spending witness remains part of the final transaction.
+The binary witness parser accepts 1–32 rows within 512 KiB. Identical payout
+scripts aggregate into one output. Every funding outpoint still needs a
+Bitcoin input and a valid spending witness when the transaction is broadcast.
 
-## Run the native example
+## Run locally
 
-From the repository root with Rust installed:
+From the repository root, using a current stable Rust toolchain:
 
 ```sh
-cargo test --locked --manifest-path LNMarkets/statement/Cargo.toml --all-targets
-cargo run --locked --release --manifest-path LNMarkets/statement/Cargo.toml --bin lnm-native -- demo --rows 1 --out LNMarkets/.local/native-1
-cargo run --locked --release --manifest-path LNMarkets/statement/Cargo.toml --bin lnm-native -- verify --witness LNMarkets/.local/native-1/witness.bin --journal LNMarkets/.local/native-1/journal.bin
-python3 LNMarkets/scripts/local_prover.py
+cargo test --locked --manifest-path LNMarkets/nova/Cargo.toml --all-targets -- --test-threads=1
+CARGO_BUILD_JOBS=2 cargo build --locked --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova
+mkdir -p LNMarkets/.local/nova-v2
+RAYON_NUM_THREADS=2 LNMarkets/nova/target/release/lnm-nova prepare 2 --out LNMarkets/.local/nova-v2/expected.json
+RAYON_NUM_THREADS=2 LNMarkets/nova/target/release/lnm-nova prove 2 --compressed --out LNMarkets/.local/nova-v2/bundle
+RAYON_NUM_THREADS=2 LNMarkets/nova/target/release/lnm-nova verify --bundle LNMarkets/.local/nova-v2/bundle --expect LNMarkets/.local/nova-v2/expected.json
 ```
 
-`demo` also supports 2, 8 and 32 rows. It writes a private witness, the public
-journal, an unsigned transaction and a JSON report. Its deterministic keys,
-salts, funding references and oracle signatures exist for reproducible tests.
-They are public fixtures and carry no real funds.
+Output paths must be new. Retain `expected.json` through a trusted preparation
+path. Copying expectations supplied by an untrusted prover grants that prover
+control over the accepted statement. `--witness FILE` can replace a fixture
+count when a wallet exporter supplies the bounded native witness format.
 
-The Python command prints the local proving plan. Execution requires an
-explicit action and `--run`. See [SP1 setup](sp1/README.md) for toolchain pins,
-ELF and verification-key review, execution, resumable compressed proofs and
-the later Groth16 run.
+The separate native example remains available:
 
-## Privacy and compactness
+```sh
+cargo run --locked --release --manifest-path LNMarkets/statement/Cargo.toml --bin lnm-native -- demo --rows 2 --out LNMarkets/.local/native-2
+cargo run --locked --release --manifest-path LNMarkets/statement/Cargo.toml --bin lnm-native -- verify --witness LNMarkets/.local/native-2/witness.bin --journal LNMarkets/.local/native-2/journal.bin
+```
 
-The fixed journal publishes the selected batch count, collateral totals,
-fee total, context, state roots and transaction commitments. Private rows
-include keys, scripts, payout paths and signatures. The coordinator that
-builds the witness can read those rows. A verified hiding wrapper is needed
-to keep them from other proof recipients.
+## Privacy, Taproot and proof composition
 
-SP1 documents that its individual STARK proofs currently lack the required
-zero-knowledge property; its Groth16/PLONK wrappers provide that property.
-This implementation uses Groth16 as the explicit final mode, with the
-associated setup and verifier assumptions. Compressed intermediates and
-prover checkpoints belong with the private witness. See
-[SP1's security model](https://docs.succinct.xyz/docs/sp1/security/security-model).
+The coordinator sees the private witness it assembles. Nova's compressed
+Spartan/IPA proof uses the library's random-instance folding path for hiding;
+see [Nova's description](https://github.com/microsoft/Nova). The exported bundle
+contains the compressed proof and public statement material. Recursive
+checkpoints and private rows stay out of the bundle. The public journal reveals
+batch count, aggregate amounts, state roots and transaction commitments.
+Broadcast Bitcoin transactions expose their ordinary inputs and outputs.
 
-The measured native witness sizes and 276-byte journal describe application
-data. Final proof bytes, proving time, peak memory and verifier cost require
-the later run. Bitcoin inputs, script witnesses and chain-visible output
-values remain visible when the transaction is broadcast. Public transaction
-commitments also allow observers to link a journal to a known transaction.
+An existing `SIGHASH_DEFAULT` CET signature binds its original transaction.
+A combined settlement therefore requires fresh Bitcoin signatures for the
+combined transaction, as specified by
+[BIP341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki).
 
-## Taproot and Shinigami path
+[Shinigami](https://github.com/starkware-bitcoin/shinigami) is a Cairo Bitcoin
+Script engine. This repository's [M17 experiment](../integrations/bitvm3-nova/m17/README.md)
+currently covers legacy/P2SH/witness-v0 execution. Taproot, BIP341 and the actual
+UTXORef adaptor/refund path require a further extension. M18 funding evidence
+must refer to exactly the same outpoints and authenticated Bitcoin tip.
 
-The first implementation directly checks the application signatures and
-derives the fixed Taproot funding template with mature curve primitives.
-Existing single-contract `SIGHASH_DEFAULT` signatures commit to their
-original transaction. A batch therefore needs fresh transaction signatures;
-[BIP341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)
-defines the binding to the inputs and outputs.
+The next authorization work is to prove BIP340 against the keys committed by
+the contract summary, recompute the signed messages, and bind that proof to
+the same ordered rows as the Pallas batch. A later M12 verifier needs a new
+pinned verifier key and the application's state layout before BitVM3 can check
+the result. The application proof also needs a constrained replay transition
+and a funded transaction acceptance test.
 
-[Shinigami](https://github.com/starkware-bitcoin/shinigami) provides a Cairo
-Bitcoin Script engine. The repository's [M17 experiment](../integrations/bitvm3-nova/m17/README.md)
-implements legacy/P2SH/witness-v0 execution and lists Taproot as remaining
-work. A future composition can verify an exact Taproot spending statement
-and a chain/prevout statement against the same transaction digest. Each
-component needs a pinned verifier identity and an explicit statement.
-
-## Next implementation gates
-
-1. Build the SP1 6.9.0 guest and host from their pinned lockfiles, review the
-   ELF digest and program key, and compare guest execution with the native
-   journal for one and two rows.
-2. Run one local Groth16 proof, record resources and verify it in a separate
-   process using independently retained program and journal pins. Increase
-   the batch size only after examining those measurements.
-3. Connect a wallet-owned exporter to UTXORef's actual package validator,
-   then obtain fresh summary and batch signatures through the real signer
-   boundary. The existing package digests are opaque references in this
-   relation.
-4. Rehearse fresh Bitcoin batch signing on regtest, including aborted
-   signing, transaction rejection, refund races and reorgs. Define the
-   venue's reservation/cancellation policy for consumed authorizations.
-5. Compose funding/chain and Taproot spend evidence once their precise
-   relations and verifier interfaces are available. Evaluate acceleration
-   patches and recursion against measured cost and privacy requirements.
-
-The native statement and SP1 guest use the repository's
-[MIT license](../LICENSE). The optional SP1 host declares GPL-3.0-only and
-includes its [license text](sp1/host/LICENSE), following the existing
-`nb3-prover` integration it can link through its `resumable` feature.
+The native statement and historical SP1 guest use the repository's MIT
+license. The Nova integration is GPL-3.0-only, following its M18 dependency.

@@ -1,7 +1,7 @@
 //! Nova folding envelope for the LNMarkets co-signed DLC batch prototype.
 //!
 //! Each step enforces per-row amount conservation, range checks, cumulative
-//! totals, and Poseidon binding of a native-validated signed-row digest.
+//! totals, SHA-256 of the exact private signed transcript, and Poseidon binding.
 //! BIP340, oracle memberships, exact Bitcoin transactions and SHA256 replay
 //! paths are verified by lnm-batch-statement BEFORE the trace is constructed.
 //! They are NOT reverified in R1CS: a folded proof alone is insufficient to
@@ -10,27 +10,38 @@
 //! Uses the same Pallas scalar Poseidon parameters/gadgets as M18.
 #![forbid(unsafe_code)]
 
-use ff::Field;
-use lnm_batch_statement::{
-    batch_consent_message, encode_journal, sha256, summary_digest, verify_batch, BatchWitness,
-    Journal,
-};
+use ff::{Field, PrimeFieldBits};
+use lnm_batch_statement::{encode_journal, sha256, verify_batch, BatchWitness, Journal};
 use m18_utxo_window::cost::G;
 use m18_utxo_window::elem::{f_from_le, fu, hash as poseidon, F};
 use nova_snark::frontend::gadgets::num::AllocatedNum;
 use nova_snark::frontend::{ConstraintSystem, SynthesisError};
 use nova_snark::traits::circuit::StepCircuit;
 
+pub mod artifact;
+pub mod bip340;
+pub mod transcript;
+use transcript::{bind_transcript, signed_row_transcript, TranscriptFields, TRANSCRIPT_LEN};
+
+pub const RELATION_ID: &str = "lnmarkets/sha256-transcript-accounting/v2";
 pub const STATE_ARITY: usize = 8;
 pub const ROWS_MAX: usize = 32;
 pub const DOMAIN: u64 = 0x4c4e_4d5f_4e4f_5641; // "LNM_NOVA"
 const MONEY_BITS: usize = 51; // Bitcoin MAX_MONEY < 2^51.
+const TOTAL_BITS: usize = MONEY_BITS + 5; // At most 32 bounded rows.
+const COUNT_BITS: usize = 5; // A step consumes count 0..31 and returns 1..32.
+
+fn fits_bits(value: F, bits: usize) -> bool {
+    value.to_le_bits().iter().skip(bits).all(|bit| !*bit)
+}
 
 /// The digest of a validated private row includes the original summary and
 /// batch-consent messages, BOTH parties' co-signatures and the oracle signatures.
-/// The circuit absorbs its digest limbs as private *opaque* values.
+/// The circuit recomputes the digest from the fixed transcript and binds its
+/// outpoint/economic fields. The signature equations remain external.
 #[derive(Clone, Debug)]
 pub struct VerifiedRowDigest {
+    pub transcript: [u8; TRANSCRIPT_LEN],
     pub lo: F,
     pub hi: F,
     pub funding_lo: F,
@@ -47,6 +58,7 @@ pub struct VerifiedRowDigest {
 impl Default for VerifiedRowDigest {
     fn default() -> Self {
         Self {
+            transcript: [0; TRANSCRIPT_LEN],
             lo: F::ZERO,
             hi: F::ZERO,
             funding_lo: F::ZERO,
@@ -67,34 +79,10 @@ pub fn digest_from_verified_row(
     index: usize,
 ) -> Result<VerifiedRowDigest, String> {
     let row = batch.rows.get(index).ok_or("row index outside batch")?;
-    let mut transcript = Vec::with_capacity(700);
-    transcript.extend_from_slice(b"UTXORef/LNMarkets/Nova/validated-signed-row/v1");
-    transcript.extend_from_slice(&summary_digest(&row.summary));
-    transcript.extend_from_slice(&batch_consent_message(&batch.context, &row.summary));
-    for signature in &row.summary_signatures {
-        transcript.extend_from_slice(signature);
-    }
-    for signature in &row.batch_signatures {
-        transcript.extend_from_slice(signature);
-    }
-    for attestation in &row.oracle_attestations {
-        transcript.push(attestation.oracle_index);
-        transcript.extend_from_slice(&attestation.signature);
-    }
-    transcript.extend_from_slice(&row.outcome.index.to_le_bytes());
-    transcript.extend_from_slice(&row.outcome.message);
-    for amount in [
-        row.outcome.trader_sats,
-        row.outcome.maker_sats,
-        row.outcome.anchor_sats,
-        row.outcome.fee_sats,
-    ] {
-        transcript.extend_from_slice(&amount.to_le_bytes());
-    }
-    transcript.extend_from_slice(&row.summary.funding_txid);
-    transcript.extend_from_slice(&row.summary.funding_vout.to_le_bytes());
+    let transcript = signed_row_transcript(batch, index)?;
     let signed = sha256(&transcript);
     Ok(VerifiedRowDigest {
+        transcript,
         lo: f_from_le(&signed[..16]),
         hi: f_from_le(&signed[16..]),
         funding_lo: f_from_le(&row.summary.funding_txid[..16]),
@@ -155,6 +143,38 @@ pub fn native_step(
     z: &[F; STATE_ARITY],
     row: &VerifiedRowDigest,
 ) -> Result<[F; STATE_ARITY], String> {
+    let bytes = &row.transcript;
+    let digest = sha256(bytes);
+    if &bytes[..transcript::TRANSCRIPT_TAG.len()] != transcript::TRANSCRIPT_TAG
+        || row.lo != f_from_le(&digest[..16])
+        || row.hi != f_from_le(&digest[16..])
+        || row.funding_lo != f_from_le(&bytes[564..580])
+        || row.funding_hi != f_from_le(&bytes[580..596])
+        || bytes[496..500] != row.outcome_index.to_le_bytes()
+        || bytes[596..600] != row.funding_vout.to_le_bytes()
+        || [row.trader, row.maker, row.anchor, row.fee]
+            .iter()
+            .enumerate()
+            .any(|(i, value)| bytes[532 + i * 8..540 + i * 8] != value.to_le_bytes())
+    {
+        return Err("row digest or fields differ from the fixed signed transcript".into());
+    }
+    if !fits_bits(z[0], COUNT_BITS) {
+        return Err("a Nova batch may contain at most 32 rows".into());
+    }
+    if z[1..4].iter().any(|&value| !fits_bits(value, TOTAL_BITS))
+        || !fits_bits(z[5], 128)
+        || !fits_bits(z[6], 128)
+        || !fits_bits(z[7], 64)
+    {
+        return Err("state encoding exceeds its circuit range".into());
+    }
+    if [row.lo, row.hi, row.funding_lo, row.funding_hi]
+        .iter()
+        .any(|&value| !fits_bits(value, 128))
+    {
+        return Err("digest or funding limb exceeds 128 bits".into());
+    }
     if [row.collateral, row.trader, row.maker, row.anchor, row.fee]
         .iter()
         .any(|&n| n >= (1u64 << MONEY_BITS))
@@ -168,6 +188,17 @@ pub fn native_step(
         .ok_or("payout overflow")?;
     if payout.checked_add(row.fee) != Some(row.collateral) {
         return Err("collateral conservation failed".into());
+    }
+    let next_totals = [
+        z[1] + fu(row.collateral),
+        z[2] + fu(payout),
+        z[3] + fu(row.fee),
+    ];
+    if next_totals
+        .iter()
+        .any(|&value| !fits_bits(value, TOTAL_BITS))
+    {
+        return Err("accumulated amount exceeds the circuit range".into());
     }
     let next_root = poseidon(&row_poseidon_input(z, row));
     Ok([
@@ -221,18 +252,30 @@ impl StepCircuit<F> for NovaSettlementStep {
         }
         let mut g = G::new(cs);
         let a = &self.row;
-        let coll = g.alloc(fu(a.collateral));
-        let trader = g.alloc(fu(a.trader));
-        let maker = g.alloc(fu(a.maker));
-        let anchor = g.alloc(fu(a.anchor));
-        let fee = g.alloc(fu(a.fee));
+        // The public initial state is independently pinned by the receiver.
+        // Range checks make all carried integer encodings explicit in each step.
+        g.range(&z[0], COUNT_BITS);
+        for total in &z[1..4] {
+            g.range(total, TOTAL_BITS);
+        }
+        g.range(&z[5], 128);
+        g.range(&z[6], 128);
+        g.range(&z[7], 64);
+
+        let alloc = |g: &mut G<CS>, name: &'static str, value: F| {
+            AllocatedNum::alloc_infallible(g.cs.namespace(|| name), || value)
+        };
+        let coll = alloc(&mut g, "collateral", fu(a.collateral));
+        let trader = alloc(&mut g, "trader", fu(a.trader));
+        let maker = alloc(&mut g, "maker", fu(a.maker));
+        let anchor = alloc(&mut g, "anchor", fu(a.anchor));
+        let fee = alloc(&mut g, "fee", fu(a.fee));
         // Bit decomposition excludes adversarial field wraparound in the
         // satoshi equations. Native validation has the stricter MAX_MONEY cap.
         for x in [&coll, &trader, &maker, &anchor, &fee] {
             g.range(x, MONEY_BITS);
         }
-        let sum = fu(a.trader) + fu(a.maker) + fu(a.anchor);
-        let payout = g.alloc(sum);
+        let payout = alloc(&mut g, "payout", fu(a.trader) + fu(a.maker) + fu(a.anchor));
         let (t, m, anchor_v, fee_v, payout_v, coll_v) = (
             trader.get_variable(),
             maker.get_variable(),
@@ -254,36 +297,83 @@ impl StepCircuit<F> for NovaSettlementStep {
             |lc| lc + coll_v,
         );
 
-        let one = g.alloc(F::ONE);
-        let count = accumulate(&mut g, &z[0], &one, "increment count");
+        // A literal coefficient binds the increment. Allocating F::ONE as an
+        // unconstrained witness would let a malicious prover choose the count.
+        let count = alloc(
+            &mut g,
+            "count",
+            z[0].get_value().unwrap_or(F::ZERO) + F::ONE,
+        );
+        g.cs.enforce(
+            || "increment count",
+            |lc| lc + z[0].get_variable() + CS::one(),
+            |lc| lc + CS::one(),
+            |lc| lc + count.get_variable(),
+        );
         let collateral = accumulate(&mut g, &z[1], &coll, "increment collateral");
         let payouts = accumulate(&mut g, &z[2], &payout, "increment payouts");
         let fees = accumulate(&mut g, &z[3], &fee, "increment fees");
-
-        let row_fields = [
-            fu(DOMAIN),
-            F::ZERO,
-            a.lo,
-            a.hi,
-            a.funding_lo,
-            a.funding_hi,
-            fu(a.funding_vout as u64),
-            fu(a.outcome_index as u64),
-            fu(a.collateral),
-            fu(a.trader),
-            fu(a.maker),
-            fu(a.anchor),
-            fu(a.fee),
-        ];
-        let mut inputs = Vec::with_capacity(row_fields.len());
-        for (index, field) in row_fields.iter().enumerate() {
-            if index == 1 {
-                inputs.push(z[4].clone());
-            } else {
-                inputs.push(g.alloc(*field));
-            }
+        for total in [&collateral, &payouts, &fees] {
+            g.range(total, TOTAL_BITS);
         }
-        let root = g.hash(&inputs);
+
+        let domain = alloc(&mut g, "domain", fu(DOMAIN));
+        g.cs.enforce(
+            || "fixed domain",
+            |lc| lc + domain.get_variable(),
+            |lc| lc + CS::one(),
+            |lc| lc + (fu(DOMAIN), CS::one()),
+        );
+        let lo = alloc(&mut g, "digest low", a.lo);
+        let hi = alloc(&mut g, "digest high", a.hi);
+        let funding_lo = alloc(&mut g, "funding low", a.funding_lo);
+        let funding_hi = alloc(&mut g, "funding high", a.funding_hi);
+        for limb in [&lo, &hi, &funding_lo, &funding_hi] {
+            g.range(limb, 128);
+        }
+        let vout = alloc(&mut g, "funding vout", fu(a.funding_vout as u64));
+        let outcome_index = alloc(&mut g, "outcome index", fu(a.outcome_index as u64));
+        g.range(&vout, 32);
+        g.range(&outcome_index, 32);
+
+        bind_transcript(
+            g.cs,
+            &a.transcript,
+            TranscriptFields {
+                digest_lo: &lo,
+                digest_hi: &hi,
+                funding_lo: &funding_lo,
+                funding_hi: &funding_hi,
+                funding_vout: &vout,
+                outcome_index: &outcome_index,
+                trader: &trader,
+                maker: &maker,
+                anchor: &anchor,
+                fee: &fee,
+            },
+        )?;
+
+        // Every amount here is the *same R1CS variable* used in the range,
+        // conservation and cumulative-total equations above.
+        let inputs = [
+            domain,
+            z[4].clone(),
+            lo,
+            hi,
+            funding_lo,
+            funding_hi,
+            vout,
+            outcome_index,
+            coll,
+            trader,
+            maker,
+            anchor,
+            fee,
+        ];
+        let root = {
+            let mut ns = g.cs.namespace(|| "row hash");
+            G::new(&mut ns).hash(&inputs)
+        };
         Ok(vec![
             count,
             collateral,
@@ -386,14 +476,15 @@ mod tests {
     }
 
     #[test]
-    fn changed_opaque_row_digest_changes_final_root() {
+    fn changed_row_digest_with_stale_transcript_is_unsatisfiable() {
         let batch = lnm_batch_statement::fixture::demo_batch(1).unwrap();
         let trace = validated_trace(&batch).unwrap();
         let mut broken = trace.steps[0].clone();
         broken.row.lo += F::ONE;
         let (ok, computed) = synthesize_row(&broken, &trace.initial);
-        assert!(ok); // Opaque digest is not authenticated by this circuit!
-        assert_ne!(computed[4], trace.final_state[4]); // Receiver must pin it.
+        assert!(!ok);
+        assert_ne!(computed[4], trace.final_state[4]);
+        assert!(native_step(&trace.initial.clone().try_into().unwrap(), &broken.row).is_err());
     }
 
     #[test]

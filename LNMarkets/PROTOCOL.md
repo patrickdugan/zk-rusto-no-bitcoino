@@ -1,13 +1,14 @@
-> **Prover architecture (2026-11-20):** The native co-signed batch statement here now feeds the **LNMarkets Nova step** in [nova/](nova/README.md) through the existing BitVM3-Nova machinery. The previous standalone SP1 application harness remains historical only. The first R1CS step treats co-signature digests as opaque private inputs; an end-to-end proof will require signature/merkle verification in-circuit or a verified proof composition with exact common commitments.
+> **Prover boundary:** The active [Nova v2 relation](nova/README.md) constrains SHA-256 of the signed transcript and its accounting/outpoint fields. The full native statement described below also checks signatures, messages, membership, transactions and replay. Those extra checks still require a circuit or a composed proof bound to the same inputs. The earlier standalone SP1 application harness remains historical.
 
 # Batch proposal statement v1
 
 ## Scope and trust boundary
 
-The statement proves that the submitted, agreed set of bilateral records
-authorizes a deterministic settlement proposal under a pinned application
-context. Its public result is a journal. A sound proof of the reviewed guest
-binds that journal to a successful execution of `verify_batch_bytes`.
+This native relation checks that the submitted bilateral records authorize a
+deterministic settlement proposal under a pinned application context. Its
+public result is a journal. Proving the complete relation requires a sound
+proof of successful `verify_batch_bytes` execution, or an equivalent circuit.
+The current Pallas proof covers the subset defined in its own documentation.
 
 The relying venue chooses the accepted-contract root from authenticated
 trade records and retains that root before verifying a proposal. This step
