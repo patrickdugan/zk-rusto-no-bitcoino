@@ -1,0 +1,161 @@
+{
+  "all_rejected": true,
+  "baseline_accepted": true,
+  "count": 22,
+  "mutations": [
+    {
+      "detail": "tx 0: inputs 58000 != outputs 57501 + fee 500",
+      "expected_stage": "prove",
+      "name": "a_output_value_changed/precheck",
+      "observed_stage": "prove:precheck",
+      "rejected": true
+    },
+    {
+      "detail": "circuit: step 7 unsatisfied (constraint Some(77))",
+      "expected_stage": "prove",
+      "name": "a_output_value_changed/circuit",
+      "observed_stage": "prove:circuit",
+      "rejected": true
+    },
+    {
+      "detail": "item 1: duplicate spend_id da9147950c317949debf93036bdd2984e09e6eb2559944986a2de7a42d954dcd",
+      "expected_stage": "prove",
+      "name": "b_duplicate_spend_id/precheck",
+      "observed_stage": "prove:precheck",
+      "rejected": true
+    },
+    {
+      "detail": "circuit: step 27 unsatisfied (constraint Some(1031))",
+      "expected_stage": "prove",
+      "name": "b_duplicate_spend_id/circuit",
+      "observed_stage": "prove:circuit",
+      "rejected": true
+    },
+    {
+      "detail": "tx 0: fee 5001 above fee_bound 5000",
+      "expected_stage": "prove",
+      "name": "c_fee_above_bound/precheck",
+      "observed_stage": "prove:precheck",
+      "rejected": true
+    },
+    {
+      "detail": "circuit: step 7 unsatisfied (constraint Some(143))",
+      "expected_stage": "prove",
+      "name": "c_fee_above_bound/circuit",
+      "observed_stage": "prove:circuit",
+      "rejected": true
+    },
+    {
+      "detail": "3 checks run",
+      "expected_stage": "verify",
+      "name": "d1_other_statement_digest",
+      "observed_stage": "verify:statement_digest",
+      "rejected": true
+    },
+    {
+      "detail": "11 checks run",
+      "expected_stage": "verify",
+      "name": "d2_public_rewritten_for_other_statement",
+      "observed_stage": "verify:nova_verify",
+      "rejected": true
+    },
+    {
+      "detail": "10 checks run",
+      "expected_stage": "verify",
+      "name": "e1_truncated_half",
+      "observed_stage": "verify:proof_decodes",
+      "rejected": true
+    },
+    {
+      "detail": "10 checks run",
+      "expected_stage": "verify",
+      "name": "e2_truncated_last_byte",
+      "observed_stage": "verify:proof_decodes",
+      "rejected": true
+    },
+    {
+      "detail": "10 checks run",
+      "expected_stage": "verify",
+      "name": "e3_appended_byte",
+      "observed_stage": "verify:proof_decodes",
+      "rejected": true
+    },
+    {
+      "detail": "11 checks run",
+      "expected_stage": "verify",
+      "name": "e4_flipped_byte",
+      "observed_stage": "verify:nova_verify",
+      "rejected": true
+    },
+    {
+      "detail": "12 checks run",
+      "expected_stage": "verify",
+      "name": "f1_zn_sum_out",
+      "observed_stage": "verify:zn_matches_public",
+      "rejected": true
+    },
+    {
+      "detail": "12 checks run",
+      "expected_stage": "verify",
+      "name": "f2_zn_r1",
+      "observed_stage": "verify:zn_matches_public",
+      "rejected": true
+    },
+    {
+      "detail": "12 checks run",
+      "expected_stage": "verify",
+      "name": "f3_zn_phase",
+      "observed_stage": "verify:zn_matches_public",
+      "rejected": true
+    },
+    {
+      "detail": "11 checks run",
+      "expected_stage": "verify",
+      "name": "g1_proof_of_Y_with_public_of_X",
+      "observed_stage": "verify:nova_verify",
+      "rejected": true
+    },
+    {
+      "detail": "11 checks run",
+      "expected_stage": "verify",
+      "name": "g2_proof_of_X_with_public_of_Y",
+      "observed_stage": "verify:nova_verify",
+      "rejected": true
+    },
+    {
+      "detail": "8 checks run",
+      "expected_stage": "verify",
+      "name": "h1_steps_altered",
+      "observed_stage": "verify:steps_match_items",
+      "rejected": true
+    },
+    {
+      "detail": "2 checks run",
+      "expected_stage": "verify",
+      "name": "h2_vk_digest_altered",
+      "observed_stage": "verify:vk_digest",
+      "rejected": true
+    },
+    {
+      "detail": "1 checks run",
+      "expected_stage": "verify",
+      "name": "h3_unknown_schema",
+      "observed_stage": "verify:schema",
+      "rejected": true
+    },
+    {
+      "detail": "5 checks run",
+      "expected_stage": "verify",
+      "name": "h4_expect_altered",
+      "observed_stage": "verify:expect_block",
+      "rejected": true
+    },
+    {
+      "detail": "7 checks run",
+      "expected_stage": "verify",
+      "name": "h5_z0_gamma_altered",
+      "observed_stage": "verify:z0_recomputed",
+      "rejected": true
+    }
+  ]
+}
