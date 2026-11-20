@@ -63,7 +63,9 @@ A one-step proof starts at `[0, 0, 0]` and outputs
 including the claim hash. The test suite includes all 15 official BIP340
 vectors for 32-byte messages, boundary scalars and a complete shape comparison.
 
-The proving benchmark is explicit:
+The proving benchmark is explicit. Its report path, and the persisted-test
+bundle path below, resolve relative paths from the repository root; absolute
+paths are accepted unchanged. Existing receipts are preserved.
 
 ```sh
 mkdir -p LNMarkets/.local
@@ -130,6 +132,44 @@ LNM_NOVA_BUNDLE=LNMarkets/.local/nova-v2/bundle cargo test --locked --release --
 
 They reject truncated/trailing bytes and malformed internal sumcheck/evaluation
 vectors constructed from the real compressed proof.
+
+## Verified local runs, 20 November 2026
+
+[Full receipts and source hashes](results/local-v2-2026-11-20.json) record the
+actual CPU runs. Both the two-contract Pallas proof and the separate BIP340
+proof passed recursive and compressed verification. Pallas also passed a new
+verifier process using the saved proof and independently prepared expectations.
+
+| Measurement | Pallas batch, two contracts | Secq, one BIP340 signature |
+| --- | ---: | ---: |
+| Compressed proof bytes | 12,376 | 11,980 |
+| Recursive prove | 0.583 s | 0.184 s |
+| Compression prove | 100.081 s | 66.751 s |
+| Compressed verification | 1.708 s, separate process | 0.963 s |
+| Setup before proving | 32.552 s | 10.195 s |
+| Primary constraint count | 275,234 including Nova augmentation | 135,730 application step only |
+
+The whole Pallas proving command took 137.905 seconds and peaked at 989,892 KiB
+of RSS, about 967 MiB. Its cold independent verifier took 34.366 seconds,
+including 32.605 seconds to rebuild the public parameters and verifier key.
+The public bundle is 16,329 bytes including journal, manifest and JSON report.
+Its deterministic verifier key represents 101,826,448 serialized bytes, which
+are hashed locally instead of being shipped with the bundle.
+
+The Secq benchmark test itself took 80.01 seconds. Its measured command also
+included 46.89 seconds of release compilation and peaked at 734,676 KiB across
+the command's process tree. Its receipt records a proof hash; this test does
+not save a separate binary signature proof bundle.
+
+These are single synthetic smoke measurements on a shared Linux workspace
+with two Rayon threads. Some compilation overlapped the Pallas proving run.
+The results establish functioning proofs for the stated relations; a timing
+distribution and measurements on the user's hardware remain separate work.
+
+There are 28 active tests and three explicit expensive tests. All were run
+successfully, including two malformed-proof cases that deserialize correctly
+but trigger upstream Nova vector-length assumptions. The report records the
+initial receipt-path failure and its corrected rerun.
 
 ## Evidence and version changes
 

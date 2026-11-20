@@ -1,4 +1,4 @@
-> **Current work:** The active Nova relation and local proof workflow are documented in [nova/README.md](nova/README.md). This file preserves the earlier native/SP1 validation record. Its historical status labels apply to those experiments. The previous opaque-digest Nova circuit was superseded by v2 after constraint review; its old measurements cannot establish v2 correctness or performance.
+> **Current work:** [Nova v2 local receipts](nova/results/local-v2-2026-11-20.json) record verified Pallas transcript and separate Secq BIP340 proofs, with independent persisted Pallas verification. The [Nova guide](nova/README.md) describes current commands and scope. This file preserves the earlier native/SP1 record; its historical status labels belong to those experiments.
 
 # Validation record
 

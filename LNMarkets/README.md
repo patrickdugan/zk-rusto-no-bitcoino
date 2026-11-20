@@ -14,6 +14,11 @@ verifies that file in a separate process against expectations prepared before
 proving. [Nova documentation](nova/README.md) defines the precise statement,
 commands and evidence.
 
+A separate Secq/Secp circuit now proves one BIP340 signature inside R1CS.
+The [verified local runs](nova/results/local-v2-2026-11-20.json) produced a
+12,376-byte two-contract batch proof and an 11,980-byte single-signature proof.
+The two relations still require a shared authorization bridge.
+
 The native verifier still establishes the authority of the supplied signatures.
 Summary serialization, oracle selection, Bitcoin transaction reconstruction,
 nullifier paths and funding/spend validity remain outside the Pallas relation.
