@@ -82,6 +82,22 @@ RecursiveSNARK prover and verifier. `--compressed` additionally creates and
 verifies a Spartan/IPA CompressedSNARK. All fixtures have public test keys,
 synthetic outpoints and zero live Bitcoin exposure.
 
+
+## First verified Nova results (20 November 2026)
+
+The [Nova CI run](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/44701459434) passed actual Nova 0.76 recursive proofs for 1, 2, 8 and 32 synthetic contracts and verified a **10,816-byte** serialized Spartan/IPA compressed proof for two contracts.
+
+| Rows | Recursive prove | Recursive verify |
+| ---: | ---: | ---: |
+| 1 | 0.0449 s | 0.0561 s |
+| 2 | 0.1308 s | 0.0856 s |
+| 8 | 0.7522 s | 0.1164 s |
+| 32 | 3.0828 s | 0.1098 s |
+
+The two-row compressed proof took **3.674 seconds** to produce and **0.088 seconds** to verify. The experiment reuses the 276-byte journal and eight-field Nova state. [Machine-readable measurements](results/ci-2026-11-20.json) retain the exact timings, revision and evidence limits.
+
+**These numbers measure the initial folding envelope.** It only proves its R1CS accounting and Poseidon relations; the source co-signatures, oracle signatures, SHA256 replay paths and Bitcoin spending relation were validated natively or left for later cryptographic composition. The compressed proof's size is therefore a cost baseline for this narrower statement. A complete private noncustodial settlement proof will have a larger circuit and different resources.
+
 ## Security work in sequence
 
 1. Commit exact signed-row bytes to the field digest *inside the circuit*
