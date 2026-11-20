@@ -1,0 +1,49 @@
+name: Prover UI Desktop & Telemetry Checks
+on:
+  push:
+    branches: ['main', 'feat/prover-ui']
+    paths: ['prover-ui/**', '.github/workflows/prover-ui.yml']
+  pull_request:
+    paths: ['prover-ui/**', '.github/workflows/prover-ui.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: prover-ui-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  linux-headless-and-python:
+    name: Rust headless server + Python parity (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust 1.90
+        run: rustup toolchain install 1.90.0 --profile minimal --component clippy,rustfmt
+      - name: Format, clippy, and Rust integration tests (headless)
+        run: |
+          cargo +1.90.0 fmt --manifest-path prover-ui/Cargo.toml -- --check
+          cargo +1.90.0 clippy --locked --no-default-features --manifest-path prover-ui/Cargo.toml --all-targets -- -D warnings
+          cargo +1.90.0 test --locked --no-default-features --manifest-path prover-ui/Cargo.toml -- --nocapture
+      - name: Python fallback unit tests
+        working-directory: prover-ui
+        run: python3 -m unittest discover -s tests -v
+
+  windows-desktop:
+    name: Native Windows Desktop App (MSVC + WebView2)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust 1.90 MSVC
+        run: rustup toolchain install 1.90.0-x86_64-pc-windows-msvc --profile minimal --component clippy,rustfmt
+      - name: Clippy, tests, and release .exe build
+        run: |
+          cargo +1.90.0-x86_64-pc-windows-msvc fmt --manifest-path prover-ui/Cargo.toml -- --check
+          cargo +1.90.0-x86_64-pc-windows-msvc clippy --locked --manifest-path prover-ui/Cargo.toml --all-targets -- -D warnings
+          cargo +1.90.0-x86_64-pc-windows-msvc test --locked --manifest-path prover-ui/Cargo.toml --all-targets -- --nocapture
+          cargo +1.90.0-x86_64-pc-windows-msvc build --release --locked --manifest-path prover-ui/Cargo.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rbzk-prover-desktop-windows-x64-${{ github.sha }}
+          path: |
+            prover-ui/target/release/rbzk-prover-desktop.exe
+            prover-ui/target/release/rbzk-prover-ui.exe

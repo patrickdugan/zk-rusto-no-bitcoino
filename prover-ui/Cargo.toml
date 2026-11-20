@@ -1,0 +1,39 @@
+[package]
+name = "rbzk-prover-ui"
+version = "0.2.0"
+edition = "2021"
+rust-version = "1.90"
+publish = false
+license = "GPL-3.0-only"
+description = "Native desktop Rust app and loopback telemetry console for zk-rusto-no-bitcoino (Nova, SP1 CUDA, Shinigami, M16/M18, Ark/Cashu)"
+default-run = "rbzk-prover-ui"
+
+[workspace]
+
+[features]
+default = ["desktop"]
+desktop = ["dep:tao", "dep:wry"]
+
+[dependencies]
+anyhow = "1"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tao = { version = "0.30", optional = true }
+wry = { version = "0.47", optional = true }
+
+[[bin]]
+name = "rbzk-prover-ui"
+path = "src/main.rs"
+
+[[bin]]
+name = "rbzk-prover-desktop"
+path = "src/bin/desktop.rs"
+required-features = ["desktop"]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
