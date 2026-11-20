@@ -39,6 +39,8 @@ jobs:
           sudo apt-get install -y -qq protobuf-compiler
           protoc --version
       - name: Pinned SP1 v6.9.0 toolchain
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
