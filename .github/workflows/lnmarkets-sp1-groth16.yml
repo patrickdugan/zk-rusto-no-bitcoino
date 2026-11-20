@@ -1,0 +1,137 @@
+name: LN Markets SP1 one-row Groth16 proof
+
+on:
+  push:
+    branches: ['prototype/lnmarkets-batch-prover-20261120']
+    paths:
+      - '.github/workflows/lnmarkets-sp1-groth16.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lnmarkets-groth16-fixture
+  cancel-in-progress: true
+
+jobs:
+  groth16-fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 160
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+      SP1_CIRCUIT_MODE: release
+      SP1_PROVER: cpu
+      SP1_WORKER_NUM_CORE_WORKERS: '1'
+      SP1_WORKER_NUM_RECURSION_PROVER_WORKERS: '1'
+      SP1_WORKER_NUM_RECURSION_EXECUTOR_WORKERS: '1'
+      SP1_WORKER_NUM_PREPARE_REDUCE_WORKERS: '1'
+      SP1_WORKER_NUM_SETUP_WORKERS: '1'
+      SP1_WORKER_NUM_SPLICING_WORKERS: '1'
+      SP1_WORKER_NUM_DEFERRED_WORKERS: '1'
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Protobuf compiler
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq protobuf-compiler
+      - name: Install SP1 v6.9.0 with authenticated toolchain download
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 -fsSL https://sp1up.succinct.xyz | bash
+          export PATH="$HOME/.sp1/bin:$PATH"
+          sp1up --version v6.9.0
+          cargo prove --version | grep -F 'b8387fa'
+          echo "$HOME/.sp1/bin" >> "$GITHUB_PATH"
+      - name: Generate one-row witness and validate journal
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          cargo build --release --locked --manifest-path LNMarkets/statement/Cargo.toml --bin lnm-native
+          LNMarkets/statement/target/release/lnm-native demo --rows 1 --out LNMarkets/.local/proof-fixture
+          LNMarkets/statement/target/release/lnm-native verify --witness LNMarkets/.local/proof-fixture/witness.bin --journal LNMarkets/.local/proof-fixture/journal.bin
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          r=pathlib.Path('LNMarkets')
+          original=json.loads((r/'results/native-baseline.json').read_text())['runs'][0]
+          actual=(r/'.local/proof-fixture/journal.bin').read_bytes()
+          assert len(actual)==276
+          assert hashlib.sha256(actual).hexdigest()==original['journal_sha256']
+          PY
+      - name: Build SP1 guest and verifier, generate candidate pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 LNMarkets/scripts/local_prover.py build --run
+          python3 LNMarkets/scripts/local_prover.py describe --run --elf LNMarkets/.local/prover/elf/lnm-batch.elf
+      - name: Execute guest against pinned native journal
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          ELF_SHA="$(jq -r '.elf_sha256' LNMarkets/.local/prover/program-candidate.json)"
+          PROGRAM_VK="$(jq -r '.program_vk_digest' LNMarkets/.local/prover/program-candidate.json)"
+          JOURNAL_SHA="$(jq -r '.runs[0].journal_sha256' LNMarkets/results/native-baseline.json)"
+          [[ "$ELF_SHA" =~ ^[0-9a-f]{64}$ && "$PROGRAM_VK" =~ ^[0-9a-f]{64}$ && "$JOURNAL_SHA" =~ ^[0-9a-f]{64}$ ]]
+          echo "LNM_ELF_SHA256=$ELF_SHA" >> "$GITHUB_ENV"
+          echo "LNM_PROGRAM_VK=$PROGRAM_VK" >> "$GITHUB_ENV"
+          echo "LNM_JOURNAL_SHA256=$JOURNAL_SHA" >> "$GITHUB_ENV"
+          python3 LNMarkets/scripts/local_prover.py execute --run --elf LNMarkets/.local/prover/elf/lnm-batch.elf --witness LNMarkets/.local/proof-fixture/witness.bin --journal LNMarkets/.local/proof-fixture/journal.bin --elf-sha256 "$ELF_SHA" --program-vk "$PROGRAM_VK" --journal-sha256 "$JOURNAL_SHA"
+          jq -e '.status == "executed_unproved" and .journal_bytes == 276' LNMarkets/.local/prover/execution.json
+      - name: Measure one-row real Groth16 proof on local CPU
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          free -h
+          df -h .
+          /usr/bin/time -v timeout --signal=TERM --kill-after=30s 5400s \
+            python3 LNMarkets/scripts/local_prover.py groth16 --run \
+            --elf LNMarkets/.local/prover/elf/lnm-batch.elf \
+            --witness LNMarkets/.local/proof-fixture/witness.bin \
+            --journal LNMarkets/.local/proof-fixture/journal.bin \
+            --elf-sha256 "$LNM_ELF_SHA256" \
+            --program-vk "$LNM_PROGRAM_VK" \
+            --journal-sha256 "$LNM_JOURNAL_SHA256"
+          jq -e '.status == "groth16_proof_verified" and .zero_knowledge_proof_verified == true' LNMarkets/.local/prover/groth16-verification.json
+      - name: Independently reverify the saved Groth16 proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 LNMarkets/scripts/local_prover.py verify --run \
+            --work-dir LNMarkets/.local/prover/fresh-verifier \
+            --elf LNMarkets/.local/prover/elf/lnm-batch.elf \
+            --journal LNMarkets/.local/proof-fixture/journal.bin \
+            --elf-sha256 "$LNM_ELF_SHA256" \
+            --program-vk "$LNM_PROGRAM_VK" \
+            --journal-sha256 "$LNM_JOURNAL_SHA256" \
+            --mode groth16 --proof LNMarkets/.local/prover/groth16-proof.bin
+          jq -e '.status == "groth16_proof_verified" and .zero_knowledge_proof_verified == true' LNMarkets/.local/prover/fresh-verifier/groth16-public-verification.json
+      - name: Publish synthetic proof and public reports
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: lnmarkets-one-row-groth16-synthetic-fixture
+          path: |
+            LNMarkets/.local/prover/program-candidate.json
+            LNMarkets/.local/prover/execution.json
+            LNMarkets/.local/prover/groth16-verification.json
+            LNMarkets/.local/prover/fresh-verifier/groth16-public-verification.json
+            LNMarkets/.local/prover/groth16-proof.bin
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
