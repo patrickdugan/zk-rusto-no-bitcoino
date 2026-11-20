@@ -405,6 +405,73 @@ mod tests {
     use super::*;
     use nova_snark::frontend::r1cs::NovaShape;
     use nova_snark::frontend::test_shape_cs::TestShapeCS;
+    use std::io::Write;
+    use std::path::{Path, PathBuf};
+
+    // Cargo runs tests from the crate directory. Artifact paths in commands and
+    // CI are relative to the repository root, two parents above this manifest.
+    fn repository_artifact_path(path: &Path) -> PathBuf {
+        if path.is_absolute() {
+            path.to_owned()
+        } else {
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .and_then(Path::parent)
+                .expect("Nova manifest must be under LNMarkets/nova")
+                .join(path)
+        }
+    }
+
+    fn write_report_create_new(path: &Path, report: &serde_json::Value) -> Result<(), String> {
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(path)
+            .map_err(|error| {
+                format!(
+                    "cannot create BIP340 receipt {}: {error}; choose a new output file and create its parent directory first",
+                    path.display()
+                )
+            })?;
+        let bytes = serde_json::to_vec_pretty(report).map_err(|error| error.to_string())?;
+        file.write_all(&bytes)
+            .and_then(|()| file.flush())
+            .map_err(|error| format!("cannot write BIP340 receipt {}: {error}", path.display()))
+    }
+
+    #[test]
+    fn receipt_paths_use_repository_root_and_preserve_absolute_paths() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        let relative = Path::new("LNMarkets/.local/nova-v2/bip340-proof.json");
+        assert_eq!(repository_artifact_path(relative), root.join(relative));
+        let absolute = root.join("already-absolute.json");
+        assert_eq!(repository_artifact_path(&absolute), absolute);
+    }
+
+    #[test]
+    fn receipt_writer_preserves_existing_file() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "lnm-bip340-receipt-{}-{nonce}.json",
+            std::process::id()
+        ));
+        let original = serde_json::json!({"verified": true});
+        write_report_create_new(&path, &original).unwrap();
+        let error = write_report_create_new(&path, &serde_json::json!({"replace": true}))
+            .expect_err("existing receipts must be preserved");
+        assert!(error.contains(&path.display().to_string()));
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        std::fs::remove_file(path).unwrap();
+        assert_eq!(saved, original);
+    }
 
     const KEY: &str = "DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659";
     const MSG: &str = "243F6A8885A308D313198A2E03707344A4093822299F31D0082EFA98EC4E6C89";
@@ -643,8 +710,9 @@ mod tests {
             "wrong_initial_state_rejected": true,
             "wrong_step_count_rejected": true,
         });
-        if let Ok(path) = std::env::var("LNM_BIP340_REPORT") {
-            std::fs::write(path, serde_json::to_vec_pretty(&report).unwrap()).unwrap();
+        if let Some(path) = std::env::var_os("LNM_BIP340_REPORT") {
+            let path = repository_artifact_path(Path::new(&path));
+            write_report_create_new(&path, &report).unwrap_or_else(|error| panic!("{error}"));
         }
         println!("{report}");
     }
