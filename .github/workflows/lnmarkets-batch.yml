@@ -1,0 +1,61 @@
+name: LN Markets batch statement
+
+on:
+  push:
+    paths:
+      - 'LNMarkets/**'
+      - '.github/workflows/lnmarkets-batch.yml'
+  pull_request:
+    paths:
+      - 'LNMarkets/**'
+      - '.github/workflows/lnmarkets-batch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lnmarkets-batch-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-statement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Format isolated Rust workspaces
+        run: |
+          cargo fmt --manifest-path LNMarkets/statement/Cargo.toml -- --check
+          cargo fmt --manifest-path LNMarkets/sp1/program/Cargo.toml -- --check
+          cargo fmt --manifest-path LNMarkets/sp1/host/Cargo.toml -- --check
+      - name: Native statement and adversarial tests
+        run: cargo test --locked --manifest-path LNMarkets/statement/Cargo.toml --all-targets
+      - name: Guest-compatible library boundary
+        run: cargo check --locked --manifest-path LNMarkets/statement/Cargo.toml --no-default-features --lib
+      - name: Clippy
+        run: cargo clippy --locked --manifest-path LNMarkets/statement/Cargo.toml --all-targets -- -D warnings
+      - name: Local runner boundary tests
+        run: python3 -m unittest discover -s LNMarkets/scripts -p 'test_*.py' -v
+      - name: Native batch examples
+        run: |
+          cargo build --locked --release --manifest-path LNMarkets/statement/Cargo.toml --bin lnm-native
+          for rows in 1 2 8 32; do
+            LNMarkets/statement/target/release/lnm-native demo --rows "$rows" --out "LNMarkets/.local/ci-$rows"
+            LNMarkets/statement/target/release/lnm-native verify --witness "LNMarkets/.local/ci-$rows/witness.bin" --journal "LNMarkets/.local/ci-$rows/journal.bin"
+          done
+      - name: Prepare-only prover plan
+        run: python3 LNMarkets/scripts/local_prover.py
+      - name: Public native reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: lnmarkets-native-reports
+          path: LNMarkets/.local/ci-*/summary.json
+          include-hidden-files: true
+          if-no-files-found: error

@@ -26,6 +26,11 @@ The [BitVM3 route for Nova header-chain proofs](integrations/bitvm3-nova/README.
 separately: the Nova verifier inside SP1, SP1's final proof with BLAKE3, that proof's verifier as
 a garbled circuit, and a resumable SP1 prover for one machine (CPU or GPU).
 
+The isolated [LN Markets batch prototype](LNMarkets/README.md) explores privately
+co-signed DLC summaries, exact batch consent and consumed-authorization state.
+Its native relation and optional SP1 workspace compile separately from this crate.
+See its validation record for the current proof and integration status.
+
 ## Bitcoin Supernode RPC
 
 The [read-only Supernode RPC service](services/supernode-rpc/README.md)

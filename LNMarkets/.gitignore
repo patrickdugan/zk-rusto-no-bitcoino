@@ -1,0 +1,13 @@
+# Each expensive backend is an isolated Cargo workspace.
+**/target/
+!statement/Cargo.lock
+!sp1/program/Cargo.lock
+!sp1/host/Cargo.lock
+
+# Witnesses, prover checkpoints, and locally generated reports stay local.
+.local/
+artifacts/
+runs/
+private/
+**/__pycache__/
+*.pyc
