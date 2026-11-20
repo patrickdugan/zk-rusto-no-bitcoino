@@ -46,3 +46,25 @@ jobs:
           cargo run --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova -- trace 2
       - name: Real Nova IVC smoke proof
         run: cargo run --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova -- prove 1
+      - name: Nova recursive proof scaling
+        timeout-minutes: 20
+        run: |
+          mkdir -p LNMarkets/.local/nova
+          for rows in 1 2 8 32; do
+            cargo run --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova -- prove "$rows" > "LNMarkets/.local/nova/recursive-$rows.json"
+            python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); assert r["nova_recursive_verified"]; print(r["rows"], r["nova_prove_seconds"], r["nova_verify_seconds"])' "LNMarkets/.local/nova/recursive-$rows.json"
+          done
+      - name: Two-contract Spartan-IPA compressed Nova proof
+        timeout-minutes: 35
+        run: |
+          cargo run --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova -- prove 2 --compressed > LNMarkets/.local/nova/compressed-2.json
+          python3 -c 'import json; r=json.load(open("LNMarkets/.local/nova/compressed-2.json")); assert r["nova_recursive_verified"] and r["nova_compressed_verified"] and r["compressed_bytes"] > 0; print(r["compressed_bytes"],r["compressed_prove_seconds"],r["compressed_verify_seconds"])'
+      - name: Upload synthetic Nova measurement receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lnmarkets-nova-measurements
+          path: LNMarkets/.local/nova/*.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
