@@ -62,7 +62,10 @@ impl Default for VerifiedRowDigest {
     }
 }
 
-pub fn digest_from_verified_row(batch: &BatchWitness, index: usize) -> Result<VerifiedRowDigest, String> {
+pub fn digest_from_verified_row(
+    batch: &BatchWitness,
+    index: usize,
+) -> Result<VerifiedRowDigest, String> {
     let row = batch.rows.get(index).ok_or("row index outside batch")?;
     let mut transcript = Vec::with_capacity(700);
     transcript.extend_from_slice(b"UTXORef/LNMarkets/Nova/validated-signed-row/v1");
@@ -81,8 +84,10 @@ pub fn digest_from_verified_row(batch: &BatchWitness, index: usize) -> Result<Ve
     transcript.extend_from_slice(&row.outcome.index.to_le_bytes());
     transcript.extend_from_slice(&row.outcome.message);
     for amount in [
-        row.outcome.trader_sats, row.outcome.maker_sats,
-        row.outcome.anchor_sats, row.outcome.fee_sats,
+        row.outcome.trader_sats,
+        row.outcome.maker_sats,
+        row.outcome.anchor_sats,
+        row.outcome.fee_sats,
     ] {
         transcript.extend_from_slice(&amount.to_le_bytes());
     }
@@ -111,7 +116,9 @@ pub struct NovaSettlementStep {
 
 impl NovaSettlementStep {
     pub fn blank() -> Self {
-        Self { row: VerifiedRowDigest::default() }
+        Self {
+            row: VerifiedRowDigest::default(),
+        }
     }
 }
 
@@ -126,23 +133,39 @@ pub fn initial_state(journal: &[u8; 276], epoch: u64) -> [F; STATE_ARITY] {
 
 fn row_poseidon_input(z: &[F], row: &VerifiedRowDigest) -> [F; 13] {
     [
-        fu(DOMAIN), z[4], row.lo, row.hi, row.funding_lo,
-        row.funding_hi, fu(row.funding_vout as u64),
-        fu(row.outcome_index as u64), fu(row.collateral), fu(row.trader),
-        fu(row.maker), fu(row.anchor), fu(row.fee),
+        fu(DOMAIN),
+        z[4],
+        row.lo,
+        row.hi,
+        row.funding_lo,
+        row.funding_hi,
+        fu(row.funding_vout as u64),
+        fu(row.outcome_index as u64),
+        fu(row.collateral),
+        fu(row.trader),
+        fu(row.maker),
+        fu(row.anchor),
+        fu(row.fee),
     ]
 }
 
 /// Native mirror of the constrained accumulator. This does not verify a
 /// signature. The caller must derive the row from verify_batch().
-pub fn native_step(z: &[F; STATE_ARITY], row: &VerifiedRowDigest) -> Result<[F; STATE_ARITY], String> {
-    if [
-        row.collateral, row.trader, row.maker, row.anchor, row.fee,
-    ].iter().any(|&n| n >= (1u64 << MONEY_BITS)) {
+pub fn native_step(
+    z: &[F; STATE_ARITY],
+    row: &VerifiedRowDigest,
+) -> Result<[F; STATE_ARITY], String> {
+    if [row.collateral, row.trader, row.maker, row.anchor, row.fee]
+        .iter()
+        .any(|&n| n >= (1u64 << MONEY_BITS))
+    {
         return Err("row amount exceeds the 51-bit circuit range".into());
     }
-    let payout = row.trader.checked_add(row.maker)
-        .and_then(|n| n.checked_add(row.anchor)).ok_or("payout overflow")?;
+    let payout = row
+        .trader
+        .checked_add(row.maker)
+        .and_then(|n| n.checked_add(row.anchor))
+        .ok_or("payout overflow")?;
     if payout.checked_add(row.fee) != Some(row.collateral) {
         return Err("collateral conservation failed".into());
     }
@@ -152,26 +175,44 @@ pub fn native_step(z: &[F; STATE_ARITY], row: &VerifiedRowDigest) -> Result<[F; 
         z[1] + fu(row.collateral),
         z[2] + fu(payout),
         z[3] + fu(row.fee),
-        next_root, z[5], z[6], z[7],
+        next_root,
+        z[5],
+        z[6],
+        z[7],
     ])
 }
 
 fn accumulate<CS: ConstraintSystem<F>>(
-    g: &mut G<CS>, old: &AllocatedNum<F>, increment: &AllocatedNum<F>, name: &'static str,
+    g: &mut G<CS>,
+    old: &AllocatedNum<F>,
+    increment: &AllocatedNum<F>,
+    name: &'static str,
 ) -> AllocatedNum<F> {
-    let new = g.alloc(old.get_value().unwrap_or(F::ZERO) + increment.get_value().unwrap_or(F::ZERO));
-    let (old_var, increment_var, new_var) =
-        (old.get_variable(), increment.get_variable(), new.get_variable());
-    g.cs.enforce(|| name, |lc| lc + old_var + increment_var,
-                 |lc| lc + CS::one(), |lc| lc + new_var);
+    let new =
+        g.alloc(old.get_value().unwrap_or(F::ZERO) + increment.get_value().unwrap_or(F::ZERO));
+    let (old_var, increment_var, new_var) = (
+        old.get_variable(),
+        increment.get_variable(),
+        new.get_variable(),
+    );
+    g.cs.enforce(
+        || name,
+        |lc| lc + old_var + increment_var,
+        |lc| lc + CS::one(),
+        |lc| lc + new_var,
+    );
     new
 }
 
 impl StepCircuit<F> for NovaSettlementStep {
-    fn arity(&self) -> usize { STATE_ARITY }
+    fn arity(&self) -> usize {
+        STATE_ARITY
+    }
 
     fn synthesize<CS: ConstraintSystem<F>>(
-        &self, cs: &mut CS, z: &[AllocatedNum<F>],
+        &self,
+        cs: &mut CS,
+        z: &[AllocatedNum<F>],
     ) -> Result<Vec<AllocatedNum<F>>, SynthesisError> {
         if z.len() != STATE_ARITY {
             return Err(SynthesisError::Unsatisfiable);
@@ -191,14 +232,25 @@ impl StepCircuit<F> for NovaSettlementStep {
         let sum = fu(a.trader) + fu(a.maker) + fu(a.anchor);
         let payout = g.alloc(sum);
         let (t, m, anchor_v, fee_v, payout_v, coll_v) = (
-            trader.get_variable(), maker.get_variable(),
-            anchor.get_variable(), fee.get_variable(),
-            payout.get_variable(), coll.get_variable()
+            trader.get_variable(),
+            maker.get_variable(),
+            anchor.get_variable(),
+            fee.get_variable(),
+            payout.get_variable(),
+            coll.get_variable(),
         );
-        g.cs.enforce(|| "payout sum", |lc| lc + t + m + anchor_v,
-                     |lc| lc + CS::one(), |lc| lc + payout_v);
-        g.cs.enforce(|| "collateral conservation", |lc| lc + payout_v + fee_v,
-                     |lc| lc + CS::one(), |lc| lc + coll_v);
+        g.cs.enforce(
+            || "payout sum",
+            |lc| lc + t + m + anchor_v,
+            |lc| lc + CS::one(),
+            |lc| lc + payout_v,
+        );
+        g.cs.enforce(
+            || "collateral conservation",
+            |lc| lc + payout_v + fee_v,
+            |lc| lc + CS::one(),
+            |lc| lc + coll_v,
+        );
 
         let one = g.alloc(F::ONE);
         let count = accumulate(&mut g, &z[0], &one, "increment count");
@@ -207,9 +259,19 @@ impl StepCircuit<F> for NovaSettlementStep {
         let fees = accumulate(&mut g, &z[3], &fee, "increment fees");
 
         let row_fields = [
-            fu(DOMAIN), F::ZERO, a.lo, a.hi, a.funding_lo,
-            a.funding_hi, fu(a.funding_vout as u64), fu(a.outcome_index as u64),
-            fu(a.collateral), fu(a.trader), fu(a.maker), fu(a.anchor), fu(a.fee),
+            fu(DOMAIN),
+            F::ZERO,
+            a.lo,
+            a.hi,
+            a.funding_lo,
+            a.funding_hi,
+            fu(a.funding_vout as u64),
+            fu(a.outcome_index as u64),
+            fu(a.collateral),
+            fu(a.trader),
+            fu(a.maker),
+            fu(a.anchor),
+            fu(a.fee),
         ];
         let mut inputs = Vec::with_capacity(row_fields.len());
         for (index, field) in row_fields.iter().enumerate() {
@@ -221,8 +283,14 @@ impl StepCircuit<F> for NovaSettlementStep {
         }
         let root = g.hash(&inputs);
         Ok(vec![
-            count, collateral, payouts, fees, root,
-            z[5].clone(), z[6].clone(), z[7].clone(),
+            count,
+            collateral,
+            payouts,
+            fees,
+            root,
+            z[5].clone(),
+            z[6].clone(),
+            z[7].clone(),
         ])
     }
 }
@@ -240,7 +308,8 @@ pub struct VerifiedNovaTrace {
 pub fn validated_trace(batch: &BatchWitness) -> Result<VerifiedNovaTrace, String> {
     let journal = verify_batch(batch)?;
     let encoded = encode_journal(&journal);
-    let journal_bytes: [u8; 276] = encoded.try_into()
+    let journal_bytes: [u8; 276] = encoded
+        .try_into()
         .map_err(|_| "journal encoding changed".to_string())?;
     let initial = initial_state(&journal_bytes, journal.epoch);
     let mut state = initial;
@@ -258,7 +327,8 @@ pub fn validated_trace(batch: &BatchWitness) -> Result<VerifiedNovaTrace, String
         return Err("fold totals differ from the pinned native journal".into());
     }
     Ok(VerifiedNovaTrace {
-        journal, journal_bytes,
+        journal,
+        journal_bytes,
         initial: initial.to_vec(),
         final_state: state.to_vec(),
         steps,
@@ -272,11 +342,18 @@ mod tests {
 
     fn synthesize_row(step: &NovaSettlementStep, z: &[F]) -> (bool, Vec<F>) {
         let mut cs = TestConstraintSystem::<F>::new();
-        let inputs: Vec<_> = z.iter().enumerate().map(|(i, v)|
-            AllocatedNum::alloc_infallible(cs.namespace(|| format!("z{i}")), || *v)
-        ).collect();
-        let output = step.synthesize(&mut cs, &inputs).expect("circuit synthesis");
-        (cs.is_satisfied(), output.iter().map(|x| x.get_value().unwrap()).collect())
+        let inputs: Vec<_> = z
+            .iter()
+            .enumerate()
+            .map(|(i, v)| AllocatedNum::alloc_infallible(cs.namespace(|| format!("z{i}")), || *v))
+            .collect();
+        let output = step
+            .synthesize(&mut cs, &inputs)
+            .expect("circuit synthesis");
+        (
+            cs.is_satisfied(),
+            output.iter().map(|x| x.get_value().unwrap()).collect(),
+        )
     }
 
     #[test]

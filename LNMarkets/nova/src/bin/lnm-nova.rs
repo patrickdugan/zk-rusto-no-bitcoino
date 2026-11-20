@@ -4,8 +4,8 @@
 use lnm_bitvm3_nova::{validated_trace, NovaSettlementStep};
 use m18_utxo_window::elem::f_to_le;
 use nova_snark::nova::{CompressedSNARK, PublicParams, RecursiveSNARK};
-use nova_snark::provider::{PallasEngine, VestaEngine};
 use nova_snark::provider::ipa_pc::EvaluationEngine;
+use nova_snark::provider::{PallasEngine, VestaEngine};
 use nova_snark::spartan::snark::RelaxedR1CSSNARK;
 use nova_snark::traits::snark::RelaxedR1CSSNARKTrait;
 use serde_json::json;
@@ -26,8 +26,11 @@ fn main_run() -> Result<(), String> {
     if action != "trace" && action != "prove" {
         return Err("action must be trace or prove".into());
     }
-    let count: usize = args.get(1).ok_or("missing row count")?
-        .parse().map_err(|_| "invalid row count")?;
+    let count: usize = args
+        .get(1)
+        .ok_or("missing row count")?
+        .parse()
+        .map_err(|_| "invalid row count")?;
     if ![1, 2, 8, 32].contains(&count) {
         return Err("ROWS must be 1,2,8,32".into());
     }
@@ -56,26 +59,32 @@ fn main_run() -> Result<(), String> {
         "nova_step_count":trace.steps.len(),
     });
     if action == "trace" {
-        println!("{}", serde_json::to_string_pretty(&native).map_err(|e| e.to_string())?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&native).map_err(|e| e.to_string())?
+        );
         return Ok(());
     }
     let start = Instant::now();
     let pp = Pp::setup(
         &NovaSettlementStep::blank(),
         &*S1::ck_floor(),
-        &*S2::ck_floor()
-    ).map_err(|e| format!("Nova setup: {e:?}"))?;
+        &*S2::ck_floor(),
+    )
+    .map_err(|e| format!("Nova setup: {e:?}"))?;
     let setup = start.elapsed().as_secs_f64();
     let start = Instant::now();
     let mut recursive = Rs::new(&pp, &trace.steps[0], &trace.initial)
         .map_err(|e| format!("Nova initialization: {e:?}"))?;
     for (i, step) in trace.steps.iter().enumerate() {
-        recursive.prove_step(&pp, step)
+        recursive
+            .prove_step(&pp, step)
             .map_err(|e| format!("Nova step {i}: {e:?}"))?;
     }
     let prove = start.elapsed().as_secs_f64();
     let start = Instant::now();
-    let output = recursive.verify(&pp, trace.steps.len(), &trace.initial)
+    let output = recursive
+        .verify(&pp, trace.steps.len(), &trace.initial)
         .map_err(|e| format!("Nova recursive verification: {e:?}"))?;
     if output != trace.final_state {
         return Err("Nova folded output differs from independently computed native trace".into());
@@ -92,23 +101,26 @@ fn main_run() -> Result<(), String> {
         let (pk, vk) = Cs::setup(&pp).map_err(|e| format!("Nova compressed setup: {e:?}"))?;
         report["compressed_setup_seconds"] = json!(t.elapsed().as_secs_f64());
         let t = Instant::now();
-        let proof = Cs::prove(&pp, &pk, &recursive)
-            .map_err(|e| format!("Nova compressed proof: {e:?}"))?;
+        let proof =
+            Cs::prove(&pp, &pk, &recursive).map_err(|e| format!("Nova compressed proof: {e:?}"))?;
         report["compressed_prove_seconds"] = json!(t.elapsed().as_secs_f64());
         let t = Instant::now();
-        let checked = proof.verify(&vk, trace.steps.len(), &trace.initial)
+        let checked = proof
+            .verify(&vk, trace.steps.len(), &trace.initial)
             .map_err(|e| format!("Nova compressed verification: {e:?}"))?;
         if checked != trace.final_state {
             return Err("compressed Nova proof differs from pinned native trace".into());
         }
         report["compressed_verify_seconds"] = json!(t.elapsed().as_secs_f64());
-        report["compressed_bytes"] = json!(
-            bincode::serialize(&proof).map_err(|e| e.to_string())?.len()
-        );
+        report["compressed_bytes"] =
+            json!(bincode::serialize(&proof).map_err(|e| e.to_string())?.len());
         report["proof"] = json!("compressed_nova_spartan_ipa");
         report["nova_compressed_verified"] = json!(true);
     }
-    println!("{}", serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?);
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?
+    );
     Ok(())
 }
 
