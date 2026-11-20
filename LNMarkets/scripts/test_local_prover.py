@@ -117,6 +117,12 @@ class LocalProverTests(unittest.TestCase):
                 self.assertEqual(self.quiet_main(self.args("groth16") + ["--run"]), 2)
         self.assertFalse(self.work.exists())
 
+    def test_pinned_sp1_cli_identifies_release_commit_not_semver(self):
+        self.assertTrue(runner.is_pinned_sp1_cli("sp1 (b8387fa 2026-10-10T00:00:00Z)"))
+        self.assertTrue(runner.is_pinned_sp1_cli("sp1 (b8387fa61e1361d90ee7de49f551863418ca0f08 2026-10-10T00:00:00Z)"))
+        self.assertFalse(runner.is_pinned_sp1_cli("sp1 (d83ed91 2026-10-23T00:00:00Z)"))
+        self.assertFalse(runner.is_pinned_sp1_cli("sp1 6.9.0 (unknown build)"))
+
     def test_subprocess_environment_clears_private_dump_controls(self):
         debug = {key: "test-only-debug-setting" for key in runner.PRIVATE_DUMP_ENV}
         with mock.patch.dict(runner.os.environ, debug):

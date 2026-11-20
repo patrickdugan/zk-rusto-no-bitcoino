@@ -25,6 +25,8 @@ import tomllib
 ROOT = Path(__file__).resolve().parents[2]
 LNM = ROOT / "LNMarkets"
 SP1_VERSION = "6.9.0"
+# The SP1 CLI prints its tagged source commit instead of semantic version.
+SP1_CLI_TAG_COMMIT = "b8387fa61e1361d90ee7de49f551863418ca0f08"
 MAX_WITNESS_BYTES = 512 * 1024
 MAX_ELF_BYTES = 64 * 1024 * 1024
 MAX_PROOF_BYTES = 64 * 1024 * 1024
@@ -257,6 +259,12 @@ def make_plan(args: argparse.Namespace) -> dict:
     return plan
 
 
+def is_pinned_sp1_cli(version_output: str) -> bool:
+    """Match the SP1 v6.9.0 tag's source SHA in cargo-prove's version string."""
+    pattern = r"\bsp1\s+\(" + re.escape(SP1_CLI_TAG_COMMIT[:7]) + r"[0-9a-f]{0,33}\s+[^)]*\)"
+    return re.search(pattern, version_output) is not None
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     plan = make_plan(args)
@@ -275,8 +283,8 @@ def main(argv: list[str] | None = None) -> int:
         env.setdefault(key, "1")
     if args.action == "build":
         version = subprocess.run(["cargo", "prove", "--version"], text=True, capture_output=True, check=True, env=env)
-        if re.search(r"(?<![\d.])6\.9\.0(?![\d.])", version.stdout + version.stderr) is None:
-            print("Build requires cargo-prove version 6.9.0.", file=sys.stderr)
+        if not is_pinned_sp1_cli(version.stdout + version.stderr):
+            print("Build requires cargo-prove built from SP1 v6.9.0 tag b8387fa.", file=sys.stderr)
             return 2
     os.umask(0o077)
     work = args.work_dir.resolve()
