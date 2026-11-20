@@ -1,3 +1,5 @@
+> **Prover architecture (2026-11-20):** The native co-signed batch statement here now feeds the **LNMarkets Nova step** in [nova/](nova/README.md) through the existing BitVM3-Nova machinery. The previous standalone SP1 application harness remains historical only. The first R1CS step treats co-signature digests as opaque private inputs; an end-to-end proof will require signature/merkle verification in-circuit or a verified proof composition with exact common commitments.
+
 # Batch proposal statement v1
 
 ## Scope and trust boundary

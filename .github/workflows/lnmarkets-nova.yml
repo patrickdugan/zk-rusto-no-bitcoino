@@ -1,0 +1,48 @@
+name: LNMarkets Nova/BitVM3 folding
+
+on:
+  push:
+    branches: ['prototype/lnmarkets-batch-prover-20261120']
+    paths:
+      - 'LNMarkets/nova/**'
+      - 'LNMarkets/statement/**'
+      - '.github/workflows/lnmarkets-nova.yml'
+  pull_request:
+    paths:
+      - 'LNMarkets/nova/**'
+      - 'LNMarkets/statement/**'
+      - '.github/workflows/lnmarkets-nova.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lnmarkets-nova-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nova:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check Nova crate formatting
+        run: cargo fmt --manifest-path LNMarkets/nova/Cargo.toml -- --check
+      - name: Native signature/statement and Nova R1CS tests
+        run: cargo test --manifest-path LNMarkets/nova/Cargo.toml --lib
+      - name: Nova circuit lint
+        run: cargo clippy --manifest-path LNMarkets/nova/Cargo.toml --all-targets -- -D warnings
+      - name: Check 1 and 2 contract transcript encodings
+        run: |
+          cargo run --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova -- trace 1
+          cargo run --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova -- trace 2
+      - name: Real Nova IVC smoke proof
+        run: cargo run --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova -- prove 1

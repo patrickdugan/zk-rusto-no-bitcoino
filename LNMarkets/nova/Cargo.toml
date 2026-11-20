@@ -1,0 +1,25 @@
+[package]
+name = "lnm-bitvm3-nova"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+description = "LN Markets co-signed DLC batch state folding experiment on BitVM3/Nova"
+
+[workspace]
+
+[dependencies]
+lnm-batch-statement = { path = "../statement" }
+m18-utxo-window = { path = "../../integrations/bitvm3-nova/m18" }
+nova-snark = "=0.76.0"
+ff = "0.13"
+serde_json = "1"
+hex = "0.4"
+bincode = "1.3"
+
+[profile.release]
+debug = false
+
+[[bin]]
+name = "lnm-nova"
+path = "src/bin/lnm-nova.rs"

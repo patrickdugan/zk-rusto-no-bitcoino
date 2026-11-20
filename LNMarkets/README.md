@@ -1,3 +1,5 @@
+> **Architecture update (2026-11-20):** LNMarkets uses **Nova folding on BitVM3**, following [LNMarkets/nova](nova/README.md) and [M17/M18](../integrations/bitvm3-nova/README.md). The older one-shot SP1 6.9 guest/host under `sp1/` is archived research evidence. SP1 may still appear inside BitVM3's pinned final Nova-verifier shrinkage path (M12–M15); it is no longer the application prover for LNMarkets. The native 276-byte certificate remains a bridge input, and the first Nova circuit only constrains per-row accounting and opaque transcript commitments. It does **not** yet prove signatures, script execution, or funding independently.
+
 # LN Markets: private DLC batches
 
 This prototype checks a batch of privately exchanged DLC summaries and binds
