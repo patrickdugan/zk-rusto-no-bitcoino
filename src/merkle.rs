@@ -32,6 +32,9 @@ fn parent(left: TxMerkleNode, right: TxMerkleNode) -> TxMerkleNode {
 /// Verify tx inclusion against the supplied root. The branch contains the
 /// duplicated sibling for the final leaf of each odd-width Merkle level.
 /// The count constrains path length, padding positions, and tree shape.
+/// It must be authenticated by the caller through an independent source:
+/// the Merkle root alone does not bind transaction count (a path may
+/// validate for both a three- and a four-transaction tree).
 pub fn verify_tx_merkle_root(
     txid: Txid,
     position: u32,
