@@ -215,7 +215,7 @@ impl StepCircuit<F> for NovaSettlementStep {
         z: &[AllocatedNum<F>],
     ) -> Result<Vec<AllocatedNum<F>>, SynthesisError> {
         if z.len() != STATE_ARITY {
-            return Err(SynthesisError::Unsatisfiable);
+            return Err(SynthesisError::Unsatisfiable("expected eight state limbs".into()));
         }
         let mut g = G::new(cs);
         let a = &self.row;
