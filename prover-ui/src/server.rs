@@ -334,11 +334,13 @@ fn resolve_static_asset(route: &str) -> Option<(&'static str, Vec<u8>)> {
         _ => return None,
     };
 
-    if std::env::var_os("RBZK_PROVER_UI_DEV_WEB").is_some() {
-        let disk_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("web")
-            .join(file_name);
-        if let Ok(disk_bytes) = std::fs::read(disk_path) {
+    if let Some(dev_dir) = std::env::var_os("RBZK_PROVER_UI_DEV_WEB") {
+        let base = if dev_dir == "1" {
+            PathBuf::from("web")
+        } else {
+            PathBuf::from(dev_dir)
+        };
+        if let Ok(disk_bytes) = std::fs::read(base.join(file_name)) {
             return Some((content_type, disk_bytes));
         }
     }

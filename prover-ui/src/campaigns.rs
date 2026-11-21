@@ -55,10 +55,7 @@ fn discover_repo_root() -> PathBuf {
             }
         }
     }
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .map(Path::to_path_buf)
-        .unwrap_or_else(|| PathBuf::from("."))
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
 fn load_json_with_fallback(

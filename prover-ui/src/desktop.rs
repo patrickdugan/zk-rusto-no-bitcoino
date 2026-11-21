@@ -39,67 +39,11 @@ impl Default for DesktopLaunchOptions {
     }
 }
 
-/// Renders a crisp 32×32 RGBA window & taskbar icon matching `web/icon.svg`
-/// (obsidian badge + cyan/violet/amber concentric recursive shard rings).
+const EMBED_ICON_32_RGBA: &[u8] = include_bytes!("../assets/icon-32.rgba");
+
+/// Loads the supersampled 32×32 RGBA window & taskbar icon matching `assets/icon.ico` / `web/icon.svg`.
 fn build_app_icon() -> Option<Icon> {
-    const W: u32 = 32;
-    const H: u32 = 32;
-    let mut rgba = vec![0u8; (W * H * 4) as usize];
-    let cx = 15.5f32;
-    let cy = 15.5f32;
-
-    for y in 0..H {
-        for x in 0..W {
-            let fx = x as f32;
-            let fy = y as f32;
-            // Rounded square mask (radius 6px)
-            let dx_box = (fx - cx).abs() - 9.5;
-            let dy_box = (fy - cy).abs() - 9.5;
-            let box_dist = (dx_box.max(0.0).powi(2) + dy_box.max(0.0).powi(2)).sqrt()
-                + dx_box.max(dy_box).min(0.0);
-            if box_dist > 6.0 {
-                continue;
-            }
-            let edge_alpha = (6.3 - box_dist).clamp(0.0, 1.0);
-
-            let dist = ((fx - cx).powi(2) + (fy - cy).powi(2)).sqrt();
-            // Base obsidian background (#0b101b)
-            let mut r = 11.0f32;
-            let mut g = 16.0f32;
-            let mut b = 27.0f32;
-
-            // Outer cyan ring (`r ≈ 11.2`, #38bdf8)
-            let d_outer = (dist - 11.2).abs();
-            if d_outer < 1.5 {
-                let t = (1.5 - d_outer) / 1.5;
-                r = r * (1.0 - t) + 56.0 * t;
-                g = g * (1.0 - t) + 189.0 * t;
-                b = b * (1.0 - t) + 248.0 * t;
-            }
-            // Middle violet recursion ring (`r ≈ 7.2`, #a78bfa)
-            let d_mid = (dist - 7.2).abs();
-            if d_mid < 1.35 {
-                let t = (1.35 - d_mid) / 1.35;
-                r = r * (1.0 - t) + 167.0 * t;
-                g = g * (1.0 - t) + 139.0 * t;
-                b = b * (1.0 - t) + 250.0 * t;
-            }
-            // Inner amber core shard (`r <= 3.3`, #fbbf24)
-            if dist < 3.5 {
-                let t = ((3.5 - dist) / 1.4).clamp(0.0, 1.0);
-                r = r * (1.0 - t) + 251.0 * t;
-                g = g * (1.0 - t) + 191.0 * t;
-                b = b * (1.0 - t) + 36.0 * t;
-            }
-
-            let idx = ((y * W + x) * 4) as usize;
-            rgba[idx] = r.round().clamp(0.0, 255.0) as u8;
-            rgba[idx + 1] = g.round().clamp(0.0, 255.0) as u8;
-            rgba[idx + 2] = b.round().clamp(0.0, 255.0) as u8;
-            rgba[idx + 3] = (edge_alpha * 255.0).round() as u8;
-        }
-    }
-    Icon::from_rgba(rgba, W, H).ok()
+    Icon::from_rgba(EMBED_ICON_32_RGBA.to_vec(), 32, 32).ok()
 }
 
 fn webview_data_dir() -> PathBuf {

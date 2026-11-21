@@ -8,7 +8,21 @@ All frontend assets (`index.html`, `styles.css`, `app.js`, `icon.svg`) and prove
 
 ---
 
-## Build & Launch (Native Rust Desktop App)
+## Download / Run Prebuilt Windows x64 `.exe`
+
+Prebuilt standalone Windows x64 binaries (with multi-resolution PE `.ico` resources and embedded WebView2 UI assets) are committed under [`releases/windows-x64/`](releases/windows-x64/):
+
+- `releases/windows-x64/rbzk-prover-desktop.exe` — zero-console native dark-themed GUI application
+- `releases/windows-x64/rbzk-prover-ui.exe` — unified CLI + desktop launcher (`desktop`, `serve`, `status`, `correlate`)
+- `releases/windows-x64/SHA256SUMS.txt` — SHA-256 checksums
+
+To create a native Windows Desktop icon shortcut (`ZK Rusto no Bitcoino Prover.lnk`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\prover-ui\scripts\install-desktop-shortcut.ps1
+```
+
+## Build & Launch from Source (Native Rust Desktop App)
 
 ```powershell
 cd prover-ui
