@@ -27,6 +27,9 @@ const EMBED_INDEX_HTML: &[u8] = include_bytes!("../web/index.html");
 const EMBED_STYLES_CSS: &[u8] = include_bytes!("../web/styles.css");
 const EMBED_APP_JS: &[u8] = include_bytes!("../web/app.js");
 const EMBED_ICON_SVG: &[u8] = include_bytes!("../web/icon.svg");
+const EMBED_MECHA_ICON_WEBP: &[u8] = include_bytes!("../web/mecha-icon.webp");
+const EMBED_MECHA_HERO_WEBP: &[u8] = include_bytes!("../web/mecha-hero.webp");
+const EMBED_MECHA_REACTOR_WEBP: &[u8] = include_bytes!("../web/mecha-reactor.webp");
 
 const CSP_HEADER: &str = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'";
 
@@ -331,6 +334,9 @@ fn resolve_static_asset(route: &str) -> Option<(&'static str, Vec<u8>)> {
             EMBED_APP_JS,
         ),
         "/icon.svg" => ("icon.svg", "image/svg+xml", EMBED_ICON_SVG),
+        "/mecha-icon.webp" => ("mecha-icon.webp", "image/webp", EMBED_MECHA_ICON_WEBP),
+        "/mecha-hero.webp" => ("mecha-hero.webp", "image/webp", EMBED_MECHA_HERO_WEBP),
+        "/mecha-reactor.webp" => ("mecha-reactor.webp", "image/webp", EMBED_MECHA_REACTOR_WEBP),
         _ => return None,
     };
 

@@ -23,6 +23,9 @@ STATIC_FILES = {
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/app.js": ("app.js", "application/javascript; charset=utf-8"),
     "/icon.svg": ("icon.svg", "image/svg+xml"),
+    "/mecha-icon.webp": ("mecha-icon.webp", "image/webp"),
+    "/mecha-hero.webp": ("mecha-hero.webp", "image/webp"),
+    "/mecha-reactor.webp": ("mecha-reactor.webp", "image/webp"),
 }
 
 
