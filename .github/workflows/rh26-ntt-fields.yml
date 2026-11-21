@@ -1,0 +1,33 @@
+name: RH-CRYPTO-26 NTT toy field
+
+on:
+  push:
+    branches:
+      - research/rh-crypto26-ntt-fields-20261122
+    paths:
+      - "research/rh_crypto26/**"
+      - ".github/workflows/rh26-ntt-fields.yml"
+  pull_request:
+    paths:
+      - "research/rh_crypto26/**"
+      - ".github/workflows/rh26-ntt-fields.yml"
+  workflow_dispatch:
+
+jobs:
+  ntt-prime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Exact field tests
+        run: python -m unittest research.rh_crypto26.test_ntt_prime_scan -v
+      - name: Deterministic 20-bit receipt
+        run: python -m research.rh_crypto26.ntt_prime_scan --bit-width 20 --two-adicity 8 > rh26-ntt-field.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rh26-ntt-toy-receipt
+          path: rh26-ntt-field.json
+          if-no-files-found: error
