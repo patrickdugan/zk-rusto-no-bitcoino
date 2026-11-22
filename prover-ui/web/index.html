@@ -4,58 +4,122 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Prover telemetry, RAM/GPU utilization, and recursive shard attribution console for zk-rusto-no-bitcoino (Nova, SP1 CUDA, Shinigami, M16/M18 Mainnet, Ark/Cashu).">
-  <title>ZK Rusto no Bitcoino · Prover &amp; Recursive Shard Console</title>
+  <title>ZK RAITO NO BITCOINO · Prover &amp; Recursive Shard Console</title>
   <link rel="icon" type="image/webp" href="/mecha-icon.webp">
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
+  <!-- Fixed Architectural Void Backdrop (Targeting Ring, 62° Distressed Crimson Slash, Crosshairs, Viewport L-Hairlines) -->
+  <div class="void-backdrop" aria-hidden="true">
+    <svg class="void-svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <pattern id="crt-scan" width="4" height="4" patternUnits="userSpaceOnUse">
+          <rect width="4" height="1" fill="#000000" fill-opacity="0.45"/>
+        </pattern>
+        <clipPath id="slash-glitch">
+          <rect x="0" y="0" width="1600" height="238"/>
+          <rect x="18" y="241" width="1600" height="114"/>
+          <rect x="-14" y="358" width="1600" height="186"/>
+          <rect x="10" y="547" width="1600" height="218"/>
+          <rect x="-8" y="768" width="1600" height="232"/>
+        </clipPath>
+      </defs>
+      <!-- 62-degree distressed crimson diagonal slash -->
+      <g clip-path="url(#slash-glitch)" opacity="0.14">
+        <polygon points="445,1000 595,1000 1165,0 1015,0" fill="#D90814"/>
+        <!-- Subtle horizontal distress streaks -->
+        <rect x="760" y="180" width="380" height="3" fill="#E60E1B" opacity="0.8"/>
+        <rect x="520" y="420" width="520" height="2" fill="#E60E1B" opacity="0.6"/>
+        <rect x="610" y="695" width="410" height="3" fill="#E60E1B" opacity="0.7"/>
+      </g>
+      <!-- Centered razor-thin crimson targeting ring -->
+      <circle cx="880" cy="500" r="390" fill="none" stroke="#D90814" stroke-width="2" opacity="0.34"/>
+      <!-- Cardinal white vertical ticks (top & bottom) -->
+      <line x1="880" y1="76" x2="880" y2="144" stroke="#F5F5F5" stroke-width="1.5" opacity="0.55"/>
+      <line x1="880" y1="856" x2="880" y2="924" stroke="#F5F5F5" stroke-width="1.5" opacity="0.55"/>
+      <!-- Left & right white + crosshairs -->
+      <g stroke="#F5F5F5" stroke-width="1.3" opacity="0.45">
+        <line x1="296" y1="500" x2="320" y2="500"/>
+        <line x1="308" y1="488" x2="308" y2="512"/>
+        <line x1="1548" y1="500" x2="1572" y2="500"/>
+        <line x1="1560" y1="488" x2="1560" y2="512"/>
+      </g>
+      <!-- Subtle scanline grain overlay -->
+      <rect width="1600" height="1000" fill="url(#crt-scan)" opacity="0.35"/>
+    </svg>
+    <!-- 4 Outer Viewport White L-Hairline Frame Corners -->
+    <span class="vp-corner tl"></span>
+    <span class="vp-corner tr"></span>
+    <span class="vp-corner bl"></span>
+    <span class="vp-corner br"></span>
+  </div>
+
   <div class="app-shell">
-    <!-- Left Navigation & Campaign Selector -->
+    <!-- Left Architectural Rail -->
     <aside class="sidebar" aria-label="Prover navigation">
-      <div class="brand">
-        <img src="/mecha-icon.webp" alt="" width="38" height="38" class="brand-crest">
-        <div>
-          <div class="brand-title">zk-rusto-no-bitcoino</div>
-          <span class="brand-sub">PROVER CONSOLE · v0.3</span>
-        </div>
+      <!-- Top-Left Spec Block (Matches Title Card) -->
+      <div class="spec-block">
+        <div class="spec-row"><span class="sq-crimson">■</span><span class="spec-k">PROJECT</span><span class="spec-sep">:</span><span class="spec-v">ZK-RB</span></div>
+        <div class="spec-row"><span class="sq-spacer"></span><span class="spec-k">PHASE</span><span class="spec-sep">:</span><span class="spec-v" id="rail-phase-code">00</span></div>
+        <div class="spec-row"><span class="sq-spacer"></span><span class="spec-k">MODE</span><span class="spec-sep">:</span><span class="spec-v">LIVE</span></div>
+        <div class="spec-rule"></div>
       </div>
 
-      <div class="side-section-label">Workspace Views</div>
+      <div class="side-section-label">WORKSPACE</div>
       <nav class="nav-tabs" role="tablist" aria-label="Prover views">
         <button class="nav-btn active" role="tab" aria-selected="true" data-tab="live">
-          <span class="nav-icon">01</span> Live RAM / GPU &amp; Prover
+          <span class="nav-icon">01</span>
+          <span class="nav-label">LIVE RAM / GPU</span>
         </button>
         <button class="nav-btn" role="tab" aria-selected="false" data-tab="shards">
-          <span class="nav-icon">02</span> Shards ↔ Blocks &amp; Leaves
+          <span class="nav-icon">02</span>
+          <span class="nav-label">SHARDS &amp; BLOCKS</span>
         </button>
         <button class="nav-btn" role="tab" aria-selected="false" data-tab="utxos">
-          <span class="nav-icon">03</span> Payment UTXOs &amp; Ark/Cashu
+          <span class="nav-icon">03</span>
+          <span class="nav-label">UTXOS &amp; ARK/CASHU</span>
         </button>
         <button class="nav-btn" role="tab" aria-selected="false" data-tab="estimator">
-          <span class="nav-icon">04</span> Shard &amp; Hardware Planner
+          <span class="nav-icon">04</span>
+          <span class="nav-label">SHARD PLANNER</span>
         </button>
       </nav>
 
-      <div class="side-section-label">Proof Campaigns</div>
+      <div class="side-section-label">CAMPAIGNS</div>
       <div class="campaign-list" id="campaign-list" aria-label="Select proof campaign"></div>
 
+      <!-- Bottom-Left Signature: Crimson Hexagon Bitcoin Emblem + Controls -->
       <div class="side-footer">
+        <div class="btc-signature">
+          <svg class="hex-btc-svg" viewBox="0 0 56 64" width="40" height="46" aria-hidden="true">
+            <polygon points="28,3 53,17.5 53,46.5 28,61 3,46.5 3,17.5" fill="none" stroke="#E60E1B" stroke-width="2.2"/>
+            <polygon points="28,8 48.5,20 48.5,44 28,56 7.5,44 7.5,20" fill="none" stroke="#E60E1B" stroke-width="0.9" opacity="0.45"/>
+            <text x="28" y="40.5" text-anchor="middle" fill="#F5F5F5" font-family="'Bahnschrift Condensed','Franklin Gothic Demi Cond',Impact,sans-serif" font-size="27" font-weight="900" transform="skewX(-8) translate(4,0)">₿</text>
+          </svg>
+          <div class="btc-sig-lines">
+            <span>ZERO-KNOWLEDGE</span>
+            <span>RECURSIVE NOVA</span>
+            <span>BITCOIN</span>
+          </div>
+        </div>
+        <div class="spec-rule"></div>
+
         <div id="poll-status-line">
           <span class="dot live" id="live-dot"></span>
-          <span id="poll-label">Polling live telemetry (2s)</span>
+          <span id="poll-label">LIVE 1S SSE STREAM</span>
         </div>
         <div class="side-controls">
-          <button class="ghost-btn" id="toggle-poll" type="button">Pause Poll</button>
-          <button class="ghost-btn" id="toggle-theme" type="button">Grove Theme</button>
+          <button class="ghost-btn" id="toggle-poll" type="button">PAUSE</button>
+          <button class="ghost-btn" id="toggle-theme" type="button">SPEC LIGHT</button>
         </div>
-        <small class="mono">Read-only observer · 0 prover interference</small>
+        <small class="mono rail-footnote">TARGET : zk-rusto-no-bitcoino · READ-ONLY</small>
       </div>
     </aside>
 
     <!-- Main Column -->
     <div class="main-column">
-      <!-- Sticky Live Hardware & Recursive Shard Telemetry Ribbon -->
+      <!-- Sticky Open Hairline Telemetry Strip (No SaaS Card Boxes) -->
       <header class="telemetry-ribbon" aria-label="Live hardware and shard metrics">
         <article class="ribbon-card">
           <div class="ribbon-head">
@@ -75,7 +139,7 @@
 
         <article class="ribbon-card">
           <div class="ribbon-head">
-            <span>Host &amp; WSL RAM</span>
+            <span>HOST &amp; WSL RAM</span>
             <span class="eta-badge emerald" id="host-eta-pill" title="Host memory guard poll / cooldown retry countdown">⏱ --:--</span>
           </div>
           <div class="ribbon-main">
@@ -91,7 +155,7 @@
 
         <article class="ribbon-card">
           <div class="ribbon-head">
-            <span>WSL Cgroup v2</span>
+            <span>WSL CGROUP V2</span>
             <span class="eta-badge violet" id="cgroup-eta-pill" title="Active cgroup phase runtime / cooldown countdown">⏱ --:--:--</span>
           </div>
           <div class="ribbon-main">
@@ -107,7 +171,7 @@
 
         <article class="ribbon-card" id="ribbon-shard-card">
           <div class="ribbon-head">
-            <span>SP1 Shard Stream</span>
+            <span>SP1 SHARD STREAM</span>
             <span class="eta-badge amber" id="ribbon-eta-pill" title="Estimated remaining countdown to compressed SP1 proof">⏱ --:--:--</span>
           </div>
           <div class="ribbon-main">
@@ -123,24 +187,72 @@
       </header>
 
       <main class="workspace-body">
-        <!-- Selected Campaign Banner & KPIs -->
+        <!-- Title-Card Hero Strip (Direct Architectural Translation of ZK RAITO NO BITCOINO) -->
         <section class="campaign-banner" aria-labelledby="campaign-title">
-          <div>
+          <div class="hero-top-row">
             <p class="eyebrow" id="campaign-network">BITCOIN PROVING CAMPAIGN</p>
-            <h1 id="campaign-title">Loading campaign…</h1>
-            <p id="campaign-subtitle"></p>
+            <div class="hero-top-right">
+              <div class="hero-meta-lines">
+                <span>CRYPTO × MECHA</span>
+                <span>PROVER TELEMETRY CONSOLE</span>
+              </div>
+              <!-- Crisp White Barcode Accent -->
+              <svg class="hero-barcode" viewBox="0 0 92 18" width="92" height="18" aria-hidden="true">
+                <rect x="0" y="0" width="3" height="18" fill="currentColor"/>
+                <rect x="5" y="0" width="1.5" height="18" fill="currentColor"/>
+                <rect x="9" y="0" width="4" height="18" fill="currentColor"/>
+                <rect x="15" y="0" width="1.5" height="18" fill="currentColor"/>
+                <rect x="19" y="0" width="2.5" height="18" fill="currentColor"/>
+                <rect x="24" y="0" width="4.5" height="18" fill="currentColor"/>
+                <rect x="31" y="0" width="1.5" height="18" fill="currentColor"/>
+                <rect x="35" y="0" width="3" height="18" fill="currentColor"/>
+                <rect x="40" y="0" width="2" height="18" fill="currentColor"/>
+                <rect x="45" y="0" width="4" height="18" fill="currentColor"/>
+                <rect x="51" y="0" width="1.5" height="18" fill="currentColor"/>
+                <rect x="55" y="0" width="3.5" height="18" fill="currentColor"/>
+                <rect x="61" y="0" width="1.5" height="18" fill="currentColor"/>
+                <rect x="65" y="0" width="2.5" height="18" fill="currentColor"/>
+                <rect x="70" y="0" width="4" height="18" fill="currentColor"/>
+                <rect x="76" y="0" width="1.5" height="18" fill="currentColor"/>
+                <rect x="80" y="0" width="3" height="18" fill="currentColor"/>
+                <rect x="85" y="0" width="2" height="18" fill="currentColor"/>
+                <rect x="89" y="0" width="3" height="18" fill="currentColor"/>
+              </svg>
+            </div>
           </div>
-          <div class="badge-stack">
-            <span class="status-pill" id="campaign-badge">VERIFYING</span>
-            <span class="status-pill cyan" id="campaign-eta-pill">⏱ E2E ETA --:--:--</span>
-            <span class="hw-caption" id="campaign-hw"></span>
+
+          <div class="hero-title-zone">
+            <h1 id="campaign-title">ZK RAITO NO BITCOINO</h1>
+            <!-- Skewed White-Bordered Katakana Parallelogram + Triple Crimson Hazard Stripes -->
+            <div class="katakana-ribbon-row">
+              <span class="hazard-tri" aria-hidden="true"><i></i><i></i><i></i></span>
+              <div class="katakana-parallelogram">
+                <span class="jp-title">ゼットケー・ラスト・ノ・ビットコイノ</span>
+                <span class="jp-sep">·</span>
+                <span id="campaign-subtitle">zk-rusto-no-bitcoino recursive proving campaign</span>
+              </div>
+              <span class="hazard-tri" aria-hidden="true"><i></i><i></i><i></i></span>
+            </div>
+          </div>
+
+          <div class="hero-bottom-row">
+            <div class="badge-stack">
+              <span class="status-pill" id="campaign-badge">VERIFYING</span>
+              <span class="status-pill cyan" id="campaign-eta-pill">⏱ E2E ETA --:--:--</span>
+              <span class="hw-caption" id="campaign-hw"></span>
+            </div>
+            <div class="ver-stamp">
+              <div class="ver-line"><span>VER.0.3.0</span><span class="sq-crimson">■</span></div>
+              <div class="ver-sub">ZK / SP1 / BTC</div>
+            </div>
           </div>
         </section>
 
+        <!-- 5 Open Architectural KPI Columns (No Boxes, Pure 1px Hairline Dividers) -->
         <section class="kpi-grid" aria-label="Campaign key metrics">
           <article class="kpi-card">
             <div class="kpi-head">
-              <span class="kpi-label">Bitcoin Workload</span>
+              <span class="kpi-label">BITCOIN WORKLOAD</span>
               <span class="eta-badge done" id="kpi-eta-domain">✓ 00:00:00</span>
             </div>
             <strong class="kpi-value" id="kpi-domain">--</strong>
@@ -148,7 +260,7 @@
           </article>
           <article class="kpi-card">
             <div class="kpi-head">
-              <span class="kpi-label">Nova 0.76 Fold</span>
+              <span class="kpi-label">NOVA 0.76 FOLD</span>
               <span class="eta-badge done" id="kpi-eta-nova">✓ 00:00:00</span>
             </div>
             <strong class="kpi-value" id="kpi-nova">--</strong>
@@ -156,7 +268,7 @@
           </article>
           <article class="kpi-card" id="kpi-core-card">
             <div class="kpi-head">
-              <span class="kpi-label">SP1 Core Shards</span>
+              <span class="kpi-label">SP1 CORE SHARDS</span>
               <span class="eta-badge cyan" id="kpi-eta-core" title="Countdown until all ProveShard tasks complete">⏱ --:--:--</span>
             </div>
             <strong class="kpi-value" id="kpi-core-shards">--</strong>
@@ -165,7 +277,7 @@
           </article>
           <article class="kpi-card" id="kpi-rec-card">
             <div class="kpi-head">
-              <span class="kpi-label">Recursive Reduce</span>
+              <span class="kpi-label">RECURSIVE REDUCE</span>
               <span class="eta-badge violet" id="kpi-eta-rec" title="Countdown until 3:1 recursion tree root completes">⏱ --:--:--</span>
             </div>
             <strong class="kpi-value" id="kpi-rec-shards">--</strong>
@@ -174,7 +286,7 @@
           </article>
           <article class="kpi-card" id="kpi-m14-card">
             <div class="kpi-head">
-              <span class="kpi-label">BitVM3 Final (M14)</span>
+              <span class="kpi-label">BITVM3 FINAL (M14)</span>
               <span class="eta-badge amber" id="kpi-eta-m14" title="End-to-end countdown including M13 BLAKE3 wrap + M14 785.44M-gate garbled verifier">⏱ --:--:--</span>
             </div>
             <strong class="kpi-value" id="kpi-gates">785.44M</strong>
@@ -184,7 +296,7 @@
 
         <!-- TAB 01: LIVE PROVER & HARDWARE TELEMETRY -->
         <section class="tab-panel" id="tab-live">
-          <!-- Real-Time Liveness Cockpit & Animated Shard Mosaic -->
+          <!-- Real-Time Targeting Reticle Cockpit & 60fps Shard Matrix -->
           <section class="liveness-cockpit mode-proving" id="liveness-cockpit" aria-label="Live ongoing prover operation">
             <div class="cockpit-scanline"></div>
             <div class="cockpit-grid">
@@ -192,10 +304,15 @@
                 <div class="cockpit-hero">
                   <div class="ring-wrap" aria-hidden="true">
                     <svg class="ring-svg" viewBox="0 0 84 84">
-                      <circle cx="42" cy="42" r="35" fill="none" stroke="var(--line-strong)" stroke-width="5"/>
-                      <circle id="cockpit-ring-arc" cx="42" cy="42" r="35" fill="none" stroke="var(--cyan)"
-                        stroke-width="5" stroke-linecap="round" stroke-dasharray="219.9" stroke-dashoffset="110"/>
-                      <circle id="cockpit-ring-orbit" cx="42" cy="7" r="3.5" fill="var(--amber)"/>
+                      <!-- Outer hairline targeting ticks -->
+                      <line x1="42" y1="1" x2="42" y2="6" stroke="var(--ink)" stroke-width="1.2" opacity="0.65"/>
+                      <line x1="42" y1="78" x2="42" y2="83" stroke="var(--ink)" stroke-width="1.2" opacity="0.65"/>
+                      <line x1="1" y1="42" x2="6" y2="42" stroke="var(--ink)" stroke-width="1.2" opacity="0.65"/>
+                      <line x1="78" y1="42" x2="83" y2="42" stroke="var(--ink)" stroke-width="1.2" opacity="0.65"/>
+                      <circle cx="42" cy="42" r="35" fill="none" stroke="var(--line-strong)" stroke-width="2.5"/>
+                      <circle id="cockpit-ring-arc" cx="42" cy="42" r="35" fill="none" stroke="var(--crimson)"
+                        stroke-width="3.2" stroke-linecap="butt" stroke-dasharray="219.9" stroke-dashoffset="110"/>
+                      <circle id="cockpit-ring-orbit" cx="42" cy="7" r="3.2" fill="var(--ink)"/>
                     </svg>
                     <div class="ring-center">
                       <strong id="cockpit-timer-val">0.0s</strong>
@@ -221,20 +338,20 @@
                     <span id="cockpit-overall-left">Estimated Task Completion (Core + Active 3:1 Tree)</span>
                     <strong id="cockpit-overall-right">-- / -- (--%)</strong>
                   </div>
-                  <div class="meter" style="height:8px;margin-bottom:9px">
+                  <div class="meter" style="height:4px;margin-bottom:12px">
                     <div class="meter-fill emerald" id="cockpit-overall-fill" style="width:0%"></div>
                   </div>
                   <div class="headroom-top">
                     <span id="cockpit-bar-left">In-Flight Task / Headroom Progress</span>
                     <strong id="cockpit-bar-right">--</strong>
                   </div>
-                  <div class="meter" style="height:7px">
+                  <div class="meter" style="height:3px">
                     <div class="meter-fill cyan" id="cockpit-progress-fill" style="width:25%"></div>
                   </div>
                 </div>
 
-                <!-- Proof Pipeline Stage Bus (calm static connector; pulses only on completion) -->
-                <svg class="bus-svg" id="proof-bus-svg" viewBox="0 0 680 76" aria-label="Proof pipeline stage bus">
+                <!-- Calm Static Stage Bus (Event-Only Completion Pulse) -->
+                <svg class="bus-svg" id="proof-bus-svg" viewBox="0 0 680 84" aria-label="Proof pipeline stage bus">
                   <defs>
                     <filter id="glow">
                       <feGaussianBlur stdDeviation="2.0" result="b"/>
@@ -242,62 +359,63 @@
                     </filter>
                   </defs>
                   <!-- Base wires -->
-                  <line x1="70" y1="38" x2="610" y2="38" stroke="var(--line-strong)" stroke-width="2"/>
-                  <line id="bus-active-wire" class="bus-wire-active" x1="70" y1="38" x2="475" y2="38" stroke="var(--cyan)" stroke-width="2"/>
+                  <line x1="70" y1="36" x2="610" y2="36" stroke="var(--line-strong)" stroke-width="1.4"/>
+                  <line id="bus-active-wire" class="bus-wire-active" x1="70" y1="36" x2="475" y2="36" stroke="var(--crimson)" stroke-width="2"/>
                   <!-- Static stage chevrons -->
-                  <g fill="none" stroke="var(--ink-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.65">
-                    <polyline points="135,34.5 139.5,38 135,41.5"/>
-                    <polyline points="270,34.5 274.5,38 270,41.5"/>
-                    <polyline points="405,34.5 409.5,38 405,41.5"/>
-                    <polyline points="540,34.5 544.5,38 540,41.5"/>
+                  <g fill="none" stroke="var(--ink-dim)" stroke-width="1.3" stroke-linecap="square">
+                    <polyline points="135,32.5 139.5,36 135,39.5"/>
+                    <polyline points="270,32.5 274.5,36 270,39.5"/>
+                    <polyline points="405,32.5 409.5,36 405,39.5"/>
+                    <polyline points="540,32.5 544.5,36 540,39.5"/>
                   </g>
                   <!-- Event-only completion pulse layer -->
                   <g id="bus-particles-layer" filter="url(#glow)"></g>
-                  <!-- Nodes -->
-                  <g transform="translate(70,38)">
-                    <circle r="13" fill="var(--bg-card)" stroke="var(--accent)" stroke-width="2"/>
-                    <text y="3.5" text-anchor="middle" fill="var(--accent)" font-size="9" font-family="monospace">NOVA</text>
-                    <text y="27" text-anchor="middle" fill="var(--ink-muted)" font-size="8.5" font-family="monospace">4-Step Fold</text>
+                  <!-- Sharp Architectural Reticle Nodes -->
+                  <g transform="translate(70,36)">
+                    <circle r="13" fill="var(--bg)" stroke="var(--ink)" stroke-width="1.6"/>
+                    <text y="3.5" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" font-weight="700">NOVA</text>
+                    <text y="27" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace">4-STEP FOLD</text>
                   </g>
-                  <g transform="translate(205,38)">
-                    <circle id="bus-node-exec" r="13" fill="var(--bg-card)" stroke="var(--cyan)" stroke-width="2"/>
-                    <text y="3.5" text-anchor="middle" fill="var(--cyan)" font-size="9" font-family="monospace">EXEC</text>
-                    <text y="27" text-anchor="middle" fill="var(--ink-muted)" font-size="8.5" font-family="monospace">RISC-V Stream</text>
+                  <g transform="translate(205,36)">
+                    <circle id="bus-node-exec" r="13" fill="var(--bg)" stroke="var(--ink)" stroke-width="1.6"/>
+                    <text y="3.5" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" font-weight="700">EXEC</text>
+                    <text y="27" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace">RISC-V STREAM</text>
                   </g>
-                  <g transform="translate(340,38)">
-                    <circle id="bus-node-shard" r="15" fill="var(--bg-card)" stroke="var(--amber)" stroke-width="2.3"/>
-                    <text y="3.5" text-anchor="middle" fill="var(--amber)" font-size="9" font-family="monospace">SHARD</text>
+                  <g transform="translate(340,36)">
+                    <circle id="bus-node-shard" r="15" fill="var(--bg)" stroke="var(--crimson)" stroke-width="2"/>
+                    <text y="3.5" text-anchor="middle" fill="var(--crimson)" font-size="8.5" font-family="monospace" font-weight="700">SHARD</text>
                     <text y="28" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" id="bus-shard-count">1,131 core</text>
                   </g>
-                  <g transform="translate(475,38)">
-                    <circle id="bus-node-reduce" r="15" fill="var(--bg-card)" stroke="var(--violet)" stroke-width="2.3"/>
-                    <text y="3.5" text-anchor="middle" fill="var(--violet)" font-size="9" font-family="monospace">3:1</text>
+                  <g transform="translate(475,36)">
+                    <circle id="bus-node-reduce" r="15" fill="var(--bg)" stroke="var(--ink)" stroke-width="2"/>
+                    <text y="3.5" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" font-weight="700">3:1</text>
                     <text y="28" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" id="bus-reduce-count">1,032 reduce</text>
                   </g>
-                  <g transform="translate(610,38)">
-                    <circle id="bus-node-final" r="13" fill="var(--bg-card)" stroke="var(--line-strong)" stroke-width="2"/>
-                    <text y="3.5" text-anchor="middle" fill="var(--ink-muted)" font-size="9" font-family="monospace">M14</text>
-                    <text y="27" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace">785.4M Gates</text>
+                  <g transform="translate(610,36)">
+                    <circle id="bus-node-final" r="13" fill="var(--bg)" stroke="var(--line-strong)" stroke-width="1.6"/>
+                    <text y="3.5" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace">M14</text>
+                    <text y="27" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace">785.4M GATES</text>
                   </g>
                 </svg>
               </div>
 
-              <!-- Right: Live 60fps Shard Mosaic + Sliding Completion Feed -->
+              <!-- Right: Live 60fps Shard Matrix + Sliding Completion Feed -->
               <div class="cockpit-right">
                 <div class="mosaic-head">
                   <div>
-                    <h3>Live Shard &amp; Recursion Mosaic (<span id="mosaic-total-count">--</span>)</h3>
+                    <h3>LIVE SHARD &amp; RECURSION MATRIX</h3>
+                    <div class="mosaic-count-line" id="mosaic-total-count">--</div>
                   </div>
                   <button type="button" class="replay-btn" id="replay-completions-btn" title="Visually replay the last 12 recorded shard/recursion completions from progress.jsonl">
-                    ▶ Replay Last 12 Shards
+                    ▶ REPLAY LAST 12 SHARDS
                   </button>
                 </div>
                 <div class="mosaic-canvas-wrap">
                   <canvas id="shard-mosaic-canvas" width="540" height="108" aria-label="Live shard and recursion completion mosaic"></canvas>
                 </div>
                 <div class="mosaic-tooltip">
-                  <span id="mosaic-hover-label">Hover any tile to inspect task digest &amp; proving latency · Leading slot pulses while proving</span>
-                  <span><b style="color:var(--amber)">■</b> Core Shard &nbsp;<b style="color:var(--violet)">■</b> Reduce &nbsp;<b style="color:var(--cyan)">◉</b> In-Flight</span>
+                  <span id="mosaic-hover-label">Hover tile for digest &amp; latency · Leading slot pulses</span>
+                  <span class="mosaic-legend-right"><b style="color:var(--crimson)">■</b> CORE &nbsp;<b style="color:var(--ink)">■</b> REDUCE &nbsp;<b style="color:var(--crimson)">[◉]</b> ACTIVE</span>
                 </div>
                 <div class="completion-feed" id="completion-feed" aria-live="polite"></div>
               </div>
@@ -307,10 +425,10 @@
           <section class="panel">
             <div class="panel-head">
               <div>
-                <h2>End-to-End Nova → SP1 CUDA → BLAKE3 → BitVM3 Garbled Pipeline</h2>
+                <h2>END-TO-END NOVA → SP1 CUDA → BLAKE3 → BITVM3 GARBLED PIPELINE</h2>
                 <p class="panel-sub">Verified receipts, active CUDA proving stages, and pending downstream gates stay explicitly separated.</p>
               </div>
-              <span class="tag-mono" id="pipeline-pin-tag">SP1 6.9.0 · Nova 0.76.0</span>
+              <span class="tag-mono" id="pipeline-pin-tag">SP1 6.9.0 · NOVA 0.76.0</span>
             </div>
             <div class="pipeline-track" id="pipeline-track"></div>
           </section>
@@ -319,18 +437,18 @@
             <section class="panel">
               <div class="panel-head">
                 <div>
-                  <h2>WSL Cgroup RAM/Swap vs Windows Host Headroom</h2>
+                  <h2>WSL CGROUP RAM/SWAP VS WINDOWS HOST HEADROOM</h2>
                   <p class="panel-sub">Live 2-second trace from <code>resources.jsonl</code> against the 2 GiB Linux cap and 3 GiB Windows floor.</p>
                 </div>
-                <span class="tag-mono" id="mem-chart-tag">2s cadence</span>
+                <span class="tag-mono" id="mem-chart-tag">2S CADENCE</span>
               </div>
               <div class="chart-box">
                 <svg class="chart-svg" id="mem-history-svg" viewBox="0 0 640 210" preserveAspectRatio="none" aria-label="Memory telemetry history"></svg>
                 <div class="chart-legend">
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--accent)"></i>Windows Free (GiB)</span>
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--cyan)"></i>Cgroup RSS (GiB)</span>
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--violet)"></i>Cgroup Swap (GiB)</span>
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--red)"></i>3.0 GiB Host Floor</span>
+                  <span class="legend-item"><i class="legend-swatch" style="background:var(--ink)"></i>Windows Free (GiB)</span>
+                  <span class="legend-item"><i class="legend-swatch" style="background:var(--crimson)"></i>Cgroup RSS (GiB)</span>
+                  <span class="legend-item"><i class="legend-swatch" style="background:var(--ink-dim)"></i>Cgroup Swap (GiB)</span>
+                  <span class="legend-item"><i class="legend-swatch" style="background:var(--crimson);opacity:0.5"></i>3.0 GiB Host Floor</span>
                 </div>
               </div>
             </section>
@@ -338,17 +456,17 @@
             <section class="panel">
               <div class="panel-head">
                 <div>
-                  <h2>GPU Compute / VRAM &amp; Checkpoint Task Stream</h2>
+                  <h2>GPU COMPUTE / VRAM &amp; CHECKPOINT TASK STREAM</h2>
                   <p class="panel-sub">Live RTX 5080 utilization &amp; per-task latency (<code>ms</code>) of completed <code>ProveShard</code> and <code>RecursionReduce</code> memos.</p>
                 </div>
-                <span class="tag-mono" id="task-chart-tag">progress.jsonl</span>
+                <span class="tag-mono" id="task-chart-tag">PROGRESS.JSONL</span>
               </div>
               <div class="chart-box">
                 <svg class="chart-svg" id="task-history-svg" viewBox="0 0 640 210" preserveAspectRatio="none" aria-label="Task duration and GPU history"></svg>
                 <div class="chart-legend">
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--amber)"></i>ProveShard (s)</span>
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--violet)"></i>RecursionReduce (s)</span>
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--cyan)"></i>GPU VRAM Used (GiB)</span>
+                  <span class="legend-item"><i class="legend-swatch" style="background:var(--crimson)"></i>ProveShard (s)</span>
+                  <span class="legend-item"><i class="legend-swatch" style="background:var(--ink)"></i>RecursionReduce (s)</span>
+                  <span class="legend-item"><i class="legend-swatch" style="background:var(--ink-muted)"></i>GPU VRAM Used (GiB)</span>
                 </div>
               </div>
             </section>
@@ -358,13 +476,13 @@
             <section class="panel">
               <div class="panel-head">
                 <div>
-                  <h2>Live WSL Prover Log &amp; Guard Ledger</h2>
+                  <h2>LIVE WSL PROVER LOG &amp; GUARD LEDGER</h2>
                   <p class="panel-sub">Streaming tail of active <code>phase.log</code> plus clean resource-hold checkpoints and <code>/dev/shm</code> sweeps.</p>
                 </div>
                 <span class="tag-mono" id="active-phase-name">--</span>
               </div>
               <pre class="log-pre" id="phase-log-pre">Waiting for live WSL prover log…</pre>
-              <div class="table-scroll" style="margin-top:12px">
+              <div class="table-scroll" style="margin-top:14px">
                 <table>
                   <thead>
                     <tr>
@@ -384,7 +502,7 @@
             <section class="panel">
               <div class="panel-head">
                 <div>
-                  <h2>Host vs WSL Memory Accounting</h2>
+                  <h2>HOST VS WSL MEMORY ACCOUNTING</h2>
                   <p class="panel-sub">Separating Windows resident RAM, <code>vmmemWSL</code> pagefile commit, Linux cgroup RSS, and CUDA driver pools.</p>
                 </div>
               </div>
@@ -399,10 +517,10 @@
             <section class="panel">
               <div class="panel-head">
                 <div>
-                  <h2>Recursive Reduction Hierarchy (Domain Primitives → BitVM3 Circuit)</h2>
+                  <h2>RECURSIVE REDUCTION HIERARCHY (DOMAIN PRIMITIVES → BITVM3)</h2>
                   <p class="panel-sub">How blocks, Shinigami script leaves, payment UTXOs, and Ark VTXOs fold into SP1 shards and M14 gates.</p>
                 </div>
-                <span class="tag-mono">3:1 SP1 Compress Fan-In</span>
+                <span class="tag-mono">3:1 SP1 COMPRESS FAN-IN</span>
               </div>
               <div class="pyramid-stack" id="shard-pyramid"></div>
             </section>
@@ -410,7 +528,7 @@
             <section class="panel">
               <div class="panel-head">
                 <div>
-                  <h2>M16 Mainnet SP1 Guest Instruction &amp; Shard Attribution</h2>
+                  <h2>M16 MAINNET SP1 GUEST INSTRUCTION &amp; SHARD ATTRIBUTION</h2>
                   <p class="panel-sub">34,055,622,753 instructions → 13,290 Core Shards + 4,430 Recursion Shards (<code>2^27</code> threshold).</p>
                 </div>
               </div>
@@ -434,17 +552,17 @@
           <section class="panel">
             <div class="panel-head">
               <div>
-                <h2>Mainnet Chainstate Window (975,067 .. 975,072): Per-Block Nova Steps, Compressions &amp; UTXO Leaf Updates</h2>
+                <h2>MAINNET CHAINSTATE WINDOW (975,067 .. 975,072): PER-BLOCK NOVA STEPS</h2>
                 <p class="panel-sub">Measured M18 dual-slot step machine (SHA-256 producer + depth-20 Poseidon UTXO leaf consumer) across 32,693 mainnet txs and 74,592 created UTXOs.</p>
               </div>
-              <span class="tag-mono">224,790 Steps · 8 Segments · Root 7e18b083…2d1c</span>
+              <span class="tag-mono">224,790 STEPS · 8 SEGMENTS · ROOT 7e18b083…2d1c</span>
             </div>
             <div class="chart-box" style="margin-bottom:14px">
               <svg class="chart-svg" id="m18-blocks-svg" viewBox="0 0 860 200" preserveAspectRatio="none" aria-label="M18 per-block step comparison"></svg>
               <div class="chart-legend">
-                <span class="legend-item"><i class="legend-swatch" style="background:var(--cyan)"></i>SHA-256 Compressions (Producer)</span>
-                <span class="legend-item"><i class="legend-swatch" style="background:var(--accent)"></i>Poseidon Leaf Updates (Consumer)</span>
-                <span class="legend-item"><i class="legend-swatch" style="background:var(--amber)"></i>Producer Idle Steps (Block 975,072)</span>
+                <span class="legend-item"><i class="legend-swatch" style="background:var(--ink)"></i>SHA-256 Compressions (Producer)</span>
+                <span class="legend-item"><i class="legend-swatch" style="background:var(--crimson)"></i>Poseidon Leaf Updates (Consumer)</span>
+                <span class="legend-item"><i class="legend-swatch" style="background:var(--ink-dim)"></i>Producer Idle Steps (Block 975,072)</span>
               </div>
             </div>
             <div class="table-scroll">
@@ -472,10 +590,10 @@
             <section class="panel">
               <div class="panel-head">
                 <div>
-                  <h2>M18 Parallel Nova Segments (<code>z0 → zn</code> State Chaining)</h2>
+                  <h2>M18 PARALLEL NOVA SEGMENTS (<code>z0 → zn</code> STATE CHAINING)</h2>
                   <p class="panel-sub">8 independent <code>fold-seg</code> workers compressed to 13,800-byte Spartan-IPA proofs (110.4 KB total).</p>
                 </div>
-                <span class="tag-mono">vk a259c50c…1939</span>
+                <span class="tag-mono">VK a259c50c…1939</span>
               </div>
               <div class="table-scroll">
                 <table>
@@ -497,10 +615,10 @@
             <section class="panel">
               <div class="panel-head">
                 <div>
-                  <h2>Shinigami Script Leaves, Taproot VTXO Exits &amp; FC03 Envelopes</h2>
+                  <h2>SHINIGAMI SCRIPT LEAVES, TAPROOT VTXO EXITS &amp; FC03 ENVELOPES</h2>
                   <p class="panel-sub">M17 Nova folding steps (6,808 R1CS/step), Shinigami Cairo/Stwo Taproot leaves, and FC03 644 vB tapscript carriers.</p>
                 </div>
-                <span class="tag-mono">7,733 Core Checks</span>
+                <span class="tag-mono">7,733 CORE CHECKS</span>
               </div>
               <div class="table-scroll">
                 <table>
@@ -527,14 +645,14 @@
             <section class="panel">
               <div class="panel-head">
                 <div>
-                  <h2>Mainnet Payment UTXO (M16 <code>PAY1</code> + M18 Unspent Leaf #8)</h2>
+                  <h2>MAINNET PAYMENT UTXO (M16 <code>PAY1</code> + M18 UNSPENT LEAF #8)</h2>
                   <p class="panel-sub">Inclusion proved under genesis-anchored tip 975,072 (M16) AND unspentness proved in depth-20 Poseidon map (M18).</p>
                 </div>
                 <span class="pill-action unspent">UNSPENT · 940,000 SATS</span>
               </div>
               <div class="kv-grid" id="pay1-kv-grid"></div>
               <details style="margin-top:14px">
-                <summary class="mono" style="cursor:pointer;color:var(--cyan)">Inspect Depth-20 Poseidon Indexed Merkle Siblings (Leaf #8 → Root 7e18b083…2d1c)</summary>
+                <summary class="mono" style="cursor:pointer;color:var(--crimson)">Inspect Depth-20 Poseidon Indexed Merkle Siblings (Leaf #8 → Root 7e18b083…2d1c)</summary>
                 <pre class="log-pre" id="pay1-siblings-pre" style="margin-top:8px"></pre>
               </details>
             </section>
@@ -542,7 +660,7 @@
             <section class="panel">
               <div class="panel-head">
                 <div>
-                  <h2>Ark ASP VTXO Policy Certificate (<code>ARK1</code>) &amp; Cashu Proof Grove</h2>
+                  <h2>ARK ASP VTXO POLICY CERTIFICATE (<code>ARK1</code>) &amp; PROOF GROVE</h2>
                   <p class="panel-sub">Nova-verified 24-scalar state scan over live Proof Grove Bark VTXOs (Core height 679) + NUT-09/20 Cashu bridge.</p>
                 </div>
                 <span class="tag-mono">dd352842…8f41</span>
@@ -569,7 +687,7 @@
           <section class="panel" id="ark-zk-upgrade-panel">
             <div class="panel-head">
               <div>
-                <h2>Cairo / Shinigami Taproot Exit &amp; Nova <code>ArkTransitionV1</code> Bridge</h2>
+                <h2>CAIRO / SHINIGAMI TAPROOT EXIT &amp; NOVA <code>ArkTransitionV1</code> BRIDGE</h2>
                 <p class="panel-sub">Hardened multi-input Ark forfeit &amp; CSV exit proofs (<code>shinigami@fe9c65e</code>) paired with Nova batch conservation (<code>ark-transition-nova@81140f9</code>) and the live Proof Grove Cashu desk.</p>
               </div>
               <span class="pill-action unspent">25/25 ARK CAIRO · 22/22 NOVA MUTATIONS</span>
@@ -578,14 +696,14 @@
               <div class="kv-item"><span>Cairo / Shinigami Engine</span><strong>4,977/4,977 Core + 2-in Forfeit &amp; CSV Exit</strong></div>
               <div class="kv-item"><span>Shinigami Stwo Program Hash</span><strong>0x4f57fcf7…4bf9c8b4 (0.25s verify)</strong></div>
               <div class="kv-item"><span>Nova ArkTransitionV1 VK</span><strong>22ad3282…85dfcdad (1,050 R1CS/step · 11,104 B)</strong></div>
-              <div class="kv-item"><span>Proof Grove Cashu Desk</span><strong><a href="http://127.0.0.1:8765/" target="_blank" rel="noopener noreferrer" style="color:var(--cyan);text-decoration:none">http://127.0.0.1:8765/ ↗</a> (91 Py + 12 Wallet tests)</strong></div>
+              <div class="kv-item"><span>Proof Grove Cashu Desk</span><strong><a href="http://127.0.0.1:8765/" target="_blank" rel="noopener noreferrer" style="color:var(--crimson);text-decoration:none">http://127.0.0.1:8765/ ↗</a> (91 Py + 12 Wallet tests)</strong></div>
             </div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
               <div>
-                <h2>Pinned Verifier Keys, Program Digests &amp; Cross-Program Isolation</h2>
+                <h2>PINNED VERIFIER KEYS, PROGRAM DIGESTS &amp; CROSS-PROGRAM ISOLATION</h2>
                 <p class="panel-sub">Every circuit key, SP1 ELF program digest, and M13 BLAKE3 wrap root is SHA-256 pinned; cross-program substitution (e.g. M16 proof presented as ARK1) fails closed.</p>
               </div>
               <span class="tag-mono">FAIL-CLOSED PINS</span>
@@ -610,7 +728,7 @@
           <section class="panel">
             <div class="panel-head">
               <div>
-                <h2>Workload → Recursive Shard &amp; RAM/GPU Envelope Planner</h2>
+                <h2>WORKLOAD → RECURSIVE SHARD &amp; RAM/GPU ENVELOPE PLANNER</h2>
                 <p class="panel-sub">Compute Nova folding segments, SP1 core &amp; recursive reduce shards, Linux cgroup RAM, swap, and RTX 5080 VRAM from measured repository unit costs.</p>
               </div>
               <span class="status-pill projection">ANALYTICAL PROJECTION · MEASURED UNIT CONSTANTS</span>
@@ -717,9 +835,9 @@
 
               <div>
                 <div class="kv-grid" id="est-results-grid"></div>
-                <div class="panel" style="margin-top:14px;background:var(--bg-subtle)">
-                  <div class="panel-head" style="margin-bottom:8px">
-                    <h2>Projected SP1 Core Shard Attribution</h2>
+                <div class="sub-panel" style="margin-top:16px">
+                  <div class="panel-head" style="margin-bottom:10px">
+                    <h2>PROJECTED SP1 CORE SHARD ATTRIBUTION</h2>
                     <span class="tag-mono" id="est-total-tasks-tag">-- total tasks</span>
                   </div>
                   <div class="stacked-bar" id="est-attr-bar"></div>

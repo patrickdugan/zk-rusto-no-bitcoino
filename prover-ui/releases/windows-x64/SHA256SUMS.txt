@@ -1,2 +1,2 @@
-b36db8ad660aabbe8a05be2fe985cb18708a8410cc50da40c66002c88f4271db  rbzk-prover-desktop.exe
-ac50e1f585cd73baa4a831019ac0684118c740070c65633446c1819b3cb9859d  rbzk-prover-ui.exe
+3947adc12e6b924e7706e50d50c7f0aeb07dc77e03753b990aef7a89cf12cfe7  rbzk-prover-ui.exe
+dc476f209de869af90e6dba1207d0977a91db57a449c7ed9a0a6bb2e047b8414  rbzk-prover-desktop.exe

@@ -117,7 +117,7 @@ pub fn run_desktop(opts: DesktopLaunchOptions) -> Result<()> {
     let nav_lh = allowed_prefix_lh.clone();
     let _webview = WebViewBuilder::with_web_context(&mut web_context)
         .with_url(&app_url)
-        .with_background_color((10, 14, 23, 255))
+        .with_background_color((3, 3, 4, 255))
         .with_devtools(true)
         .with_navigation_handler(move |uri: String| {
             if uri.starts_with(&nav_ip) || uri.starts_with(&nav_lh) || uri == "about:blank" {
