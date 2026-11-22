@@ -168,9 +168,9 @@
 
     $("toggle-theme").addEventListener("click", () => {
       const html = document.documentElement;
-      const next = html.getAttribute("data-theme") === "spec" ? "dark" : "spec";
+      const next = html.getAttribute("data-theme") === "grove" ? "dark" : "grove";
       html.setAttribute("data-theme", next);
-      $("toggle-theme").textContent = next === "spec" ? "Mecha Dark" : "Spec Light";
+      $("toggle-theme").textContent = next === "grove" ? "Dark Theme" : "Grove Theme";
     });
 
     $("toggle-poll").addEventListener("click", () => {
@@ -215,7 +215,7 @@
               }`;
         } else {
           $("mosaic-hover-label").textContent =
-            "Hover any cell to inspect digest & latency · Leading reticle pulses in-flight";
+            "Hover any tile to inspect task digest & proving latency · Leading slot pulses while proving";
         }
       });
       canvas.addEventListener("mouseleave", () => {
@@ -317,11 +317,11 @@
     // EXEC (205) -> SHARD (340) for shard; SHARD (340) -> 3:1 REDUCE (475) for reduce
     const fromX = isReduce ? 340 : 205;
     const toX = isReduce ? 475 : 340;
-    const color = isReduce ? "#f6f7fb" : "#ff1e2b";
+    const color = isReduce ? "#a78bfa" : "#34d399";
     state.busParticles.push({
       fromX,
       toX,
-      y: 36,
+      y: 38,
       progress: 0,
       speed: 0.024,
       r: 4.2,
@@ -420,7 +420,7 @@
       timerVal.textContent = `${el.toFixed(1)}s`;
       $("cockpit-timer-sub").textContent = "CUDA INIT";
       frac = Math.min(0.95, el / 95.0);
-      ringArc.setAttribute("stroke", "var(--crimson-bright)");
+      ringArc.setAttribute("stroke", "var(--cyan)");
       angleRad = (nowMs / 550) % (Math.PI * 2);
     } else if (mode === "replaying_memo") {
       const el = state.basePhaseElapsedS + dtSec;
@@ -441,7 +441,7 @@
       timerVal.textContent = `${curS.toFixed(1)}s`;
       $("cockpit-timer-sub").textContent = "IN-FLIGHT";
       frac = Math.min(0.98, curS / expS);
-      ringArc.setAttribute("stroke", "var(--crimson-bright)");
+      ringArc.setAttribute("stroke", "var(--cyan)");
       angleRad = (nowMs / 650) % (Math.PI * 2);
     }
 
@@ -684,18 +684,20 @@
       const isReplayed = item.r === 1;
       ctx.fillStyle = isReduce
         ? isReplayed
-          ? "rgba(238, 242, 249, 0.36)"
-          : "#eef2f9"
+          ? "rgba(167, 139, 250, 0.42)"
+          : "#a78bfa"
         : isReplayed
-        ? "rgba(230, 14, 27, 0.36)"
-        : "#e60e1b";
+        ? "rgba(251, 191, 36, 0.38)"
+        : "#fbbf24";
 
-      ctx.fillRect(x, y, cellW, cellH);
+      ctx.beginPath();
+      ctx.roundRect(x, y, cellW, cellH, 2);
+      ctx.fill();
 
       if (state.hoveredTile && state.hoveredTile.idx === i) {
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 1.5;
-        ctx.strokeRect(x, y, cellW, cellH);
+        ctx.stroke();
       }
 
       rects.push({
@@ -721,14 +723,16 @@
     const pulse = 0.45 + 0.55 * Math.sin(nowMs / 240);
     const activeColor =
       state.opMode === "waiting_headroom" || state.opMode === "cooldown_backoff"
-        ? `rgba(255, 107, 26, ${0.35 + 0.55 * pulse})`
-        : `rgba(255, 30, 43, ${0.42 + 0.58 * pulse})`;
+        ? `rgba(251, 191, 36, ${0.35 + 0.55 * pulse})`
+        : `rgba(56, 189, 248, ${0.4 + 0.6 * pulse})`;
 
     ctx.fillStyle = activeColor;
-    ctx.fillRect(lx, ly, cellW, cellH);
+    ctx.beginPath();
+    ctx.roundRect(lx, ly, cellW, cellH, 2);
+    ctx.fill();
 
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1.3;
+    ctx.strokeStyle = "#e0f2fe";
+    ctx.lineWidth = 1.2;
     ctx.strokeRect(lx - 1, ly - 1, cellW + 2, cellH + 2);
 
     rects.push({
@@ -822,9 +826,6 @@
     $("campaign-title").textContent = c.title;
     $("campaign-subtitle").textContent = c.subtitle;
     $("campaign-hw").textContent = c.hardware;
-    if ($("campaign-katakana-sub")) {
-      $("campaign-katakana-sub").textContent = `${String(c.id || "ZK-RB").toUpperCase()} · ZERO-KNOWLEDGE BITCOIN`;
-    }
 
     const badge = $("campaign-badge");
     badge.textContent = c.evidence_badge;
@@ -1022,7 +1023,7 @@
       const wire = $("bus-active-wire");
       if (wire) {
         wire.setAttribute("x2", isHold ? "205" : "475");
-        wire.setAttribute("stroke", isHold ? "var(--amber)" : "var(--crimson-bright)");
+        wire.setAttribute("stroke", isHold ? "var(--amber)" : "var(--cyan)");
       }
 
       if (isHold) {
@@ -1207,7 +1208,7 @@
         const pct = Math.max(8, Math.min(100, ((ev.ms || 1000) / maxMs) * 100));
         const sec = ((ev.ms || 0) / 1000).toFixed(1);
         const hi = state.highlightedSeqs.has(ev.seq) ? "newly-arrived" : "";
-        const fillCol = isReduce ? "var(--ink)" : "var(--crimson-bright)";
+        const fillCol = isReduce ? "var(--violet)" : "var(--amber)";
         return `
           <div class="feed-item ${hi}">
             <span class="feed-kind ${isReduce ? "reduce" : "shard"}">${
@@ -1342,7 +1343,7 @@
       <polyline fill="none" stroke="var(--cyan)" stroke-width="2" points="${poly(
         (s) => (s.cgroup_ram_mib || 0) / 1024
       )}"/>
-      <polyline fill="none" stroke="var(--amber)" stroke-width="1.8" points="${poly(
+      <polyline fill="none" stroke="var(--violet)" stroke-width="1.8" points="${poly(
         (s) => (s.cgroup_swap_mib || 0) / 1024
       )}"/>
       <text x="${pad.l}" y="${H - 6}" fill="var(--ink-dim)" font-size="10" font-family="monospace">t=${t0}s</text>
@@ -1377,11 +1378,11 @@
         const sec = (ev.ms || 500) / 1000;
         const y = ySec(sec);
         const h = Math.max(3, pad.t + ph - y);
-        const color = ev.kind === "reduce" ? "var(--ink)" : "var(--crimson-bright)";
-        const opacity = ev.replayed ? "0.35" : "0.90";
+        const color = ev.kind === "reduce" ? "var(--violet)" : "var(--amber)";
+        const opacity = ev.replayed ? "0.35" : "0.88";
         return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(
           1
-        )}" height="${h.toFixed(1)}" rx="0" fill="${color}" opacity="${opacity}">
+        )}" height="${h.toFixed(1)}" rx="2" fill="${color}" opacity="${opacity}">
           <title>${esc(ev.kind)} ${esc(ev.key)} · ${sec.toFixed(1)}s (${
           ev.replayed ? "replayed" : "proved"
         })</title>
@@ -1398,7 +1399,7 @@
           return `${x.toFixed(1)},${y.toFixed(1)}`;
         })
         .join(" ");
-      vramLine = `<polyline fill="none" stroke="var(--amber)" stroke-width="2" points="${pts}"/>`;
+      vramLine = `<polyline fill="none" stroke="var(--cyan)" stroke-width="2" points="${pts}"/>`;
     }
 
     svg.innerHTML = `
@@ -1476,12 +1477,12 @@
 
     if (m16 && m16.instruction_breakdown) {
       const colors = [
-        "var(--crimson-bright)",
-        "var(--ink)",
-        "var(--amber)",
-        "#8b95a7",
+        "var(--cyan)",
+        "var(--violet)",
         "var(--accent)",
-        "#4b5263",
+        "var(--amber)",
+        "#ec4899",
+        "#94a3b8",
       ];
       $("m16-instr-bar").innerHTML = m16.instruction_breakdown
         .map(
@@ -1699,17 +1700,17 @@
         return `
           <rect x="${gx.toFixed(1)}" y="${(baseY - hComp).toFixed(1)}" width="${bw.toFixed(
           1
-        )}" height="${hComp.toFixed(1)}" rx="0" fill="var(--crimson-bright)"/>
+        )}" height="${hComp.toFixed(1)}" rx="3" fill="var(--cyan)"/>
           <rect x="${(gx + bw + 4).toFixed(1)}" y="${(baseY - hLeaf).toFixed(
           1
-        )}" width="${bw.toFixed(1)}" height="${hLeaf.toFixed(1)}" rx="0" fill="var(--ink)"/>
+        )}" width="${bw.toFixed(1)}" height="${hLeaf.toFixed(1)}" rx="3" fill="var(--accent)"/>
           ${
             b.idle_steps > 0
               ? `<rect x="${(gx + 2 * (bw + 4)).toFixed(1)}" y="${(baseY - hIdle).toFixed(
                   1
                 )}" width="${(bw * 0.8).toFixed(1)}" height="${Math.max(4, hIdle).toFixed(
                   1
-                )}" rx="0" fill="var(--amber)"/>`
+                )}" rx="2" fill="var(--amber)"/>`
               : ""
           }
           <text x="${(gx + bw).toFixed(1)}" y="${H - 9}" text-anchor="middle" fill="var(--ink-muted)" font-size="11" font-family="monospace">${
@@ -1805,10 +1806,10 @@
 
     const attr = sp.shard_attribution || {};
     const parts = [
-      ["Header Blocks", attr.header_blocks || 0, "var(--crimson-bright)"],
-      ["UTXO Window + Payments", attr.utxo_window_and_payments || 0, "var(--ink)"],
-      ["Shinigami Leaves", attr.shinigami_leaves || 0, "var(--amber)"],
-      ["Ark VTXO Policy", attr.ark_vtxo_policy || 0, "var(--accent)"],
+      ["Header Blocks", attr.header_blocks || 0, "var(--cyan)"],
+      ["UTXO Window + Payments", attr.utxo_window_and_payments || 0, "var(--accent)"],
+      ["Shinigami Leaves", attr.shinigami_leaves || 0, "var(--violet)"],
+      ["Ark VTXO Policy", attr.ark_vtxo_policy || 0, "var(--amber)"],
     ];
     const sum = Math.max(1, parts.reduce((acc, p) => acc + p[1], 0));
     $("est-attr-bar").innerHTML = parts

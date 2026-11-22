@@ -101,7 +101,7 @@ pub fn run_desktop(opts: DesktopLaunchOptions) -> Result<()> {
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("ZK RUSTO NO BITCOINO // PROJECT : ZK-RB [PROVER HUD]")
+        .with_title("ZK Rusto no Bitcoino · Prover & Recursive Shard Console")
         .with_inner_size(LogicalSize::new(1480.0, 940.0))
         .with_min_inner_size(LogicalSize::new(980.0, 640.0))
         .with_theme(Some(Theme::Dark))
@@ -117,7 +117,7 @@ pub fn run_desktop(opts: DesktopLaunchOptions) -> Result<()> {
     let nav_lh = allowed_prefix_lh.clone();
     let _webview = WebViewBuilder::with_web_context(&mut web_context)
         .with_url(&app_url)
-        .with_background_color((4, 4, 6, 255))
+        .with_background_color((10, 14, 23, 255))
         .with_devtools(true)
         .with_navigation_handler(move |uri: String| {
             if uri.starts_with(&nav_ip) || uri.starts_with(&nav_lh) || uri == "about:blank" {
