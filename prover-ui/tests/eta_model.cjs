@@ -1,6 +1,6 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {estimate,clock,arkCampaign,arkDeadline} = require('../web/app.js');
+const {estimate,clock,arkCampaign,arkDeadline,cashuRoadmap} = require('../web/app.js');
 const progress = () => ({exists:true,unique_shards:3333,
   rates:{shard_per_min_15m:5,shard_per_min_5m:10,shard_per_min_30m:4},
   recent_events:[{kind:'shard',replayed:false,t:995}]});
@@ -137,4 +137,39 @@ test('deadline capacity subtracts entered budgets and the delivery window can st
   assert.ok(result.deliveryFinish.slow>arkDeadline);
   const expired=arkCampaign(wsl,{...campaignLive,now:arkDeadline,plan});
   assert.equal(expired.coreCapacityUntilDeadline,null);
+});
+
+const historicalPayment = {summary:{
+  network:'testnet4',schema:'ark/shinigami-testnet4-verified-payment/v1',
+  status:'independently_verified_legacy_script_payment',
+}};
+const historicalTapleaf = {summary:{
+  network:'testnet4',schema:'ark/shinigami-testnet4-verified-tapleaf/v1',
+  status:'independently_verified_real_tapleaf',
+}};
+
+test('Friday evidence distinguishes the recorded demo from the conditional Ark proof',()=>{
+  const road=cashuRoadmap(arkCampaign(gpu(),campaignLive),[historicalPayment,historicalTapleaf]);
+  assert.equal(road.friday.find(item=>item.id==='shinigami').done,true);
+  assert.equal(road.friday.find(item=>item.id==='cashu-demo').status,'Recorded regtest demo');
+  assert.equal(road.friday.find(item=>item.id==='ark-proof').status,'Conditional · finish unknown');
+  assert.equal(road.trust.find(item=>item.id==='issuance').done,false);
+  assert.equal(road.trust.find(item=>item.id==='redemption').done,false);
+});
+
+test('a duplicate or misbound Shinigami receipt cannot establish both historical verifications',()=>{
+  for(const receipts of [[historicalPayment,historicalPayment], [
+    historicalPayment,{summary:{...historicalTapleaf.summary,status:historicalPayment.summary.status}},
+  ]]) {
+    assert.equal(cashuRoadmap({checksPassed:false},receipts).friday.find(item=>item.id==='shinigami').done,false);
+  }
+});
+
+test('terminal Ark checks still leave the audit and every admin-trust gate open',()=>{
+  const terminal=arkCampaign({status:'all_proof_checks_passed',compressed_exists:true,wrap_v2_exists:true},campaignLive);
+  const road=cashuRoadmap(terminal,[historicalPayment,historicalTapleaf]);
+  assert.equal(road.friday.find(item=>item.id==='ark-proof').status,'Checks reported · audit pending');
+  assert.equal(road.friday.find(item=>item.id==='ark-proof').done,false);
+  assert.deepEqual(road.trust.map(item=>item.id),['backing','issuance','redemption','adversarial']);
+  assert.ok(road.trust.every(item=>!item.done && item.status==='Open · no ETA'));
 });

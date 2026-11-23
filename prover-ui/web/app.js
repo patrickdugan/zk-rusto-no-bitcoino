@@ -112,7 +112,38 @@ const ProofEta = (() => {
       proofRemaining:proofRange, proofFinish:project(proofRange), deliveryFinish:project(deliveryRange),
       coreCapacityUntilDeadline};
   }
-  return {estimate,clock,arkCampaign,arkDeadline,arkBudgets};
+  const cashuTrustMilestones = [
+    {id:'backing',label:'Prove live backing and mint liabilities',
+      detail:'Bind spendable Bitcoin or Ark collateral and outstanding Cashu claims to the same state. Detect spent collateral, expiry, reorgs and double-counted backing.'},
+    {id:'issuance',label:'Enforce proof-bound Cashu issuance',
+      detail:'Require a valid, unused authorization for each amount and mint keyset. Demonstrate that bypassing the desk or controlling one operator cannot produce extra valid tokens.'},
+    {id:'redemption',label:'Fund redemption if the mint refuses',
+      detail:'Fund a Bitcoin output and show a holder settling a valid Cashu claim to their own address while the mint refuses or stays offline. Record the timeout, fees and confirmed spend.'},
+    {id:'adversarial',label:'Verify the end-to-end trust claim',
+      detail:'Independently reproduce issuance and refusal-path settlement. Reject issuance replay, excess issuance and invalid or repeated redemption. State the remaining signer, setup and liveness assumptions.'},
+  ];
+  function cashuRoadmap(ark, records) {
+    const shinigami = [
+      ['ark/shinigami-testnet4-verified-payment/v1','independently_verified_legacy_script_payment'],
+      ['ark/shinigami-testnet4-verified-tapleaf/v1','independently_verified_real_tapleaf'],
+    ].every(([schema,status])=>records.some(record=>record.summary?.network==='testnet4' &&
+      record.summary.schema===schema && record.summary.status===status));
+    const friday = [
+      {id:'shinigami',label:'Shinigami historical payment and Tapleaf proofs',
+        status:shinigami?'Verified records available':'Recorded · receipts unavailable here',done:shinigami,
+        detail:'The separate testnet4 cases independently verified historical script execution. Each passed 15 negative controls.'},
+      {id:'cashu-demo',label:'Cashu issuance, Ark withdrawal and recipient exit',
+        status:'Recorded regtest demo',done:true,
+        detail:'CDK admitted a Core-confirmed deposit and issued Cashu. A successful mint redemption delivered an Ark VTXO. The holder then claimed that VTXO on Bitcoin while the mint and Ark server were offline.'},
+      {id:'ark-proof',label:'Ark Nova → SP1 → M13 → BitVM3 off-chain proof',
+        status:ark.checksPassed?'Checks reported · audit pending':'Conditional · finish unknown',done:false,
+        detail:ark.checksPassed?
+          'The coordinator reported all proof checks passed. Include this claim after auditing the statement and artifact hashes.':
+          'Include the four-VTXO maintenance-policy proof if independent SP1 and M13 checks, honest M14 evaluation, full-circuit bit-flip rejection and the evidence audit finish by the cutoff.'},
+    ];
+    return {friday,trust:cashuTrustMilestones.map(item=>({...item,status:'Open · no ETA',done:false}))};
+  }
+  return {estimate,clock,arkCampaign,arkDeadline,arkBudgets,cashuRoadmap};
 })();
 if(typeof module!=='undefined' && module.exports)module.exports=ProofEta;
 if(typeof document!=='undefined') (() => {
@@ -166,6 +197,9 @@ if(typeof document!=='undefined') (() => {
   function finishLabel(range) {
     const fast=singaporeTime.format(range.fast*1000),slow=singaporeTime.format(range.slow*1000);
     return `${fast===slow?fast:`${fast} – ${slow}`} SGT`;
+  }
+  function milestoneMarkup({id,label,detail,status,done}) {
+    return `<li class="campaign-milestone" data-stage="${id}"><div><strong>${esc(label)}</strong><p class="panel-sub">${esc(detail)}</p></div><span class="milestone-status${done?' is-done':''}">${esc(status)}</span></li>`;
   }
   function updateCampaign() {
     const observed=state.live?.wsl_prover || {};
@@ -228,16 +262,11 @@ if(typeof document!=='undefined') (() => {
       if(row.id==='setup' && setupRecorded)detail=`785,442,492 ciphertexts generated and verified in 4m 32s. ${detail}`;
       const budget=campaignPlan[row.id];
       const remaining=Number.isFinite(budget)&&!row.done?` · ${planningDuration(budget*60)} budgeted`:'';
-      return `<li class="campaign-milestone" data-stage="${row.id}"><div><strong>${esc(row.label)}</strong><p class="panel-sub">${esc(detail)}</p></div><span class="milestone-status${row.done?' is-done':''}">${esc(row.status+remaining)}</span></li>`;
+      return milestoneMarkup({...row,detail,status:row.status+remaining});
     }).join(''));
-    const companion=[
-      ['ark/shinigami-testnet4-verified-payment/v1','independently_verified_legacy_script_payment'],
-      ['ark/shinigami-testnet4-verified-tapleaf/v1','independently_verified_real_tapleaf'],
-    ].every(([schema,status])=>state.records.some(record=>record.summary?.network==='testnet4' &&
-      record.summary.schema===schema && record.summary.status===status));
-    $('shinigami-evidence').textContent=companion?
-      'Both independently verified Shinigami records are available under Evidence.':
-      'Shinigami records appear under Evidence when available.';
+    const roadmap=ProofEta.cashuRoadmap(campaign,state.records);
+    setMarkup('cashu-friday',roadmap.friday.map(milestoneMarkup).join(''));
+    setMarkup('cashu-trust',roadmap.trust.map(milestoneMarkup).join(''));
     tickDeadline();
   }
   function tickDeadline() {
@@ -380,8 +409,9 @@ if(typeof document!=='undefined') (() => {
     const events=progress.recent_events||[];
     setMarkup('shard-events',events.slice(-24).map(ev=>`<span class="observed-tile ${state.newEventSeqs.has(ev.seq)?'checkpoint-new':''}" data-seq="${esc(ev.seq)}" title="${esc(ev.key)}">${esc(ev.kind)} · ${ev.replayed?'replayed':'proved'} · ${n(ev.ms/1000,1)}s</span>`).join('') || '<p class="panel-sub">No shard completion events observed.</p>');
     $('claims-list').innerHTML=all.filter(j=>j.audit?.statement).map(j=>`<article class="observed-job"><h3>${esc(j.title)} · ${esc(j.audit.valid?'audited historical claim':'unconfirmed receipt')}</h3><pre>${esc(JSON.stringify(j.audit.statement,null,2))}</pre></article>`).join('') || '<p>No payment claim receipt observed.</p>';
-    const show={live:['eta-panel','runtime-panel','shard-panel'],blocks:['evidence-panel'],utxos:['claims-panel'],estimator:['planner-panel']};
-    ['eta-panel','runtime-panel','shard-panel','evidence-panel','claims-panel','planner-panel'].forEach(id=>$(id).hidden=!show[state.tab].includes(id));
+    const show={live:['eta-panel','runtime-panel','shard-panel'],blocks:['evidence-panel'],
+      utxos:['claims-panel'],estimator:['planner-panel'],cashu:['cashu-panel']};
+    Object.values(show).flat().forEach(id=>$(id).hidden=!show[state.tab].includes(id));
     updateCampaign();updateEta();drawHistory();
   }
   async function poll() {
@@ -400,6 +430,11 @@ if(typeof document!=='undefined') (() => {
     finally { if(state.polling)state.timer=setTimeout(poll,2000); }
   }
   document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>{state.tab=b.dataset.tab;document.querySelectorAll('.nav-btn').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-selected',x===b?'true':'false');});render();const panels=document.querySelectorAll('.panel:not([hidden])');panels.forEach(p=>{p.classList.remove('view-enter');void p.offsetWidth;p.classList.add('view-enter');setTimeout(()=>p.classList.remove('view-enter'),220);});});
+  $('open-cashu-roadmap').onclick=()=>{
+    const tab=$('cashu-tab');
+    tab.click();
+    $('cashu-heading').focus();
+  };
   $('toggle-poll').onclick=()=>{state.polling=!state.polling;if(state.polling)state.lastReceived=0;clearTimeout(state.timer);$('toggle-poll').textContent=state.polling?'PAUSE':'RESUME';render();if(state.polling)poll();};
   $('toggle-theme').onclick=()=>{const dark=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=dark?'grove':'dark';};
   $('planner').onsubmit=async event=>{event.preventDefault();const input=Object.fromEntries([...new FormData(event.target)].map(([k,v])=>[k,Number(v)]));input.hardware_profile='rtx5080_bounded_2gib';try{const response=await fetch('/api/correlate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});const result=await response.json();$('planner-result').textContent=`PROJECTION ONLY\n${JSON.stringify(result,null,2)}`;}catch(error){$('planner-result').textContent=error.message;}};

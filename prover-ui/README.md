@@ -79,6 +79,15 @@ evaluation the coordinator rechecks those artifacts and binds the release to the
 verified Ark wrap. The setup timing does not estimate honest or adversarial
 evaluation.
 
+The **Cashu Roadmap** tab covers the Friday demo and the remaining milestones for
+admin-trust-free Cashu. The demo uses the recorded CDK/Bark integration and exit
+results in Proofdesk's `docs/cashu-ark-integration.json` and
+`docs/cashu-ark-exit-integration.json`. It looks for both historical Shinigami
+receipts in the Evidence inventory. The four-VTXO off-chain proof is contingent
+on verifier checks and an evidence audit. The milestones for live backing and
+liabilities, proof-bound issuance, funded mint-refusal redemption, and
+adversarial integration have no ETA.
+
 The planner compares the entered scenario against the
 [Nut November cutoff](https://nutnovember.org/) on 27 November 2026 at 23:59 UTC.
 It needs a scenario core total and a remaining time budget for each unfinished

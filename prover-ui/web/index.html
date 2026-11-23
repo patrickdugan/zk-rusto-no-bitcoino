@@ -80,6 +80,9 @@
           <span class="nav-icon">03</span>
           <span class="nav-label">PAYMENT CLAIMS</span>
         </button>
+        <button class="nav-btn" id="cashu-tab" role="tab" aria-selected="false" aria-controls="cashu-panel" data-tab="cashu">
+          <span class="nav-label">CASHU ROADMAP</span>
+        </button>
         <button class="nav-btn" role="tab" aria-selected="false" data-tab="estimator">
           <span class="nav-icon">04</span>
           <span class="nav-label">SHARD PLANNER</span>
@@ -199,6 +202,10 @@
               <p id="deadline-outlook"></p>
             </div>
           </div>
+          <div class="cashu-roadmap-link">
+            <p class="panel-sub">Friday’s demo can use the recorded Cashu-to-Ark regtest flow and historical Shinigami proofs.</p>
+            <button type="button" class="ghost-btn" id="open-cashu-roadmap">VIEW CASHU ROADMAP</button>
+          </div>
           <ol id="campaign-milestones" class="campaign-milestones" aria-label="Ark proof and delivery milestones"></ol>
           <details class="campaign-plan" id="campaign-plan">
             <summary>Plan a full-chain ETA</summary>
@@ -211,11 +218,6 @@
               </div>
             </form>
           </details>
-          <div class="campaign-companion">
-            <h3>Cashu demo evidence</h3>
-            <p>Use the regtest Cashu-to-Ark redemption and exit flow for the demo. Shinigami’s historical testnet4 payment and Tapleaf checks support a separate claim.</p>
-            <p class="panel-sub" id="shinigami-evidence"></p>
-          </div>
           <h3 class="core-eta-heading">Live core checkpoint forecast</h3>
           <div class="eta-layout">
             <div><span class="kpi-label" id="eta-scope">NEXT SAVED-CORE MILESTONE</span><strong class="eta-clock" id="eta-clock">Connecting</strong><p id="eta-finish" class="panel-sub">Waiting for live progress</p></div>
@@ -238,6 +240,19 @@
         </section>
         <section class="panel" id="claims-panel"><div class="panel-head"><h2>PAYMENT CLAIMS</h2><span class="tag-mono">FROM OBSERVED AUDIT RECEIPTS</span></div>
           <div id="claims-list"></div><p class="panel-sub">Historical script verification does not establish current unspentness, mint funding, an Ark payment, or removal of a trusted administrator. No live wallet balance source is configured.</p>
+        </section>
+        <section class="panel cashu-roadmap" id="cashu-panel" role="tabpanel" aria-labelledby="cashu-tab" hidden>
+          <div class="panel-head"><h2 id="cashu-heading" tabindex="-1">CASHU ROADMAP</h2></div>
+          <section aria-labelledby="cashu-friday-heading">
+            <h3 id="cashu-friday-heading">What we can show by Friday</h3>
+            <p class="panel-sub">The recorded demo and historical proofs are available now. The Ark proof is additional evidence if all checks and the audit finish by Fri Nov 27, 23:59 UTC.</p>
+            <ol id="cashu-friday" class="campaign-milestones"></ol>
+          </section>
+          <section aria-labelledby="cashu-trust-heading">
+            <h3 id="cashu-trust-heading">Milestones for admin-trust-free Cashu</h3>
+            <p class="panel-sub">The demonstrated offline exit begins with a VTXO that the holder already owns. A funded refusal path must start with the holder’s Cashu claim.</p>
+            <ol id="cashu-trust" class="campaign-milestones"></ol>
+          </section>
         </section>
         <section class="panel" id="planner-panel"><div class="panel-head"><h2>SHARD PLANNER</h2><span class="tag-mono">MODEL · NOT RUN PROGRESS</span></div>
           <p class="panel-sub">Carbon's measured-unit estimator. These are projections for the entered workload, separate from observed process data.</p>
