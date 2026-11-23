@@ -281,7 +281,48 @@ fn read_hyperstack_ark_state(path: &Path, journal: Option<&Path>) -> Option<Valu
             _ => return None,
         });
     }
+    if let Some(storage) = read_ark_storage(path, raw["name"].as_str()?, vm_id, started) {
+        sample["private_storage"] = storage;
+    }
+    const RELEASES: &str = "https://github.com/patrickdugan/zk-rusto-no-bitcoino/releases/tag/";
+    let checkpoint = format!("{RELEASES}ark-679-spot-{suffix}");
+    if raw["spot_public_release"].as_str() == Some(checkpoint.as_str()) {
+        sample["checkpoint_release"] = json!(checkpoint);
+    }
+    if let Some(finished) = raw["checkpoint_export_finished"].as_bool() {
+        sample["checkpoint_export_finished"] = json!(finished);
+    }
+    if raw["spot_release_error"].as_str().is_some_and(|value| !value.is_empty()) {
+        sample["checkpoint_release_error"] = json!(true);
+    }
+    let proof = format!("{RELEASES}ark-679-offchain-{suffix}");
+    if sample["stage"] == "proof_checks_passed" && raw["verified_proof_release"].as_str() == Some(proof.as_str()) {
+        if let Some(commit) = raw["ark_pushed_commit"].as_str().filter(|value| {
+            value.len() == 40 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+        }) {
+            sample["proof_release"] = json!(proof);
+            sample["proof_commit"] = json!(commit);
+        }
+    }
     Some(sample)
+}
+
+fn read_ark_storage(state: &Path, campaign: &str, vm_id: u64, started: u64) -> Option<Value> {
+    let (raw, written) = read_bounded_cloud_state(&state.with_extension("storage.json"))?;
+    if raw["schema"] != "rbzk/ark-private-storage/v1" || raw["campaign"].as_str()? != campaign
+        || raw["vm_id"].as_u64()? != vm_id
+    {
+        return None;
+    }
+    let sampled = raw["sampled_at_unix"].as_u64()?;
+    if !(started..=written.saturating_add(5)).contains(&sampled) {
+        return None;
+    }
+    Some(json!({
+        "sampled_at_unix": sampled,
+        "bucket_bytes": raw["bucket_bytes"].as_u64()?,
+        "objects": raw["objects"].as_u64()?,
+    }))
 }
 
 fn read_bounded_cloud_state(path: &Path) -> Option<(Value, u64)> {
@@ -423,11 +464,26 @@ mod hyperstack_tests {
         let incomplete = read_hyperstack_ark_state(&path, None).context("missing terminal state")?;
         assert_eq!(incomplete["stage"], "stopped");
         state["m14_independent_exit"] = json!(0);
+        state["verified_proof_release"] = json!("https://github.com/patrickdugan/zk-rusto-no-bitcoino/releases/tag/ark-679-offchain-123abcdef0");
+        state["ark_pushed_commit"] = json!("a".repeat(40));
+        state["spot_public_release"] = json!("https://github.com/patrickdugan/zk-rusto-no-bitcoino/releases/tag/ark-679-spot-123abcdef0");
         std::fs::write(&path, serde_json::to_vec(&state)?)?;
+        let sidecar = path.with_extension("storage.json");
+        let mut storage = json!({"schema":"rbzk/ark-private-storage/v1", "campaign": "ark-mnr04-a100-123abcdef0",
+                                 "vm_id":457, "sampled_at_unix":1010, "bucket_bytes":1535, "objects":4});
+        std::fs::write(&sidecar, serde_json::to_vec(&storage)?)?;
+        let mismatched = read_hyperstack_ark_state(&path, None).context("missing proof state")?;
+        assert!(mismatched.get("private_storage").is_none());
+        storage["vm_id"] = json!(456);
+        std::fs::write(&sidecar, serde_json::to_vec(&storage)?)?;
         let complete = read_hyperstack_ark_state(&path, None).context("missing checked state")?;
+        std::fs::remove_file(sidecar)?;
         std::fs::remove_file(path)?;
         assert_eq!(complete["stage"], "proof_checks_passed");
         assert_eq!(complete["active"], false);
+        assert_eq!(complete["proof_commit"], "a".repeat(40));
+        assert_eq!(complete["checkpoint_release"], state["spot_public_release"]);
+        assert_eq!(complete["private_storage"]["bucket_bytes"], 1535);
         Ok(())
     }
 

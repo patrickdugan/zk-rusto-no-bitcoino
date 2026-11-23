@@ -1,10 +1,24 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {estimate,clock,arkCampaign,arkDeadline,cashuRoadmap} = require('../web/app.js');
+const {estimate,clock,arkCampaign,arkDeadline,cashuRoadmap,arkArchive} = require('../web/app.js');
 const progress = () => ({exists:true,unique_shards:3333,
   rates:{shard_per_min_15m:5,shard_per_min_5m:10,shard_per_min_30m:4},
   recent_events:[{kind:'shard',replayed:false,t:995}]});
 const live = {now:1000,connected:true,active:true};
+
+test('private storage timestamps and releases are independent of prover liveness',()=>{
+  const storage={sampled_at_unix:900,bucket_bytes:17_580_647_002,objects:3856};
+  const root='https://github.com/patrickdugan/zk-rusto-no-bitcoino/releases/tag/ark-679-';
+  const sample={stage:'stopped',private_storage:storage,checkpoint_release:root+'spot-a6e283d956',
+    checkpoint_export_finished:false,proof_release:root+'offchain-a6e283d956',proof_commit:'a'.repeat(40)};
+  assert.deepEqual(arkArchive(sample,1000),{storage:{...storage,fresh:true},checkpoint:sample.checkpoint_release,
+    exportStatus:null,proof:null});
+  assert.equal(arkArchive(sample,1025).storage.fresh,false);
+  assert.equal(arkArchive({...sample,checkpoint_release:'https://example.com/spot-a6e283d956'},1000).exportStatus,
+    'Final checkpoint export unconfirmed');
+  assert.equal(arkArchive({...sample,stage:'proof_checks_passed'},1000).proof,sample.proof_release);
+  assert.equal(arkCampaign({},{overnight:{stage:'proof_checks_passed',published:true}}).published,true);
+});
 
 test('uses observed core throughput for a clearly bounded milestone',()=>{
   const model=estimate(progress(),live);

@@ -88,9 +88,10 @@ const ProofEta = (() => {
     const phaseObserved = observedLocalStage ? overnight.fresh === true :
       connected && (current?.id === 'sp1' ? processObserved :
       finite(wsl.last_resource_age_s) && wsl.last_resource_age_s <= 15);
+    const published = checksPassed && overnight?.published === true;
     const rows = arkPhases.map(item => {
       if(item.id === 'setup')return {...item,status:setupReady?'Setup verified':waitingForSetup?'Waiting for setup':'Pending',done:!!setupReady};
-      if(item.id === 'delivery')return {...item,status:'Manual milestone',done:false};
+      if(item.id === 'delivery')return {...item,status:published?'Ark proof published':'Manual milestone',done:false};
       const done = step > coordinatorSteps.indexOf(item.steps.at(-1));
       const status = done ? 'Completed' : item === current ?
         waitingFor ? 'Resource wait' : phaseObserved ? 'In progress' : 'Last reported' : 'Pending';
@@ -125,7 +126,7 @@ const ProofEta = (() => {
     }
     const deliveryRange = proofRange && deliverySeconds !== null ?
       {fast:proofRange.fast+deliverySeconds,slow:proofRange.slow+deliverySeconds} : null;
-    return {rows, phase, checksPassed, resourceHold, corePending, target, core, missing,
+    return {rows, phase, checksPassed, published, resourceHold, corePending, target, core, missing,
       proofRemaining:proofRange, proofFinish:project(proofRange), deliveryFinish:project(deliveryRange),
       coreCapacityUntilDeadline};
   }
@@ -280,8 +281,23 @@ const ProofEta = (() => {
     if(!observed)return 'Worker status unknown';
     return Number.isSafeInteger(saved)&&saved>0?'Idle · checkpoints saved':'Idle · no worker running';
   }
+  function arkArchive(sample = {}, now = Date.now()/1000) {
+    const prefix='https://github.com/patrickdugan/zk-rusto-no-bitcoino/releases/tag/ark-679-';
+    const release=(value,kind)=>typeof value==='string'&&value.startsWith(prefix+kind+'-')&&
+      /^[0-9a-f]{10}$/.test(value.slice((prefix+kind+'-').length))?value:null;
+    const checkpoint=release(sample.checkpoint_release,'spot');
+    const proof=sample.stage==='proof_checks_passed'&&/^[0-9a-f]{40}$/.test(sample.proof_commit||'')?
+      release(sample.proof_release,'offchain'):null;
+    const raw=sample.private_storage, age=now-raw?.sampled_at_unix;
+    const storage=raw&&[raw.bucket_bytes,raw.objects,raw.sampled_at_unix].every(value=>Number.isSafeInteger(value)&&value>=0)&&
+      age>=-5 ? {...raw,fresh:age<=120} : null;
+    const exportStatus=checkpoint?null:sample.checkpoint_release_error===true?'Checkpoint publication needs review':
+      sample.checkpoint_export_finished===true?'Final checkpoint export confirmed':
+      sample.checkpoint_export_finished===false?'Final checkpoint export unconfirmed':null;
+    return {checkpoint,proof,storage,exportStatus};
+  }
   return {estimate,clock,arkCampaign,arkDeadline,arkBudgets,cashuRoadmap,ongoingJobs,
-    rememberCheckpoints,checkpointTrend,checkpointMosaic,a100Budget,observedBudgetPace,arkWorkerLabel,arkStageResources};
+    rememberCheckpoints,checkpointTrend,checkpointMosaic,a100Budget,observedBudgetPace,arkWorkerLabel,arkArchive,arkStageResources};
 })();
 if(typeof module!=='undefined' && module.exports)module.exports=ProofEta;
 if(typeof document!=='undefined') (() => {
@@ -389,6 +405,20 @@ if(typeof document!=='undefined') (() => {
     $('overview-cache').textContent=Number.isSafeInteger(savedCore)?
       `Laptop cache · ${n(savedCore)} core · ${n(savedRecursion)} recursion`:'Laptop checkpoint count unavailable';
     $('overview-gates').textContent=`Proof gates · ${done} of ${proof.length} cleared`;
+    const archive=ProofEta.arkArchive(cloud?.sample);
+    const storage=$('overview-storage');
+    storage.hidden=!archive.storage;
+    if(archive.storage) {
+      const {bucket_bytes,objects,sampled_at_unix,fresh}=archive.storage;
+      storage.textContent=`${fresh?'Private bucket':'Last private bucket observation'} · ${n(bucket_bytes/1e9,2)} GB · ${n(objects)} objects · ${time(sampled_at_unix)}`;
+    }
+    $('overview-export').hidden=!archive.exportStatus;
+    $('overview-export').textContent=archive.exportStatus||'';
+    for(const [id,url] of [['overview-checkpoint-release',archive.checkpoint],['overview-proof-release',archive.proof]]) {
+      $(id).hidden=!url;
+      if(url)$(id).href=url;
+      else $(id).removeAttribute('href');
+    }
     const range=campaign.proofRemaining;
     $('overview-eta').textContent=campaign.checksPassed?'Proof checks passed':
       range?planningDuration(range.fast)+(planningDuration(range.fast)!==planningDuration(range.slow)?' – '+planningDuration(range.slow):'')+' remaining':
@@ -452,7 +482,8 @@ if(typeof document!=='undefined') (() => {
       summary?.schema==='ark-m14-bounded-setup-v1' && summary?.status==='statement_bound_setup_artifacts_verified');
     const connected=freshRuntime() && wsl.reachable===true;
     const cloud=arkCloudSignal(), trend=ProofEta.checkpointTrend(checkpointHistory);
-    const overnight=cloud?.sample.local_verification?{stage:cloud.sample.stage,fresh:cloud.fresh}:null;
+    const archive=ProofEta.arkArchive(cloud?.sample);
+    const overnight=cloud?.sample.local_verification?{stage:cloud.sample.stage,fresh:cloud.fresh,published:!!archive.proof}:null;
     const coreSource=cloud?.sample.ark_running && trend && (cloud.fresh || !processObserved) ? {active:true,connected:cloud.fresh,
       startedAt:cloud.sample.started_at_unix,progress:trend.progress}:null;
     const campaignConnected=connected || overnight?.fresh === true;
@@ -464,7 +495,8 @@ if(typeof document!=='undefined') (() => {
     let basis='';
     if(checksPassed) {
       headline='Verifier checks passed';
-      basis='Coordinator reported all Ark off-chain checks passed. Evidence audit and publication follow.';
+      basis=campaign.published?'The coordinator verified the release and branch push.':
+        'Coordinator reported all Ark off-chain checks passed. Evidence audit and publication follow.';
     } else if(!forecastConnected) {
       headline=state.polling?'Waiting for telemetry':'Display paused';
       basis='The finish projection requires fresh campaign telemetry.';
