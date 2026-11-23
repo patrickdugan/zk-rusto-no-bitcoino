@@ -116,9 +116,11 @@ const ProofEta = (() => {
     {id:'backing',label:'Prove live backing and mint liabilities',
       detail:'Bind spendable Bitcoin or Ark collateral and outstanding Cashu claims to the same state. Detect spent collateral, expiry, reorgs and double-counted backing.'},
     {id:'issuance',label:'Enforce proof-bound Cashu issuance',
-      detail:'Require a valid, unused authorization for each amount and mint keyset. Demonstrate that bypassing the desk or controlling one operator cannot produce extra valid tokens.'},
+      status:'Regtest gate tested · no ETA',
+      detail:'The desk validated the funding prevout and refused a paid quote without its Shinigami proof. The full gate must also prevent excess issuance outside the desk and bind each authorization to the mint keyset.'},
     {id:'redemption',label:'Fund redemption if the mint refuses',
-      detail:'Fund a Bitcoin output and show a holder settling a valid Cashu claim to their own address while the mint refuses or stays offline. Record the timeout, fees and confirmed spend.'},
+      status:'Regtest reserve paid · no ETA',
+      detail:'A holder claimed a dedicated reserve while the mint was offline. The full policy still needs to make a normal Cashu redemption and a reserve payout consume the same claim.'},
     {id:'adversarial',label:'Verify the end-to-end trust claim',
       detail:'Independently reproduce issuance and refusal-path settlement. Reject issuance replay, excess issuance and invalid or repeated redemption. State the remaining signer, setup and liveness assumptions.'},
   ];
@@ -135,13 +137,16 @@ const ProofEta = (() => {
       {id:'cashu-demo',label:'Cashu issuance, Ark withdrawal and recipient exit',
         status:'Recorded regtest demo',done:true,
         detail:'CDK admitted a Core-confirmed deposit and issued Cashu. A successful mint redemption delivered an Ark VTXO. The holder then claimed that VTXO on Bitcoin while the mint and Ark server were offline.'},
+      {id:'refusal-demo',label:'Dedicated Cashu reserve paid with the mint offline',
+        status:'Verified regtest payout',done:true,
+        detail:'Bitcoin Core confirmed 24,750 sats to the holder after six blocks and a 250-sat fee. Shinigami Cairo matched the payout and rejected an early spend and an altered prevout amount. A new STARK is pending.'},
       {id:'ark-proof',label:'Ark Nova → SP1 → M13 → BitVM3 off-chain proof',
         status:ark.checksPassed?'Checks reported · audit pending':'Conditional · finish unknown',done:false,
         detail:ark.checksPassed?
           'The coordinator reported all proof checks passed. Include this claim after auditing the statement and artifact hashes.':
           'Include the four-VTXO maintenance-policy proof if independent SP1 and M13 checks, honest M14 evaluation, full-circuit bit-flip rejection and the evidence audit finish by the cutoff.'},
     ];
-    return {friday,trust:cashuTrustMilestones.map(item=>({...item,status:'Open · no ETA',done:false}))};
+    return {friday,trust:cashuTrustMilestones.map(item=>({status:'Open · no ETA',...item,done:false}))};
   }
   return {estimate,clock,arkCampaign,arkDeadline,arkBudgets,cashuRoadmap};
 })();

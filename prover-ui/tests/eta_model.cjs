@@ -152,6 +152,8 @@ test('Friday evidence distinguishes the recorded demo from the conditional Ark p
   const road=cashuRoadmap(arkCampaign(gpu(),campaignLive),[historicalPayment,historicalTapleaf]);
   assert.equal(road.friday.find(item=>item.id==='shinigami').done,true);
   assert.equal(road.friday.find(item=>item.id==='cashu-demo').status,'Recorded regtest demo');
+  assert.equal(road.friday.find(item=>item.id==='refusal-demo').status,'Verified regtest payout');
+  assert.equal(road.friday.find(item=>item.id==='refusal-demo').done,true);
   assert.equal(road.friday.find(item=>item.id==='ark-proof').status,'Conditional · finish unknown');
   assert.equal(road.trust.find(item=>item.id==='issuance').done,false);
   assert.equal(road.trust.find(item=>item.id==='redemption').done,false);
@@ -171,5 +173,5 @@ test('terminal Ark checks still leave the audit and every admin-trust gate open'
   assert.equal(road.friday.find(item=>item.id==='ark-proof').status,'Checks reported · audit pending');
   assert.equal(road.friday.find(item=>item.id==='ark-proof').done,false);
   assert.deepEqual(road.trust.map(item=>item.id),['backing','issuance','redemption','adversarial']);
-  assert.ok(road.trust.every(item=>!item.done && item.status==='Open · no ETA'));
+  assert.ok(road.trust.every(item=>!item.done && item.status.endsWith('· no ETA')));
 });
