@@ -880,7 +880,9 @@ if(typeof document!=='undefined') (() => {
     $('live-dot').classList.toggle('live',state.polling&&!stale);
     const pilot=hyperstackSignal();
     const arkCloud=arkCloudSignal();
-    const activeGpu=arkCloud?.active ? ['HYPERSTACK · ARK SP1','A100 on-demand VM',arkCloud.phase] : pilot?.active ? ['HYPERSTACK · CPU PROVING',pilot.hardware,pilot.status] : cloud.active ?
+    const arkSpot=arkCloud?.sample.spot;
+    const arkHardware=arkSpot===true?'A100 spot VM':arkSpot===false?'A100 on-demand VM':'A100 VM';
+    const activeGpu=arkCloud?.active ? ['HYPERSTACK · ARK SP1',arkHardware,arkCloud.phase] : pilot?.active ? ['HYPERSTACK · CPU PROVING',pilot.hardware,pilot.status] : cloud.active ?
       [`${cloud.provider.toUpperCase()} GPU`,cloud.gpuName || 'GPU name unavailable',`${cloudMeasure(cloud.cloud.metrics?.gpu_util_percent,'%')} compute · ${cloudMeasure(cloud.cloud.metrics?.gpu_memory_percent,'%')} GPU memory`] :
       ['LOCAL GPU',gpu.available?gpu.name:'Unavailable',gpu.available?`${n(gpu.util_gpu_pct)}% compute · ${gib(gpu.vram_used_mib==null?null:gpu.vram_used_mib*2**20)} VRAM used`:'No local GPU measurement'];
     $('hardware-ribbon').innerHTML=[
