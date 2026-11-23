@@ -255,14 +255,15 @@ const ProofEta = (() => {
     return seconds>=240 && cores>0 ? {perMinute:cores*60/seconds,seconds} : null;
   }
   function a100Budget({saved,target,rate,credit,coresPerMinute=10.38}) {
-    if(!finite(rate)||rate<=0||!finite(coresPerMinute)||coresPerMinute<=0)return null;
-    const coresPerHour=coresPerMinute*60;
+    if(!finite(rate)||rate<=0)return null;
+    if(coresPerMinute!==null&&(!finite(coresPerMinute)||coresPerMinute<=0))return null;
+    const coresPerHour=coresPerMinute===null?null:coresPerMinute*60;
     const hasTarget=Number.isSafeInteger(saved)&&saved>=0&&Number.isSafeInteger(target)&&target>0&&target>=saved&&target<=10000000;
-    const hours=hasTarget?(target-saved)/coresPerHour:null;
+    const hours=hasTarget&&coresPerHour!==null?(target-saved)/coresPerHour:null;
     const cost=hours===null?null:hours*rate;
     const runway=finite(credit)&&credit>=0?credit/rate:null;
-    return {hours,cost,perThousand:1000/coresPerHour*rate,runway,
-      runwayCores:runway===null?null:Math.floor(runway*coresPerHour),
+    return {hours,cost,perThousand:coresPerHour===null?null:1000/coresPerHour*rate,runway,
+      runwayCores:runway===null||coresPerHour===null?null:Math.floor(runway*coresPerHour),
       shortfall:cost===null||runway===null?null:Math.max(0,cost-credit)};
   }
   function arkWorkerLabel({paused,live,observed,saved,checksPassed}) {
@@ -406,29 +407,34 @@ if(typeof document!=='undefined') (() => {
     const local=state.live?.wsl_prover;
     const localSaved=isCampaignRun(local||{})?local?.progress?.unique_shards:null;
     const usingPublished=$('budget-cache').value==='published';
-    const saved=usingPublished?1727:localSaved;
+    const saved=usingPublished?3646:localSaved;
     const value=id=>$(id).value===''?null:$(id).valueAsNumber;
     const target=value('budget-target');
     const enteredRate=value('budget-rate');
     const cloud=arkCloudSignal();
-    const leaseRate=cloud?.active&&Number.isFinite(cloud.sample.rate_usd_per_hour)?cloud.sample.rate_usd_per_hour:null;
+    const lease=cloud?.sample.active&&!cloud.sample.local_verification&&Number.isSafeInteger(cloud.sample.vm_id);
+    const leaseRate=lease&&Number.isFinite(cloud.sample.rate_usd_per_hour)?cloud.sample.rate_usd_per_hour:null;
     const pace=cloud?.active&&cloud.sample.ark_running?ProofEta.observedBudgetPace(checkpointHistory):null;
     const rate=enteredRate ?? leaseRate ?? 1.35672043;
-    const coresPerMinute=pace?.perMinute;
+    const coresPerMinute=lease?(pace?.perMinute ?? null):undefined;
     const estimate=ProofEta.a100Budget({saved,target,rate,credit:value('budget-credit'),coresPerMinute});
     const catchUp=usingPublished&&target===null&&localSaved>saved?
       ProofEta.a100Budget({saved,target:localSaved,rate,coresPerMinute}):null;
-    const priceBasis=enteredRate!==null?'Entered price':leaseRate!==null?'Live lease price':'Earlier on-demand quote';
-    const paceBasis=pace?`${n(coresPerMinute,1)} fresh cores/min over ${formatDuration(pace.seconds)}`:
+    const priceBasis=enteredRate!==null?'Entered price':leaseRate!==null?'Lease price':'Earlier on-demand quote';
+    const paceBasis=lease?
+      (pace?`${n(coresPerMinute,1)} fresh cores/min over ${formatDuration(pace.seconds)}`:
+        cloud.fresh?'Waiting for a recent fresh-core rate':'Waiting for a fresh server heartbeat'):
       'Earlier A100 pilot · 10.38 fresh cores/min';
     $('budget-basis').textContent=`${priceBasis} · $${n(rate,4)}/h · ${paceBasis}`;
     $('budget-result').textContent=!estimate?'Enter the hourly A100 and IP rate.':
       Number.isSafeInteger(saved)&&Number.isSafeInteger(target)&&target<saved?`Use a scenario total at or above the ${n(saved)} saved cores.`:
+      estimate.perThousand===null?'Core cost and ETA are on hold until the live run records a recent fresh-core rate.':
       catchUp?`Matching the laptop’s ${n(localSaved)} saved cores would take about ${planningDuration(catchUp.hours*3600)} and $${catchUp.cost.toFixed(2)} in core work.`:
       estimate.cost===null?`Starting cache · ${Number.isSafeInteger(saved)?n(saved)+' cores':'count unavailable'}. Each additional 1,000 core shards costs about $${estimate.perThousand.toFixed(2)} at this pace.`:
       `${n(target-saved)} new cores · ${planningDuration(estimate.hours*3600)} · $${estimate.cost.toFixed(2)} for core work under this scenario.`;
     $('budget-runway').textContent=estimate?.runway==null?'':
-      `Credit covers ${n(estimate.runway,2)} A100 hours, or up to ${n(estimate.runwayCores)} new cores before overhead.`+
+      `Credit covers ${n(estimate.runway,2)} A100 hours before overhead.`+
+      (estimate.runwayCores===null?'':` At this pace, up to ${n(estimate.runwayCores)} new cores.`)+
       (estimate.shortfall>0?` Core-only shortfall $${estimate.shortfall.toFixed(2)}.`:'');
   }
   function updateCampaign() {

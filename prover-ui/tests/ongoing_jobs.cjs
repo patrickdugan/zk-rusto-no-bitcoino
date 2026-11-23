@@ -115,6 +115,15 @@ test('the A100 planner prices only scenario cores and handles unknown targets an
   assert.equal(a100Budget({...inputs,rate:0}),null);
 });
 
+test('the active lease keeps dollar runway when checkpoint throughput is unknown', () => {
+  const budget=a100Budget({saved:3646,target:4646,rate:1.08672043,credit:10,coresPerMinute:null});
+  assert.equal(budget.hours,null);
+  assert.equal(budget.cost,null);
+  assert.equal(budget.perThousand,null);
+  assert.equal(budget.runwayCores,null);
+  assert.equal(budget.runway.toFixed(2),'9.20');
+});
+
 test('live budget uses a full fresh-core window and ignores the earlier core replay', () => {
   const history=[{t:670,core:2,replayed:2000},{t:700,core:4,replayed:4378},{t:1000,core:29,replayed:4378}];
   const pace=observedBudgetPace(history);
