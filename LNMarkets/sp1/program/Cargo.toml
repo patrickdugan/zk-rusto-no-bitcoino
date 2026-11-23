@@ -1,0 +1,19 @@
+[package]
+name = "lnm-batch-program"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[dependencies]
+sp1-zkvm = { version = "=6.9.0", features = ["lib"] }
+lnm-batch-statement = { path = "../../statement", default-features = false }
+
+# This guest is an optional integration, independent of the root crate.
+# Start with the upstream k256/sha2 implementations. Accelerator patches require
+# a separate version review and new ELF/program-key pins before use.
+[workspace]
+
+[profile.release]
+strip = "symbols"
+overflow-checks = true

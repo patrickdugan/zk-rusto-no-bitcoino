@@ -1,0 +1,77 @@
+name: LNMarkets Nova/BitVM3 folding
+
+on:
+  pull_request:
+    paths:
+      - 'LNMarkets/nova/**'
+      - 'LNMarkets/statement/**'
+      - '.github/workflows/lnmarkets-nova.yml'
+  workflow_dispatch:
+    inputs:
+      rows:
+        description: Synthetic contracts in the persisted Pallas proof
+        type: choice
+        options: ['1', '2', '8', '32']
+        default: '2'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lnmarkets-nova-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  nova:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+      RAYON_NUM_THREADS: '2'
+      RUST_TEST_THREADS: '1'
+      LNM_ROWS: ${{ inputs.rows || '2' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check Nova crate formatting
+        run: cargo fmt --manifest-path LNMarkets/nova/Cargo.toml -- --check
+      - name: Signature vectors, transcript constraints and adversarial assignments
+        run: cargo test --locked --manifest-path LNMarkets/nova/Cargo.toml --all-targets -- --test-threads=1
+      - name: Nova circuit lint
+        run: cargo clippy --locked --manifest-path LNMarkets/nova/Cargo.toml --all-targets -- -D warnings
+      - name: Build local prover
+        run: cargo build --locked --release --manifest-path LNMarkets/nova/Cargo.toml --bin lnm-nova
+      - name: Prepare independent expectations
+        run: |
+          mkdir -p LNMarkets/.local/nova-ci
+          LNMarkets/nova/target/release/lnm-nova prepare "$LNM_ROWS" --out LNMarkets/.local/nova-ci/expected.json > LNMarkets/.local/nova-ci/prepare.json
+      - name: Persist compressed Pallas transcript proof
+        timeout-minutes: 30
+        run: |
+          LNMarkets/nova/target/release/lnm-nova prove "$LNM_ROWS" --compressed --out LNMarkets/.local/nova-ci/bundle > LNMarkets/.local/nova-ci/prove.json
+          python3 -c 'import json; r=json.load(open("LNMarkets/.local/nova-ci/prove.json")); assert r["nova_recursive_verified"] and r["nova_compressed_verified"] and r["row_transcript_sha256_constrained"]; print(r["compressed_bytes"], r["nova_prove_seconds"], r["compressed_prove_seconds"])'
+      - name: Verify saved proof in a separate process
+        run: |
+          LNMarkets/nova/target/release/lnm-nova verify --bundle LNMarkets/.local/nova-ci/bundle --expect LNMarkets/.local/nova-ci/expected.json > LNMarkets/.local/nova-ci/verify.json
+          python3 -c 'import json; r=json.load(open("LNMarkets/.local/nova-ci/verify.json")); assert r["nova_compressed_verified"] and r["verifier_key_rebuilt_from_current_circuit"] and not r["native_signature_checks_in_this_process"]'
+      - name: Reject corrupted and malformed persisted proofs
+        env:
+          LNM_NOVA_BUNDLE: LNMarkets/.local/nova-ci/bundle
+        run: cargo test --locked --release --manifest-path LNMarkets/nova/Cargo.toml --test persisted_artifact -- --ignored --test-threads=1
+      - name: Prove the separate Secq BIP340 claim
+        timeout-minutes: 20
+        env:
+          LNM_BIP340_REPORT: LNMarkets/.local/nova-ci/bip340.json
+        run: cargo test --locked --release --manifest-path LNMarkets/nova/Cargo.toml --lib bip340::tests::real_recursive_and_compressed_signature_proof -- --ignored --exact --nocapture --test-threads=1
+      - name: Upload synthetic compressed proofs and public receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lnmarkets-nova-v2
+          path: LNMarkets/.local/nova-ci/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7

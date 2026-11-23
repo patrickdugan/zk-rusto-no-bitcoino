@@ -1,0 +1,56 @@
+{
+  "schema": "lnmarkets-bitvm3-nova-native-measurements/v1",
+  "recorded_date_utc": "2026-11-20",
+  "source_commit": "faad8aa27a1fb7b5b8ac5aabb72e4751f16ea8b5",
+  "ci_run": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/44701459434",
+  "ci_status": "success",
+  "backend": "nova-snark 0.76.0 recursive, Pallas/Vesta, M18 Poseidon; Spartan/IPA compressed",
+  "environment": "GitHub Actions ubuntu-24.04, release Cargo profile",
+  "scope": "synthetic fixture, native-validated signed rows; Nova constrains opaque digest and satoshi aggregation",
+  "stage": "recursive-and-compressed-proven-limited-relation",
+  "native_bip340_and_oracle_checks_inside_nova": false,
+  "bitcoin_spendability_proved": false,
+  "bitvm3_garbled_verifier_integrated": false,
+  "private_witness": true,
+  "public_journal_bytes": 276,
+  "nova_state_arity": 8,
+  "tests": {
+    "native_r1cs_tests_passed": 5
+  },
+  "recursive": [
+    {
+      "rows": 1,
+      "proving_seconds": 0.044855156,
+      "verification_seconds": 0.056126571
+    },
+    {
+      "rows": 2,
+      "proving_seconds": 0.130805051,
+      "verification_seconds": 0.085571048
+    },
+    {
+      "rows": 8,
+      "proving_seconds": 0.752169504,
+      "verification_seconds": 0.116412099
+    },
+    {
+      "rows": 32,
+      "proving_seconds": 3.082796181,
+      "verification_seconds": 0.109840935
+    }
+  ],
+  "compressed": {
+    "rows": 2,
+    "proof_bytes_serialized": 10816,
+    "proving_seconds": 3.673629241,
+    "verification_seconds": 0.087844973,
+    "proof_mode": "Nova/Spartan-IPA",
+    "verified": true
+  },
+  "limitations": [
+    "Row transcript SHA-256 enters the circuit as opaque field limbs; it is computed and co-signatures are validated by the native fixture exporter",
+    "The compressed proof verifies the folded commitment and accounting relation only",
+    "Original DLC adaptor/refund data, on-chain funding, BIP341 signatures and nullifier paths are outside the Nova R1CS",
+    "M12 verifier guest assumes a 17-field header state and must be generalized and pinned for this 8-field batch circuit"
+  ]
+}
