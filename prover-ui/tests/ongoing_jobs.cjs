@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const {arkBudgets, arkCampaign, ongoingJobs, rememberCheckpoints, checkpointTrend} = require('../web/app.js');
+const {arkBudgets, arkCampaign, ongoingJobs, rememberCheckpoints, checkpointTrend, checkpointMosaic} = require('../web/app.js');
 
 function setup(overrides = {}) {
   const ark = {
@@ -80,4 +80,17 @@ test('a cloud checkpoint stream can forecast a first-page scenario without clear
   assert.ok(campaign.proofRemaining.fast>=600);
   assert.deepEqual(campaign.rows.filter(row=>row.done).map(row=>row.id),['setup']);
   assert.equal(arkCampaign({status:'inactive'},{...options,coreSource:{...options.coreSource,connected:false}}).proofFinish,null);
+});
+
+test('the restored mosaic separates the two kinds of work and marks replays', () => {
+  const history=[
+    {...sample(1000,1,4,100),recursion_replayed:8},
+    {...sample(1008,2,6,101),recursion_replayed:10},
+  ].reduce(rememberCheckpoints, []);
+  assert.deepEqual(checkpointMosaic(history).map(({kind,replayed})=>[kind,replayed]), [
+    ['core',true],['recursion',true],['recursion',true],['core',false],['recursion',false],['recursion',false],
+  ]);
+  assert.equal(checkpointMosaic(rememberCheckpoints(history,sample(1016,10000,6,101))).length,319);
+  const old=rememberCheckpoints([],sample(1000,1,4,100));
+  assert.deepEqual(checkpointMosaic(rememberCheckpoints(old,{...sample(1008,1,4,100),recursion_replayed:500})),[]);
 });

@@ -1939,3 +1939,27 @@ select {
 .checkpoint-spark { display: inline-flex; align-items: end; gap: 2px; height: 12px; align-self: center; }
 .checkpoint-spark i { display: block; min-width: 4px; height: var(--weight); background: var(--line-strong); }
 .checkpoint-spark.recursion i { background: var(--crimson); }
+
+.checkpoint-mosaic { margin-top: 7px; padding-top: 12px; border-top: 1px solid var(--line); }
+.checkpoint-mosaic .panel-head { margin-bottom: 8px; }
+.checkpoint-mosaic h3 { margin: 0; font: 650 16px var(--font-sans); }
+.mosaic-tiles {
+  display: grid;
+  grid-template-columns: repeat(40,minmax(0,1fr));
+  gap: 3px;
+  max-width: 800px;
+  min-height: 34px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--line);
+  padding: 6px;
+}
+.mosaic-cell { display: block; aspect-ratio: 1.4; }
+.mosaic-cell.core { background: var(--crimson); }
+.mosaic-cell.recursion { background: var(--ink); }
+.mosaic-cell.replay { opacity: .32; }
+.mosaic-next { background: var(--crimson-soft); outline: 1px solid var(--ink); }
+.mosaic-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 5px 0 0; color: var(--ink-muted); }
+.mosaic-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.mosaic-legend .mosaic-cell { width: 10px; }
+@media (max-width: 800px) { .mosaic-tiles { grid-template-columns: repeat(32,minmax(0,1fr)); } }
+@media (max-width: 570px) { .mosaic-tiles { grid-template-columns: repeat(24,minmax(0,1fr)); gap: 2px; } }

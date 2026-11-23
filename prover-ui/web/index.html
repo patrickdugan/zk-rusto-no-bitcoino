@@ -154,6 +154,19 @@
           <div id="ongoing-jobs" class="ongoing-list">
             <p class="panel-sub">Waiting for a job observation.</p>
           </div>
+          <section class="checkpoint-mosaic" aria-labelledby="mosaic-heading">
+            <div class="panel-head">
+              <h3 id="mosaic-heading">Shard and recursion heat map</h3>
+              <span id="mosaic-source" class="tag-mono"></span>
+            </div>
+            <div id="mosaic-tiles" class="mosaic-tiles" aria-hidden="true"></div>
+            <p id="mosaic-caption" class="panel-sub">Waiting for checkpoint activity.</p>
+            <p class="mosaic-legend">
+              <span><i class="mosaic-cell core"></i> Core shard</span>
+              <span><i class="mosaic-cell recursion"></i> Recursion fold</span>
+              <span><i class="mosaic-cell core replay"></i> Replayed</span>
+            </p>
+          </section>
         </section>
         <section class="campaign-banner" aria-labelledby="campaign-title">
           <div class="hero-top-row">

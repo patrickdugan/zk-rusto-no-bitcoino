@@ -184,11 +184,12 @@ const ProofEta = (() => {
   }
   function rememberCheckpoints(history, sample) {
     const {sampled_at_unix: t, core_new: core, recursion_new: recursion, core_replayed: replayed} = sample;
+    const replayedRecursion=Number.isSafeInteger(sample.recursion_replayed)&&sample.recursion_replayed>=0?sample.recursion_replayed:null;
     if(![t,core,recursion,replayed].every(value=>Number.isSafeInteger(value) && value>=0))return history;
     const last=history.at(-1);
     if(last && t<=last.t)return history;
     const prior=last && (core<last.core || recursion<last.recursion || replayed<last.replayed) ? [] : history;
-    return [...prior.filter(point=>t-point.t<=1800),{t,core,recursion,replayed}].slice(-240);
+    return [...prior.filter(point=>t-point.t<=1800),{t,core,recursion,replayed,replayedRecursion}].slice(-240);
   }
   function checkpointTrend(history) {
     const last=history.at(-1);
@@ -209,7 +210,26 @@ const ProofEta = (() => {
       progress:{exists:true,unique_shards:last.replayed+last.core,rates,
         recent_events:latestCore?[{kind:'shard',replayed:false,t:latestCore.t}]:[]}};
   }
-  return {estimate,clock,arkCampaign,arkDeadline,arkBudgets,cashuRoadmap,ongoingJobs,rememberCheckpoints,checkpointTrend};
+  function checkpointMosaic(history) {
+    const newest=[];
+    for(let i=history.length-1;i>0 && newest.length<319;i--) {
+      const point=history[i], prev=history[i-1];
+      const groups=[
+        ['recursion',false,point.recursion-prev.recursion],
+        ['core',false,point.core-prev.core],
+        ['recursion',true,Number.isSafeInteger(point.replayedRecursion)&&Number.isSafeInteger(prev.replayedRecursion)?
+          point.replayedRecursion-prev.replayedRecursion:0],
+        ['core',true,point.replayed-prev.replayed],
+      ];
+      for(const [kind,replayed,count] of groups) {
+        const slots=Math.min(319-newest.length,count);
+        for(let j=0;j<slots;j++)newest.push({kind,replayed,t:point.t});
+      }
+    }
+    return newest.reverse();
+  }
+  return {estimate,clock,arkCampaign,arkDeadline,arkBudgets,cashuRoadmap,ongoingJobs,
+    rememberCheckpoints,checkpointTrend,checkpointMosaic};
 })();
 if(typeof module!=='undefined' && module.exports)module.exports=ProofEta;
 if(typeof document!=='undefined') (() => {
@@ -227,7 +247,7 @@ if(typeof document!=='undefined') (() => {
   let checkpointKey=null, checkpointHistory=[];
   function observeCloudCheckpoints() {
     const sample=state.live?.cloud_hyperstack_ark;
-    if(!sample?.active || !sample.ark_running)return;
+    if(!sample)return;
     const key=`rbzk.checkpoints.${sample.vm_id}.${sample.started_at_unix}`;
     if(checkpointKey!==key) {
       checkpointKey=key;
@@ -236,6 +256,7 @@ if(typeof document!=='undefined') (() => {
         checkpointHistory=Array.isArray(stored)?stored.filter(point=>[point?.t,point?.core,point?.recursion,point?.replayed].every(Number.isSafeInteger)):[];
       } catch {checkpointHistory=[];}
     }
+    if(!sample.active || !sample.ark_running)return;
     const next=ProofEta.rememberCheckpoints(checkpointHistory,sample);
     if(next!==checkpointHistory) {
       checkpointHistory=next;
@@ -736,6 +757,27 @@ if(typeof document!=='undefined') (() => {
         <span class="checkpoint-spark ${kind}" aria-hidden="true">${bars}</span></div>`;
     }).join('')}</div>`;
   }
+  function renderCheckpointMosaic(cloud, progress) {
+    const localRunning=freshRuntime()&&!!arkProcess();
+    const showCloud=cloud?.sample.active||(!localRunning && checkpointHistory.length>1);
+    const live=showCloud?cloud?.fresh&&cloud.sample.ark_running:localRunning;
+    const tiles=showCloud?ProofEta.checkpointMosaic(checkpointHistory):
+      (progress.mosaic_tail||[]).slice(-319).map(tile=>({
+        kind:tile.t===1?'recursion':'core',replayed:tile.r===1,key:tile.k,seconds:tile.s
+      }));
+    const source=showCloud?'Hyperstack · A100':'Local machine';
+    $('mosaic-source').textContent=`${source} · ${live?'live':'history'}`;
+    const fresh=tiles.filter(tile=>!tile.replayed);
+    const counts=`${n(fresh.filter(tile=>tile.kind==='core').length)} new core shards · ${n(fresh.filter(tile=>tile.kind==='recursion').length)} new recursion folds · ${n(tiles.length-fresh.length)} replayed`;
+    $('mosaic-caption').textContent=tiles.length?`${counts}${showCloud?' · grouped by heartbeat':''}`:
+      live?'Waiting for the next checkpoint report.':'No checkpoint activity observed.';
+    setMarkup('mosaic-tiles',tiles.map(tile=>{
+      const label=tile.kind==='core'?'Core shard':'Recursion fold';
+      const event=tile.replayed?'Replayed':'New';
+      const detail=showCloud?time(tile.t):[tile.key,Number.isFinite(tile.seconds)?n(tile.seconds,1)+' s':null].filter(Boolean).join(' · ');
+      return `<span class="mosaic-cell ${tile.kind}${tile.replayed?' replay':''}" title="${esc([event+' '+label,detail].filter(Boolean).join(' · '))}"></span>`;
+    }).join('')+(live?'<span class="mosaic-cell mosaic-next" title="Awaiting the next checkpoint"></span>':''));
+  }
   function render() {
     const live=state.live||{}, rt=live.runtime||{}, gpu=live.gpu||{}, host=live.host_memory||{}, cloud=runpodSignal(), all=jobs().sort((a,b)=>Number(b.id.startsWith('ark-sp1:'))-Number(a.id.startsWith('ark-sp1:')));
     if(!state.userSelected || !state.selected || !all.some(j=>j.id===state.selected))state.selected=all.find(j=>j.running)?.id || all[0]?.id;
@@ -774,6 +816,7 @@ if(typeof document!=='undefined') (() => {
     setMarkup('shard-events',events.slice(-24).map(ev=>`<span class="observed-tile ${state.newEventSeqs.has(ev.seq)?'checkpoint-new':''}" data-seq="${esc(ev.seq)}" title="${esc(ev.key)}">${esc(ev.kind)} · ${ev.replayed?'replayed':'proved'} · ${n(ev.ms/1000,1)}s</span>`).join('') || '<p class="panel-sub">No shard completion events observed.</p>');
     $('claims-list').innerHTML=all.filter(j=>j.audit?.statement).map(j=>`<article class="observed-job"><h3>${esc(j.title)} · ${esc(j.audit.valid?'audited historical claim':'unconfirmed receipt')}</h3><pre>${esc(JSON.stringify(j.audit.statement,null,2))}</pre></article>`).join('') || '<p>No payment claim receipt observed.</p>';
     renderOngoingJobs(all,arkCloud,pilot);
+    renderCheckpointMosaic(arkCloud,progress);
     const show={live:['ongoing-panel','eta-panel','runtime-panel','shard-panel'],compute:['compute-panel'],blocks:['evidence-panel'],
       utxos:['claims-panel'],estimator:['planner-panel'],cashu:['cashu-panel']};
     Object.values(show).flat().forEach(id=>$(id).hidden=!show[state.tab].includes(id));
