@@ -128,6 +128,15 @@
     <div class="main-column">
       <header class="telemetry-ribbon" id="hardware-ribbon" aria-label="Live hardware measurements"></header>
       <main class="workspace-body">
+        <section class="panel ongoing-panel" id="ongoing-panel" aria-labelledby="ongoing-heading">
+          <div class="panel-head">
+            <h2 id="ongoing-heading">Ongoing jobs</h2>
+            <span class="tag-mono" id="ongoing-summary" role="status">Connecting</span>
+          </div>
+          <div id="ongoing-jobs" class="ongoing-list">
+            <p class="panel-sub">Waiting for a job observation.</p>
+          </div>
+        </section>
         <section class="campaign-banner" aria-labelledby="campaign-title">
           <div class="hero-top-row">
             <p class="eyebrow" id="campaign-network">LIVE PROVER OBSERVATIONS</p>

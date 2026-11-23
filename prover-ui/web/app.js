@@ -148,7 +148,38 @@ const ProofEta = (() => {
     ];
     return {friday,trust:cashuTrustMilestones.map(item=>({status:'Open · no ETA',...item,done:false}))};
   }
-  return {estimate,clock,arkCampaign,arkDeadline,arkBudgets,cashuRoadmap};
+  function ongoingJobs({ark, shinigami, local, localFresh, localSample, paused}) {
+    const rows=[];
+    const observedState=(fresh,current)=>paused?'Paused':fresh?current:'Stale';
+    if(ark?.sample.active && ark.sample.stage!=='failed') {
+      const sample=ark.sample;
+      const activity=sample.ark_running?'Running':
+        ['returning','stopped'].includes(sample.stage)?'Collecting results':'Preparing';
+      rows.push({id:'cloud-ark',title:'Ark SP1 prover',where:'Hyperstack · A100 GPU',
+        phase:ark.fresh?ark.phase:ark.knownPhase,status:observedState(ark.fresh,activity),heardAt:sample.sampled_at_unix,
+        details:'#shard-panel',detailsLabel:'Checkpoint details',metrics:[
+          ['New core shards',sample.core_new],['New recursion proofs',sample.recursion_new],['Replayed core shards',sample.core_replayed]
+        ]});
+      if(sample.nova_running)rows.push({id:'cloud-nova',title:'MNR-04 clearing proof',where:'Hyperstack · CPU',
+        phase:'Regtest and Nova benchmark',status:observedState(ark.fresh,'Running'),heardAt:sample.sampled_at_unix});
+    }
+    if(shinigami?.sample.active) {
+      const sample=shinigami.sample;
+      const activity=['provisioning','booted','benchmark_started','benchmark_running','started'].includes(sample.stage)?'Preparing':
+        ['retrieving','fresh_proof_independently_verified'].includes(sample.stage)?'Collecting results':'Running';
+      rows.push({id:'cloud-shinigami',title:'Shinigami issuance benchmark',where:'Hyperstack · CPU',
+        phase:shinigami.knownPhase,status:observedState(shinigami.active,activity),heardAt:sample.sampled_at_unix});
+    }
+    for(const job of local) {
+      if(!job.running && !job.process && job.status!=='resource wait')continue;
+      const activity=job.status==='resource wait'?'Waiting for resources':'Running';
+      rows.push({id:job.id,title:job.title,where:['Local machine',job.backend].filter(Boolean).join(' · '),
+        phase:job.phase,status:observedState(localFresh,activity),heardAt:localSample,
+        details:'#runtime-panel',detailsLabel:'Process details'});
+    }
+    return rows;
+  }
+  return {estimate,clock,arkCampaign,arkDeadline,arkBudgets,cashuRoadmap,ongoingJobs};
 })();
 if(typeof module!=='undefined' && module.exports)module.exports=ProofEta;
 if(typeof document!=='undefined') (() => {
@@ -401,7 +432,8 @@ if(typeof document!=='undefined') (() => {
     const age=Date.now()/1000-sample.sampled_at_unix;
     const active=sample.active && state.polling && Date.now()-state.lastReceived<15000 && age>=-10 && age<50;
     const status=!state.polling?'Display paused':sample.active&&!active?'Telemetry stale':hyperstackStages[sample.stage];
-    return {sample,active,status,hardware:sample.a100_confirmed?'NVIDIA A100 80 GB PCIe':'A100 on-demand VM'};
+    return {sample,active,status,knownPhase:hyperstackStages[sample.stage],
+      hardware:sample.a100_confirmed?'NVIDIA A100 80 GB PCIe':'A100 on-demand VM'};
   }
   function arkCloudSignal() {
     const sample=state.live?.cloud_hyperstack_ark;
@@ -416,7 +448,7 @@ if(typeof document!=='undefined') (() => {
     const progressAge=Date.now()/1000-sample.last_checkpoint_at_unix;
     const phase=!state.polling?'Display paused':sample.active&&!fresh?'Server heartbeat stale':
       fresh&&sample.ark_running&&progressAge>=60?'Prover running · awaiting checkpoint':phases[sample.stage];
-    return {sample,phase,fresh,active:sample.active&&fresh};
+    return {sample,phase,fresh,knownPhase:phases[sample.stage],active:sample.active&&fresh};
   }
   function renderArkCloud() {
     const cloud=arkCloudSignal();
@@ -581,6 +613,35 @@ if(typeof document!=='undefined') (() => {
     state.history.push({t,cpu:measured?cpu:null,ram:live.host_memory?.load_percent,gpu:live.gpu?.util_gpu_pct});
     if(state.history.length>180)state.history.shift();
   }
+  function renderOngoingJobs(local, ark, shinigami) {
+    const localFresh=freshRuntime();
+    const rows=ProofEta.ongoingJobs({local,ark,shinigami,localFresh,
+      localSample:state.live?.runtime?.sampled_at_unix,paused:!state.polling});
+    const running=rows.filter(job=>job.status==='Running').length;
+    const waiting=rows.filter(job=>['Preparing','Waiting for resources','Collecting results'].includes(job.status)).length;
+    const stale=rows.filter(job=>job.status==='Stale').length;
+    const count=[running?`${running} running`:'',waiting?`${waiting} pending`:'',stale?`${stale} stale`:''].filter(Boolean).join(' · ');
+    $('ongoing-summary').textContent=!state.polling?'Display paused':count || (localFresh?'No active jobs':'Waiting for telemetry');
+    const empty=!state.polling?'Resume the display to refresh job activity.':
+      localFresh?'No ongoing proving jobs are currently observed.':'Waiting for a live job report.';
+    setMarkup('ongoing-jobs',rows.map(job=>{
+      const heard=Number.isFinite(job.heardAt)?new Date(job.heardAt*1000):null;
+      const validHeard=heard&&!Number.isNaN(heard.valueOf());
+      const metrics=(job.metrics||[]).filter(([,value])=>Number.isSafeInteger(value));
+      return `<article class="ongoing-job">
+        <div class="ongoing-name"><h3>${esc(job.title)}</h3><p>${esc(job.where)}</p></div>
+        <div class="ongoing-work">
+          ${job.phase?`<p>${esc(job.phase)}</p>`:''}
+          ${metrics.length?`<dl>${metrics.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${n(value)}</dd></div>`).join('')}</dl>`:''}
+        </div>
+        <div class="ongoing-monitor">
+          <span class="status-pill ${job.status==='Running'?'live':''}">${esc(job.status)}</span>
+          ${validHeard?`<time datetime="${heard.toISOString()}" title="${esc(heard.toLocaleString())}">Last report ${esc(heard.toLocaleTimeString())}</time>`:''}
+          ${job.details?`<a data-id="${esc(job.id)}" href="${esc(job.details)}">${esc(job.detailsLabel)}</a>`:''}
+        </div>
+      </article>`;
+    }).join('') || `<p class="panel-sub">${esc(empty)}</p>`);
+  }
   function render() {
     const live=state.live||{}, rt=live.runtime||{}, gpu=live.gpu||{}, host=live.host_memory||{}, cloud=runpodSignal(), all=jobs().sort((a,b)=>Number(b.id.startsWith('ark-sp1:'))-Number(a.id.startsWith('ark-sp1:')));
     if(!state.userSelected || !state.selected || !all.some(j=>j.id===state.selected))state.selected=all.find(j=>j.running)?.id || all[0]?.id;
@@ -594,7 +655,7 @@ if(typeof document!=='undefined') (() => {
     $('campaign-badge').textContent=selected?.checksPassed?'OFF-CHAIN CHECKS PASSED':
       selected?.audit?.valid?'RECORDED AUDIT · HASH MATCHES':'NO VERIFIED RECEIPT';
     $('campaign-eta-pill').className=`status-pill ${statusClass(selected?.status)}`;
-    $('campaign-hw').textContent=selected?.running ? `PID ${selected.process.pid} · ${selected.backend}` : 'No running process established for this job';
+    $('campaign-hw').textContent=selected?.running ? `PID ${selected.process.pid} · ${selected.backend}` : 'No local process observed for this campaign';
     const stale=Date.now()-state.lastReceived>15000;
     $('poll-label').textContent=!state.polling?'DISPLAY PAUSED':stale?'DISCONNECTED / STALE':`LIVE · ${new Date(live.sampled_at_unix*1000).toLocaleTimeString()}`;
     $('live-dot').classList.toggle('live',state.polling&&!stale);
@@ -607,9 +668,9 @@ if(typeof document!=='undefined') (() => {
       activeGpu,
       ['WINDOWS MEMORY',gib(host.used_phys_bytes),`${gib(host.avail_phys_bytes)} free · ${n(host.load_percent)}% used`],
       ['WSL MEMORY',gib(host.vmmem_wsl?.working_set_bytes),`${gib(host.vmmem_wsl?.private_commit_bytes)} private commit`],
-      ['PROVER',freshRuntime()?`${all.filter(j=>j.running&&j.backend!=='SP1 / CUDA').length} CPU · ${(rt.ark_processes||[]).length} Ark processes`:'Unknown',freshRuntime()?'From process identity':'Waiting for a fresh runtime observation']
+      ['LOCAL PROVERS',freshRuntime()?`${all.filter(j=>j.running&&j.backend!=='SP1 / CUDA').length} CPU · ${(rt.ark_processes||[]).length} Ark processes`:'Unknown',freshRuntime()?'Windows and WSL process observations':'Waiting for a fresh runtime observation']
     ].map(([label,value,detail])=>`<article class="ribbon-card"><div class="ribbon-head">${esc(label)}</div><div class="ribbon-main"><span class="ribbon-val runtime-value">${esc(value)}</span></div><div class="ribbon-sub">${esc(detail)}</div></article>`).join('');
-    $('live-kpis').innerHTML=[['PROCESS',selected?.process?`PID ${selected.process.pid}`:'Inactive'],['CPU TIME',`${n(selected?.cpu_seconds,1)} s`],['PROOF RAM',gib(selected?.ram_bytes)],['SWAP',gib(selected?.swap_bytes)],['VERIFICATION',selected?.audit?.valid?'Hash-bound audit':'Not established']].map(([label,value])=>`<article class="kpi-card"><span class="kpi-label">${esc(label)}</span><strong class="kpi-value runtime-value">${esc(value)}</strong></article>`).join('');
+    $('live-kpis').innerHTML=[['LOCAL PROCESS',selected?.process?`PID ${selected.process.pid}`:'Inactive'],['CPU TIME',`${n(selected?.cpu_seconds,1)} s`],['PROOF RAM',gib(selected?.ram_bytes)],['SWAP',gib(selected?.swap_bytes)],['VERIFICATION',selected?.audit?.valid?'Hash-bound audit':'Not established']].map(([label,value])=>`<article class="kpi-card"><span class="kpi-label">${esc(label)}</span><strong class="kpi-value runtime-value">${esc(value)}</strong></article>`).join('');
     $('runtime-age').textContent=`${freshRuntime()?'FRESH':'STALE / UNKNOWN'} · sample ${time(rt.sampled_at_unix)}`;
     setMarkup('jobs',all.map(j=>`<article class="observed-job ${j.id===state.selected?'selected-job':''}"><div class="panel-head"><h3>${esc(j.title)}</h3><span class="status-pill ${statusClass(j.status)}">${esc(j.status)}</span></div><div class="kv-grid">${kv('Backend',j.backend)}${kv('Process identity',j.process?`${j.process.pid} / start ${j.process.start_ticks}`:'Not observed')}${kv('Current stage',j.phase || 'No stage observed')}${kv('RAM cap',gib(j.ram_limit_bytes))}${kv('CPU seconds',n(j.cpu_seconds,1))}${kv('Independent audit',j.audit?.valid?`${j.audit.negative_controls_passed}/${j.audit.negative_controls_total} negative controls · proof hash matches`:j.audit?.present?'Receipt present; verification not established':'Not present')}</div><details data-detail-key="${esc(j.id)}"><summary>Observed journal and evidence source</summary><code>${esc(j.unit)}</code><pre>${esc((j.log_tail||[]).join('\n') || 'No journal entries available')}</pre><p class="source-path">${esc(j.audit?.path)}</p><code>${esc(j.audit?.proof_sha256 || 'No audited proof hash')}</code></details></article>`).join('') || '<p>No runtime observations available.</p>');
     const ark=live.wsl_prover||{}, progress=ark.progress||{};
@@ -618,7 +679,8 @@ if(typeof document!=='undefined') (() => {
     const events=progress.recent_events||[];
     setMarkup('shard-events',events.slice(-24).map(ev=>`<span class="observed-tile ${state.newEventSeqs.has(ev.seq)?'checkpoint-new':''}" data-seq="${esc(ev.seq)}" title="${esc(ev.key)}">${esc(ev.kind)} · ${ev.replayed?'replayed':'proved'} · ${n(ev.ms/1000,1)}s</span>`).join('') || '<p class="panel-sub">No shard completion events observed.</p>');
     $('claims-list').innerHTML=all.filter(j=>j.audit?.statement).map(j=>`<article class="observed-job"><h3>${esc(j.title)} · ${esc(j.audit.valid?'audited historical claim':'unconfirmed receipt')}</h3><pre>${esc(JSON.stringify(j.audit.statement,null,2))}</pre></article>`).join('') || '<p>No payment claim receipt observed.</p>';
-    const show={live:['eta-panel','runtime-panel','shard-panel'],compute:['compute-panel'],blocks:['evidence-panel'],
+    renderOngoingJobs(all,arkCloud,pilot);
+    const show={live:['ongoing-panel','eta-panel','runtime-panel','shard-panel'],compute:['compute-panel'],blocks:['evidence-panel'],
       utxos:['claims-panel'],estimator:['planner-panel'],cashu:['cashu-panel']};
     Object.values(show).flat().forEach(id=>$(id).hidden=!show[state.tab].includes(id));
     renderArkCloud();renderLocalGpu();renderRunpodCloud();updateCampaign();updateEta();drawHistory();
