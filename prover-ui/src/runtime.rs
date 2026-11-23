@@ -29,29 +29,49 @@ impl Default for RuntimeCollector {
 
 impl RuntimeCollector {
     pub fn new() -> Self {
-        let state = Arc::new(Mutex::new(
+        Self::collect(
+            "rbzk-runtime",
             json!({"reachable": false, "status": "connecting", "jobs": []}),
-        ));
+            30,
+            || {
+                probe()
+                    .unwrap_or_else(|| json!({"reachable":false,"status":"unavailable","jobs":[]}))
+            },
+        )
+    }
+
+    pub(crate) fn runpod() -> Self {
+        Self::collect(
+            "rbzk-runpod",
+            json!({"authenticated":false,"status":"connecting"}),
+            50,
+            crate::runpod::probe,
+        )
+    }
+
+    fn collect(
+        name: &str,
+        initial: Value,
+        interval_ticks: u32,
+        sample: impl Fn() -> Value + Send + 'static,
+    ) -> Self {
+        let state = Arc::new(Mutex::new(initial));
         let stop = Arc::new(AtomicBool::new(false));
         let (shared, stopping) = (state.clone(), stop.clone());
-        let _ = thread::Builder::new()
-            .name("rbzk-runtime".into())
-            .spawn(move || {
-                while !stopping.load(Ordering::Acquire) {
-                    let result = probe().unwrap_or_else(
-                        || json!({"reachable":false,"status":"unavailable","jobs":[]}),
-                    );
-                    if let Ok(mut cache) = shared.lock() {
-                        *cache = result;
-                    }
-                    for _ in 0..30 {
-                        if stopping.load(Ordering::Acquire) {
-                            return;
-                        }
-                        thread::sleep(Duration::from_millis(100));
-                    }
+        let _ = thread::Builder::new().name(name.into()).spawn(move || {
+            while !stopping.load(Ordering::Acquire) {
+                let result = sample();
+                if let Ok(mut cache) = shared.lock() {
+                    *cache = result;
                 }
-            });
+                for _ in 0..interval_ticks {
+                    if stopping.load(Ordering::Acquire) {
+                        return;
+                    }
+                    thread::sleep(Duration::from_millis(100));
+                }
+            }
+        });
         Self { state, stop }
     }
 

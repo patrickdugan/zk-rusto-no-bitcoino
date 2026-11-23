@@ -1850,6 +1850,10 @@ select {
 .compute-setup dd { margin: 0; overflow-wrap: anywhere; }
 .compute-provider-links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
 .compute-provider-links a { color: var(--ink); text-underline-offset: 2px; }
+.compute-signin-links { display:flex; flex-wrap:wrap; gap:8px 14px; margin:12px 0; }
+.compute-signin-links a { border:1px solid var(--line-strong); color:var(--ink); padding:8px 10px; text-underline-offset:2px; }
+.compute-signin-links a:hover, .compute-signin-links a:focus-visible { border-color:var(--crimson); background:var(--crimson-soft); }
+.compute-source-state { margin:12px 0 0; color:var(--crimson); font:11px/1.5 var(--font-mono); overflow-wrap:anywhere; }
 .core-eta-heading { border-top:1px solid var(--line); padding:16px 0 8px; }
 .eta-layout { display:grid; grid-template-columns:minmax(230px,1fr) 1.3fr; gap:24px; align-items:center; }
 .eta-clock { display:block; font:600 clamp(27px,3vw,46px) var(--font-mono); font-variant-numeric:tabular-nums; letter-spacing:-.04em; margin:12px 0; min-height:1.2em; }

@@ -37,6 +37,7 @@ pub struct ProverUIApp {
     pub telemetry: TelemetryCollector,
     ark_dir: Option<PathBuf>,
     runtime: crate::runtime::RuntimeCollector,
+    runpod: crate::runtime::RuntimeCollector,
     stop_flag: AtomicBool,
     stop_cv: (Mutex<bool>, Condvar),
 }
@@ -56,6 +57,7 @@ impl ProverUIApp {
             ),
             ark_dir,
             runtime: crate::runtime::RuntimeCollector::new(),
+            runpod: crate::runtime::RuntimeCollector::runpod(),
             stop_flag: AtomicBool::new(false),
             stop_cv: (Mutex::new(false), Condvar::new()),
         }
@@ -128,6 +130,7 @@ impl ProverUIApp {
             wsl["completion"] = Value::Null;
         }
         live["runtime"] = runtime;
+        live["cloud_runpod"] = self.runpod.snapshot();
         live
     }
 

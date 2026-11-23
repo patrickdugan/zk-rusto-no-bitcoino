@@ -5,5 +5,6 @@ pub mod correlator;
 #[cfg(feature = "desktop")]
 pub mod desktop;
 pub mod runtime;
+mod runpod;
 pub mod server;
 pub mod telemetry;

@@ -63,6 +63,29 @@ uses `scripts/launch-live-desktop.ps1` and the existing opt-in local asset loade
 it does not rebuild or restart a prover. Regular portable launches use embedded
 assets. Rebuilding embeds the updated frontend as usual.
 
+## Cloud compute telemetry
+
+Open **Compute** to sign in to Runpod, Prime Intellect, or Hyperstack in
+the provider console.
+For Runpod telemetry, configure a read-only Pod API key through
+`RUNPOD_API_KEY`, a file selected by `RBZK_RUNPOD_API_KEY_FILE`, or the local
+`~/.runpod/api-key` file. The native app reads the key server-side and polls
+the Runpod control plane independently of the laptop telemetry.
+
+A fresh, authenticated Runpod GPU Pod becomes the hardware ribbon source.
+The Compute tab retains the laptop readings alongside the cloud readings.
+Set `RUNPOD_POD_ID` to select a specific Pod if the account has several
+running GPU Pods. Runpod GPU and container usage describe the rented
+instance. The Ark proof tracker continues to use observations of its own
+proof producer.
+
+The app also reads the existing Prime CLI configuration at
+`~/.prime/config.json` or `PRIME_API_KEY`. It polls the account's Compute Pod
+list and shows the upstream host when Prime reports it. Set `PRIME_POD_ID`
+to select a specific Prime Pod instead of the sole active GPU Pod. The Prime
+Pod list supplies lifecycle and hardware information. Utilization is
+available from the direct Runpod metrics feed.
+
 ## ETA and motion
 
 The Ark campaign tracks the height-679 regtest maintenance policy for four VTXOs

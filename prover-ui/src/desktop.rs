@@ -95,7 +95,10 @@ pub fn run_desktop(opts: DesktopLaunchOptions) -> Result<()> {
         Err(_) => start_server(&opts.host, 0, Arc::clone(&app))
             .context("bind ephemeral loopback port for desktop UI")?,
     };
-    let app_url = server.url();
+    let app_url = match std::env::var("RBZK_PROVER_UI_START_VIEW").as_deref() {
+        Ok("compute") => format!("{}/?view=compute", server.url()),
+        _ => server.url(),
+    };
     let allowed_prefix_ip = format!("http://127.0.0.1:{}", server.addr.port());
     let allowed_prefix_lh = format!("http://localhost:{}", server.addr.port());
 

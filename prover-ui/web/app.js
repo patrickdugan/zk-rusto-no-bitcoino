@@ -154,7 +154,8 @@ if(typeof document!=='undefined') (() => {
   const gib = v => typeof v === 'number' ? `${n(v / 2**30,2)} GiB` : 'Unavailable';
   const time = t => typeof t === 'number' ? new Date(t*1000).toLocaleString() : 'Unavailable';
   const kv = (key,value) => `<div class="kv-item"><span>${esc(key)}</span><strong>${esc(value)}</strong></div>`;
-  const state = {live:null, records:[], selected:null, userSelected:false, tab:'live', polling:true, timer:null, lastReceived:0, history:[], previous:new Map(), seen:new Set(), booted:false, etaClock:null, etaModel:null, etaSource:null, lastEventSeq:null, etaTarget:null, newEventSeqs:new Set()};
+  const initialTab = new URLSearchParams(window.location.search).get('view') === 'compute' ? 'compute' : 'live';
+  const state = {live:null, records:[], selected:null, userSelected:false, tab:initialTab, polling:true, timer:null, lastReceived:0, history:[], previous:new Map(), seen:new Set(), booted:false, etaClock:null, etaModel:null, etaSource:null, lastEventSeq:null, etaTarget:null, newEventSeqs:new Set()};
   const readSetting = key => {try{return localStorage.getItem(key);}catch{return null;}};
   const saveSetting = (key,value) => {try{localStorage.setItem(key,value);}catch{}};
   const computeTargetKey = 'rbzk.compute.target';
@@ -362,6 +363,55 @@ if(typeof document!=='undefined') (() => {
       kv('Temperature',measure(gpu?.temp_c,' °C'));
     $('local-gpu-sample').textContent=fresh?`NVIDIA telemetry · ${time(sampledAt)}`:'Source · NVIDIA telemetry';
   }
+  // `cloud_runpod` is populated by the same-origin /api/live response.  It is
+  // deliberately display-only: credentials stay in the server-side bridge and
+  // never enter this page, storage, or the DOM.
+  function runpodSignal() {
+    const cloud=state.live?.cloud_runpod;
+    const received=state.polling && Date.now()-state.lastReceived<15000;
+    const fresh=received && cloud?.fresh===true;
+    const authenticated=cloud?.authenticated===true;
+    const running=String(cloud?.status || '').toUpperCase()==='RUNNING';
+    const gpuName=typeof cloud?.pod?.gpu_name==='string' ? cloud.pod.gpu_name.trim() : '';
+    const provider=cloud?.provider==='Prime Intellect' ?
+      (String(cloud?.pod?.upstream_provider || '').trim().toLowerCase()==='runpod' ? 'Runpod via Prime' : 'Prime Intellect') :
+      cloud?.provider==='Runpod' ? 'Runpod' : 'Cloud';
+    return {cloud,fresh,authenticated,running,gpuName,provider,active:fresh&&authenticated&&running};
+  }
+  function cloudMeasure(value,suffix) {
+    return Number.isFinite(value) ? `${n(value,1)}${suffix}` : 'Unavailable';
+  }
+  function renderRunpodCloud() {
+    const signal=runpodSignal(), cloud=signal.cloud, pod=cloud?.pod || {}, metrics=cloud?.metrics || {};
+    const labels={
+      credentials_required:'CONNECT AN API KEY', connecting:'CONNECTING', unauthorized:'KEY REJECTED',
+      unavailable:'PROVIDER UNAVAILABLE', multiple_pods:'SELECT A POD', no_running_pod:'NO RUNNING GPU POD',
+      pod_not_running:'SELECTED POD IS INACTIVE',
+    };
+    let status='CONNECTING',name='Cloud telemetry';
+    if(!state.polling)status='DISPLAY PAUSED';
+    else if(!cloud)status='WAITING FOR TELEMETRY';
+    else if(!signal.running)status=labels[cloud.status] || (!signal.authenticated?'NOT AUTHENTICATED':'NO RUNNING GPU POD');
+    else if(!signal.authenticated)status='NOT AUTHENTICATED';
+    else if(!signal.fresh)status='STALE / UNKNOWN';
+    else {status=signal.gpuName?'RUNNING / OBSERVED':'GPU UNIDENTIFIED';name=signal.gpuName || 'GPU name unavailable';}
+    $('runpod-cloud-heading').textContent=`${signal.provider.toUpperCase()} · READ ONLY`;
+    $('runpod-cloud-status').textContent=status;
+    $('runpod-cloud-name').textContent=name;
+    $('runpod-cloud-metrics').hidden=!signal.active;
+    $('runpod-cloud-metrics').innerHTML=signal.active?
+      kv('GPU utilization',cloudMeasure(metrics.gpu_util_percent,'%'))+
+      kv('GPU memory',cloudMeasure(metrics.gpu_memory_percent,'%'))+
+      kv('CPU utilization',cloudMeasure(metrics.cpu_util_percent,'%'))+
+      kv('Memory utilization',cloudMeasure(metrics.mem_util_percent,'%')) : '';
+    $('runpod-cloud-sample').textContent=signal.active ?
+      `${pod.name || pod.id || 'Remote GPU'} · ${time(cloud.sampled_at_unix)}` :
+      cloud?.status==='credentials_required' ? (cloud.provider==='Prime Intellect' ? 'Sign in with the Prime CLI to connect telemetry.' : cloud.provider==='Runpod' ? 'Configure a Runpod read-only API key to connect telemetry.' : 'Connect a provider to receive telemetry.') :
+      cloud?.status==='multiple_pods' ? 'Select a specific running GPU instance in the telemetry configuration.' :
+      'Waiting for a fresh cloud GPU sample.';
+    $('compute-source-state').textContent=signal.active ?
+      `ACTIVE DISPLAY SOURCE · ${signal.provider.toUpperCase()} · ${signal.gpuName || 'GPU NAME UNAVAILABLE'}` : 'ACTIVE DISPLAY SOURCE · LOCAL GPU';
+  }
   function initCompute() {
     const targets=$('compute-target');
     const cloud=$('compute-cloud');
@@ -455,7 +505,7 @@ if(typeof document!=='undefined') (() => {
     if(state.history.length>180)state.history.shift();
   }
   function render() {
-    const live=state.live||{}, rt=live.runtime||{}, gpu=live.gpu||{}, host=live.host_memory||{}, all=jobs().sort((a,b)=>Number(b.id.startsWith('ark-sp1:'))-Number(a.id.startsWith('ark-sp1:')));
+    const live=state.live||{}, rt=live.runtime||{}, gpu=live.gpu||{}, host=live.host_memory||{}, cloud=runpodSignal(), all=jobs().sort((a,b)=>Number(b.id.startsWith('ark-sp1:'))-Number(a.id.startsWith('ark-sp1:')));
     if(!state.userSelected || !state.selected || !all.some(j=>j.id===state.selected))state.selected=all.find(j=>j.running)?.id || all[0]?.id;
     const selected=all.find(j=>j.id===state.selected);
     setMarkup('campaign-list',all.map(j=>`<button class="campaign-btn ${j.id===state.selected?'active':''}" data-id="${esc(j.id)}"><div class="campaign-btn-top">${esc(j.title)}</div><span class="campaign-btn-sub">${esc(j.status)} · ${esc(j.backend)}</span></button>`).join('') || '<p class="panel-sub">Waiting for the machine…</p>');
@@ -471,8 +521,11 @@ if(typeof document!=='undefined') (() => {
     const stale=Date.now()-state.lastReceived>15000;
     $('poll-label').textContent=!state.polling?'DISPLAY PAUSED':stale?'DISCONNECTED / STALE':`LIVE · ${new Date(live.sampled_at_unix*1000).toLocaleTimeString()}`;
     $('live-dot').classList.toggle('live',state.polling&&!stale);
+    const activeGpu=cloud.active ?
+      [`${cloud.provider.toUpperCase()} GPU`,cloud.gpuName || 'GPU name unavailable',`${cloudMeasure(cloud.cloud.metrics?.gpu_util_percent,'%')} compute · ${cloudMeasure(cloud.cloud.metrics?.gpu_memory_percent,'%')} GPU memory`] :
+      ['LOCAL GPU',gpu.available?gpu.name:'Unavailable',gpu.available?`${n(gpu.util_gpu_pct)}% compute · ${gib(gpu.vram_used_mib==null?null:gpu.vram_used_mib*2**20)} VRAM used`:'No local GPU measurement'];
     $('hardware-ribbon').innerHTML=[
-      ['GPU',gpu.available?gpu.name:'Unavailable',gpu.available?`${n(gpu.util_gpu_pct)}% compute · ${gib(gpu.vram_used_mib==null?null:gpu.vram_used_mib*2**20)} VRAM used`:'No GPU measurement'],
+      activeGpu,
       ['WINDOWS MEMORY',gib(host.used_phys_bytes),`${gib(host.avail_phys_bytes)} free · ${n(host.load_percent)}% used`],
       ['WSL MEMORY',gib(host.vmmem_wsl?.working_set_bytes),`${gib(host.vmmem_wsl?.private_commit_bytes)} private commit`],
       ['PROVER',freshRuntime()?`${all.filter(j=>j.running&&j.backend!=='SP1 / CUDA').length} CPU · ${(rt.ark_processes||[]).length} Ark processes`:'Unknown',freshRuntime()?'From process identity':'Waiting for a fresh runtime observation']
@@ -489,7 +542,7 @@ if(typeof document!=='undefined') (() => {
     const show={live:['eta-panel','runtime-panel','shard-panel'],compute:['compute-panel'],blocks:['evidence-panel'],
       utxos:['claims-panel'],estimator:['planner-panel'],cashu:['cashu-panel']};
     Object.values(show).flat().forEach(id=>$(id).hidden=!show[state.tab].includes(id));
-    renderLocalGpu();updateCampaign();updateEta();drawHistory();
+    renderLocalGpu();renderRunpodCloud();updateCampaign();updateEta();drawHistory();
   }
   async function poll() {
     if(!state.polling)return;
@@ -506,7 +559,11 @@ if(typeof document!=='undefined') (() => {
     } catch(error) { $('poll-label').textContent=`CONNECTION LOST · ${error.message}`; $('live-dot').classList.remove('live'); }
     finally { if(state.polling)state.timer=setTimeout(poll,2000); }
   }
-  document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>{state.tab=b.dataset.tab;document.querySelectorAll('.nav-btn').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-selected',x===b?'true':'false');});render();const panels=document.querySelectorAll('.panel:not([hidden])');panels.forEach(p=>{p.classList.remove('view-enter');void p.offsetWidth;p.classList.add('view-enter');setTimeout(()=>p.classList.remove('view-enter'),220);});});
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.tab===state.tab);
+    b.setAttribute('aria-selected',String(b.dataset.tab===state.tab));
+    b.onclick=()=>{state.tab=b.dataset.tab;document.querySelectorAll('.nav-btn').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-selected',x===b?'true':'false');});render();const panels=document.querySelectorAll('.panel:not([hidden])');panels.forEach(p=>{p.classList.remove('view-enter');void p.offsetWidth;p.classList.add('view-enter');setTimeout(()=>p.classList.remove('view-enter'),220);});};
+  });
   $('open-cashu-roadmap').onclick=()=>{
     const tab=$('cashu-tab');
     tab.click();

@@ -257,6 +257,16 @@
               <div class="compute-metrics" id="local-gpu-metrics"></div>
               <p class="panel-sub" id="local-gpu-sample">Source · NVIDIA telemetry</p>
             </section>
+            <section class="compute-card" aria-labelledby="runpod-cloud-heading">
+              <div class="compute-card-head">
+                <h3 id="runpod-cloud-heading">CLOUD GPU · READ ONLY</h3>
+                <span id="runpod-cloud-status" class="tag-mono">SIGNAL UNAVAILABLE</span>
+              </div>
+              <strong class="compute-gpu-name" id="runpod-cloud-name">Cloud telemetry</strong>
+              <p class="compute-source-state" id="compute-source-state">ACTIVE DISPLAY SOURCE · LOCAL GPU</p>
+              <div class="compute-metrics" id="runpod-cloud-metrics"></div>
+              <p class="panel-sub" id="runpod-cloud-sample">Waiting for a fresh cloud GPU sample.</p>
+            </section>
             <section class="compute-card" aria-labelledby="compute-target-heading">
               <h3 id="compute-target-heading">PILOT TARGET</h3>
               <fieldset class="compute-choices" id="compute-target" aria-label="Pilot target">
@@ -272,6 +282,11 @@
                 </div>
               </fieldset>
               <p class="panel-sub">This planning choice is saved in this console. Prover jobs are managed separately.</p>
+              <div class="compute-signin-links" aria-label="Cloud provider sign-in links">
+                <a href="https://app.primeintellect.ai/" target="_blank" rel="noopener">Sign in to Prime Intellect</a>
+                <a href="https://console.runpod.io/" target="_blank" rel="noopener">Sign in to Runpod</a>
+                <a href="https://console.hyperstack.cloud/" target="_blank" rel="noopener">Sign in to Hyperstack</a>
+              </div>
               <fieldset class="compute-choices" id="compute-cloud" hidden>
                 <legend>Cloud provider</legend>
                 <div class="compute-options" id="compute-providers"></div>
