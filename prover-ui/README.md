@@ -50,3 +50,15 @@ Headless: `cargo test --locked --no-default-features`; Python parity and receipt
 ```
 
 Configuration registers observation sources; it never launches or resumes a prover. A raw proof filename alone cannot establish verification. Full Ark SP1/BitVM3 completion, current unspentness, mint funding and removal of a trusted administrator are separate claims.
+
+The dashboard also discovers the running Ark CUDA executable from fresh runtime
+process observations, adds its campaign card, and selects active work until the
+user chooses another campaign. Its RAM/swap values require fresh phase samples;
+completed script receipts remain separate. A running process is never a verified
+proof receipt.
+
+To load the checked-in frontend with the existing native engine during a proof
+run, install the shortcut with `-LiveAssets -ExePath <native executable>`. This
+uses `scripts/launch-live-desktop.ps1` and the existing opt-in local asset loader;
+it does not rebuild or restart a prover. Regular portable launches use embedded
+assets. Rebuilding embeds the updated frontend as usual.

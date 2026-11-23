@@ -6,16 +6,31 @@
   const gib = v => typeof v === 'number' ? `${n(v / 2**30,2)} GiB` : 'Unavailable';
   const time = t => typeof t === 'number' ? new Date(t*1000).toLocaleString() : 'Unavailable';
   const kv = (key,value) => `<div class="kv-item"><span>${esc(key)}</span><strong>${esc(value)}</strong></div>`;
-  const state = {live:null, records:[], selected:null, tab:'live', polling:true, timer:null, lastReceived:0, history:[], previous:new Map(), seen:new Set(), booted:false};
+  const state = {live:null, records:[], selected:null, userSelected:false, tab:'live', polling:true, timer:null, lastReceived:0, history:[], previous:new Map(), seen:new Set(), booted:false};
   const statusClass = s => s === 'running' ? 'live' : s === 'verified receipt' ? 'cyan' : '';
   function freshRuntime() {
     const rt = state.live?.runtime || {};
     return state.polling && rt.fresh && Date.now()-state.lastReceived < 15000;
   }
   function jobs() {
-    return (state.live?.runtime?.jobs || []).map(j => freshRuntime() ? j : {...j,running:false,status:state.polling?'stale / unknown':'display paused'});
+    const rt=state.live?.runtime || {}, wsl=state.live?.wsl_prover || {};
+    const observed=[...(rt.jobs || [])];
+    const measured=freshRuntime() && typeof wsl.last_resource_age_s==='number' && wsl.last_resource_age_s<=15 && wsl.phase_running;
+    const resources=measured ? (wsl.latest_resource || {}) : {};
+    for(const process of rt.ark_processes || []) {
+      if(process.executable!=='/root/nb3-gpu-target/release/ark-prove-gpu-cached-gkr')continue;
+      observed.push({id:`ark-sp1:${process.pid}:${process.start_ticks}`,title:'Ark ASP · SP1 GPU',
+        network:'ARK ASP POLICY CAMPAIGN',backend:'SP1 / CUDA',running:true,status:'running',process,
+        phase:'Core and recursive proving',
+        ram_bytes:typeof resources.cgroup_ram_mib==='number'?resources.cgroup_ram_mib*2**20:null,
+        swap_bytes:typeof resources.cgroup_swap_mib==='number'?resources.cgroup_swap_mib*2**20:null,
+        unit:wsl.active_phase_dir || 'Observed native process',
+        log_tail:String(wsl.phase_log_tail || '').replace(/\x1b\[[0-9;]*m/g,'').split('\n').slice(-6),
+        audit:{present:false,valid:false}});
+    }
+    return observed.map(j => freshRuntime() ? j : {...j,running:false,status:state.polling?'stale / unknown':'display paused'});
   }
-  function select(id) { state.selected=id; render(); }
+  function select(id) { state.selected=id; state.userSelected=true; render(); }
   function drawHistory() {
     const canvas=$('observations'), ctx=canvas.getContext('2d'), width=canvas.clientWidth || 600;
     canvas.width=width*devicePixelRatio; canvas.height=150*devicePixelRatio;
@@ -36,7 +51,7 @@
     if(!rt.fresh || typeof t!=='number' || state.history.at(-1)?.t===t)return;
     let cpu=0, measured=false;
     for(const job of rt.jobs||[]){
-      if(!job.running||!job.process)continue;
+      if(!job.running||!job.process||typeof job.cpu_seconds!=='number')continue;
       const key=`${job.process.pid}:${job.process.start_ticks}`, prev=state.previous.get(key);
       if(prev && t>prev.t && job.cpu_seconds>=prev.cpu){cpu+=(job.cpu_seconds-prev.cpu)/(t-prev.t)*50;measured=true;}
       state.previous.set(key,{t,cpu:job.cpu_seconds});
@@ -46,7 +61,7 @@
   }
   function render() {
     const live=state.live||{}, rt=live.runtime||{}, gpu=live.gpu||{}, host=live.host_memory||{}, all=jobs();
-    if(!state.selected || !all.some(j=>j.id===state.selected))state.selected=all.find(j=>j.running)?.id || all[0]?.id;
+    if(!state.userSelected || !state.selected || !all.some(j=>j.id===state.selected))state.selected=all.find(j=>j.running)?.id || all[0]?.id;
     const selected=all.find(j=>j.id===state.selected);
     $('campaign-list').innerHTML=all.map(j=>`<button class="campaign-btn ${j.id===state.selected?'active':''}" data-id="${esc(j.id)}"><div class="campaign-btn-top">${esc(j.title)}</div><span class="campaign-btn-sub">${esc(j.status)} · ${esc(j.backend)}</span></button>`).join('') || '<p class="panel-sub">Waiting for the machine…</p>';
     $('campaign-list').querySelectorAll('button').forEach(b=>b.onclick=()=>select(b.dataset.id));
@@ -64,7 +79,7 @@
       ['GPU',gpu.available?gpu.name:'Unavailable',gpu.available?`${n(gpu.util_gpu_pct)}% compute · ${gib(gpu.vram_used_mib==null?null:gpu.vram_used_mib*2**20)} VRAM used`:'No GPU measurement'],
       ['WINDOWS MEMORY',gib(host.used_phys_bytes),`${gib(host.avail_phys_bytes)} free · ${n(host.load_percent)}% used`],
       ['WSL MEMORY',gib(host.vmmem_wsl?.working_set_bytes),`${gib(host.vmmem_wsl?.private_commit_bytes)} private commit`],
-      ['PROVER',freshRuntime()?`${all.filter(j=>j.running).length} CPU · ${(rt.ark_processes||[]).length} Ark processes`:'Unknown',freshRuntime()?'From process identity':'Waiting for a fresh runtime observation']
+      ['PROVER',freshRuntime()?`${all.filter(j=>j.running&&j.backend!=='SP1 / CUDA').length} CPU · ${(rt.ark_processes||[]).length} Ark processes`:'Unknown',freshRuntime()?'From process identity':'Waiting for a fresh runtime observation']
     ].map(([label,value,detail])=>`<article class="ribbon-card"><div class="ribbon-head">${esc(label)}</div><div class="ribbon-main"><span class="ribbon-val runtime-value">${esc(value)}</span></div><div class="ribbon-sub">${esc(detail)}</div></article>`).join('');
     $('live-kpis').innerHTML=[['PROCESS',selected?.process?`PID ${selected.process.pid}`:'Inactive'],['CPU TIME',`${n(selected?.cpu_seconds,1)} s`],['PROOF RAM',gib(selected?.ram_bytes)],['SWAP',gib(selected?.swap_bytes)],['VERIFICATION',selected?.audit?.valid?'Hash-bound audit':'Not established']].map(([label,value])=>`<article class="kpi-card"><span class="kpi-label">${esc(label)}</span><strong class="kpi-value runtime-value">${esc(value)}</strong></article>`).join('');
     $('runtime-age').textContent=`${freshRuntime()?'FRESH':'STALE / UNKNOWN'} · sample ${time(rt.sampled_at_unix)}`;

@@ -1,6 +1,7 @@
 param(
     [string]$ShortcutName = "ZK Rusto no Bitcoino Prover.lnk",
-    [string]$ExePath = ""
+    [string]$ExePath = "",
+    [switch]$LiveAssets
 )
 
 $ErrorActionPreference = "Stop"
@@ -30,6 +31,16 @@ $ShortcutPath = Join-Path $DesktopDir $ShortcutName
 $WshShell = New-Object -ComObject WScript.Shell
 $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
 $Shortcut.TargetPath = $ExePath
+if ($LiveAssets) {
+    $Shortcut.TargetPath = Join-Path $PSHOME "powershell.exe"
+    if (-not (Test-Path -LiteralPath $Shortcut.TargetPath)) {
+        $Shortcut.TargetPath = Join-Path $PSHOME "pwsh.exe"
+    }
+    $launcher = Join-Path $PSScriptRoot "launch-live-desktop.ps1"
+    $Shortcut.Arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$launcher`" -ExePath `"$ExePath`""
+} else {
+    $Shortcut.Arguments = ""
+}
 $Shortcut.WorkingDirectory = Split-Path -Parent $ExePath
 $Shortcut.IconLocation = "$IconPath,0"
 $Shortcut.Description = "ZK Rusto no Bitcoino - Native Rust Prover & Recursive Shard Desktop Console"
