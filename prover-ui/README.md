@@ -1,6 +1,6 @@
 # Native prover console
 
-The Mecha desktop UI displays observed runtime data, proof receipts and throughput-based core milestone forecasts.
+The Mecha desktop UI displays observed runtime data, proof receipts, and a deadline planner for the Ark SP1 → M13 → BitVM3 campaign.
 
 The original incremental shard cache and measured-unit planner remain available. Cache counts are labeled history; the planner is labeled a projection. Neither establishes a running prover or verification.
 
@@ -65,13 +65,38 @@ assets. Rebuilding embeds the updated frontend as usual.
 
 ## ETA and motion
 
-The live ETA tracker forecasts the next hundred saved core proofs using observed
+The Ark campaign tracks the height-679 regtest maintenance policy for four VTXOs
+and 79,440 sats. Coordinator phases track SP1 compression, independent SDK verification,
+M13 shrink and transcript-v2 wrap, exact statement verification and the Ark policy
+gate, negative controls, and M14 evaluation. The terminal coordinator report
+requires honest M14 acceptance and a full-circuit bit-flip rejection. Publication
+and the Cashu demo package remain manual milestones. The historical Shinigami
+testnet4 receipts support a separate claim.
+
+The M14 setup can run in parallel with SP1. The setup report clears its own
+milestone and removes its budget from the remaining critical path. During M14
+evaluation the coordinator rechecks those artifacts and binds the release to the
+verified Ark wrap. The setup timing does not estimate honest or adversarial
+evaluation.
+
+The planner compares the entered scenario against the
+[Nut November cutoff](https://nutnovember.org/) on 27 November 2026 at 23:59 UTC.
+It needs a scenario core total and a remaining time budget for each unfinished
+stage. Core and recursive work overlap, so the SP1 budget covers only the
+recursion and compression expected after the core target. The finish window
+combines observed core pace with the entered budgets. The delivery window adds
+the manual evidence and demo budget. Both assume continuous resources and normal
+refusals. If inputs are missing, the app shows how many saved cores could fit
+before the deadline at the observed pace after any entered reserves. That number
+is a capacity ceiling. Pending unbudgeted work and resource holds lower it.
+
+The separate live checkpoint tracker forecasts the next hundred saved core proofs using observed
 15-minute throughput, with 5- and 30-minute rates providing a recent-pace range.
 It can instead project an explicitly entered core target, saved per campaign.
 The countdown stays anchored between saved core completions. Replays do not
 supply new-proof rates; stale samples, a stopped producer, pauses and long gaps
-hold the estimate. A core milestone or planning target is not full-proof completion;
-remaining verification is separate until a real work total and verification results exist.
+hold the estimate. This tracker measures progress toward its selected saved-core
+target. It never advances a proof verification milestone.
 
 Only newly observed proof completions receive a short, small tile animation.
 Historical cache loading does not trigger it. Tab changes have a short fade;

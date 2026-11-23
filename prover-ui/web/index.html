@@ -184,7 +184,39 @@
 
         <section class="kpi-grid" id="live-kpis" aria-label="Observed proof progress"></section>
         <section class="panel eta-panel" id="eta-panel" aria-labelledby="eta-heading">
-          <div class="panel-head"><h2 id="eta-heading">ARK · ETA TRACKER</h2><button type="button" class="ghost-btn" id="toggle-motion" aria-pressed="false">MOTION: SUBTLE</button></div>
+          <div class="panel-head"><h2 id="eta-heading">ARK → BITVM3 · CAMPAIGN ETA</h2><button type="button" class="ghost-btn" id="toggle-motion" aria-pressed="false">MOTION: SUBTLE</button></div>
+          <p class="panel-sub">Nova maintenance policy · regtest height 679 · 4 VTXOs · 79,440 sats</p>
+          <div class="campaign-forecast">
+            <div>
+              <span class="kpi-label">FULL OFF-CHAIN PROOF</span>
+              <strong class="campaign-forecast-value" id="proof-finish">Waiting for telemetry</strong>
+              <p class="panel-sub" id="proof-eta-basis"></p>
+            </div>
+            <div>
+              <span class="kpi-label">NUT NOVEMBER CUTOFF</span>
+              <strong class="campaign-forecast-value" id="deadline-clock">Loading</strong>
+              <p class="panel-sub">Fri Nov 27, 23:59 UTC · Sat Nov 28, 07:59 SGT · <a href="https://nutnovember.org/" target="_blank" rel="noopener">Official timeline</a></p>
+              <p id="deadline-outlook"></p>
+            </div>
+          </div>
+          <ol id="campaign-milestones" class="campaign-milestones" aria-label="Ark proof and delivery milestones"></ol>
+          <details class="campaign-plan" id="campaign-plan">
+            <summary>Plan a full-chain ETA</summary>
+            <form id="campaign-plan-form">
+              <p class="panel-sub">Enter a total core count and remaining minutes for unfinished stages. Budget only the SP1 recursion and compression that remain after core proving. The finish range uses recent core pace and assumes uninterrupted resources.</p>
+              <div class="campaign-plan-grid" id="campaign-plan-inputs"></div>
+              <div class="eta-target-controls">
+                <button class="ghost-btn" type="submit">APPLY SCENARIO</button>
+                <button class="ghost-btn" id="clear-campaign-plan" type="button">CLEAR SCENARIO</button>
+              </div>
+            </form>
+          </details>
+          <div class="campaign-companion">
+            <h3>Cashu demo evidence</h3>
+            <p>Use the regtest Cashu-to-Ark redemption and exit flow for the demo. Shinigami’s historical testnet4 payment and Tapleaf checks support a separate claim.</p>
+            <p class="panel-sub" id="shinigami-evidence"></p>
+          </div>
+          <h3 class="core-eta-heading">Live core checkpoint forecast</h3>
           <div class="eta-layout">
             <div><span class="kpi-label" id="eta-scope">NEXT SAVED-CORE MILESTONE</span><strong class="eta-clock" id="eta-clock">Connecting</strong><p id="eta-finish" class="panel-sub">Waiting for live progress</p></div>
             <div class="eta-context"><strong id="eta-target-label">Waiting for a progress sample</strong><span id="eta-rate">Learning the current pace</span><span id="eta-range"></span><span id="eta-proof-total" class="panel-sub"></span></div>

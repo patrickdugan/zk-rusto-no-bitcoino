@@ -1794,6 +1794,25 @@ select {
 
 /* Quiet, event-driven motion. No simulated proof activity or repeating pulses. */
 .dot.live::after { animation: none !important; opacity: 0; }
+.campaign-forecast { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin:18px 0; }
+.campaign-forecast > div { min-width:0; border:1px solid var(--line); padding:16px; }
+.campaign-forecast-value { display:block; color:var(--ink); font:600 clamp(19px, 2vw, 29px) var(--font-mono); margin:8px 0; }
+.campaign-forecast p, .campaign-milestone p, .campaign-companion p { margin:6px 0 0; line-height:1.5; }
+.campaign-forecast a { color:var(--ink); text-underline-offset:2px; }
+#deadline-outlook { font-size:13px; }
+.campaign-milestones { list-style:none; padding:0; margin:0; }
+.campaign-milestone { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:18px; padding:10px 0; border-top:1px solid var(--line); }
+.campaign-milestone strong { font-size:14px; }
+.milestone-status { color:var(--ink-muted); font:11px/1.5 var(--font-mono); text-align:right; }
+.milestone-status.is-done { color:var(--ink); }
+.campaign-plan { padding:12px 0; border-block:1px solid var(--line); }
+.campaign-plan summary { cursor:pointer; }
+.campaign-plan-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:12px 0; }
+.campaign-plan-grid label { display:flex; flex-direction:column; justify-content:space-between; gap:6px; font-size:12px; }
+.campaign-plan-grid input { min-width:0; width:100%; }
+.campaign-companion { margin:16px 0; font-size:13px; }
+.campaign-companion h3, .core-eta-heading { margin:0; font-size:15px; }
+.core-eta-heading { border-top:1px solid var(--line); padding:16px 0 8px; }
 .eta-layout { display:grid; grid-template-columns:minmax(230px,1fr) 1.3fr; gap:24px; align-items:center; }
 .eta-clock { display:block; font:600 clamp(27px,3vw,46px) var(--font-mono); font-variant-numeric:tabular-nums; letter-spacing:-.04em; margin:12px 0; min-height:1.2em; }
 .eta-context { display:flex; flex-direction:column; gap:10px; font:12px/1.5 var(--font-mono); }
@@ -1815,3 +1834,7 @@ select {
 :root[data-stream="quiet"] .checkpoint-new { animation:none; }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
 @media (max-width:900px) { .eta-layout { grid-template-columns:1fr; gap:12px; } .eta-footer { flex-direction:column; } }
+@media (max-width:620px) {
+  .campaign-forecast, .campaign-milestone { grid-template-columns:1fr; gap:6px; }
+  .milestone-status { text-align:left; }
+}

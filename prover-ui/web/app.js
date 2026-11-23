@@ -1,4 +1,4 @@
-// Measured core-work forecasts. A milestone or entered target is not a proof total.
+// The core clock and the Ark delivery scenario consume the same checkpoint rates.
 const ProofEta = (() => {
   const finite = v => typeof v === 'number' && Number.isFinite(v);
   function estimate(progress, options = {}) {
@@ -13,20 +13,106 @@ const ProofEta = (() => {
     const lastCore = events.length ? Math.max(...events.map(e => e.t)) : null;
     let status = options.paused ? 'paused' : !options.connected ? 'stale' : !options.active ? 'inactive' : count === null || !rate || (finite(options.startedAt)&&lastCore===null) ? 'learning' : manual && count >= target ? 'target_reached' : lastCore !== null && now-lastCore > Math.max(90,240/rate) ? 'learning' : 'tracking';
     const remaining = count === null || target === null ? null : Math.max(0,target-count);
-    if(status==='tracking'&&!finite(remaining/rate*60))status='learning';
+    if(status==='tracking'&&!finite(remaining/Math.min(...rates)*60))status='learning';
     return {status,count,target,manual:manual!==null,rate,lastCore,remaining,
       fraction:count===null||target===null ? 0 : Math.min(1,Math.max(0,(count-base)/(target-base))),
       seconds:status==='tracking' ? remaining/rate*60 : null,
       fastSeconds:status==='tracking' ? remaining/Math.max(...rates)*60 : null,
-      slowSeconds:status==='tracking' ? remaining/Math.min(...rates)*60 : null,
-      proofComplete:false,fullProofEta:null};
+      slowSeconds:status==='tracking' ? remaining/Math.min(...rates)*60 : null};
   }
   function clock(previous, model, now) {
     if(model.status!=='tracking')return null;
     if(previous && previous.target===model.target && previous.count===model.count && previous.source===model.source)return previous;
     return {target:model.target,count:model.count,source:model.source,deadline:now+model.seconds};
   }
-  return {estimate,clock};
+  const arkDeadline = Date.parse('2026-11-27T23:59:00Z') / 1000;
+  const arkPhases = [
+    {id:'statement', label:'Ark policy and Nova statement', steps:['expected'],
+      detail:'Reconstruct the expected public values from the four-VTXO snapshot, policy and Nova proof.'},
+    {id:'sp1', label:'SP1 CUDA proving and compression', steps:['gpu','cpu'],
+      detail:'Core proving and recursion overlap. The final recursion and compressed proof follow the core work.'},
+    {id:'sdk', label:'Independent SP1 SDK verification', steps:['sdk-verify'],
+      detail:'Verify the compressed proof with the ELF-derived key and compare the complete expected public values.'},
+    {id:'wrap', label:'M13 shrink and transcript-v2 wrap', steps:['shrink','wrapv2'],
+      detail:'Reduce the compressed SP1 proof, then produce the v2 wrap for the BitVM3 verifier.'},
+    {id:'statementCheck', label:'M13 statement and Ark policy gate', steps:['m13-verify','gate'],
+      detail:'Independently match the pinned verifier key, program digest, recursion root and public statement.'},
+    {id:'refusals', label:'SP1 and M13 negative controls', steps:['badwrap','badprogram','badcompressed'],
+      detail:'Require normal refusals for a damaged wrap, wrong program and damaged compressed proof.'},
+    {id:'setup', label:'M14 statement-bound setup', steps:[],
+      detail:'Can run alongside SP1. The claim phase rechecks the prepared artifacts.'},
+    {id:'claim', label:'M14 honest evaluation and full-circuit rejection', steps:['m14claim'],
+      detail:'Bind the single-use release to the verified wrap, require honest acceptance, then require rejection of a full-circuit input bit flip and three binding substitutions.'},
+    {id:'delivery', label:'Evidence audit, publication and demo package', steps:[],
+      detail:'Audit hashes and claims, commit and publish the Ark evidence, then package the Cashu walkthrough.'},
+  ];
+  const arkBudgets = [
+    ['sp1','SP1 recursion and compression after core'],
+    ['sdk','SP1 SDK verification'],
+    ['wrap','M13 shrink and wrap'],
+    ['statementCheck','M13 statement verification and Ark gate'],
+    ['refusals','SP1 and M13 negative controls'],
+    ['setup','M14 setup reserve if still pending'],
+    ['claim','M14 release, honest evaluation and negatives'],
+    ['delivery','Evidence audit, publication and demo package'],
+  ];
+  const coordinatorSteps = arkPhases.flatMap(phase => phase.steps);
+  const minutes = value => finite(value) && value > 0 && value <= 10080 ? value : null;
+  function arkCampaign(wsl = {}, options = {}) {
+    const {connected, paused, processObserved, setupRecorded, plan = {}} = options;
+    const now = options.now ?? Date.now()/1000;
+    const remainingToClose = arkDeadline-now;
+    const latestStatus = typeof wsl.status === 'string' ? wsl.status : 'unknown';
+    const waitingFor = latestStatus.startsWith('waiting_for_headroom_');
+    const phase = waitingFor ? latestStatus.slice('waiting_for_headroom_'.length) : latestStatus;
+    const waitingForSetup = phase === 'waiting_for_statement_bound_m14_setup';
+    const checksPassed = phase === 'all_proof_checks_passed' && wsl.compressed_exists === true && wsl.wrap_v2_exists === true;
+    const step = checksPassed ? coordinatorSteps.length :
+      waitingForSetup ? coordinatorSteps.indexOf('m14claim') : coordinatorSteps.indexOf(phase);
+    const setupReady = setupRecorded || (step >= coordinatorSteps.indexOf('m14claim') && !waitingForSetup);
+    const resourceHold = waitingFor || phase === 'held_for_user_confirmation';
+    const current = arkPhases.find(item => item.steps.includes(phase));
+    const phaseObserved = connected && (current?.id === 'sp1' ? processObserved :
+      finite(wsl.last_resource_age_s) && wsl.last_resource_age_s <= 15);
+    const rows = arkPhases.map(item => {
+      if(item.id === 'setup')return {...item,status:setupReady?'Setup verified':waitingForSetup?'Waiting for setup':'Pending',done:!!setupReady};
+      if(item.id === 'delivery')return {...item,status:'Manual milestone',done:false};
+      const done = step > coordinatorSteps.indexOf(item.steps.at(-1));
+      const status = done ? 'Completed' : item === current ?
+        waitingFor ? 'Resource wait' : phaseObserved ? 'In progress' : 'Last reported' : 'Pending';
+      return {...item,done,status};
+    });
+    const progress = wsl.progress || {};
+    const core = estimate(progress,{now,connected,paused,active:phase === 'gpu' && !waitingFor && processObserved,
+      startedAt:wsl.phase_started_unix,target:plan.core});
+    const corePending = !rows.find(row => row.id === 'sp1').done;
+    const target = core.manual ? core.target : null;
+    const tail = arkBudgets.filter(([id]) => id !== 'delivery' && !rows.find(row => row.id === id).done);
+    const missing = tail.filter(([id]) => minutes(plan[id]) === null).map(([,label]) => label);
+    const tailSeconds = tail.reduce((total,[id]) => total+(minutes(plan[id]) ?? 0)*60,0);
+    const deliverySeconds = minutes(plan.delivery) === null ? null : plan.delivery*60;
+    const tracking = core.status === 'tracking';
+    // The ceiling budgets the time left for core work. Unpriced work can only lower it.
+    const coreCapacityUntilDeadline = tracking && corePending && remainingToClose > 0 ?
+      Math.min(Number.MAX_SAFE_INTEGER,core.count+Math.floor(Math.max(0,remainingToClose-tailSeconds-(deliverySeconds ?? 0))*core.rate/60)) : null;
+    const project = range => range && ({fast:now+range.fast,slow:now+range.slow});
+    let proofRange = null;
+    if(connected && !paused && !resourceHold && step >= 0 && !missing.length) {
+      if(!corePending) {
+        if(checksPassed || phaseObserved || waitingForSetup)proofRange={fast:tailSeconds,slow:tailSeconds};
+      } else if(target !== null && tracking) {
+        proofRange={fast:core.fastSeconds+tailSeconds,slow:core.slowSeconds+tailSeconds};
+      } else if(target === core.count && core.status === 'target_reached' && phaseObserved) {
+        proofRange={fast:tailSeconds,slow:tailSeconds};
+      }
+    }
+    const deliveryRange = proofRange && deliverySeconds !== null ?
+      {fast:proofRange.fast+deliverySeconds,slow:proofRange.slow+deliverySeconds} : null;
+    return {rows, phase, checksPassed, resourceHold, corePending, target, core, missing,
+      proofRemaining:proofRange, proofFinish:project(proofRange), deliveryFinish:project(deliveryRange),
+      coreCapacityUntilDeadline};
+  }
+  return {estimate,clock,arkCampaign,arkDeadline,arkBudgets};
 })();
 if(typeof module!=='undefined' && module.exports)module.exports=ProofEta;
 if(typeof document!=='undefined') (() => {
@@ -40,6 +126,13 @@ if(typeof document!=='undefined') (() => {
   const state = {live:null, records:[], selected:null, userSelected:false, tab:'live', polling:true, timer:null, lastReceived:0, history:[], previous:new Map(), seen:new Set(), booted:false, etaClock:null, etaModel:null, etaSource:null, lastEventSeq:null, etaTarget:null, newEventSeqs:new Set()};
   const readSetting = key => {try{return localStorage.getItem(key);}catch{return null;}};
   const saveSetting = (key,value) => {try{localStorage.setItem(key,value);}catch{}};
+  const planKey = 'rbzk.ark-campaign-plan.2026-11-23';
+  const planFields = [['core','Expected total saved cores'], ...ProofEta.arkBudgets];
+  let campaignPlan = {};
+  try {campaignPlan = JSON.parse(readSetting(planKey)) || {};} catch {}
+  const arkProcess = () => (state.live?.runtime?.ark_processes || [])
+    .find(p=>p.executable==='/root/nb3-gpu-target/release/ark-prove-gpu-cached-gkr');
+  const isCampaignRun = wsl => /(?:^|[\\/])ark-asp-full-20261117[\\/]?$/.test(wsl.base_dir || '');
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let quietMotion = reducedMotion.matches || readSetting('rbzk.motion')==='still';
   function applyMotion() {
@@ -62,6 +155,95 @@ if(typeof document!=='undefined') (() => {
     const s=Math.max(0,Math.ceil(seconds)),h=Math.floor(s/3600),m=Math.floor(s%3600/60);
     return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
   }
+  function planningDuration(seconds) {
+    const minutes=Math.ceil(Math.max(0,seconds)/60);
+    const days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
+    return [days&&`${days}d`,hours&&`${hours}h`,(minutes%60||!minutes)&&`${minutes%60}m`].filter(Boolean).join(' ');
+  }
+  const singaporeTime = new Intl.DateTimeFormat('en-SG',{
+    timeZone:'Asia/Singapore',weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23',
+  });
+  function finishLabel(range) {
+    const fast=singaporeTime.format(range.fast*1000),slow=singaporeTime.format(range.slow*1000);
+    return `${fast===slow?fast:`${fast} – ${slow}`} SGT`;
+  }
+  function updateCampaign() {
+    const observed=state.live?.wsl_prover || {};
+    const wsl=isCampaignRun(observed)?observed:{};
+    const processObserved=!!arkProcess();
+    const setupRecorded=state.records.some(({title,summary})=>title==='m14-bounded-setup-20261123.json' &&
+      summary?.schema==='ark-m14-bounded-setup-v1' && summary?.status==='statement_bound_setup_artifacts_verified');
+    const connected=freshRuntime() && wsl.reachable===true;
+    const campaign=ProofEta.arkCampaign(wsl,{connected,paused:!state.polling,processObserved,setupRecorded,plan:campaignPlan});
+    const {checksPassed, proofRemaining, proofFinish, deliveryFinish, corePending, core, target, missing}=campaign;
+    let headline='ETA needs a scenario';
+    let basis='';
+    if(checksPassed) {
+      headline='Verifier checks passed';
+      basis='Coordinator reported all Ark off-chain checks passed. Evidence audit and publication follow.';
+    } else if(!connected) {
+      headline=state.polling?'Waiting for telemetry':'Display paused';
+      basis='The finish projection requires fresh campaign telemetry.';
+    } else if(campaign.resourceHold || campaign.phase==='stopped') {
+      headline=campaign.phase==='stopped'?'Coordinator stopped':'Waiting for resources';
+      basis='The finish projection is held until the campaign can advance.';
+    } else if(proofFinish) {
+      const fast=planningDuration(proofRemaining.fast),slow=planningDuration(proofRemaining.slow);
+      headline=`${fast===slow?fast:`${fast} – ${slow}`} remaining`;
+      basis=`Scenario finish ${finishLabel(proofFinish)} using the entered budgets.`;
+    } else if(corePending && target===null) {
+      basis='The prover has not reported a final core count. Enter a planning target and stage budgets to project the full chain.';
+    } else if(corePending && core.count>target) {
+      basis='The run has passed the entered core total. Update the scenario to project the full chain.';
+    } else if(missing.length) {
+      basis=`Remaining budget needed for ${missing.length===1?missing[0]:`${missing.length} proof stages`}.`;
+    } else {
+      headline='Waiting for live progress';
+      basis='The projection needs current proving pace or an observed verification phase.';
+    }
+    $('proof-finish').textContent=headline;
+    $('proof-eta-basis').textContent=basis;
+    let outlook='Deadline fit is undetermined.';
+    if(deliveryFinish) {
+      const cutoff=ProofEta.arkDeadline;
+      const fit=deliveryFinish.slow<=cutoff?'Scenario fits the cutoff':
+        deliveryFinish.fast>cutoff?'Scenario exceeds the cutoff':'Scenario overlaps the cutoff';
+      outlook=`${fit} · package finish ${finishLabel(deliveryFinish)}`;
+    } else if(proofFinish && !checksPassed) {
+      outlook=proofFinish.fast>ProofEta.arkDeadline ? 'Proof scenario exceeds the cutoff before packaging.' :
+        'Add an audit and demo budget to compare delivery against the cutoff.';
+    } else if(target!==null && core.fastSeconds!==null && Date.now()/1000+core.fastSeconds>ProofEta.arkDeadline) {
+      outlook='Even the faster core scenario exceeds the cutoff before verification and packaging.';
+    } else if(campaign.coreCapacityUntilDeadline!==null) {
+      outlook=`At ${n(core.rate,2)} cores/min, the deadline allows about ${n(campaign.coreCapacityUntilDeadline)} saved cores after entered reserves. Unbudgeted work and resource holds reduce that ceiling.`;
+    }
+    $('deadline-outlook').textContent=outlook;
+    const summary=wsl.session_summary || {};
+    const passReductions=summary.session_recursion_proved+summary.session_recursion_replayed;
+    setMarkup('campaign-milestones',campaign.rows.map(row=>{
+      let detail=row.detail;
+      if(row.id==='sp1' && wsl.progress?.exists && !row.done) {
+        detail=`${n(wsl.progress.unique_shards)} saved cores${Number.isSafeInteger(passReductions)&&processObserved?` · ${n(passReductions)} recursion checkpoints in the reported SP1 pass`:''}. ${detail}`;
+      }
+      if(row.id==='setup' && setupRecorded)detail=`785,442,492 ciphertexts generated and verified in 4m 32s. ${detail}`;
+      const budget=campaignPlan[row.id];
+      const remaining=Number.isFinite(budget)&&!row.done?` · ${planningDuration(budget*60)} budgeted`:'';
+      return `<li class="campaign-milestone" data-stage="${row.id}"><div><strong>${esc(row.label)}</strong><p class="panel-sub">${esc(detail)}</p></div><span class="milestone-status${row.done?' is-done':''}">${esc(row.status+remaining)}</span></li>`;
+    }).join(''));
+    const companion=[
+      ['ark/shinigami-testnet4-verified-payment/v1','independently_verified_legacy_script_payment'],
+      ['ark/shinigami-testnet4-verified-tapleaf/v1','independently_verified_real_tapleaf'],
+    ].every(([schema,status])=>state.records.some(record=>record.summary?.network==='testnet4' &&
+      record.summary.schema===schema && record.summary.status===status));
+    $('shinigami-evidence').textContent=companion?
+      'Both independently verified Shinigami records are available under Evidence.':
+      'Shinigami records appear under Evidence when available.';
+    tickDeadline();
+  }
+  function tickDeadline() {
+    const remaining=ProofEta.arkDeadline-Date.now()/1000;
+    $('deadline-clock').textContent=remaining>0?`${planningDuration(remaining)} left`:'Submission closed';
+  }
   function rememberEvents(progress) {
     const seq=Number(progress.seq)||0;
     state.newEventSeqs=new Set();
@@ -78,7 +260,7 @@ if(typeof document!=='undefined') (() => {
       $('eta-target').value=readSetting(`rbzk.eta.${source}`)||'';state.etaTarget=$('eta-target').value?Number($('eta-target').value):null;
     }
     const target=state.etaTarget;
-    const active=freshRuntime() && (live.runtime?.ark_processes||[]).some(p=>p.executable==='/root/nb3-gpu-target/release/ark-prove-gpu-cached-gkr');
+    const active=freshRuntime() && !!arkProcess();
     const model=ProofEta.estimate(progress,{now:Date.now()/1000,target,active,connected:freshRuntime(),paused:!state.polling,startedAt:wsl.phase_started_unix});
     model.source=`${source}:${wsl.active_phase_dir||''}`;
     state.etaClock=ProofEta.clock(state.etaClock,model,performance.now()/1000);state.etaModel=model;
@@ -120,11 +302,15 @@ if(typeof document!=='undefined') (() => {
     const observed=[...(rt.jobs || [])];
     const measured=freshRuntime() && typeof wsl.last_resource_age_s==='number' && wsl.last_resource_age_s<=15 && wsl.phase_running;
     const resources=measured ? (wsl.latest_resource || {}) : {};
-    for(const process of rt.ark_processes || []) {
-      if(process.executable!=='/root/nb3-gpu-target/release/ark-prove-gpu-cached-gkr')continue;
-      observed.push({id:`ark-sp1:${process.pid}:${process.start_ticks}`,title:'Ark ASP · SP1 GPU',
-        network:'ARK ASP POLICY CAMPAIGN',backend:'SP1 / CUDA',running:true,status:'running',process,
-        phase:'Core and recursive proving',
+    const process=arkProcess();
+    if(process || isCampaignRun(wsl)) {
+      const ark=ProofEta.arkCampaign(wsl);
+      const phase=ark.rows.find(row=>row.steps.includes(ark.phase))?.label;
+      const status=ark.checksPassed?'checks passed':process?'running':ark.resourceHold?'resource wait':
+        ark.phase==='stopped'?'stopped':'coordinator observed';
+      observed.push({id:'ark-sp1:campaign',title:'Ark ASP · SP1 → BitVM3',
+        network:'ARK ASP POLICY CAMPAIGN',backend:'SP1 / CUDA',running:!!process,status,process,
+        phase:phase || 'Ark proof and evidence delivery',checksPassed:ark.checksPassed,
         ram_bytes:typeof resources.cgroup_ram_mib==='number'?resources.cgroup_ram_mib*2**20:null,
         swap_bytes:typeof resources.cgroup_swap_mib==='number'?resources.cgroup_swap_mib*2**20:null,
         unit:wsl.active_phase_dir || 'Observed native process',
@@ -172,7 +358,8 @@ if(typeof document!=='undefined') (() => {
     $('campaign-network').textContent=selected?.network || 'LIVE PROVER OBSERVATIONS';
     $('campaign-subtitle').textContent=selected?.phase || selected?.backend || 'Waiting for an observed proof process';
     $('campaign-eta-pill').textContent=selected?.status || 'CONNECTING';
-    $('campaign-badge').textContent=selected?.audit?.valid ? 'RECORDED AUDIT · HASH MATCHES' : 'NO VERIFIED RECEIPT';
+    $('campaign-badge').textContent=selected?.checksPassed?'OFF-CHAIN CHECKS PASSED':
+      selected?.audit?.valid?'RECORDED AUDIT · HASH MATCHES':'NO VERIFIED RECEIPT';
     $('campaign-eta-pill').className=`status-pill ${statusClass(selected?.status)}`;
     $('campaign-hw').textContent=selected?.running ? `PID ${selected.process.pid} · ${selected.backend}` : 'No running process established for this job';
     const stale=Date.now()-state.lastReceived>15000;
@@ -195,7 +382,7 @@ if(typeof document!=='undefined') (() => {
     $('claims-list').innerHTML=all.filter(j=>j.audit?.statement).map(j=>`<article class="observed-job"><h3>${esc(j.title)} · ${esc(j.audit.valid?'audited historical claim':'unconfirmed receipt')}</h3><pre>${esc(JSON.stringify(j.audit.statement,null,2))}</pre></article>`).join('') || '<p>No payment claim receipt observed.</p>';
     const show={live:['eta-panel','runtime-panel','shard-panel'],blocks:['evidence-panel'],utxos:['claims-panel'],estimator:['planner-panel']};
     ['eta-panel','runtime-panel','shard-panel','evidence-panel','claims-panel','planner-panel'].forEach(id=>$(id).hidden=!show[state.tab].includes(id));
-    updateEta();drawHistory();
+    updateCampaign();updateEta();drawHistory();
   }
   async function poll() {
     if(!state.polling)return;
@@ -206,6 +393,7 @@ if(typeof document!=='undefined') (() => {
       const evidence=await fetch('/api/campaigns',{cache:'no-store',signal:AbortSignal.timeout(5000)});
       if(!evidence.ok)throw new Error(`Evidence HTTP ${evidence.status}`);
       const inventory=await evidence.json();state.records=inventory.campaigns||[];
+      updateCampaign();
       $('evidence-source').textContent=`${inventory.available?'DISK':'UNAVAILABLE'} · ${state.records.length} reports`;
       setMarkup('evidence-list',state.records.map(r=>`<details class="observed-job"><summary>${esc(r.title)} · ${esc(r.summary?.status || 'recorded evidence')}</summary><p class="source-path">${esc(r.path)}</p><div class="kv-grid">${kv('Modified',time(r.modified_at_unix))}${kv('File SHA-256',r.sha256)}${kv('Report size',`${n(r.bytes)} bytes`)}</div><pre>${esc(JSON.stringify(r.summary,null,2))}</pre></details>`).join('') || '<p>No local result reports found.</p>');
     } catch(error) { $('poll-label').textContent=`CONNECTION LOST · ${error.message}`; $('live-dot').classList.remove('live'); }
@@ -220,7 +408,21 @@ if(typeof document!=='undefined') (() => {
   $('eta-target-form').onsubmit=event=>{event.preventDefault();const raw=$('eta-target').value.trim(),value=Number(raw);if(raw&&(!Number.isSafeInteger(value)||value<1||value>10000000)){$('eta-target').setCustomValidity('Enter a whole core target between 1 and 10,000,000.');$('eta-target').reportValidity();return;}$('eta-target').setCustomValidity('');saveSetting(`rbzk.eta.${state.etaSource}`,raw);state.etaTarget=raw?value:null;state.etaClock=null;updateEta();};
   $('eta-target').oninput=()=> $('eta-target').setCustomValidity('');
   $('eta-reset').onclick=()=>{$('eta-target').value='';saveSetting(`rbzk.eta.${state.etaSource}`,'');state.etaTarget=null;state.etaClock=null;updateEta();};
+  $('campaign-plan-inputs').innerHTML=planFields.map(([name,label])=>
+    `<label>${esc(label)}${name==='core'?'':' (min)'}<input name="${name}" type="number" min="1" max="${name==='core'?10000000:10080}" step="1" inputmode="numeric" value="${esc(campaignPlan[name] ?? '')}"></label>`).join('');
+  $('campaign-plan-form').onsubmit=event=>{
+    event.preventDefault();
+    campaignPlan=Object.fromEntries([...new FormData(event.target)].filter(([,value])=>value!=='').map(([key,value])=>[key,Number(value)]));
+    saveSetting(planKey,JSON.stringify(campaignPlan));
+    updateCampaign();
+  };
+  $('clear-campaign-plan').onclick=()=>{
+    campaignPlan={};
+    for(const input of $('campaign-plan-inputs').querySelectorAll('input'))input.value='';
+    saveSetting(planKey,'{}');
+    updateCampaign();
+  };
   applyMotion();
-  setInterval(()=>{if(Date.now()-state.lastReceived>15000)render();tickEta();},1000);
+  setInterval(()=>{if(Date.now()-state.lastReceived>15000)render();tickEta();tickDeadline();},1000);
   window.addEventListener('resize',drawHistory);render();poll();
 })();
