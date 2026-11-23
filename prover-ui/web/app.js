@@ -46,6 +46,17 @@ const ProofEta = (() => {
     {id:'delivery', label:'Evidence audit, publication and demo package', steps:[],
       detail:'Audit hashes and claims, commit and publish the Ark evidence, then package the Cashu walkthrough.'},
   ];
+  const arkStageResources = {
+    statement:'Local · exact inputs and statement',
+    sp1:'GPU · core proving and recursion overlap',
+    sdk:'Local CPU · after SP1 compression',
+    wrap:'Local CPU · after SDK verification',
+    statementCheck:'Local CPU · after M13 wrap',
+    refusals:'Local CPU · after statement check',
+    setup:'Local CPU and disk · parallel prerequisite',
+    claim:'Local CPU and disk · after setup and proof checks',
+    delivery:'Local · after independent verification',
+  };
   const arkBudgets = [
     ['sp1','SP1 recursion and compression after core'],
     ['sdk','SP1 SDK verification'],
@@ -228,8 +239,26 @@ const ProofEta = (() => {
     }
     return newest.reverse();
   }
+  function a100Budget({saved,target,rate,credit}) {
+    if(!finite(rate)||rate<=0)return null;
+    const coresPerHour=10.38*60;
+    const hasTarget=Number.isSafeInteger(saved)&&saved>=0&&Number.isSafeInteger(target)&&target>0&&target>=saved&&target<=10000000;
+    const hours=hasTarget?(target-saved)/coresPerHour:null;
+    const cost=hours===null?null:hours*rate;
+    const runway=finite(credit)&&credit>=0?credit/rate:null;
+    return {hours,cost,perThousand:1000/coresPerHour*rate,runway,
+      runwayCores:runway===null?null:Math.floor(runway*coresPerHour),
+      shortfall:cost===null||runway===null?null:Math.max(0,cost-credit)};
+  }
+  function arkWorkerLabel({paused,live,observed,saved,checksPassed}) {
+    if(paused)return 'Display paused';
+    if(live)return 'Worker running';
+    if(checksPassed)return 'Proof checks passed';
+    if(!observed)return 'Worker status unknown';
+    return Number.isSafeInteger(saved)&&saved>0?'Idle · checkpoints saved':'Idle · no worker running';
+  }
   return {estimate,clock,arkCampaign,arkDeadline,arkBudgets,cashuRoadmap,ongoingJobs,
-    rememberCheckpoints,checkpointTrend,checkpointMosaic};
+    rememberCheckpoints,checkpointTrend,checkpointMosaic,a100Budget,arkWorkerLabel,arkStageResources};
 })();
 if(typeof module!=='undefined' && module.exports)module.exports=ProofEta;
 if(typeof document!=='undefined') (() => {
@@ -325,17 +354,23 @@ if(typeof document!=='undefined') (() => {
   function milestoneMarkup({id,label,detail,status,done}) {
     return `<li class="campaign-milestone" data-stage="${id}"><div><strong>${esc(label)}</strong><p class="panel-sub">${esc(detail)}</p></div><span class="milestone-status${done?' is-done':''}">${esc(status)}</span></li>`;
   }
-  function renderCampaignOverview(campaign, cloud, trend, savedCore) {
+  function renderCampaignOverview(campaign, cloud, trend, wsl, processObserved) {
     const proof=campaign.rows.filter(row=>row.id!=='delivery');
     const done=proof.filter(row=>row.done).length;
-    $('overview-progress').textContent=`${n(100*done/proof.length)}% · ${done}/${proof.length} milestones cleared`;
-    const bar=$('overview-progress-bar');
-    bar.max=proof.length;
-    bar.value=done;
+    const savedCore=wsl.progress?.unique_shards;
+    const savedRecursion=wsl.progress?.unique_reduces;
+    const live=(freshRuntime()&&processObserved)||(cloud?.fresh&&cloud.sample.ark_running);
+    const observed=cloud?.sample.active?cloud.fresh:freshRuntime()&&wsl.reachable===true;
+    $('overview-progress').textContent=ProofEta.arkWorkerLabel({paused:!state.polling,live,observed,
+      saved:savedCore,checksPassed:campaign.checksPassed});
+    $('overview-cache').textContent=Number.isSafeInteger(savedCore)?
+      `Laptop cache · ${n(savedCore)} core · ${n(savedRecursion)} recursion`:'Laptop checkpoint count unavailable';
+    $('overview-gates').textContent=`Proof gates · ${done} of ${proof.length} cleared`;
     const range=campaign.proofRemaining;
     $('overview-eta').textContent=campaign.checksPassed?'Proof checks passed':
       range?planningDuration(range.fast)+(planningDuration(range.fast)!==planningDuration(range.slow)?' – '+planningDuration(range.slow):'')+' remaining':
-      campaign.target===null || campaign.missing.length?'Needs a workload estimate':'Waiting for fresh proving pace';
+      !state.polling?'Display paused':!live&&!observed?'Awaiting worker status':
+      !live?'Unknown while idle':campaign.target===null || campaign.missing.length?'Needs a workload estimate':'Waiting for fresh proving pace';
     $('overview-plan').hidden=campaign.checksPassed;
     const showRecovery=cloud?.sample.active && trend && Number.isSafeInteger(savedCore) && savedCore>0;
     $('overview-recovery').hidden=!showRecovery;
@@ -343,12 +378,32 @@ if(typeof document!=='undefined') (() => {
     const current=trend.progress.unique_shards;
     const remaining=Math.max(0,savedCore-current);
     const tracking=cloud.fresh && cloud.sample.ark_running && Number.isFinite(trend.rate) && trend.rate>0;
-    $('overview-recovery-count').textContent=`${n(Math.min(100,100*current/savedCore))}% · ${n(current)} / ${n(savedCore)} cores`;
+    $('overview-recovery-count').textContent=`${n(current)} / ${n(savedCore)} saved cores`;
     $('overview-recovery-eta').textContent=!remaining?'Saved core count reached':tracking?
       `${planningDuration(60*remaining/trend.rate)} to match the saved count at ${n(trend.rate,1)} new cores/min`:
       'Waiting for a recent core rate';
     const lease=Math.max(0,cloud.sample.started_at_unix+3600-Date.now()/1000);
     $('overview-lease').textContent=cloud.fresh?`One-hour pilot cap in ${formatDuration(lease)}`:'Pilot heartbeat stale';
+  }
+  function renderCloudBudget() {
+    const local=state.live?.wsl_prover;
+    const localSaved=isCampaignRun(local||{})?local?.progress?.unique_shards:null;
+    const usingPublished=$('budget-cache').value==='published';
+    const saved=usingPublished?1727:localSaved;
+    const value=id=>$(id).value===''?null:$(id).valueAsNumber;
+    const target=value('budget-target');
+    const rate=value('budget-rate');
+    const estimate=ProofEta.a100Budget({saved,target,rate,credit:value('budget-credit')});
+    const catchUp=usingPublished&&target===null&&localSaved>saved?
+      ProofEta.a100Budget({saved,target:localSaved,rate}):null;
+    $('budget-result').textContent=!estimate?'Enter the hourly A100 and IP rate.':
+      Number.isSafeInteger(saved)&&Number.isSafeInteger(target)&&target<saved?`Use a scenario total at or above the ${n(saved)} saved cores.`:
+      catchUp?`Matching the laptop’s ${n(localSaved)} saved cores would take about ${planningDuration(catchUp.hours*3600)} and $${catchUp.cost.toFixed(2)} in core work.`:
+      estimate.cost===null?`Starting cache · ${Number.isSafeInteger(saved)?n(saved)+' cores':'count unavailable'}. Each additional 1,000 core shards costs about $${estimate.perThousand.toFixed(2)} at the measured pace.`:
+      `${n(target-saved)} new cores · ${planningDuration(estimate.hours*3600)} · $${estimate.cost.toFixed(2)} for core work under this scenario.`;
+    $('budget-runway').textContent=estimate?.runway==null?'':
+      `Credit covers ${n(estimate.runway,2)} A100 hours, or up to ${n(estimate.runwayCores)} new cores before overhead.`+
+      (estimate.shortfall>0?` Core-only shortfall $${estimate.shortfall.toFixed(2)}.`:'');
   }
   function updateCampaign() {
     const observed=state.live?.wsl_prover || {};
@@ -390,7 +445,8 @@ if(typeof document!=='undefined') (() => {
     }
     $('proof-finish').textContent=headline;
     $('proof-eta-basis').textContent=basis;
-    renderCampaignOverview(campaign,cloud,trend,wsl.progress?.unique_shards);
+    renderCampaignOverview(campaign,cloud,trend,wsl,processObserved);
+    renderCloudBudget();
     let outlook='Deadline fit is undetermined.';
     if(deliveryFinish) {
       const cutoff=ProofEta.arkDeadline;
@@ -409,13 +465,16 @@ if(typeof document!=='undefined') (() => {
     const summary=wsl.session_summary || {};
     const passReductions=summary.session_recursion_proved+summary.session_recursion_replayed;
     setMarkup('campaign-milestones',campaign.rows.map(row=>{
-      let detail=row.detail;
+      let detail=row.detail+' '+ProofEta.arkStageResources[row.id]+'.';
       if(row.id==='sp1' && coreSource?.connected && !row.done) {
         detail=`${n(core.count)} confirmed replayed and newly written core shards on the pilot. ${detail}`;
         return milestoneMarkup({...row,detail,status:'Pilot in progress'});
       }
       if(row.id==='sp1' && wsl.progress?.exists && !row.done) {
         detail=`${n(wsl.progress.unique_shards)} saved cores${Number.isSafeInteger(passReductions)&&processObserved?` · ${n(passReductions)} recursion checkpoints in the reported SP1 pass`:''}. ${detail}`;
+        if(freshRuntime()&&!processObserved&&wsl.status==='inactive'&&wsl.progress.unique_shards>0) {
+          return milestoneMarkup({...row,detail,status:'Idle · resumable cache'});
+        }
       }
       if(row.id==='setup' && setupRecorded)detail=`785,442,492 ciphertexts generated and verified in 4m 32s. ${detail}`;
       const budget=campaignPlan[row.id];
@@ -458,6 +517,7 @@ if(typeof document!=='undefined') (() => {
     $('eta-range').textContent=model.seconds!==null?`Recent-pace range ${formatDuration(model.fastSeconds)} – ${formatDuration(model.slowSeconds)}`:'A live completion rate is needed for an estimate.';
     $('eta-run-age').textContent=typeof wsl.latest_resource?.elapsed_s==='number'?`Phase elapsed ${formatDuration(wsl.latest_resource.elapsed_s)}`:'Phase elapsed unavailable';
     $('eta-proof-total').textContent=model.manual?'Core target projection · verification follows':'Core milestone estimate · full proof total not reported';
+    $('eta-progress').hidden=!active||!model.manual||model.status!=='tracking';
     const bar=$('eta-fill');bar.style.width=`${model.fraction*100}%`;
     $('eta-progress').setAttribute('aria-valuenow',String(Math.round(model.fraction*100)));
     $('eta-progress').setAttribute('aria-label',model.manual?'Progress to entered core target':'Progress to next saved-core milestone');
@@ -724,9 +784,9 @@ if(typeof document!=='undefined') (() => {
     const waiting=rows.filter(job=>['Preparing','Waiting for resources','Collecting results'].includes(job.status)).length;
     const stale=rows.filter(job=>job.status==='Stale').length;
     const count=[running?`${running} running`:'',waiting?`${waiting} pending`:'',stale?`${stale} stale`:''].filter(Boolean).join(' · ');
-    $('ongoing-summary').textContent=!state.polling?'Display paused':count || (localFresh?'No active jobs':'Waiting for telemetry');
+    $('ongoing-summary').textContent=!state.polling?'Display paused':count || (localFresh?'0 running':'Waiting for telemetry');
     const empty=!state.polling?'Resume the display to refresh job activity.':
-      localFresh?'No ongoing proving jobs are currently observed.':'Waiting for a live job report.';
+      localFresh?'No prover process is running. See the campaign status above.':'Waiting for a live job report.';
     setMarkup('ongoing-jobs',rows.map(job=>{
       const heard=Number.isFinite(job.heardAt)?new Date(job.heardAt*1000):null;
       const validHeard=heard&&!Number.isNaN(heard.valueOf());
@@ -849,6 +909,10 @@ if(typeof document!=='undefined') (() => {
     $('cashu-heading').focus();
   };
   $('overview-plan').onclick=()=>{$('campaign-plan').open=true;};
+  $('overview-budget').onclick=()=>{$('cloud-budget').open=true;};
+  $('overview-cashu').onclick=()=>$('open-cashu-roadmap').click();
+  $('cloud-budget-form').onsubmit=event=>event.preventDefault();
+  $('cloud-budget-form').oninput=renderCloudBudget;
   $('toggle-poll').onclick=()=>{state.polling=!state.polling;if(state.polling)state.lastReceived=0;clearTimeout(state.timer);$('toggle-poll').textContent=state.polling?'PAUSE':'RESUME';render();if(state.polling)poll();};
   $('toggle-theme').onclick=()=>{const dark=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=dark?'grove':'dark';};
   $('planner').onsubmit=async event=>{event.preventDefault();const input=Object.fromEntries([...new FormData(event.target)].map(([k,v])=>[k,Number(v)]));input.hardware_profile='rtx5080_bounded_2gib';try{const response=await fetch('/api/correlate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});const result=await response.json();$('planner-result').textContent=`PROJECTION ONLY\n${JSON.stringify(result,null,2)}`;}catch(error){$('planner-result').textContent=error.message;}};

@@ -130,19 +130,22 @@
       <main class="workspace-body">
         <section class="panel ongoing-panel" id="ongoing-panel" aria-labelledby="ongoing-heading">
           <div class="panel-head">
-            <h2 id="ongoing-heading">Ongoing jobs</h2>
+            <h2 id="ongoing-heading">Live workers</h2>
             <span class="tag-mono" id="ongoing-summary" role="status">Connecting</span>
           </div>
           <div class="campaign-overview" aria-label="Ark proof campaign progress">
             <div>
               <span class="kpi-label">Ark → BitVM3</span>
-              <strong id="overview-progress">Waiting for evidence</strong>
-              <progress id="overview-progress-bar" max="8" value="0" aria-label="Proof milestones cleared"></progress>
+              <strong id="overview-progress">Waiting for a worker observation</strong>
+              <span id="overview-cache"></span>
+              <span id="overview-gates"></span>
+              <a href="#campaign-milestones">See proof stages and dependencies</a>
             </div>
             <div>
               <span class="kpi-label">Full proof ETA</span>
               <strong id="overview-eta">Waiting for telemetry</strong>
               <a id="overview-plan" href="#campaign-plan">Set core target and stage budgets</a>
+              <a id="overview-budget" href="#cloud-budget">Estimate A100 runway</a>
             </div>
             <div id="overview-recovery" hidden>
               <span class="kpi-label">Saved core checkpoint recovery</span>
@@ -154,6 +157,33 @@
           <div id="ongoing-jobs" class="ongoing-list">
             <p class="panel-sub">Waiting for a job observation.</p>
           </div>
+          <details class="campaign-plan" id="cloud-budget">
+            <summary>A100 time and budget</summary>
+            <p class="panel-sub">The pilot measured 10.38 new core shards per minute. Use a scenario total to price core work from a saved copy. Replay, recursion after core, compression, verification, and storage have separate costs.</p>
+            <form id="cloud-budget-form" class="campaign-plan-grid">
+              <label>Starting cache<select id="budget-cache"><option value="local">Laptop checkpoint</option><option value="published">Published copy · 1,727 cores</option></select></label>
+              <label>Scenario core total<input id="budget-target" type="number" min="1" max="10000000" step="1" placeholder="Final count unknown"></label>
+              <label>A100 and IP per hour (USD)<input id="budget-rate" type="number" min="0.01" step="any" value="1.35672"></label>
+              <label>Available credit (USD)<input id="budget-credit" type="number" min="0" step="any" placeholder="Optional"></label>
+            </form>
+            <p id="budget-result" class="panel-sub"></p>
+            <p id="budget-runway" class="panel-sub"></p>
+          </details>
+          <details class="campaign-plan">
+            <summary>Related jobs and their remaining work</summary>
+            <div class="campaign-overview">
+              <div>
+                <strong>Cashu + Ark / Shinigami</strong>
+                <span>Regtest issuance and a funded offline-mint payout have verified demo evidence. The trust-removal work still needs proof-bound issuance, live reserve and liability checks, and a single claim consumed by either normal redemption or the refusal path.</span>
+                <button id="overview-cashu" type="button" class="ghost-btn">Cashu roadmap</button>
+              </div>
+              <div>
+                <strong>MNR-04 clearing</strong>
+                <span>The pilot’s CPU proof was independently verified against its exact Bitcoin Core transaction. Production authorization and on-chain enforcement are separate follow-on work.</span>
+                <a href="https://github.com/patrickdugan/SatsHedgeZero/pull/5" target="_blank" rel="noopener">MNR-04 evidence</a>
+              </div>
+            </div>
+          </details>
           <section class="checkpoint-mosaic" aria-labelledby="mosaic-heading">
             <div class="panel-head">
               <h3 id="mosaic-heading">Shard and recursion heat map</h3>
@@ -250,6 +280,8 @@
             <p class="panel-sub">Friday’s demo can use the recorded Cashu-to-Ark regtest flow and historical Shinigami proofs.</p>
             <button type="button" class="ghost-btn" id="open-cashu-roadmap">VIEW CASHU ROADMAP</button>
           </div>
+          <h3 class="core-eta-heading">Ark proof job map</h3>
+          <p class="panel-sub">Before resuming, verify the saved memo and pinned inputs on the runner. Keep the new checkpoints on durable storage. M14 setup can run in parallel. Its evaluation waits for the verified M13 statement.</p>
           <ol id="campaign-milestones" class="campaign-milestones" aria-label="Ark proof and delivery milestones"></ol>
           <details class="campaign-plan" id="campaign-plan">
             <summary>Plan a full-chain ETA</summary>

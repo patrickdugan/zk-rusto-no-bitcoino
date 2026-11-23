@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const {arkBudgets, arkCampaign, ongoingJobs, rememberCheckpoints, checkpointTrend, checkpointMosaic} = require('../web/app.js');
+const {arkBudgets, arkCampaign, ongoingJobs, rememberCheckpoints, checkpointTrend, checkpointMosaic, a100Budget, arkWorkerLabel} = require('../web/app.js');
 
 function setup(overrides = {}) {
   const ark = {
@@ -93,4 +93,24 @@ test('the restored mosaic separates the two kinds of work and marks replays', ()
   assert.equal(checkpointMosaic(rememberCheckpoints(history,sample(1016,10000,6,101))).length,319);
   const old=rememberCheckpoints([],sample(1000,1,4,100));
   assert.deepEqual(checkpointMosaic(rememberCheckpoints(old,{...sample(1008,1,4,100),recursion_replayed:500})),[]);
+});
+
+test('a stopped worker can have a full saved cache without a proof-completion percentage', () => {
+  assert.equal(arkWorkerLabel({observed:true,saved:4421}), 'Idle · checkpoints saved');
+  assert.equal(arkWorkerLabel({observed:false,saved:4421}), 'Worker status unknown');
+  assert.equal(arkWorkerLabel({observed:false,live:true,saved:4421}), 'Worker running');
+});
+
+test('the A100 planner prices only scenario cores and handles unknown targets and exact credit', () => {
+  const inputs={saved:4421,rate:1.35672043,credit:3.37287894};
+  const unknown=a100Budget(inputs);
+  assert.equal(unknown.cost,null);
+  assert.equal(unknown.runwayCores,1548);
+  assert.equal(unknown.perThousand.toFixed(2),'2.18');
+  const projected=a100Budget({...inputs,target:6000});
+  assert.equal(projected.cost.toFixed(2),'3.44');
+  assert.equal(projected.shortfall.toFixed(2),'0.07');
+  assert.equal(a100Budget({...inputs,target:1727}).cost,null);
+  assert.equal(a100Budget({...inputs,credit:0}).runwayCores,0);
+  assert.equal(a100Budget({...inputs,rate:0}),null);
 });
