@@ -114,3 +114,12 @@ test('the A100 planner prices only scenario cores and handles unknown targets an
   assert.equal(a100Budget({...inputs,credit:0}).runwayCores,0);
   assert.equal(a100Budget({...inputs,rate:0}),null);
 });
+
+test('private seed staging is visible without counting a GPU as running', () => {
+  const input=setup();
+  Object.assign(input.ark.sample,{stage:'staging',ark_running:false,nova_running:false,seed_bytes:4*2**20,seed_parts:1});
+  const [row]=ongoingJobs(input);
+  assert.equal(row.status,'Preparing');
+  assert.equal(row.where,'Hyperstack · private storage');
+  assert.deepEqual(row.metrics,[['Uploaded MiB',4],['Verified transfer parts',1]]);
+});

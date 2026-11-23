@@ -1963,3 +1963,6 @@ select {
 .mosaic-legend .mosaic-cell { width: 10px; }
 @media (max-width: 800px) { .mosaic-tiles { grid-template-columns: repeat(32,minmax(0,1fr)); } }
 @media (max-width: 570px) { .mosaic-tiles { grid-template-columns: repeat(24,minmax(0,1fr)); gap: 2px; } }
+
+@keyframes mosaic-awaiting { from { opacity: .4; } to { opacity: 1; } }
+:root[data-motion="subtle"] .mosaic-next { animation: mosaic-awaiting 1.6s ease-in-out infinite alternate; }

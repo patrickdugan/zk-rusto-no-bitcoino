@@ -16,6 +16,9 @@ if (Test-Path -LiteralPath $settingsFile) {
     if (-not $env:RBZK_HYPERSTACK_ARK_STATE_JSON -and $settings.arkCloudState) {
         $env:RBZK_HYPERSTACK_ARK_STATE_JSON = $settings.arkCloudState
     }
+    if (-not $env:RBZK_HYPERSTACK_ARK_SEED_JOURNAL -and $settings.arkSeedJournal) {
+        $env:RBZK_HYPERSTACK_ARK_SEED_JOURNAL = $settings.arkSeedJournal
+    }
     if (-not $env:RBZK_HYPERSTACK_BENCHMARK_JSON -and $settings.hyperstackBenchmark) {
         $env:RBZK_HYPERSTACK_BENCHMARK_JSON = $settings.hyperstackBenchmark
     }

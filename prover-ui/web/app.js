@@ -169,9 +169,13 @@ const ProofEta = (() => {
       const sample=ark.sample;
       const activity=sample.ark_running?'Running':
         ['returning','stopped'].includes(sample.stage)?'Collecting results':'Preparing';
-      rows.push({id:'cloud-ark',title:'Ark SP1 prover',where:'Hyperstack · A100 GPU',
+      const staging=['staging','queued','waiting_stock'].includes(sample.stage);
+      rows.push({id:'cloud-ark',title:'Ark SP1 prover',where:staging?'Hyperstack · private storage':'Hyperstack · A100 GPU',
         phase:ark.fresh?ark.phase:ark.knownPhase,status:observedState(ark.fresh,activity),heardAt:sample.sampled_at_unix,
-        details:'#shard-panel',detailsLabel:'Checkpoint details',metrics:[
+        details:'#shard-panel',detailsLabel:'Checkpoint details',metrics:staging?[
+          ['Uploaded MiB',Number.isSafeInteger(sample.seed_bytes)?Math.floor(sample.seed_bytes/2**20):null],
+          ['Verified transfer parts',sample.seed_parts]
+        ]:[
           ['New core shards',sample.core_new],['New recursion proofs',sample.recursion_new],['Replayed core shards',sample.core_replayed]
         ]});
       if(sample.nova_running)rows.push({id:'cloud-nova',title:'MNR-04 clearing proof',where:'Hyperstack · CPU',
@@ -276,7 +280,7 @@ if(typeof document!=='undefined') (() => {
   let checkpointKey=null, checkpointHistory=[];
   function observeCloudCheckpoints() {
     const sample=state.live?.cloud_hyperstack_ark;
-    if(!sample)return;
+    if(!Number.isSafeInteger(sample?.vm_id))return;
     const key=`rbzk.checkpoints.${sample.vm_id}.${sample.started_at_unix}`;
     if(checkpointKey!==key) {
       checkpointKey=key;
@@ -382,8 +386,10 @@ if(typeof document!=='undefined') (() => {
     $('overview-recovery-eta').textContent=!remaining?'Saved core count reached':tracking?
       `${planningDuration(60*remaining/trend.rate)} to match the saved count at ${n(trend.rate,1)} new cores/min`:
       'Waiting for a recent core rate';
-    const lease=Math.max(0,cloud.sample.started_at_unix+3600-Date.now()/1000);
-    $('overview-lease').textContent=cloud.fresh?`One-hour pilot cap in ${formatDuration(lease)}`:'Pilot heartbeat stale';
+    const end=cloud.sample.lease_ends_at_unix;
+    $('overview-lease').textContent=!cloud.fresh?'Pilot heartbeat stale':
+      Number.isFinite(end)?`Lease cutoff in ${formatDuration(Math.max(0,end-Date.now()/1000))}`:
+      `Lease elapsed ${formatDuration(Math.max(0,Date.now()/1000-cloud.sample.started_at_unix))}`;
   }
   function renderCloudBudget() {
     const local=state.live?.wsl_prover;
@@ -601,21 +607,25 @@ if(typeof document!=='undefined') (() => {
   function arkCloudSignal() {
     const sample=state.live?.cloud_hyperstack_ark;
     const phases={
+      staging:'Uploading the held checkpoint',queued:'Checkpoint staged · waiting to launch',
+      waiting_stock:'Checkpoint staged · waiting for spot capacity',
       provisioning:'Provisioning A100',preparing:'Downloading checkpoint copy',starting:'Starting prover',
       replay:'Replaying checkpoints',shard:'Writing core shards',reduce:'Writing recursion checkpoints',
       returning:'Retrieving results',stopped:'Pilot stopped',failed:'Pilot failed'
     };
     if(!sample || !Object.hasOwn(phases,sample.stage))return null;
     const age=Date.now()/1000-sample.sampled_at_unix;
-    const fresh=state.polling&&Date.now()-state.lastReceived<15000&&age>=-10&&age<35;
+    const boot=['staging','queued','waiting_stock','provisioning','preparing'].includes(sample.stage);
+    const fresh=state.polling&&Date.now()-state.lastReceived<15000&&age>=-10&&age<(boot?125:35);
     const progressAge=Date.now()/1000-sample.last_checkpoint_at_unix;
     const phase=!state.polling?'Display paused':sample.active&&!fresh?'Server heartbeat stale':
       fresh&&sample.ark_running&&progressAge>=60?'Prover running · awaiting checkpoint':phases[sample.stage];
-    return {sample,phase,fresh,knownPhase:phases[sample.stage],active:sample.active&&fresh};
+    return {sample,phase,fresh,knownPhase:phases[sample.stage],
+      active:sample.active&&fresh&&Number.isSafeInteger(sample.vm_id)};
   }
   function renderArkCloud() {
     const cloud=arkCloudSignal();
-    if(!cloud || (!cloud.sample.active&&state.live?.wsl_prover?.phase_running))return;
+    if(!cloud || !Number.isSafeInteger(cloud.sample.vm_id) || (!cloud.sample.active&&state.live?.wsl_prover?.phase_running))return;
     const {sample,phase}=cloud;
     const counts=[
       ['Core shards written',sample.core_new],
@@ -819,7 +829,7 @@ if(typeof document!=='undefined') (() => {
   }
   function renderCheckpointMosaic(cloud, progress) {
     const localRunning=freshRuntime()&&!!arkProcess();
-    const showCloud=cloud?.sample.active||(!localRunning && checkpointHistory.length>1);
+    const showCloud=(cloud?.sample.active&&Number.isSafeInteger(cloud.sample.vm_id))||(!localRunning && checkpointHistory.length>1);
     const live=showCloud?cloud?.fresh&&cloud.sample.ark_running:localRunning;
     const tiles=showCloud?ProofEta.checkpointMosaic(checkpointHistory):
       (progress.mosaic_tail||[]).slice(-319).map(tile=>({

@@ -40,6 +40,7 @@ pub struct ProverUIApp {
     runpod: crate::runtime::RuntimeCollector,
     hyperstack_snapshot: Option<PathBuf>,
     hyperstack_ark_state: Option<PathBuf>,
+    hyperstack_ark_seed: Option<PathBuf>,
     stop_flag: AtomicBool,
     stop_cv: (Mutex<bool>, Condvar),
 }
@@ -63,6 +64,7 @@ impl ProverUIApp {
             hyperstack_snapshot: std::env::var_os("RBZK_HYPERSTACK_BENCHMARK_JSON")
                 .map(PathBuf::from),
             hyperstack_ark_state: std::env::var_os("RBZK_HYPERSTACK_ARK_STATE_JSON").map(PathBuf::from),
+            hyperstack_ark_seed: std::env::var_os("RBZK_HYPERSTACK_ARK_SEED_JOURNAL").map(PathBuf::from),
             stop_flag: AtomicBool::new(false),
             stop_cv: (Mutex::new(false), Condvar::new()),
         }
@@ -139,7 +141,7 @@ impl ProverUIApp {
         live["cloud_hyperstack_ark"] = self
             .hyperstack_ark_state
             .as_deref()
-            .and_then(read_hyperstack_ark_state)
+            .and_then(|path| read_hyperstack_ark_state(path, self.hyperstack_ark_seed.as_deref()))
             .unwrap_or(Value::Null);
         live["cloud_hyperstack"] = self
             .hyperstack_snapshot
@@ -154,15 +156,47 @@ impl ProverUIApp {
     }
 }
 
-fn read_hyperstack_ark_state(path: &Path) -> Option<Value> {
+fn read_seed_progress(path: &Path) -> Option<(u64, usize, u64)> {
+    let file = std::fs::File::open(path).ok()?;
+    let meta = file.metadata().ok()?;
+    if !meta.is_file() || meta.len() > 2_000_000 {
+        return None;
+    }
+    let stamp = meta.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?.as_secs();
+    let mut bytes = Vec::new();
+    file.take(2_000_001).read_to_end(&mut bytes).ok()?;
+    if bytes.len() > 2_000_000 {
+        return None;
+    }
+    let parts = bytes.split(|byte| *byte == b'\n').filter_map(|line| {
+        let entry: Value = serde_json::from_slice(line).ok()?;
+        entry["bytes"].as_u64().filter(|bytes| (1..=4194304).contains(bytes))
+    });
+    let (total, count) = parts.fold((0, 0), |(sum, count), part| (sum + part, count + 1));
+    Some((total, count, stamp))
+}
+
+fn read_hyperstack_ark_state(path: &Path, journal: Option<&Path>) -> Option<Value> {
     let (raw, file_time) = read_bounded_cloud_state(path)?;
     let suffix = raw["name"].as_str()?.strip_prefix("ark-mnr04-a100-")?;
     if suffix.len() != 10 || !suffix.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         return None;
     }
-    let vm_id = raw["vm_id"].as_u64().filter(|id| *id > 0)?;
-    let started = raw["requested_at"].as_u64()?;
     let stage = raw["stage"].as_str()?;
+    let Some(vm_id) = raw["vm_id"].as_u64().filter(|id| *id > 0) else {
+        let phase = match stage {
+            "private_transport_ready" => "staging",
+            "overnight_staged" | "overnight_requested" => "queued",
+            "overnight_waiting_stock" => "waiting_stock",
+            _ => return None,
+        };
+        let (bytes, count, stamp) = journal.and_then(read_seed_progress).unwrap_or((0, 0, file_time));
+        return Some(json!({
+            "stage": phase, "sampled_at_unix": file_time.max(stamp), "active": true,
+            "seed_bytes": bytes, "seed_parts": count,
+        }));
+    };
+    let started = raw["requested_at"].as_u64()?;
     let mut sample = json!({
         "vm_id": vm_id,
         "started_at_unix": started,
@@ -170,6 +204,12 @@ fn read_hyperstack_ark_state(path: &Path) -> Option<Value> {
         "active": true,
         "stage": "starting",
     });
+    if let Some(end) = raw["lease_ends_at_unix"].as_u64()
+        .filter(|end| *end > started && *end - started <= 8 * 3600)
+    {
+        sample["lease_ends_at_unix"] = json!(end);
+    }
+    sample["spot"] = raw["spot"].clone();
     if raw["cleanup"] == "vm_deleted" {
         sample["active"] = json!(false);
         sample["stage"] = json!("stopped");
@@ -208,7 +248,7 @@ fn read_hyperstack_ark_state(path: &Path) -> Option<Value> {
         sample["stage"] = json!(match stage {
             "storage_vm_provisioned" => "provisioning",
             "preparing_inputs" => "preparing",
-            "parallel_ark_and_mnr04" => "starting",
+            "parallel_ark_and_mnr04" | "ark_overnight" => "starting",
             "finished" | "results_retrieved" => "returning",
             "failed" => "failed",
             _ => return None,
@@ -286,6 +326,27 @@ mod hyperstack_tests {
     use super::*;
 
     #[test]
+    fn ark_seed_transfer_has_progress_without_allocating_a_vm() -> Result<()> {
+        let root = std::env::temp_dir();
+        let state = root.join(format!("rbzk-seed-state-{}.json", std::process::id()));
+        let progress = root.join(format!("rbzk-seed-parts-{}.jsonl", std::process::id()));
+        std::fs::write(&state, serde_json::to_vec(&json!({
+            "name": "ark-mnr04-a100-123abcdef0", "stage": "private_transport_ready", "vm_id": null
+        }))?)?;
+        std::fs::write(&progress, b"{\"bytes\":4194304}\n{\"bytes\":1234}\n{\"bytes\":")?;
+        let sample = read_hyperstack_ark_state(&state, Some(&progress))
+            .context("valid staging state was discarded");
+        std::fs::remove_file(state)?;
+        std::fs::remove_file(progress)?;
+        let sample = sample?;
+        assert_eq!(sample["stage"], "staging");
+        assert_eq!(sample["seed_bytes"], 4195538);
+        assert_eq!(sample["seed_parts"], 2);
+        assert!(sample.get("vm_id").is_none());
+        Ok(())
+    }
+
+    #[test]
     fn ark_cloud_state_checks_heartbeat_and_ended_vm() -> Result<()> {
         let path = std::env::temp_dir().join(format!("rbzk-ark-cloud-{}.json", std::process::id()));
         let mut state = json!({
@@ -294,7 +355,7 @@ mod hyperstack_tests {
             "storage_key_id": 8,
         });
         std::fs::write(&path, serde_json::to_vec(&state)?)?;
-        let live = read_hyperstack_ark_state(&path).context("valid Ark heartbeat was discarded")?;
+        let live = read_hyperstack_ark_state(&path, None).context("valid Ark heartbeat was discarded")?;
         assert_eq!(live["core_new"], 5);
         assert_eq!(live["core_replayed"], 18);
         assert_eq!(live["sampled_at_unix"], 1000);
@@ -303,11 +364,11 @@ mod hyperstack_tests {
 
         state["stage"] = json!("ark_heartbeat|899|shard|999|5|3|18|20|8192|1|0");
         std::fs::write(&path, serde_json::to_vec(&state)?)?;
-        assert!(read_hyperstack_ark_state(&path).is_none());
+        assert!(read_hyperstack_ark_state(&path, None).is_none());
 
         state["cleanup"] = json!("vm_deleted");
         std::fs::write(&path, serde_json::to_vec(&state)?)?;
-        let ended = read_hyperstack_ark_state(&path).context("ended pilot state was discarded")?;
+        let ended = read_hyperstack_ark_state(&path, None).context("ended pilot state was discarded")?;
         std::fs::remove_file(path)?;
         assert_eq!(ended["active"], false);
         assert_eq!(ended["stage"], "stopped");
