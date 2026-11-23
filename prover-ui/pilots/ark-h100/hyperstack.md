@@ -1,6 +1,6 @@
 # Hyperstack H100 SXM
 
-Check stock for **H100-80G-SXM5** in the console. The public price is
+Check stock for **H100-80G-SXM5** on demand in the console. The public price is
 **US$3.20 per GPU-hour**. The public flavor catalog lists
 `n3-H100-SXM5x8` in Canada and the US. That configuration rents eight
 GPUs, so check the displayed GPU count and total hourly rate against the
@@ -18,3 +18,8 @@ applicable discount. [Hyperstack pricing](https://www.hyperstack.cloud/gpu-prici
 Follow the [shared staging and pilot instructions](README.md). The common
 runner measures one GPU. Select a single-GPU SXM VM when available for a
 like-for-like pilot and check the stock again before committing funds.
+
+Spot instances can terminate without notice. Hyperstack treats their
+storage as ephemeral and warns that attached volumes can enter an error
+state. Keep the original checkpoint elsewhere and export pilot results
+during a spot run. [Hyperstack Spot VM limits](https://docs.hyperstack.cloud/docs/virtual-machines/spot/)
