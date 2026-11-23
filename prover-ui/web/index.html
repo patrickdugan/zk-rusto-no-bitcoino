@@ -133,6 +133,24 @@
             <h2 id="ongoing-heading">Ongoing jobs</h2>
             <span class="tag-mono" id="ongoing-summary" role="status">Connecting</span>
           </div>
+          <div class="campaign-overview" aria-label="Ark proof campaign progress">
+            <div>
+              <span class="kpi-label">Ark → BitVM3</span>
+              <strong id="overview-progress">Waiting for evidence</strong>
+              <progress id="overview-progress-bar" max="8" value="0" aria-label="Proof milestones cleared"></progress>
+            </div>
+            <div>
+              <span class="kpi-label">Full proof ETA</span>
+              <strong id="overview-eta">Waiting for telemetry</strong>
+              <a id="overview-plan" href="#campaign-plan">Set core target and stage budgets</a>
+            </div>
+            <div id="overview-recovery" hidden>
+              <span class="kpi-label">Saved core checkpoint recovery</span>
+              <strong id="overview-recovery-count"></strong>
+              <span id="overview-recovery-eta"></span>
+              <span id="overview-lease"></span>
+            </div>
+          </div>
           <div id="ongoing-jobs" class="ongoing-list">
             <p class="panel-sub">Waiting for a job observation.</p>
           </div>

@@ -59,7 +59,7 @@ const ProofEta = (() => {
   const coordinatorSteps = arkPhases.flatMap(phase => phase.steps);
   const minutes = value => finite(value) && value > 0 && value <= 10080 ? value : null;
   function arkCampaign(wsl = {}, options = {}) {
-    const {connected, paused, processObserved, setupRecorded, plan = {}} = options;
+    const {connected, paused, processObserved, setupRecorded, coreSource, plan = {}} = options;
     const now = options.now ?? Date.now()/1000;
     const remainingToClose = arkDeadline-now;
     const latestStatus = typeof wsl.status === 'string' ? wsl.status : 'unknown';
@@ -82,10 +82,12 @@ const ProofEta = (() => {
         waitingFor ? 'Resource wait' : phaseObserved ? 'In progress' : 'Last reported' : 'Pending';
       return {...item,done,status};
     });
-    const progress = wsl.progress || {};
-    const core = estimate(progress,{now,connected,paused,active:phase === 'gpu' && !waitingFor && processObserved,
-      startedAt:wsl.phase_started_unix,target:plan.core});
     const corePending = !rows.find(row => row.id === 'sp1').done;
+    const cloudCore = corePending && coreSource?.active ? coreSource : null;
+    const progress = cloudCore?.progress || wsl.progress || {};
+    const core = estimate(progress,{now,connected:cloudCore?.connected ?? connected,paused,
+      active:cloudCore?.active ?? (phase === 'gpu' && !waitingFor && processObserved),
+      startedAt:cloudCore?.startedAt ?? wsl.phase_started_unix,target:plan.core});
     const target = core.manual ? core.target : null;
     const tail = arkBudgets.filter(([id]) => id !== 'delivery' && !rows.find(row => row.id === id).done);
     const missing = tail.filter(([id]) => minutes(plan[id]) === null).map(([,label]) => label);
@@ -97,12 +99,13 @@ const ProofEta = (() => {
       Math.min(Number.MAX_SAFE_INTEGER,core.count+Math.floor(Math.max(0,remainingToClose-tailSeconds-(deliverySeconds ?? 0))*core.rate/60)) : null;
     const project = range => range && ({fast:now+range.fast,slow:now+range.slow});
     let proofRange = null;
-    if(connected && !paused && !resourceHold && step >= 0 && !missing.length) {
+    const forecastReady = cloudCore ? cloudCore.connected : connected && !resourceHold && step >= 0;
+    if(forecastReady && !paused && !missing.length) {
       if(!corePending) {
         if(checksPassed || phaseObserved || waitingForSetup)proofRange={fast:tailSeconds,slow:tailSeconds};
       } else if(target !== null && tracking) {
         proofRange={fast:core.fastSeconds+tailSeconds,slow:core.slowSeconds+tailSeconds};
-      } else if(target === core.count && core.status === 'target_reached' && phaseObserved) {
+      } else if(target === core.count && core.status === 'target_reached' && (phaseObserved || cloudCore)) {
         proofRange={fast:tailSeconds,slow:tailSeconds};
       }
     }
@@ -179,7 +182,34 @@ const ProofEta = (() => {
     }
     return rows;
   }
-  return {estimate,clock,arkCampaign,arkDeadline,arkBudgets,cashuRoadmap,ongoingJobs};
+  function rememberCheckpoints(history, sample) {
+    const {sampled_at_unix: t, core_new: core, recursion_new: recursion, core_replayed: replayed} = sample;
+    if(![t,core,recursion,replayed].every(value=>Number.isSafeInteger(value) && value>=0))return history;
+    const last=history.at(-1);
+    if(last && t<=last.t)return history;
+    const prior=last && (core<last.core || recursion<last.recursion || replayed<last.replayed) ? [] : history;
+    return [...prior.filter(point=>t-point.t<=1800),{t,core,recursion,replayed}].slice(-240);
+  }
+  function checkpointTrend(history) {
+    const last=history.at(-1);
+    if(!last)return null;
+    const changes=history.slice(1).map((point,i)=>({t:point.t,
+      core:point.core-history[i].core,recursion:point.recursion-history[i].recursion}));
+    const recent=changes.filter(point=>last.t-point.t<=60);
+    const rates={};
+    for(const window of [5,15,30]) {
+      const first=history.find(point=>last.t-point.t<=window*60);
+      const span=last.t-first.t;
+      if(span>=60)rates['shard_per_min_'+window+'m']=(last.core-first.core)*60/span;
+    }
+    const latestCore=changes.findLast(point=>point.core>0);
+    const lastMinute=recent.reduce((sum,point)=>({core:sum.core+point.core,recursion:sum.recursion+point.recursion}),{core:0,recursion:0});
+    return {lastMinute,recent:recent.slice(-10),latestChange:changes.findLast(point=>point.core||point.recursion),
+      rate:rates.shard_per_min_5m,
+      progress:{exists:true,unique_shards:last.replayed+last.core,rates,
+        recent_events:latestCore?[{kind:'shard',replayed:false,t:latestCore.t}]:[]}};
+  }
+  return {estimate,clock,arkCampaign,arkDeadline,arkBudgets,cashuRoadmap,ongoingJobs,rememberCheckpoints,checkpointTrend};
 })();
 if(typeof module!=='undefined' && module.exports)module.exports=ProofEta;
 if(typeof document!=='undefined') (() => {
@@ -194,6 +224,24 @@ if(typeof document!=='undefined') (() => {
   const state = {live:null, records:[], selected:null, userSelected:false, tab:initialTab, polling:true, timer:null, lastReceived:0, history:[], previous:new Map(), seen:new Set(), booted:false, etaClock:null, etaModel:null, etaSource:null, lastEventSeq:null, etaTarget:null, newEventSeqs:new Set()};
   const readSetting = key => {try{return localStorage.getItem(key);}catch{return null;}};
   const saveSetting = (key,value) => {try{localStorage.setItem(key,value);}catch{}};
+  let checkpointKey=null, checkpointHistory=[];
+  function observeCloudCheckpoints() {
+    const sample=state.live?.cloud_hyperstack_ark;
+    if(!sample?.active || !sample.ark_running)return;
+    const key=`rbzk.checkpoints.${sample.vm_id}.${sample.started_at_unix}`;
+    if(checkpointKey!==key) {
+      checkpointKey=key;
+      try {
+        const stored=JSON.parse(readSetting(key) || '[]');
+        checkpointHistory=Array.isArray(stored)?stored.filter(point=>[point?.t,point?.core,point?.recursion,point?.replayed].every(Number.isSafeInteger)):[];
+      } catch {checkpointHistory=[];}
+    }
+    const next=ProofEta.rememberCheckpoints(checkpointHistory,sample);
+    if(next!==checkpointHistory) {
+      checkpointHistory=next;
+      saveSetting(checkpointKey,JSON.stringify(next));
+    }
+  }
   const computeTargetKey = 'rbzk.compute.target';
   const computeProviderKey = 'rbzk.compute.provider';
   const computeProviders = [
@@ -256,6 +304,31 @@ if(typeof document!=='undefined') (() => {
   function milestoneMarkup({id,label,detail,status,done}) {
     return `<li class="campaign-milestone" data-stage="${id}"><div><strong>${esc(label)}</strong><p class="panel-sub">${esc(detail)}</p></div><span class="milestone-status${done?' is-done':''}">${esc(status)}</span></li>`;
   }
+  function renderCampaignOverview(campaign, cloud, trend, savedCore) {
+    const proof=campaign.rows.filter(row=>row.id!=='delivery');
+    const done=proof.filter(row=>row.done).length;
+    $('overview-progress').textContent=`${n(100*done/proof.length)}% · ${done}/${proof.length} milestones cleared`;
+    const bar=$('overview-progress-bar');
+    bar.max=proof.length;
+    bar.value=done;
+    const range=campaign.proofRemaining;
+    $('overview-eta').textContent=campaign.checksPassed?'Proof checks passed':
+      range?planningDuration(range.fast)+(planningDuration(range.fast)!==planningDuration(range.slow)?' – '+planningDuration(range.slow):'')+' remaining':
+      campaign.target===null || campaign.missing.length?'Needs a workload estimate':'Waiting for fresh proving pace';
+    $('overview-plan').hidden=campaign.checksPassed;
+    const showRecovery=cloud?.sample.active && trend && Number.isSafeInteger(savedCore) && savedCore>0;
+    $('overview-recovery').hidden=!showRecovery;
+    if(!showRecovery)return;
+    const current=trend.progress.unique_shards;
+    const remaining=Math.max(0,savedCore-current);
+    const tracking=cloud.fresh && cloud.sample.ark_running && Number.isFinite(trend.rate) && trend.rate>0;
+    $('overview-recovery-count').textContent=`${n(Math.min(100,100*current/savedCore))}% · ${n(current)} / ${n(savedCore)} cores`;
+    $('overview-recovery-eta').textContent=!remaining?'Saved core count reached':tracking?
+      `${planningDuration(60*remaining/trend.rate)} to match the saved count at ${n(trend.rate,1)} new cores/min`:
+      'Waiting for a recent core rate';
+    const lease=Math.max(0,cloud.sample.started_at_unix+3600-Date.now()/1000);
+    $('overview-lease').textContent=cloud.fresh?`One-hour pilot cap in ${formatDuration(lease)}`:'Pilot heartbeat stale';
+  }
   function updateCampaign() {
     const observed=state.live?.wsl_prover || {};
     const wsl=isCampaignRun(observed)?observed:{};
@@ -263,17 +336,21 @@ if(typeof document!=='undefined') (() => {
     const setupRecorded=state.records.some(({title,summary})=>title==='m14-bounded-setup-20261123.json' &&
       summary?.schema==='ark-m14-bounded-setup-v1' && summary?.status==='statement_bound_setup_artifacts_verified');
     const connected=freshRuntime() && wsl.reachable===true;
-    const campaign=ProofEta.arkCampaign(wsl,{connected,paused:!state.polling,processObserved,setupRecorded,plan:campaignPlan});
+    const cloud=arkCloudSignal(), trend=ProofEta.checkpointTrend(checkpointHistory);
+    const coreSource=cloud?.sample.ark_running && trend && (cloud.fresh || !processObserved) ? {active:true,connected:cloud.fresh,
+      startedAt:cloud.sample.started_at_unix,progress:trend.progress}:null;
+    const forecastConnected=coreSource?.connected ?? connected;
+    const campaign=ProofEta.arkCampaign(wsl,{connected,paused:!state.polling,processObserved,setupRecorded,coreSource,plan:campaignPlan});
     const {checksPassed, proofRemaining, proofFinish, deliveryFinish, corePending, core, target, missing}=campaign;
     let headline='ETA needs a scenario';
     let basis='';
     if(checksPassed) {
       headline='Verifier checks passed';
       basis='Coordinator reported all Ark off-chain checks passed. Evidence audit and publication follow.';
-    } else if(!connected) {
+    } else if(!forecastConnected) {
       headline=state.polling?'Waiting for telemetry':'Display paused';
       basis='The finish projection requires fresh campaign telemetry.';
-    } else if(campaign.resourceHold || campaign.phase==='stopped') {
+    } else if(!coreSource && (campaign.resourceHold || campaign.phase==='stopped')) {
       headline=campaign.phase==='stopped'?'Coordinator stopped':'Waiting for resources';
       basis='The finish projection is held until the campaign can advance.';
     } else if(proofFinish) {
@@ -292,6 +369,7 @@ if(typeof document!=='undefined') (() => {
     }
     $('proof-finish').textContent=headline;
     $('proof-eta-basis').textContent=basis;
+    renderCampaignOverview(campaign,cloud,trend,wsl.progress?.unique_shards);
     let outlook='Deadline fit is undetermined.';
     if(deliveryFinish) {
       const cutoff=ProofEta.arkDeadline;
@@ -311,6 +389,10 @@ if(typeof document!=='undefined') (() => {
     const passReductions=summary.session_recursion_proved+summary.session_recursion_replayed;
     setMarkup('campaign-milestones',campaign.rows.map(row=>{
       let detail=row.detail;
+      if(row.id==='sp1' && coreSource?.connected && !row.done) {
+        detail=`${n(core.count)} confirmed replayed and newly written core shards on the pilot. ${detail}`;
+        return milestoneMarkup({...row,detail,status:'Pilot in progress'});
+      }
       if(row.id==='sp1' && wsl.progress?.exists && !row.done) {
         detail=`${n(wsl.progress.unique_shards)} saved cores${Number.isSafeInteger(passReductions)&&processObserved?` · ${n(passReductions)} recursion checkpoints in the reported SP1 pass`:''}. ${detail}`;
       }
@@ -628,11 +710,14 @@ if(typeof document!=='undefined') (() => {
       const heard=Number.isFinite(job.heardAt)?new Date(job.heardAt*1000):null;
       const validHeard=heard&&!Number.isNaN(heard.valueOf());
       const metrics=(job.metrics||[]).filter(([,value])=>Number.isSafeInteger(value));
+      const recent=job.id==='cloud-ark' && ark?.fresh?ProofEta.checkpointTrend(checkpointHistory):null;
+      const increments=recent?.recent.length ? renderCheckpointIncrements(recent) : '';
       return `<article class="ongoing-job">
         <div class="ongoing-name"><h3>${esc(job.title)}</h3><p>${esc(job.where)}</p></div>
         <div class="ongoing-work">
           ${job.phase?`<p>${esc(job.phase)}</p>`:''}
           ${metrics.length?`<dl>${metrics.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${n(value)}</dd></div>`).join('')}</dl>`:''}
+          ${increments}
         </div>
         <div class="ongoing-monitor">
           <span class="status-pill ${job.status==='Running'?'live':''}">${esc(job.status)}</span>
@@ -641,6 +726,15 @@ if(typeof document!=='undefined') (() => {
         </div>
       </article>`;
     }).join('') || `<p class="panel-sub">${esc(empty)}</p>`);
+  }
+  function renderCheckpointIncrements(trend) {
+    const lanes=[['core','core shards'],['recursion','recursion proofs']];
+    return `<div class="checkpoint-increments" aria-label="New checkpoints reported in the last minute">${lanes.map(([kind,label])=>{
+      const peak=Math.max(1,...trend.recent.map(point=>point[kind]));
+      const bars=trend.recent.map(point=>`<i style="--weight:${Math.max(8,100*point[kind]/peak)}%"></i>`).join('');
+      return `<div class="checkpoint-lane"><strong>+${n(trend.lastMinute[kind])}</strong> ${label} in the last minute
+        <span class="checkpoint-spark ${kind}" aria-hidden="true">${bars}</span></div>`;
+    }).join('')}</div>`;
   }
   function render() {
     const live=state.live||{}, rt=live.runtime||{}, gpu=live.gpu||{}, host=live.host_memory||{}, cloud=runpodSignal(), all=jobs().sort((a,b)=>Number(b.id.startsWith('ark-sp1:'))-Number(a.id.startsWith('ark-sp1:')));
@@ -690,7 +784,8 @@ if(typeof document!=='undefined') (() => {
     try {
       const response=await fetch('/api/live',{cache:'no-store',signal:AbortSignal.timeout(10000)});
       if(!response.ok)throw new Error(`Telemetry HTTP ${response.status}`);
-      state.live=await response.json();state.lastReceived=Date.now();rememberSample(state.live);rememberEvents(state.live.wsl_prover?.progress||{});render();
+      state.live=await response.json();state.lastReceived=Date.now();rememberSample(state.live);
+      rememberEvents(state.live.wsl_prover?.progress||{});observeCloudCheckpoints();render();
       const evidence=await fetch('/api/campaigns',{cache:'no-store',signal:AbortSignal.timeout(5000)});
       if(!evidence.ok)throw new Error(`Evidence HTTP ${evidence.status}`);
       const inventory=await evidence.json();state.records=inventory.campaigns||[];
@@ -710,6 +805,7 @@ if(typeof document!=='undefined') (() => {
     tab.click();
     $('cashu-heading').focus();
   };
+  $('overview-plan').onclick=()=>{$('campaign-plan').open=true;};
   $('toggle-poll').onclick=()=>{state.polling=!state.polling;if(state.polling)state.lastReceived=0;clearTimeout(state.timer);$('toggle-poll').textContent=state.polling?'PAUSE':'RESUME';render();if(state.polling)poll();};
   $('toggle-theme').onclick=()=>{const dark=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=dark?'grove':'dark';};
   $('planner').onsubmit=async event=>{event.preventDefault();const input=Object.fromEntries([...new FormData(event.target)].map(([k,v])=>[k,Number(v)]));input.hardware_profile='rtx5080_bounded_2gib';try{const response=await fetch('/api/correlate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});const result=await response.json();$('planner-result').textContent=`PROJECTION ONLY\n${JSON.stringify(result,null,2)}`;}catch(error){$('planner-result').textContent=error.message;}};
