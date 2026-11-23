@@ -386,6 +386,43 @@ if(typeof document!=='undefined') (() => {
   function cloudMeasure(value,suffix) {
     return Number.isFinite(value) ? `${n(value,1)}${suffix}` : 'Unavailable';
   }
+  const hyperstackStages = {
+    provisioning:'Provisioning',booted:'Preparing worker',benchmark_started:'Starting benchmark',
+    benchmark_running:'Starting benchmark',started:'Starting benchmark',execute:'Executing Cairo',
+    prove:'Generating issuance proof',verify:'Verifying on worker',
+    reject_changed_anchor_amount:'Testing changed amount',reject_changed_commitment:'Testing changed commitment',
+    fresh_proof_independently_verified:'Returning proof',retrieving:'Retrieving results',
+    local_verification:'Checking live regtest statement',verified:'Issuance verified',
+    failed:'Benchmark failed',cleanup_unconfirmed:'Cloud cleanup unconfirmed',
+  };
+  function hyperstackSignal() {
+    const sample=state.live?.cloud_hyperstack;
+    if(!sample || !Object.hasOwn(hyperstackStages,sample.stage))return null;
+    const age=Date.now()/1000-sample.sampled_at_unix;
+    const active=sample.active && state.polling && Date.now()-state.lastReceived<15000 && age>=-10 && age<50;
+    const status=!state.polling?'Display paused':sample.active&&!active?'Telemetry stale':hyperstackStages[sample.stage];
+    return {sample,active,status,hardware:sample.a100_confirmed?'NVIDIA A100 80 GB PCIe':'A100 on-demand VM'};
+  }
+  function renderHyperstack(pilot) {
+    $('hyperstack-benchmark').hidden=!pilot;
+    $('cashu-benchmark').hidden=!pilot;
+    if(!pilot)return;
+    const {sample,status,hardware}=pilot;
+    $('hyperstack-stage').textContent=status;
+    $('hyperstack-hardware').textContent=`${hardware} · CPU proving`;
+    const elapsed=sample.sampled_at_unix-sample.started_at_unix;
+    $('hyperstack-metrics').innerHTML=kv('VM',sample.vm_id)+kv('Pilot elapsed',formatDuration(elapsed))+
+      kv('CPU threads',sample.threads ? `${sample.threads} prover / ${sample.logical_cpus} host` : cloudMeasure(sample.logical_cpus,' host'))+
+      kv('Host RAM',Number.isFinite(sample.host_ram_used_gib)&&Number.isFinite(sample.host_ram_gib)?
+        `${n(sample.host_ram_used_gib,1)} / ${n(sample.host_ram_gib,1)} GiB`:'Unavailable')+
+      kv('VM and IP per hour',Number.isFinite(sample.rate_usd_per_hour)?`$${sample.rate_usd_per_hour.toFixed(2)}`:'Unavailable')+
+      (Number.isFinite(sample.prove_seconds)?kv('Issuance proving time',formatDuration(sample.prove_seconds))+
+        kv('Peak prover RAM',cloudMeasure(sample.peak_prove_ram_gib,' GiB')):'');
+    $('hyperstack-sample').textContent=`Benchmark sample · ${time(sample.sampled_at_unix)}`;
+    $('cashu-benchmark').textContent=sample.stage==='verified'?
+      `Fresh regtest issuance verified on Hyperstack. Proving took ${formatDuration(sample.prove_seconds)}. The funded payout was checked with the mint offline. A fresh redemption proof is pending.`:
+      `Hyperstack issuance benchmark · ${status}. Overnight forecast pending verified proving time.`;
+  }
   function renderRunpodCloud() {
     const signal=runpodSignal(), cloud=signal.cloud, pod=cloud?.pod || {}, metrics=cloud?.metrics || {};
     const labels={
@@ -414,8 +451,10 @@ if(typeof document!=='undefined') (() => {
       cloud?.status==='credentials_required' ? (cloud.provider==='Prime Intellect' ? 'Sign in with the Prime CLI to connect telemetry.' : cloud.provider==='Runpod' ? 'Configure a Runpod read-only API key to connect telemetry.' : 'Connect a provider to receive telemetry.') :
       cloud?.status==='multiple_pods' ? 'Select a specific running GPU instance in the telemetry configuration.' :
       'Waiting for a fresh cloud GPU sample.';
-    $('compute-source-state').textContent=signal.active ?
+    const pilot=hyperstackSignal();
+    $('compute-source-state').textContent=pilot?.active ? 'ACTIVE DISPLAY SOURCE · HYPERSTACK · CPU PROVING' : signal.active ?
       `ACTIVE DISPLAY SOURCE · ${signal.provider.toUpperCase()} · ${signal.gpuName || 'GPU NAME UNAVAILABLE'}` : 'ACTIVE DISPLAY SOURCE · LOCAL GPU';
+    renderHyperstack(pilot);
   }
   function initCompute() {
     const targets=$('compute-target');
@@ -526,7 +565,8 @@ if(typeof document!=='undefined') (() => {
     const stale=Date.now()-state.lastReceived>15000;
     $('poll-label').textContent=!state.polling?'DISPLAY PAUSED':stale?'DISCONNECTED / STALE':`LIVE · ${new Date(live.sampled_at_unix*1000).toLocaleTimeString()}`;
     $('live-dot').classList.toggle('live',state.polling&&!stale);
-    const activeGpu=cloud.active ?
+    const pilot=hyperstackSignal();
+    const activeGpu=pilot?.active ? ['HYPERSTACK · CPU PROVING',pilot.hardware,pilot.status] : cloud.active ?
       [`${cloud.provider.toUpperCase()} GPU`,cloud.gpuName || 'GPU name unavailable',`${cloudMeasure(cloud.cloud.metrics?.gpu_util_percent,'%')} compute · ${cloudMeasure(cloud.cloud.metrics?.gpu_memory_percent,'%')} GPU memory`] :
       ['LOCAL GPU',gpu.available?gpu.name:'Unavailable',gpu.available?`${n(gpu.util_gpu_pct)}% compute · ${gib(gpu.vram_used_mib==null?null:gpu.vram_used_mib*2**20)} VRAM used`:'No local GPU measurement'];
     $('hardware-ribbon').innerHTML=[

@@ -7,7 +7,7 @@ use std::{
     collections::HashMap,
     io::{BufRead, BufReader, Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex,
@@ -38,6 +38,7 @@ pub struct ProverUIApp {
     ark_dir: Option<PathBuf>,
     runtime: crate::runtime::RuntimeCollector,
     runpod: crate::runtime::RuntimeCollector,
+    hyperstack_snapshot: Option<PathBuf>,
     stop_flag: AtomicBool,
     stop_cv: (Mutex<bool>, Condvar),
 }
@@ -58,6 +59,8 @@ impl ProverUIApp {
             ark_dir,
             runtime: crate::runtime::RuntimeCollector::new(),
             runpod: crate::runtime::RuntimeCollector::runpod(),
+            hyperstack_snapshot: std::env::var_os("RBZK_HYPERSTACK_BENCHMARK_JSON")
+                .map(PathBuf::from),
             stop_flag: AtomicBool::new(false),
             stop_cv: (Mutex::new(false), Condvar::new()),
         }
@@ -131,11 +134,102 @@ impl ProverUIApp {
         }
         live["runtime"] = runtime;
         live["cloud_runpod"] = self.runpod.snapshot();
+        live["cloud_hyperstack"] = self
+            .hyperstack_snapshot
+            .as_deref()
+            .and_then(read_hyperstack_snapshot)
+            .unwrap_or(Value::Null);
         live
     }
 
     pub fn campaigns_payload(&self) -> Value {
         load_campaigns(self.ark_dir.as_deref())
+    }
+}
+
+fn read_hyperstack_snapshot(path: &Path) -> Option<Value> {
+    let file = std::fs::File::open(path).ok()?;
+    if !file.metadata().ok()?.is_file() {
+        return None;
+    }
+    const MAX_BYTES: u64 = 4096;
+    let mut bytes = Vec::new();
+    file.take(MAX_BYTES + 1).read_to_end(&mut bytes).ok()?;
+    if bytes.len() as u64 > MAX_BYTES {
+        return None;
+    }
+    let raw: Value = serde_json::from_slice(&bytes).ok()?;
+    if raw["schema"] != "rbzk/hyperstack-benchmark/v1" || raw["vm_id"].as_u64()? == 0 {
+        return None;
+    }
+    let active = raw["active"].as_bool()?;
+    let stage = raw["stage"].as_str()?;
+    let terminal = match stage {
+        "verified" | "failed" | "cleanup_unconfirmed" => true,
+        "provisioning"
+        | "booted"
+        | "benchmark_started"
+        | "benchmark_running"
+        | "started"
+        | "execute"
+        | "prove"
+        | "verify"
+        | "reject_changed_anchor_amount"
+        | "reject_changed_commitment"
+        | "fresh_proof_independently_verified"
+        | "retrieving"
+        | "local_verification" => false,
+        _ => return None,
+    };
+    if terminal == active || raw["sampled_at_unix"].as_u64()? < raw["started_at_unix"].as_u64()? {
+        return None;
+    }
+    let mut result = json!({
+        "vm_id": raw["vm_id"], "stage": stage, "active": active,
+        "sampled_at_unix": raw["sampled_at_unix"], "started_at_unix": raw["started_at_unix"],
+        "a100_confirmed": raw["a100_confirmed"] == true,
+    });
+    for key in [
+        "rate_usd_per_hour",
+        "logical_cpus",
+        "threads",
+        "host_ram_gib",
+        "host_ram_used_gib",
+        "prove_seconds",
+        "peak_prove_ram_gib",
+    ] {
+        if raw[key].as_f64().is_some_and(|value| value >= 0.0) {
+            result[key] = raw[key].clone();
+        }
+    }
+    Some(result)
+}
+
+#[cfg(test)]
+mod hyperstack_tests {
+    use super::*;
+
+    #[test]
+    fn publishes_only_recognized_benchmark_fields() -> Result<()> {
+        let path =
+            std::env::temp_dir().join(format!("rbzk-hyperstack-{}.json", std::process::id()));
+        let mut snapshot = json!({
+            "schema": "rbzk/hyperstack-benchmark/v1", "vm_id": 123, "stage": "prove",
+            "active": true, "sampled_at_unix": 1000, "started_at_unix": 900,
+            "threads": 16, "host_ram_gib": "invalid", "private_field": "discarded",
+        });
+        std::fs::write(&path, serde_json::to_vec(&snapshot)?)?;
+        let published = read_hyperstack_snapshot(&path).context("valid benchmark was rejected");
+        snapshot["stage"] = json!("verified");
+        std::fs::write(&path, serde_json::to_vec(&snapshot)?)?;
+        let contradictory = read_hyperstack_snapshot(&path);
+        std::fs::remove_file(path)?;
+        let published = published?;
+        assert_eq!(published["threads"], 16);
+        assert!(published.get("host_ram_gib").is_none());
+        assert!(published.get("private_field").is_none());
+        assert!(contradictory.is_none());
+        Ok(())
     }
 }
 

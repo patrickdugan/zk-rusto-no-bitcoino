@@ -111,6 +111,15 @@ on verifier checks and an evidence audit. The milestones for live backing and
 liabilities, proof-bound issuance, funded mint-refusal redemption, and
 adversarial integration have no ETA.
 
+Set `RBZK_HYPERSTACK_BENCHMARK_JSON` to the local, atomically updated
+`rbzk/hyperstack-benchmark/v1` snapshot from an external pilot controller before
+launching the native app. Compute shows the phase, VM, elapsed time, reported host
+RAM, CPU threads and measured proving time. The hardware ribbon follows a fresh
+active Hyperstack pilot. Completed runs remain in the Compute card, and the
+Cashu Roadmap reports issuance separately from the pending redemption proof.
+The snapshot contains measurement fields only. Provider credentials and proof
+material stay in the external controller.
+
 The planner compares the entered scenario against the
 [Nut November cutoff](https://nutnovember.org/) on 27 November 2026 at 23:59 UTC.
 It needs a scenario core total and a remaining time budget for each unfinished
