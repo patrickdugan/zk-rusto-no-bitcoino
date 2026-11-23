@@ -175,3 +175,20 @@ test('terminal Ark checks still leave the audit and every admin-trust gate open'
   assert.deepEqual(road.trust.map(item=>item.id),['backing','issuance','redemption','adversarial']);
   assert.ok(road.trust.every(item=>!item.done && item.status.endsWith('· no ETA')));
 });
+
+test('overnight local checks advance the correct campaign milestones',()=>{
+  const model = stage => arkCampaign({}, {connected:true,overnight:{stage,fresh:true}});
+  const sdk = model('verify_sdk_m13');
+  assert.equal(sdk.rows.find(row=>row.id==='sp1').done,true);
+  assert.equal(sdk.rows.find(row=>row.id==='sdk').status,'In progress');
+  assert.equal(sdk.checksPassed,false);
+
+  const m14 = model('verify_m14');
+  assert.equal(m14.rows.find(row=>row.id==='refusals').done,true);
+  assert.equal(m14.rows.find(row=>row.id==='claim').status,'In progress');
+  assert.equal(m14.checksPassed,false);
+
+  const checked = model('proof_checks_passed');
+  assert.equal(checked.checksPassed,true);
+  assert.equal(checked.rows.find(row=>row.id==='delivery').done,false);
+});

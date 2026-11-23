@@ -70,20 +70,23 @@ const ProofEta = (() => {
   const coordinatorSteps = arkPhases.flatMap(phase => phase.steps);
   const minutes = value => finite(value) && value > 0 && value <= 10080 ? value : null;
   function arkCampaign(wsl = {}, options = {}) {
-    const {connected, paused, processObserved, setupRecorded, coreSource, plan = {}} = options;
+    const {connected, paused, processObserved, setupRecorded, coreSource, overnight, plan = {}} = options;
     const now = options.now ?? Date.now()/1000;
     const remainingToClose = arkDeadline-now;
-    const latestStatus = typeof wsl.status === 'string' ? wsl.status : 'unknown';
+    const observedLocalStage = {verify_sdk_m13:'sdk-verify',verify_m14:'m14claim',proof_checks_passed:'all_proof_checks_passed'}[overnight?.stage];
+    const latestStatus = observedLocalStage || (typeof wsl.status === 'string' ? wsl.status : 'unknown');
     const waitingFor = latestStatus.startsWith('waiting_for_headroom_');
     const phase = waitingFor ? latestStatus.slice('waiting_for_headroom_'.length) : latestStatus;
     const waitingForSetup = phase === 'waiting_for_statement_bound_m14_setup';
-    const checksPassed = phase === 'all_proof_checks_passed' && wsl.compressed_exists === true && wsl.wrap_v2_exists === true;
+    const checksPassed = phase === 'all_proof_checks_passed' &&
+      (observedLocalStage === phase || (wsl.compressed_exists === true && wsl.wrap_v2_exists === true));
     const step = checksPassed ? coordinatorSteps.length :
       waitingForSetup ? coordinatorSteps.indexOf('m14claim') : coordinatorSteps.indexOf(phase);
     const setupReady = setupRecorded || (step >= coordinatorSteps.indexOf('m14claim') && !waitingForSetup);
     const resourceHold = waitingFor || phase === 'held_for_user_confirmation';
     const current = arkPhases.find(item => item.steps.includes(phase));
-    const phaseObserved = connected && (current?.id === 'sp1' ? processObserved :
+    const phaseObserved = observedLocalStage ? overnight.fresh === true :
+      connected && (current?.id === 'sp1' ? processObserved :
       finite(wsl.last_resource_age_s) && wsl.last_resource_age_s <= 15);
     const rows = arkPhases.map(item => {
       if(item.id === 'setup')return {...item,status:setupReady?'Setup verified':waitingForSetup?'Waiting for setup':'Pending',done:!!setupReady};
@@ -153,7 +156,7 @@ const ProofEta = (() => {
         detail:'CDK admitted a Core-confirmed deposit and issued Cashu. A successful mint redemption delivered an Ark VTXO. The holder then claimed that VTXO on Bitcoin while the mint and Ark server were offline.'},
       {id:'refusal-demo',label:'Dedicated Cashu reserve paid with the mint offline',
         status:'Verified regtest payout',done:true,
-        detail:'Bitcoin Core confirmed 24,750 sats to the holder after six blocks and a 250-sat fee. Shinigami Cairo matched the payout and rejected an early spend and an altered prevout amount. A new STARK is pending.'},
+        detail:'Bitcoin Core confirmed 24,750 sats to the holder after six blocks and a 250-sat fee. Proof Grove holds the recorded Shinigami proof pair for issuance and the offline payout. A shared consumption rule for normal melts and fallback spends remains open.'},
       {id:'ark-proof',label:'Ark Nova → SP1 → M13 → BitVM3 off-chain proof',
         status:ark.checksPassed?'Checks reported · audit pending':'Conditional · finish unknown',done:false,
         detail:ark.checksPassed?
@@ -167,12 +170,13 @@ const ProofEta = (() => {
     const observedState=(fresh,current)=>paused?'Paused':fresh?current:'Stale';
     if(ark?.sample.active && ark.sample.stage!=='failed') {
       const sample=ark.sample;
-      const activity=sample.ark_running?'Running':
+      const activity=sample.local_verification?'Verifying':sample.ark_running?'Running':
         ['returning','stopped'].includes(sample.stage)?'Collecting results':'Preparing';
       const staging=['staging','queued','waiting_stock'].includes(sample.stage);
-      rows.push({id:'cloud-ark',title:'Ark SP1 prover',where:staging?'Hyperstack · private storage':'Hyperstack · A100 GPU',
+      rows.push({id:'cloud-ark',title:sample.local_verification?'Ark proof verification':'Ark SP1 prover',
+        where:sample.local_verification?'Local machine · CPU':staging?'Hyperstack · private storage':'Hyperstack · A100 GPU',
         phase:ark.fresh?ark.phase:ark.knownPhase,status:observedState(ark.fresh,activity),heardAt:sample.sampled_at_unix,
-        details:'#shard-panel',detailsLabel:'Checkpoint details',metrics:staging?[
+        details:'#shard-panel',detailsLabel:sample.local_verification?'Verification details':'Checkpoint details',metrics:staging?[
           ['Uploaded MiB',Number.isSafeInteger(sample.seed_bytes)?Math.floor(sample.seed_bytes/2**20):null],
           ['Verified transfer parts',sample.seed_parts]
         ]:[
@@ -419,10 +423,13 @@ if(typeof document!=='undefined') (() => {
       summary?.schema==='ark-m14-bounded-setup-v1' && summary?.status==='statement_bound_setup_artifacts_verified');
     const connected=freshRuntime() && wsl.reachable===true;
     const cloud=arkCloudSignal(), trend=ProofEta.checkpointTrend(checkpointHistory);
+    const overnight=cloud?.sample.local_verification?{stage:cloud.sample.stage,fresh:cloud.fresh}:null;
     const coreSource=cloud?.sample.ark_running && trend && (cloud.fresh || !processObserved) ? {active:true,connected:cloud.fresh,
       startedAt:cloud.sample.started_at_unix,progress:trend.progress}:null;
-    const forecastConnected=coreSource?.connected ?? connected;
-    const campaign=ProofEta.arkCampaign(wsl,{connected,paused:!state.polling,processObserved,setupRecorded,coreSource,plan:campaignPlan});
+    const campaignConnected=connected || overnight?.fresh === true;
+    const forecastConnected=coreSource?.connected ?? campaignConnected;
+    const campaign=ProofEta.arkCampaign(wsl,{connected:campaignConnected,paused:!state.polling,
+      processObserved,setupRecorded,coreSource,overnight,plan:campaignPlan});
     const {checksPassed, proofRemaining, proofFinish, deliveryFinish, corePending, core, target, missing}=campaign;
     let headline='ETA needs a scenario';
     let basis='';
@@ -609,19 +616,25 @@ if(typeof document!=='undefined') (() => {
     const phases={
       staging:'Uploading the held checkpoint',queued:'Checkpoint staged · waiting to launch',
       waiting_stock:'Checkpoint staged · waiting for spot capacity',
-      provisioning:'Provisioning A100',preparing:'Downloading checkpoint copy',starting:'Starting prover',
+      provisioning:'Provisioning A100',preparing:'Verifying the pinned GPU kit',
+      restoring_public_checkpoint:'Restoring the public checkpoint',
+      restoring_private_checkpoint:'Restoring the private checkpoint delta',
+      checking_checkpoint_export:'Checking durable checkpoint storage',starting:'Starting prover',
+      verify_sdk_m13:'Independently verifying SP1 and M13',verify_m14:'Evaluating and testing BitVM3',
+      proof_checks_passed:'Independent proof checks passed',verification_failed:'Local proof verification failed',
       replay:'Replaying checkpoints',shard:'Writing core shards',reduce:'Writing recursion checkpoints',
       returning:'Retrieving results',stopped:'Pilot stopped',failed:'Pilot failed'
     };
     if(!sample || !Object.hasOwn(phases,sample.stage))return null;
     const age=Date.now()/1000-sample.sampled_at_unix;
-    const boot=['staging','queued','waiting_stock','provisioning','preparing'].includes(sample.stage);
+    const boot=['staging','queued','waiting_stock','provisioning','preparing','restoring_public_checkpoint',
+      'restoring_private_checkpoint','checking_checkpoint_export'].includes(sample.stage);
     const fresh=state.polling&&Date.now()-state.lastReceived<15000&&age>=-10&&age<(boot?125:35);
     const progressAge=Date.now()/1000-sample.last_checkpoint_at_unix;
     const phase=!state.polling?'Display paused':sample.active&&!fresh?'Server heartbeat stale':
       fresh&&sample.ark_running&&progressAge>=60?'Prover running · awaiting checkpoint':phases[sample.stage];
     return {sample,phase,fresh,knownPhase:phases[sample.stage],
-      active:sample.active&&fresh&&Number.isSafeInteger(sample.vm_id)};
+      active:sample.active&&fresh&&!sample.local_verification&&Number.isSafeInteger(sample.vm_id)};
   }
   function renderArkCloud() {
     const cloud=arkCloudSignal();
@@ -633,7 +646,7 @@ if(typeof document!=='undefined') (() => {
       ['Core checkpoints replayed',sample.core_replayed],
       ['Recursion checkpoints replayed',sample.recursion_replayed]
     ].map(([label,value])=>kv(label,Number.isSafeInteger(value)?n(value):'Awaiting sample')).join('');
-    $('shard-heading').textContent='ARK SP1 · HYPERSTACK SHARDING';
+    $('shard-heading').textContent=sample.local_verification?'ARK · LOCAL VERIFICATION':'ARK SP1 · HYPERSTACK SHARDING';
     $('ark-state').textContent=phase;
     $('shard-metrics').innerHTML=counts+
       kv('Server heartbeat',time(sample.sampled_at_unix))+

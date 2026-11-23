@@ -211,8 +211,27 @@ fn read_hyperstack_ark_state(path: &Path, journal: Option<&Path>) -> Option<Valu
     }
     sample["spot"] = raw["spot"].clone();
     if raw["cleanup"] == "vm_deleted" {
-        sample["active"] = json!(false);
-        sample["stage"] = json!("stopped");
+        let local_stage = match stage {
+            "overnight_sdk_m13_verification" => Some(("verify_sdk_m13", true)),
+            "overnight_m14_evaluation" if raw["sdk_m13_independent_exit"] == 0 => {
+                Some(("verify_m14", true))
+            }
+            "overnight_offchain_proof_verified"
+                if raw["sdk_m13_independent_exit"] == 0 && raw["m14_independent_exit"] == 0 =>
+            {
+                Some(("proof_checks_passed", false))
+            }
+            "overnight_verification_failed" => Some(("verification_failed", false)),
+            _ => None,
+        };
+        if let Some((phase, active)) = local_stage {
+            sample["stage"] = json!(phase);
+            sample["active"] = json!(active);
+            sample["local_verification"] = json!(true);
+        } else {
+            sample["active"] = json!(false);
+            sample["stage"] = json!("stopped");
+        }
     } else if stage.starts_with("ark_heartbeat|") {
         let fields: Vec<_> = stage.split('|').collect();
         let ["ark_heartbeat", stamp, phase, progress, core, recursion, replay_core, replay_recursion, vram, ark, nova] =
@@ -247,7 +266,12 @@ fn read_hyperstack_ark_state(path: &Path, journal: Option<&Path>) -> Option<Valu
     } else {
         sample["stage"] = json!(match stage {
             "storage_vm_provisioned" => "provisioning",
-            "preparing_inputs" => "preparing",
+            "preparing_inputs" => match raw["prepare_phase"].as_str() {
+                Some("public_base") => "restoring_public_checkpoint",
+                Some("private_seed") => "restoring_private_checkpoint",
+                Some("export") => "checking_checkpoint_export",
+                _ => "preparing",
+            },
             "parallel_ark_and_mnr04" | "ark_overnight" => "starting",
             "finished" | "results_retrieved" => "returning",
             "failed" => "failed",
@@ -369,9 +393,36 @@ mod hyperstack_tests {
         state["cleanup"] = json!("vm_deleted");
         std::fs::write(&path, serde_json::to_vec(&state)?)?;
         let ended = read_hyperstack_ark_state(&path, None).context("ended pilot state was discarded")?;
-        std::fs::remove_file(path)?;
         assert_eq!(ended["active"], false);
         assert_eq!(ended["stage"], "stopped");
+
+        state["cleanup"] = Value::Null;
+        state["stage"] = json!("preparing_inputs");
+        state["prepare_phase"] = json!("private_seed");
+        std::fs::write(&path, serde_json::to_vec(&state)?)?;
+        let restoring = read_hyperstack_ark_state(&path, None).context("missing restore phase")?;
+        assert_eq!(restoring["stage"], "restoring_private_checkpoint");
+
+        state["cleanup"] = json!("vm_deleted");
+        state["stage"] = json!("overnight_m14_evaluation");
+        state["sdk_m13_independent_exit"] = json!(0);
+        std::fs::write(&path, serde_json::to_vec(&state)?)?;
+        let local = read_hyperstack_ark_state(&path, None).context("missing local verification")?;
+        assert_eq!(local["active"], true);
+        assert_eq!(local["stage"], "verify_m14");
+        assert_eq!(local["local_verification"], true);
+        assert!(local.get("ark_running").is_none());
+
+        state["stage"] = json!("overnight_offchain_proof_verified");
+        std::fs::write(&path, serde_json::to_vec(&state)?)?;
+        let incomplete = read_hyperstack_ark_state(&path, None).context("missing terminal state")?;
+        assert_eq!(incomplete["stage"], "stopped");
+        state["m14_independent_exit"] = json!(0);
+        std::fs::write(&path, serde_json::to_vec(&state)?)?;
+        let complete = read_hyperstack_ark_state(&path, None).context("missing checked state")?;
+        std::fs::remove_file(path)?;
+        assert_eq!(complete["stage"], "proof_checks_passed");
+        assert_eq!(complete["active"], false);
         Ok(())
     }
 
