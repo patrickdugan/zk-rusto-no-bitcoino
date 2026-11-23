@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" data-motion="live">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -28,7 +28,6 @@
       <!-- 62-degree distressed crimson diagonal slash -->
       <g clip-path="url(#slash-glitch)" opacity="0.14">
         <polygon points="445,1000 595,1000 1165,0 1015,0" fill="#D90814"/>
-        <!-- Subtle horizontal distress streaks -->
         <rect x="760" y="180" width="380" height="3" fill="#E60E1B" opacity="0.8"/>
         <rect x="520" y="420" width="520" height="2" fill="#E60E1B" opacity="0.6"/>
         <rect x="610" y="695" width="410" height="3" fill="#E60E1B" opacity="0.7"/>
@@ -48,7 +47,6 @@
       <!-- Subtle scanline grain overlay -->
       <rect width="1600" height="1000" fill="url(#crt-scan)" opacity="0.35"/>
     </svg>
-    <!-- 4 Outer Viewport White L-Hairline Frame Corners -->
     <span class="vp-corner tl"></span>
     <span class="vp-corner tr"></span>
     <span class="vp-corner bl"></span>
@@ -58,11 +56,10 @@
   <div class="app-shell">
     <!-- Left Architectural Rail -->
     <aside class="sidebar" aria-label="Prover navigation">
-      <!-- Top-Left Spec Block (Matches Title Card) -->
       <div class="spec-block">
         <div class="spec-row"><span class="sq-crimson">■</span><span class="spec-k">PROJECT</span><span class="spec-sep">:</span><span class="spec-v">ZK-RB</span></div>
-        <div class="spec-row"><span class="sq-spacer"></span><span class="spec-k">PHASE</span><span class="spec-sep">:</span><span class="spec-v" id="rail-phase-code">00</span></div>
-        <div class="spec-row"><span class="sq-spacer"></span><span class="spec-k">MODE</span><span class="spec-sep">:</span><span class="spec-v">LIVE</span></div>
+        <div class="spec-row"><span class="sq-spacer"></span><span class="spec-k">PHASE</span><span class="spec-sep">:</span><span class="spec-v" id="rail-phase-code">01</span></div>
+        <div class="spec-row"><span class="sq-spacer"></span><span class="spec-k">MODE</span><span class="spec-sep">:</span><span class="spec-v" id="rail-mode-code">LIVE</span></div>
         <div class="spec-rule"></div>
       </div>
 
@@ -70,25 +67,26 @@
       <nav class="nav-tabs" role="tablist" aria-label="Prover views">
         <button class="nav-btn active" role="tab" aria-selected="true" data-tab="live">
           <span class="nav-icon">01</span>
-          <span class="nav-label">LIVE RAM / GPU</span>
+          <span class="nav-label">LIVE PROVER</span>
         </button>
         <button class="nav-btn" id="compute-tab" role="tab" aria-selected="false" aria-controls="compute-panel" data-tab="compute">
-          <svg class="compute-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9zM9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3"/></svg>
-          <span class="nav-label">COMPUTE</span>
+          <span class="nav-icon">02</span>
+          <span class="nav-label">COMPUTE &amp; CLOUD</span>
         </button>
         <button class="nav-btn" role="tab" aria-selected="false" data-tab="blocks">
-          <span class="nav-icon">02</span>
+          <span class="nav-icon">03</span>
           <span class="nav-label">PROOF EVIDENCE</span>
         </button>
         <button class="nav-btn" role="tab" aria-selected="false" data-tab="utxos">
-          <span class="nav-icon">03</span>
+          <span class="nav-icon">04</span>
           <span class="nav-label">PAYMENT CLAIMS</span>
         </button>
         <button class="nav-btn" id="cashu-tab" role="tab" aria-selected="false" aria-controls="cashu-panel" data-tab="cashu">
+          <span class="nav-icon">05</span>
           <span class="nav-label">CASHU ROADMAP</span>
         </button>
         <button class="nav-btn" role="tab" aria-selected="false" data-tab="estimator">
-          <span class="nav-icon">04</span>
+          <span class="nav-icon">06</span>
           <span class="nav-label">SHARD PLANNER</span>
         </button>
       </nav>
@@ -105,7 +103,7 @@
             <text x="28" y="40.5" text-anchor="middle" fill="#F5F5F5" font-family="'Bahnschrift Condensed','Franklin Gothic Demi Cond',Impact,sans-serif" font-size="27" font-weight="900" transform="skewX(-8) translate(4,0)">₿</text>
           </svg>
           <div class="btc-sig-lines">
-            <span>PROOF SYSTEMS</span>
+            <span>ZERO-KNOWLEDGE</span>
             <span>RECURSIVE NOVA</span>
             <span>BITCOIN</span>
           </div>
@@ -126,92 +124,83 @@
 
     <!-- Main Column -->
     <div class="main-column">
-      <header class="telemetry-ribbon" id="hardware-ribbon" aria-label="Live hardware measurements"></header>
+      <!-- Sticky Open Hairline Telemetry Ribbon (4 Open Columns, Ticking Countdowns & 2px Hairline Meters) -->
+      <header class="telemetry-ribbon" id="hardware-ribbon" aria-label="Live hardware and shard telemetry">
+        <article class="ribbon-card" id="ribbon-gpu-card">
+          <div class="ribbon-head">
+            <span id="rib-gpu-label">ACTIVE GPU / CLOUD</span>
+            <span class="eta-badge cyan" id="rib-gpu-badge">⏱ --:--:--</span>
+          </div>
+          <div class="ribbon-main">
+            <span class="ribbon-val" id="rib-gpu-val">CONNECTING</span>
+            <span class="ribbon-unit" id="rib-gpu-unit">--</span>
+          </div>
+          <div class="meter"><div class="meter-fill cyan" id="rib-gpu-bar" style="width:0%"></div></div>
+          <div class="ribbon-sub">
+            <span id="rib-gpu-sub-l">Awaiting worker telemetry</span>
+            <span id="rib-gpu-sub-r">--</span>
+          </div>
+        </article>
+
+        <article class="ribbon-card" id="ribbon-host-card">
+          <div class="ribbon-head">
+            <span>WINDOWS &amp; WSL RAM</span>
+            <span class="eta-badge emerald" id="rib-host-badge">--% USED</span>
+          </div>
+          <div class="ribbon-main">
+            <span class="ribbon-val" id="rib-host-val">-- GiB free</span>
+            <span class="ribbon-unit" id="rib-host-unit">-- / -- GiB</span>
+          </div>
+          <div class="meter"><div class="meter-fill emerald" id="rib-host-bar" style="width:0%"></div></div>
+          <div class="ribbon-sub">
+            <span id="rib-host-sub-l">WSL WS: --</span>
+            <span id="rib-host-sub-r">Commit --</span>
+          </div>
+        </article>
+
+        <article class="ribbon-card" id="ribbon-workers-card">
+          <div class="ribbon-head">
+            <span>WORKERS &amp; STORAGE</span>
+            <span class="eta-badge violet" id="rib-workers-badge">0 RUNNING</span>
+          </div>
+          <div class="ribbon-main">
+            <span class="ribbon-val" id="rib-workers-val">--</span>
+            <span class="ribbon-unit" id="rib-workers-unit">--</span>
+          </div>
+          <div class="meter"><div class="meter-fill violet" id="rib-workers-bar" style="width:0%"></div></div>
+          <div class="ribbon-sub">
+            <span id="rib-workers-sub-l">Private bucket: --</span>
+            <span id="rib-workers-sub-r">--</span>
+          </div>
+        </article>
+
+        <article class="ribbon-card" id="ribbon-shard-card">
+          <div class="ribbon-head">
+            <span>SP1 SHARD STREAM</span>
+            <span class="eta-badge amber" id="rib-shard-badge">⏱ --:--:--</span>
+          </div>
+          <div class="ribbon-main">
+            <span class="ribbon-val" id="rib-shard-val">--</span>
+            <span class="ribbon-unit" id="rib-shard-unit">-- rec</span>
+          </div>
+          <div class="meter"><div class="meter-fill amber" id="rib-shard-bar" style="width:0%"></div></div>
+          <div class="ribbon-sub">
+            <span id="rib-shard-sub-l">Observed checkpoints</span>
+            <span id="rib-shard-sub-r">--</span>
+          </div>
+        </article>
+      </header>
+
       <main class="workspace-body">
-        <section class="panel ongoing-panel" id="ongoing-panel" aria-labelledby="ongoing-heading">
-          <div class="panel-head">
-            <h2 id="ongoing-heading">Live workers</h2>
-            <span class="tag-mono" id="ongoing-summary" role="status">Connecting</span>
-          </div>
-          <div class="campaign-overview" aria-label="Ark proof campaign progress">
-            <div>
-              <span class="kpi-label">Ark → BitVM3</span>
-              <strong id="overview-progress">Waiting for a worker observation</strong>
-              <span id="overview-cache"></span>
-              <span id="overview-gates"></span>
-              <span id="overview-storage" hidden></span>
-              <span id="overview-export" hidden></span>
-              <a id="overview-checkpoint-release" target="_blank" rel="noopener" hidden>Published checkpoint shards</a>
-              <a id="overview-proof-release" target="_blank" rel="noopener" hidden>Published Ark proof</a>
-              <a href="#campaign-milestones">See proof stages and dependencies</a>
-            </div>
-            <div>
-              <span class="kpi-label">Full proof ETA</span>
-              <strong id="overview-eta">Waiting for telemetry</strong>
-              <a id="overview-plan" href="#campaign-plan">Set core target and stage budgets</a>
-              <a id="overview-budget" href="#cloud-budget">Estimate A100 runway</a>
-            </div>
-            <div id="overview-recovery" hidden>
-              <span class="kpi-label">Saved core checkpoint recovery</span>
-              <strong id="overview-recovery-count"></strong>
-              <span id="overview-recovery-eta"></span>
-              <span id="overview-lease"></span>
-            </div>
-          </div>
-          <div id="ongoing-jobs" class="ongoing-list">
-            <p class="panel-sub">Waiting for a job observation.</p>
-          </div>
-          <details class="campaign-plan" id="cloud-budget">
-            <summary>A100 time and budget</summary>
-            <p class="panel-sub">Use a scenario total to price fresh core work from a saved copy. Replay, recursion after core, compression, verification, and storage have separate costs.</p>
-            <form id="cloud-budget-form" class="campaign-plan-grid">
-              <label>Starting cache<select id="budget-cache"><option value="local">Laptop checkpoint</option><option value="published">Published base + delta · 3,646 cores</option></select></label>
-              <label>Scenario core total<input id="budget-target" type="number" min="1" max="10000000" step="1" placeholder="Final count unknown"></label>
-              <label>A100 and IP per hour (USD)<input id="budget-rate" type="number" min="0.01" step="any" placeholder="Use the observed or earlier rate"></label>
-              <label>Available credit (USD)<input id="budget-credit" type="number" min="0" step="any" placeholder="Optional"></label>
-            </form>
-            <p id="budget-basis" class="panel-sub"></p>
-            <p id="budget-result" class="panel-sub"></p>
-            <p id="budget-runway" class="panel-sub"></p>
-          </details>
-          <details class="campaign-plan">
-            <summary>Related jobs and their remaining work</summary>
-            <div class="campaign-overview">
-              <div>
-                <strong>Cashu + Ark / Shinigami</strong>
-                <span>Regtest issuance and a funded offline-mint payout have verified demo evidence. The trust-removal work still needs proof-bound issuance, live reserve and liability checks, and a single claim consumed by either normal redemption or the refusal path.</span>
-                <button id="overview-cashu" type="button" class="ghost-btn">Cashu roadmap</button>
-              </div>
-              <div>
-                <strong>MNR-04 clearing</strong>
-                <span>The pilot’s CPU proof was independently verified against its exact Bitcoin Core transaction. Production authorization and on-chain enforcement are separate follow-on work.</span>
-                <a href="https://github.com/patrickdugan/SatsHedgeZero/pull/5" target="_blank" rel="noopener">MNR-04 evidence</a>
-              </div>
-            </div>
-          </details>
-          <section class="checkpoint-mosaic" aria-labelledby="mosaic-heading">
-            <div class="panel-head">
-              <h3 id="mosaic-heading">Shard and recursion heat map</h3>
-              <span id="mosaic-source" class="tag-mono"></span>
-            </div>
-            <div id="mosaic-tiles" class="mosaic-tiles" aria-hidden="true"></div>
-            <p id="mosaic-caption" class="panel-sub">Waiting for checkpoint activity.</p>
-            <p class="mosaic-legend">
-              <span><i class="mosaic-cell core"></i> Core shard</span>
-              <span><i class="mosaic-cell recursion"></i> Recursion fold</span>
-              <span><i class="mosaic-cell core replay"></i> Replayed</span>
-            </p>
-          </section>
-        </section>
+        <!-- FIRST: Iconic ZK RAITO NO BITCOINO Title-Card Hero Strip -->
         <section class="campaign-banner" aria-labelledby="campaign-title">
           <div class="hero-top-row">
-            <p class="eyebrow" id="campaign-network">LIVE PROVER OBSERVATIONS</p>
+            <p class="eyebrow" id="campaign-network">ARK ASP POLICY CAMPAIGN</p>
             <div class="hero-top-right">
               <div class="hero-meta-lines">
                 <span>CRYPTO × MECHA</span>
                 <span>PROVER TELEMETRY CONSOLE</span>
               </div>
-              <!-- Crisp White Barcode Accent -->
               <svg class="hero-barcode" viewBox="0 0 92 18" width="92" height="18" aria-hidden="true">
                 <rect x="0" y="0" width="3" height="18" fill="currentColor"/>
                 <rect x="5" y="0" width="1.5" height="18" fill="currentColor"/>
@@ -237,8 +226,7 @@
           </div>
 
           <div class="hero-title-zone">
-            <h1 id="campaign-title">ZK RAITO NO BITCOINO</h1>
-            <!-- Skewed White-Bordered Katakana Parallelogram + Triple Crimson Hazard Stripes -->
+            <h1 id="campaign-title">ARK ASP · SP1 → BITVM3</h1>
             <div class="katakana-ribbon-row">
               <span class="hazard-tri" aria-hidden="true"><i></i><i></i><i></i></span>
               <div class="katakana-parallelogram">
@@ -252,78 +240,384 @@
 
           <div class="hero-bottom-row">
             <div class="badge-stack">
-              <span class="status-pill" id="campaign-badge">WAITING FOR EVIDENCE</span>
-              <span class="status-pill cyan" id="campaign-eta-pill">⏱ WAITING FOR OBSERVATIONS</span>
-              <span class="hw-caption" id="campaign-hw"></span>
+              <span class="status-pill live" id="campaign-eta-pill">CONNECTING</span>
+              <span class="status-pill" id="campaign-badge">OBSERVING EVIDENCE</span>
+              <span class="hw-caption" id="campaign-hw">Connecting to live runtime and cloud coordinator…</span>
             </div>
-            <div class="ver-stamp">
-              <div class="ver-line"><span>VER.0.3.0</span><span class="sq-crimson">■</span></div>
-              <div class="ver-sub">ZK / SP1 / BTC</div>
-            </div>
-          </div>
-        </section>
-
-
-        <section class="kpi-grid" id="live-kpis" aria-label="Observed proof progress"></section>
-        <section class="panel eta-panel" id="eta-panel" aria-labelledby="eta-heading">
-          <div class="panel-head"><h2 id="eta-heading">ARK → BITVM3 · CAMPAIGN ETA</h2><button type="button" class="ghost-btn" id="toggle-motion" aria-pressed="false">MOTION: SUBTLE</button></div>
-          <p class="panel-sub">Nova maintenance policy · regtest height 679 · 4 VTXOs · 79,440 sats</p>
-          <div class="campaign-forecast">
-            <div>
-              <span class="kpi-label">FULL OFF-CHAIN PROOF</span>
-              <strong class="campaign-forecast-value" id="proof-finish">Waiting for telemetry</strong>
-              <p class="panel-sub" id="proof-eta-basis"></p>
-            </div>
-            <div>
-              <span class="kpi-label">NUT NOVEMBER CUTOFF</span>
-              <strong class="campaign-forecast-value" id="deadline-clock">Loading</strong>
-              <p class="panel-sub">Fri Nov 27, 23:59 UTC · Sat Nov 28, 07:59 SGT · <a href="https://nutnovember.org/" target="_blank" rel="noopener">Official timeline</a></p>
-              <p id="deadline-outlook"></p>
-            </div>
-          </div>
-          <div class="cashu-roadmap-link">
-            <p class="panel-sub">Friday’s demo can use the recorded Cashu-to-Ark regtest flow and historical Shinigami proofs.</p>
-            <button type="button" class="ghost-btn" id="open-cashu-roadmap">VIEW CASHU ROADMAP</button>
-          </div>
-          <h3 class="core-eta-heading">Ark proof job map</h3>
-          <p class="panel-sub">Before resuming, verify the saved memo and pinned inputs on the runner. Keep the new checkpoints on durable storage. M14 setup can run in parallel. Its evaluation waits for the verified M13 statement.</p>
-          <ol id="campaign-milestones" class="campaign-milestones" aria-label="Ark proof and delivery milestones"></ol>
-          <details class="campaign-plan" id="campaign-plan">
-            <summary>Plan a full-chain ETA</summary>
-            <form id="campaign-plan-form">
-              <p class="panel-sub">Enter a total core count and remaining minutes for unfinished stages. Budget only the SP1 recursion and compression that remain after core proving. The finish range uses recent core pace and assumes uninterrupted resources.</p>
-              <div class="campaign-plan-grid" id="campaign-plan-inputs"></div>
-              <div class="eta-target-controls">
-                <button class="ghost-btn" type="submit">APPLY SCENARIO</button>
-                <button class="ghost-btn" id="clear-campaign-plan" type="button">CLEAR SCENARIO</button>
+            <div class="hero-right-controls">
+              <button type="button" class="ghost-btn compact-btn" id="toggle-motion" aria-pressed="false">MOTION: LIVE</button>
+              <div class="ver-stamp">
+                <div class="ver-line"><span>VER.0.3.0</span><span class="sq-crimson">■</span></div>
+                <div class="ver-sub">ZK / SP1 / BTC</div>
               </div>
-            </form>
-          </details>
-          <h3 class="core-eta-heading" id="eta-heading">Live core checkpoint forecast</h3>
-          <div class="eta-layout">
-            <div><span class="kpi-label" id="eta-scope">NEXT SAVED-CORE MILESTONE</span><strong class="eta-clock" id="eta-clock">Connecting</strong><p id="eta-finish" class="panel-sub">Waiting for live progress</p></div>
-            <div class="eta-context"><strong id="eta-target-label">Waiting for a progress sample</strong><span id="eta-rate">Learning the current pace</span><span id="eta-range"></span><span id="eta-proof-total" class="panel-sub"></span></div>
+            </div>
           </div>
-          <div id="eta-progress" class="eta-progress" role="progressbar" aria-label="Saved-core milestone" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="eta-fill"></div></div>
-          <div class="eta-footer"><span class="tag-mono" id="eta-run-age">Phase elapsed unavailable</span><span class="tag-mono" id="eta-last-proof">Waiting for a new proof event</span><details><summary>Set a core target</summary><form id="eta-target-form"><label for="eta-target">Optional planned total of saved core proofs</label><div class="eta-target-controls"><input id="eta-target" type="number" min="1" max="10000000" step="1" inputmode="numeric"><button class="ghost-btn" type="submit">APPLY</button><button class="ghost-btn" id="eta-reset" type="button">USE NEXT MILESTONE</button></div><p class="panel-sub">An entered target projects the core phase, including saved cache history. Final verification is tracked separately.</p></form></details></div>
         </section>
-        <section class="panel" id="runtime-panel"><div class="panel-head"><h2>LIVE PROCESS &amp; PROOF JOURNAL</h2><span class="tag-mono" id="runtime-age">Connecting</span></div>
-          <p class="panel-sub">Process identity, CPU time and cgroup memory from the running machine. A quiet proof stage stays quiet.</p>
-          <div id="jobs"></div>
-          <div class="sub-panel"><h3>Observed CPU / host memory / GPU activity</h3><canvas id="observations" height="150" aria-label="Measured resource history"></canvas><p id="history-caption" class="panel-sub"></p></div>
+
+        <!-- SECOND: 5 Open Architectural KPI Columns (Zero Boxes, Vertical 1px Hairlines) -->
+        <section class="kpi-grid" id="live-kpis" aria-label="Observed campaign metrics">
+          <article class="kpi-card" id="kpi-worker-card">
+            <div class="kpi-head">
+              <span class="kpi-label" id="kpi-1-label">ACTIVE WORKER</span>
+              <span class="eta-badge cyan" id="kpi-1-badge">--</span>
+            </div>
+            <strong class="kpi-value" id="kpi-1-val">--</strong>
+            <span class="kpi-foot" id="kpi-1-foot">Awaiting observation</span>
+          </article>
+          <article class="kpi-card" id="kpi-core-card">
+            <div class="kpi-head">
+              <span class="kpi-label" id="kpi-2-label">CORE SHARDS</span>
+              <span class="eta-badge cyan" id="kpi-2-badge">--</span>
+            </div>
+            <strong class="kpi-value" id="kpi-2-val">--</strong>
+            <div class="meter kpi-meter"><div class="meter-fill cyan" id="kpi-2-bar" style="width:0%"></div></div>
+            <span class="kpi-foot" id="kpi-2-foot">--</span>
+          </article>
+          <article class="kpi-card" id="kpi-rec-card">
+            <div class="kpi-head">
+              <span class="kpi-label" id="kpi-3-label">RECURSION FOLDS</span>
+              <span class="eta-badge violet" id="kpi-3-badge">--</span>
+            </div>
+            <strong class="kpi-value" id="kpi-3-val">--</strong>
+            <div class="meter kpi-meter"><div class="meter-fill violet" id="kpi-3-bar" style="width:0%"></div></div>
+            <span class="kpi-foot" id="kpi-3-foot">--</span>
+          </article>
+          <article class="kpi-card" id="kpi-gates-card">
+            <div class="kpi-head">
+              <span class="kpi-label" id="kpi-4-label">PROOF GATES</span>
+              <span class="eta-badge emerald" id="kpi-4-badge">--</span>
+            </div>
+            <strong class="kpi-value" id="kpi-4-val">--</strong>
+            <div class="meter kpi-meter"><div class="meter-fill emerald" id="kpi-4-bar" style="width:0%"></div></div>
+            <span class="kpi-foot" id="kpi-4-foot">--</span>
+          </article>
+          <article class="kpi-card" id="kpi-cutoff-card">
+            <div class="kpi-head">
+              <span class="kpi-label" id="kpi-5-label">NUT NOV CUTOFF</span>
+              <span class="eta-badge amber" id="kpi-5-badge">NOV 27 23:59Z</span>
+            </div>
+            <strong class="kpi-value" id="kpi-5-val">--</strong>
+            <span class="kpi-foot" id="kpi-5-foot">--</span>
+          </article>
         </section>
-        <section class="panel" id="shard-panel"><div class="panel-head"><h2 id="shard-heading">ARK SP1 SHARD CACHE</h2><span class="tag-mono" id="ark-state">Unknown</span></div>
-          <div id="shard-metrics" class="kv-grid"></div><p class="panel-sub">Durable cache history survives a stopped prover. Counts are not a completion percentage or an independent verification.</p>
-          <div id="shard-events"></div>
+
+        <!-- TAB 01 CENTERPIECE: Restored Live Targeting Reticle Cockpit & 60fps Shard Matrix -->
+        <section class="liveness-cockpit mode-proving" id="liveness-cockpit" aria-label="Live prover reticle and animated shard matrix">
+          <div class="cockpit-scanline"></div>
+          <div class="cockpit-grid">
+            <div class="cockpit-left">
+              <div class="cockpit-hero">
+                <div class="ring-wrap" aria-hidden="true">
+                  <svg class="ring-svg" viewBox="0 0 88 88">
+                    <line x1="44" y1="1" x2="44" y2="7" stroke="var(--ink)" stroke-width="1.2" opacity="0.65"/>
+                    <line x1="44" y1="81" x2="44" y2="87" stroke="var(--ink)" stroke-width="1.2" opacity="0.65"/>
+                    <line x1="1" y1="44" x2="7" y2="44" stroke="var(--ink)" stroke-width="1.2" opacity="0.65"/>
+                    <line x1="81" y1="44" x2="87" y2="44" stroke="var(--ink)" stroke-width="1.2" opacity="0.65"/>
+                    <circle cx="44" cy="44" r="36" fill="none" stroke="var(--line-strong)" stroke-width="2.2"/>
+                    <circle id="cockpit-ring-arc" cx="44" cy="44" r="36" fill="none" stroke="var(--crimson)"
+                      stroke-width="3.2" stroke-linecap="butt" stroke-dasharray="226.2" stroke-dashoffset="113" transform="rotate(-90 44 44)"/>
+                    <circle id="cockpit-ring-orbit" cx="44" cy="8" r="3.4" fill="var(--ink)"/>
+                  </svg>
+                  <div class="ring-center">
+                    <strong id="cockpit-timer-val">0.0s</strong>
+                    <small id="cockpit-timer-sub">LIVE</small>
+                  </div>
+                </div>
+                <div class="cockpit-status-copy">
+                  <div class="cockpit-eyebrow-row">
+                    <span class="sse-pill" id="sse-heartbeat-pill">
+                      <span class="dot live" id="cockpit-live-dot"></span>
+                      <span id="sse-frame-label">SSE STREAM · 1.0S</span>
+                    </span>
+                    <span class="tag-mono" id="cockpit-stage-tag">AWAITING SAMPLE</span>
+                    <span class="replay-pill" id="replay-mode-pill" hidden>REPLAY PREVIEW · RECORDED MEMO STREAM</span>
+                  </div>
+                  <h2 id="cockpit-headline">CONNECTING TO PROVER TELEMETRY…</h2>
+                  <p id="cockpit-detail">Subscribing to real-time 1s SSE stream for Hyperstack A100 coordinator, local WSL runtime, and checkpoint cache.</p>
+                </div>
+              </div>
+
+              <div class="headroom-progress-box">
+                <div class="headroom-top">
+                  <span id="cockpit-bar1-left">Saved Core Checkpoint Recovery</span>
+                  <strong id="cockpit-bar1-right">--</strong>
+                </div>
+                <div class="meter" style="height:4px;margin-bottom:12px">
+                  <div class="meter-fill cyan" id="cockpit-bar1-fill" style="width:0%"></div>
+                </div>
+                <div class="headroom-top">
+                  <span id="cockpit-bar2-left">Active Lease Runway / Checkpoint Cadence</span>
+                  <strong id="cockpit-bar2-right">--</strong>
+                </div>
+                <div class="meter" style="height:3px">
+                  <div class="meter-fill emerald" id="cockpit-bar2-fill" style="width:0%"></div>
+                </div>
+              </div>
+
+              <!-- Calm Static 5-Node Proof Pipeline Stage Bus (Event-Only Completion Pulses) -->
+              <svg class="bus-svg" id="proof-bus-svg" viewBox="0 0 680 86" aria-label="Proof pipeline stage bus">
+                <defs>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="2.0" result="b"/>
+                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                </defs>
+                <line x1="68" y1="36" x2="612" y2="36" stroke="var(--line-strong)" stroke-width="1.4"/>
+                <line id="bus-active-wire" class="bus-wire-active" x1="68" y1="36" x2="476" y2="36" stroke="var(--crimson)" stroke-width="2"/>
+                <g fill="none" stroke="var(--ink-dim)" stroke-width="1.3" stroke-linecap="square">
+                  <polyline points="134,32.5 138.5,36 134,39.5"/>
+                  <polyline points="270,32.5 274.5,36 270,39.5"/>
+                  <polyline points="406,32.5 410.5,36 406,39.5"/>
+                  <polyline points="542,32.5 546.5,36 542,39.5"/>
+                </g>
+                <g id="bus-particles-layer" filter="url(#glow)"></g>
+                <g transform="translate(68,36)">
+                  <circle id="bus-node-nova" r="14" fill="var(--bg)" stroke="var(--ink)" stroke-width="1.8"/>
+                  <text y="3.5" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" font-weight="700">NOVA</text>
+                  <text y="29" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace" id="bus-nova-label">STATEMENT ✓</text>
+                </g>
+                <g transform="translate(204,36)">
+                  <circle id="bus-node-shard" r="15" fill="var(--bg)" stroke="var(--crimson)" stroke-width="2.1"/>
+                  <text y="3.5" text-anchor="middle" fill="var(--crimson)" font-size="8.5" font-family="monospace" font-weight="700">CORE</text>
+                  <text y="29" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" id="bus-shard-count">-- core</text>
+                </g>
+                <g transform="translate(340,36)">
+                  <circle id="bus-node-reduce" r="15" fill="var(--bg)" stroke="var(--ink)" stroke-width="2"/>
+                  <text y="3.5" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" font-weight="700">3:1</text>
+                  <text y="29" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" id="bus-reduce-count">-- rec</text>
+                </g>
+                <g transform="translate(476,36)">
+                  <circle id="bus-node-m13" r="14" fill="var(--bg)" stroke="var(--line-strong)" stroke-width="1.6"/>
+                  <text y="3.5" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace" font-weight="700">M13</text>
+                  <text y="29" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace" id="bus-m13-label">SDK + WRAP</text>
+                </g>
+                <g transform="translate(612,36)">
+                  <circle id="bus-node-final" r="14" fill="var(--bg)" stroke="var(--line-strong)" stroke-width="1.6"/>
+                  <text y="3.5" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace" font-weight="700">M14</text>
+                  <text y="29" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace" id="bus-m14-label">SETUP VERIFIED</text>
+                </g>
+              </svg>
+            </div>
+
+            <!-- Right: Live 60fps Canvas Shard & Recursion Matrix + Sliding Completion Feed -->
+            <div class="cockpit-right">
+              <div class="mosaic-head">
+                <div>
+                  <h3>LIVE SHARD &amp; RECURSION MATRIX</h3>
+                  <div class="mosaic-count-line" id="mosaic-total-count">Observing checkpoint stream…</div>
+                </div>
+                <button type="button" class="replay-btn" id="replay-completions-btn" title="Visually replay the last 12 recorded shard/recursion completions from progress.jsonl">
+                  ▶ REPLAY LAST 12 SHARDS
+                </button>
+              </div>
+              <div class="mosaic-canvas-wrap">
+                <canvas id="shard-mosaic-canvas" width="540" height="108" aria-label="Live shard and recursion completion mosaic"></canvas>
+              </div>
+              <div class="mosaic-tooltip">
+                <span id="mosaic-hover-label">Hover tile for digest &amp; latency · Leading slot pulses while proving</span>
+                <span class="mosaic-legend-right"><b style="color:var(--crimson)">■</b> CORE &nbsp;<b style="color:var(--ink)">■</b> REDUCE &nbsp;<b style="color:var(--crimson)">[◉]</b> ACTIVE</span>
+              </div>
+              <div class="completion-feed" id="completion-feed" aria-live="polite"></div>
+            </div>
+          </div>
         </section>
-        <section class="panel" id="evidence-panel"><div class="panel-head"><h2>LOCAL PROOF EVIDENCE</h2><span class="tag-mono" id="evidence-source"></span></div>
-          <p class="panel-sub">Files are reread from disk. Recorded reports remain historical evidence; their presence does not establish a live process.</p><div id="evidence-list"></div>
+
+        <!-- TAB 01 OPERATIONS GRID: Clean 2-Column Organization (Proof Job Map | Workers, ETA & Budget) -->
+        <section class="panel ops-split-panel" id="eta-panel" aria-labelledby="eta-heading">
+          <div class="grid-aside">
+            <!-- Left: Ark -> BitVM3 Proof Job Map + Scenario Planner -->
+            <div class="ops-col">
+              <div class="panel-head">
+                <div>
+                  <h2 id="eta-heading">ARK → BITVM3 · PROOF JOB MAP &amp; GATES</h2>
+                  <p class="panel-sub">Nova maintenance policy · regtest height 679 · 4 VTXOs · 79,440 sats</p>
+                </div>
+                <span class="tag-mono" id="overview-gates-pill">GATES · --</span>
+              </div>
+
+              <div class="forecast-strip">
+                <div class="forecast-cell">
+                  <span class="kpi-label">FULL OFF-CHAIN PROOF</span>
+                  <strong class="campaign-forecast-value" id="proof-finish">Waiting for telemetry</strong>
+                  <p class="panel-sub" id="proof-eta-basis"></p>
+                </div>
+                <div class="forecast-cell">
+                  <span class="kpi-label">NUT NOVEMBER CUTOFF</span>
+                  <strong class="campaign-forecast-value" id="deadline-clock">Loading</strong>
+                  <p class="panel-sub">Fri Nov 27, 23:59 UTC · Sat Nov 28, 07:59 SGT · <a href="https://nutnovember.org/" target="_blank" rel="noopener">Official timeline</a></p>
+                  <p id="deadline-outlook" class="panel-sub"></p>
+                </div>
+              </div>
+
+              <ol id="campaign-milestones" class="campaign-milestones" aria-label="Ark proof and delivery milestones"></ol>
+
+              <details class="campaign-plan" id="campaign-plan">
+                <summary>Plan a full-chain ETA (set scenario core target &amp; serial stage budgets)</summary>
+                <form id="campaign-plan-form">
+                  <p class="panel-sub">Enter a total core count and remaining minutes for unfinished stages. Budget only the SP1 recursion and compression that remain after core proving.</p>
+                  <div class="campaign-plan-grid" id="campaign-plan-inputs"></div>
+                  <div class="eta-target-controls">
+                    <button class="ghost-btn" type="submit">APPLY SCENARIO</button>
+                    <button class="ghost-btn" id="clear-campaign-plan" type="button">CLEAR SCENARIO</button>
+                  </div>
+                </form>
+              </details>
+            </div>
+
+            <!-- Right: Active Workers, Storage/Releases, Core Forecast & A100 Budget -->
+            <div class="ops-col ops-col-right" id="ongoing-panel">
+              <div class="panel-head">
+                <div>
+                  <h2 id="ongoing-heading">ACTIVE WORKERS &amp; CHECKPOINT STORAGE</h2>
+                  <p class="panel-sub" id="overview-cache">Waiting for checkpoint inventory…</p>
+                </div>
+                <span class="tag-mono" id="ongoing-summary" role="status">Connecting</span>
+              </div>
+
+              <!-- Concise Open Hairline Status Strip (Replacing Bulky 3-Card Box Wall) -->
+              <div class="compact-status-lines" aria-label="Ark proof status and storage">
+                <div class="status-kv-row">
+                  <span class="kpi-label">WORKER STATE</span>
+                  <strong id="overview-progress">Waiting for observation</strong>
+                </div>
+                <div class="status-kv-row">
+                  <span class="kpi-label">FULL PROOF ETA</span>
+                  <strong id="overview-eta">Waiting for telemetry</strong>
+                </div>
+                <div class="status-kv-row" id="overview-recovery" hidden>
+                  <span class="kpi-label">SAVED RECOVERY</span>
+                  <strong><span id="overview-recovery-count"></span> · <span id="overview-recovery-eta"></span> · <span id="overview-lease"></span></strong>
+                </div>
+                <div class="status-kv-row" id="overview-storage-row" hidden>
+                  <span class="kpi-label">PRIVATE STORAGE</span>
+                  <span id="overview-storage"></span>
+                </div>
+                <div class="status-kv-row" id="overview-export-row" hidden>
+                  <span class="kpi-label">EXPORT STATUS</span>
+                  <span id="overview-export"></span>
+                </div>
+                <div class="status-links-row">
+                  <a id="overview-plan" href="#campaign-plan">Set core target &amp; budgets</a>
+                  <a id="overview-budget" href="#cloud-budget">Estimate A100 runway</a>
+                  <a id="overview-checkpoint-release" target="_blank" rel="noopener" hidden>Published checkpoint shards ↗</a>
+                  <a id="overview-proof-release" target="_blank" rel="noopener" hidden>Published Ark proof ↗</a>
+                  <button type="button" class="ghost-btn compact-btn" id="open-cashu-roadmap">CASHU ROADMAP</button>
+                </div>
+                <span id="overview-gates" hidden></span>
+              </div>
+
+              <div id="ongoing-jobs" class="ongoing-list">
+                <p class="panel-sub">Waiting for a job observation.</p>
+              </div>
+
+              <!-- Live Core Checkpoint Forecast -->
+              <div class="sub-panel forecast-clock-box">
+                <div class="panel-head" style="margin-bottom:8px">
+                  <h3 class="core-eta-heading" id="core-eta-heading">LIVE CORE CHECKPOINT FORECAST</h3>
+                  <span class="tag-mono" id="eta-scope">NEXT MILESTONE</span>
+                </div>
+                <div class="eta-compact-row">
+                  <strong class="eta-clock" id="eta-clock">Connecting</strong>
+                  <div class="eta-context">
+                    <strong id="eta-target-label">Waiting for progress sample</strong>
+                    <span id="eta-rate">Learning current pace</span>
+                    <span id="eta-range"></span>
+                  </div>
+                </div>
+                <p id="eta-finish" class="panel-sub"></p>
+                <div id="eta-progress" class="eta-progress" role="progressbar" aria-label="Saved-core milestone" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="eta-fill"></div></div>
+                <div class="eta-footer">
+                  <span class="tag-mono" id="eta-run-age">Phase elapsed --</span>
+                  <span class="tag-mono" id="eta-last-proof">Last checkpoint --</span>
+                </div>
+                <p id="eta-proof-total" class="panel-sub" style="margin-top:6px"></p>
+                <details class="campaign-plan" style="margin-top:8px">
+                  <summary>Set a core target</summary>
+                  <form id="eta-target-form">
+                    <label for="eta-target" class="panel-sub">Optional planned total of saved core proofs</label>
+                    <div class="eta-target-controls">
+                      <input id="eta-target" type="number" min="1" max="10000000" step="1" inputmode="numeric">
+                      <button class="ghost-btn" type="submit">APPLY</button>
+                      <button class="ghost-btn" id="eta-reset" type="button">USE NEXT MILESTONE</button>
+                    </div>
+                  </form>
+                </details>
+              </div>
+
+              <!-- Expandable A100 Time & Budget + Related Jobs -->
+              <details class="campaign-plan" id="cloud-budget">
+                <summary>A100 time &amp; budget calculator</summary>
+                <p class="panel-sub">Use a scenario total to price fresh core work from a saved copy. Replay, recursion, compression, and storage have separate costs.</p>
+                <form id="cloud-budget-form" class="campaign-plan-grid">
+                  <label>Starting cache<select id="budget-cache"><option value="local">Laptop checkpoint</option><option value="published">Published base + delta · 3,646 cores</option></select></label>
+                  <label>Scenario core total<input id="budget-target" type="number" min="1" max="10000000" step="1" placeholder="Final count unknown"></label>
+                  <label>A100 &amp; IP / hr (USD)<input id="budget-rate" type="number" min="0.01" step="any" placeholder="Observed rate"></label>
+                  <label>Available credit (USD)<input id="budget-credit" type="number" min="0" step="any" placeholder="Optional"></label>
+                </form>
+                <p id="budget-basis" class="panel-sub"></p>
+                <p id="budget-result" class="panel-sub"></p>
+                <p id="budget-runway" class="panel-sub"></p>
+              </details>
+
+              <details class="campaign-plan">
+                <summary>Related jobs &amp; remaining work (Cashu + MNR-04)</summary>
+                <div class="related-jobs-grid">
+                  <div class="related-item">
+                    <strong>Cashu + Ark / Shinigami</strong>
+                    <p class="panel-sub">Regtest issuance and funded offline-mint payout have verified demo evidence. Trust-removal work still needs proof-bound issuance, live reserve/liability checks, and single-use claim enforcement.</p>
+                    <button id="overview-cashu" type="button" class="ghost-btn compact-btn">OPEN CASHU ROADMAP</button>
+                  </div>
+                  <div class="related-item">
+                    <strong>MNR-04 clearing</strong>
+                    <p class="panel-sub">The pilot’s CPU proof was independently verified against its exact Bitcoin Core transaction. Production authorization and on-chain enforcement are separate follow-on work.</p>
+                    <a href="https://github.com/patrickdugan/SatsHedgeZero/pull/5" target="_blank" rel="noopener">MNR-04 evidence ↗</a>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
         </section>
-        <section class="panel" id="claims-panel"><div class="panel-head"><h2>PAYMENT CLAIMS</h2><span class="tag-mono">FROM OBSERVED AUDIT RECEIPTS</span></div>
-          <div id="claims-list"></div><p class="panel-sub">Historical script verification does not establish current unspentness, mint funding, an Ark payment, or removal of a trusted administrator. No live wallet balance source is configured.</p>
-        </section>
+
+        <!-- TAB 01 BOTTOM: 2-Column Resource Telemetry & Checkpoint Cache -->
+        <div class="grid-2" id="runtime-shard-grid">
+          <section class="panel" id="runtime-panel">
+            <div class="panel-head">
+              <div>
+                <h2>OBSERVED CPU / HOST RAM / GPU ACTIVITY</h2>
+                <p class="panel-sub">Real-time sample trace from Windows host and WSL runtime processes.</p>
+              </div>
+              <span class="tag-mono" id="runtime-age">Connecting</span>
+            </div>
+            <div class="chart-box">
+              <canvas id="observations" height="150" aria-label="Measured resource history"></canvas>
+              <p id="history-caption" class="panel-sub"></p>
+            </div>
+            <div id="jobs" style="margin-top:14px"></div>
+          </section>
+
+          <section class="panel" id="shard-panel">
+            <div class="panel-head">
+              <div>
+                <h2 id="shard-heading">ARK SP1 SHARD CACHE &amp; HEARTBEAT</h2>
+                <p class="panel-sub">Durable checkpoint inventory across Hyperstack A100 and local laptop cache.</p>
+              </div>
+              <span class="tag-mono" id="ark-state">Unknown</span>
+            </div>
+            <div id="shard-metrics" class="kv-grid"></div>
+            <p class="panel-sub" style="margin-top:10px">Durable cache history survives a stopped prover. Counts are observed inventory, not an independent verification.</p>
+            <div id="shard-events" style="margin-top:10px"></div>
+          </section>
+        </div>
+
+        <!-- TAB 02: COMPUTE & CLOUD -->
         <section class="panel" id="compute-panel" role="tabpanel" aria-labelledby="compute-tab" hidden>
-          <div class="panel-head"><h2>COMPUTE</h2></div>
+          <div class="panel-head">
+            <div>
+              <h2>COMPUTE &amp; CLOUD TARGETS</h2>
+              <p class="panel-sub">Live local RTX 5080, Hyperstack A100 spot/benchmark telemetry, and Prime/Runpod read-only pods.</p>
+            </div>
+            <span class="tag-mono" id="compute-source-state">ACTIVE DISPLAY SOURCE · LOCAL GPU</span>
+          </div>
           <div class="compute-grid">
             <section class="compute-card" aria-labelledby="local-gpu-heading">
               <div class="compute-card-head">
@@ -340,7 +634,6 @@
                 <span id="runpod-cloud-status" class="tag-mono">SIGNAL UNAVAILABLE</span>
               </div>
               <strong class="compute-gpu-name" id="runpod-cloud-name">Cloud telemetry</strong>
-              <p class="compute-source-state" id="compute-source-state">ACTIVE DISPLAY SOURCE · LOCAL GPU</p>
               <div class="compute-metrics" id="runpod-cloud-metrics"></div>
               <p class="panel-sub" id="runpod-cloud-sample">Waiting for a fresh cloud GPU sample.</p>
             </section>
@@ -369,9 +662,9 @@
               </fieldset>
               <p class="panel-sub">This planning choice is saved in this console. Prover jobs are managed separately.</p>
               <div class="compute-signin-links" aria-label="Cloud provider sign-in links">
-                <a href="https://app.primeintellect.ai/" target="_blank" rel="noopener">Sign in to Prime Intellect</a>
-                <a href="https://console.runpod.io/" target="_blank" rel="noopener">Sign in to Runpod</a>
-                <a href="https://console.hyperstack.cloud/" target="_blank" rel="noopener">Sign in to Hyperstack</a>
+                <a href="https://app.primeintellect.ai/" target="_blank" rel="noopener">Prime Intellect ↗</a>
+                <a href="https://console.runpod.io/" target="_blank" rel="noopener">Runpod ↗</a>
+                <a href="https://console.hyperstack.cloud/" target="_blank" rel="noopener">Hyperstack ↗</a>
               </div>
               <fieldset class="compute-choices" id="compute-cloud" hidden>
                 <legend>Cloud provider</legend>
@@ -382,31 +675,110 @@
             </section>
           </div>
         </section>
-        <section class="panel cashu-roadmap" id="cashu-panel" role="tabpanel" aria-labelledby="cashu-tab" hidden>
-          <div class="panel-head"><h2 id="cashu-heading" tabindex="-1">CASHU ROADMAP</h2></div>
-          <section aria-labelledby="cashu-friday-heading">
-            <h3 id="cashu-friday-heading">What we can show by Friday</h3>
-            <p class="panel-sub" id="cashu-benchmark" hidden></p>
-            <p class="panel-sub">The recorded demo and historical proofs are available now. The Ark proof is additional evidence if all checks and the audit finish by Fri Nov 27, 23:59 UTC.</p>
-            <ol id="cashu-friday" class="campaign-milestones"></ol>
-          </section>
-          <section aria-labelledby="cashu-trust-heading">
-            <h3 id="cashu-trust-heading">Milestones for admin-trust-free Cashu</h3>
-            <p class="panel-sub">The regtest demo uses a dedicated reserve. General Cashu settlement still needs shared backing and rules that prevent the same claim from paying twice.</p>
-            <ol id="cashu-trust" class="campaign-milestones"></ol>
-          </section>
+
+        <!-- TAB 03: PROOF EVIDENCE -->
+        <section class="panel" id="evidence-panel" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>LOCAL PROOF EVIDENCE &amp; AUDIT ARTIFACTS</h2>
+              <p class="panel-sub">Files are reread from disk with SHA-256 digests. Recorded reports remain historical evidence.</p>
+            </div>
+            <span class="tag-mono" id="evidence-source"></span>
+          </div>
+          <div id="evidence-list"></div>
         </section>
-        <section class="panel" id="planner-panel"><div class="panel-head"><h2>SHARD PLANNER</h2><span class="tag-mono">MODEL · NOT RUN PROGRESS</span></div>
-          <p class="panel-sub">Carbon's measured-unit estimator. These are projections for the entered workload, separate from observed process data.</p>
-          <form id="planner" class="kv-grid">
-            <label>Header blocks<input name="header_blocks" type="number" min="0" value="0"></label>
-            <label>Nova header segments<input name="nova_header_shards" type="number" min="0" value="0"></label>
-            <label>Payment UTXOs<input name="payment_utxos" type="number" min="0" value="0"></label>
-            <label>Shinigami leaves<input name="shinigami_leaves" type="number" min="0" value="0"></label>
-            <label>Ark VTXOs<input name="ark_vtxos" type="number" min="0" value="0"></label>
-            <label>Shard threshold exponent<input name="element_threshold_exp" type="number" min="25" max="28" value="26"></label>
-            <button class="ghost-btn" type="submit">CALCULATE PROJECTION</button>
-          </form><pre id="planner-result">Enter a workload to calculate a projection.</pre>
+
+        <!-- TAB 04: PAYMENT CLAIMS -->
+        <section class="panel" id="claims-panel" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>AUDITED PAYMENT CLAIMS &amp; PROOF GROVE</h2>
+              <p class="panel-sub">Independently verified historical script claims from observed audit receipts.</p>
+            </div>
+            <span class="tag-mono">FROM OBSERVED AUDIT RECEIPTS</span>
+          </div>
+          <div id="claims-list"></div>
+          <p class="panel-sub" style="margin-top:12px">Historical script verification does not establish current unspentness, mint funding, an Ark payment, or removal of a trusted administrator.</p>
+        </section>
+
+        <!-- TAB 05: CASHU ROADMAP -->
+        <section class="panel cashu-roadmap" id="cashu-panel" role="tabpanel" aria-labelledby="cashu-tab" hidden>
+          <div class="panel-head">
+            <div>
+              <h2 id="cashu-heading" tabindex="-1">CASHU + ARK / SHINIGAMI ROADMAP</h2>
+              <p class="panel-sub">Friday Nut November demo scope and admin-trust-free Cashu milestones.</p>
+            </div>
+            <span class="tag-mono">NUT NOVEMBER · NOV 27 23:59Z</span>
+          </div>
+          <div class="grid-2">
+            <section aria-labelledby="cashu-friday-heading">
+              <h3 class="core-eta-heading" id="cashu-friday-heading">WHAT WE CAN SHOW BY FRIDAY</h3>
+              <p class="panel-sub" id="cashu-benchmark" hidden></p>
+              <p class="panel-sub">Recorded regtest demo and historical Shinigami proofs are available now; the Ark proof adds off-chain evidence once all checks and audit finish.</p>
+              <ol id="cashu-friday" class="campaign-milestones"></ol>
+            </section>
+            <section aria-labelledby="cashu-trust-heading">
+              <h3 class="core-eta-heading" id="cashu-trust-heading">MILESTONES FOR ADMIN-TRUST-FREE CASHU</h3>
+              <p class="panel-sub">Regtest uses a dedicated reserve; general settlement needs shared backing and single-use claim rules.</p>
+              <ol id="cashu-trust" class="campaign-milestones"></ol>
+            </section>
+          </div>
+        </section>
+
+        <!-- TAB 06: SHARD PLANNER -->
+        <section class="panel" id="planner-panel" role="tabpanel" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>WORKLOAD → SHARD &amp; HARDWARE PLANNER</h2>
+              <p class="panel-sub">Analytical projection from measured unit constants (separate from observed process telemetry).</p>
+            </div>
+            <span class="status-pill projection">MODEL · NOT RUN PROGRESS</span>
+          </div>
+
+          <div class="preset-bar" id="preset-bar">
+            <button type="button" class="preset-btn active" data-preset="m16_mainnet">M16 Mainnet (975,072 hdr + 1 PAY1)</button>
+            <button type="button" class="preset-btn" data-preset="m18_window">M16 + M18 6-Block Window</button>
+            <button type="button" class="preset-btn" data-preset="ark_live">Ark ASP Live (4 VTXOs · 2 GiB)</button>
+            <button type="button" class="preset-btn" data-preset="ark_round_128">Ark 128-VTXO Round + 16 Exits</button>
+            <button type="button" class="preset-btn" data-preset="shinigami_batch">Shinigami 64-Input Batch</button>
+          </div>
+
+          <div class="grid-2">
+            <form id="planner" class="kv-grid">
+              <label class="kv-item"><span>Header blocks (NHC1)</span><input name="header_blocks" type="number" min="0" value="975072"></label>
+              <label class="kv-item"><span>Nova header segments</span><input name="nova_header_shards" type="number" min="0" value="2"></label>
+              <label class="kv-item"><span>M18 UTXO window blocks</span><input name="utxo_window_blocks" type="number" min="0" value="0"></label>
+              <label class="kv-item"><span>Payment UTXOs (PAY1)</span><input name="payment_utxos" type="number" min="0" value="1"></label>
+              <label class="kv-item"><span>Shinigami leaves</span><input name="shinigami_leaves" type="number" min="0" value="0"></label>
+              <label class="kv-item"><span>Ark VTXOs (ARK1)</span><input name="ark_vtxos" type="number" min="0" value="0"></label>
+              <label class="kv-item"><span>Threshold exponent (2^x)</span><input name="element_threshold_exp" type="number" min="25" max="28" value="27"></label>
+              <label class="kv-item"><span>Hardware profile</span>
+                <select name="hardware_profile">
+                  <option value="rtx5080_12gib" selected>RTX 5080 · 12 GiB Cap</option>
+                  <option value="rtx5080_bounded_2gib">RTX 5080 · Bounded 2 GiB</option>
+                  <option value="cpu_20t">CPU-Only · 20 Threads</option>
+                </select>
+              </label>
+              <div class="kv-item" style="grid-column: span 2">
+                <button class="ghost-btn" type="submit" style="width:100%">CALCULATE PROJECTION</button>
+              </div>
+            </form>
+            <div>
+              <div class="kv-grid" id="planner-cards"></div>
+              <div class="sub-panel" style="margin-top:14px">
+                <div class="panel-head" style="margin-bottom:8px">
+                  <h3 class="core-eta-heading" style="border:0;padding:0">PROJECTED CORE SHARD ATTRIBUTION</h3>
+                  <span class="tag-mono" id="planner-total-tag">-- tasks</span>
+                </div>
+                <div class="stacked-bar" id="planner-attr-bar"></div>
+                <div class="chart-legend" id="planner-attr-legend"></div>
+              </div>
+              <details style="margin-top:12px">
+                <summary class="mono" style="cursor:pointer;color:var(--ink-muted)">Raw projection JSON</summary>
+                <pre id="planner-result" class="log-pre" style="margin-top:8px">Calculating projection…</pre>
+              </details>
+            </div>
+          </div>
         </section>
       </main>
     </div>
