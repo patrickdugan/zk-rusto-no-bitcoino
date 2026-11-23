@@ -1,4 +1,35 @@
-(() => {
+// Measured core-work forecasts. A milestone or entered target is not a proof total.
+const ProofEta = (() => {
+  const finite = v => typeof v === 'number' && Number.isFinite(v);
+  function estimate(progress, options = {}) {
+    const now = options.now ?? Date.now()/1000;
+    const count = progress?.exists === true && Number.isSafeInteger(progress.unique_shards) && progress.unique_shards >= 0 ? progress.unique_shards : null;
+    const manual = Number.isSafeInteger(options.target) && options.target > 0 && options.target <= 10000000 ? options.target : null;
+    const target = manual ?? (count === null ? null : (Math.floor(count/100)+1)*100);
+    const base = manual ? 0 : target === null ? 0 : target-100;
+    const rates = [15,5,30].map(w => progress?.rates?.[`shard_per_min_${w}m`]).filter(r => finite(r) && r > 0);
+    const rate = rates[0] ?? null;
+    const events = (Array.isArray(progress?.recent_events)?progress.recent_events.slice(-512):[]).filter(e => e.kind === 'shard' && e.replayed === false && finite(e.t) && e.t <= now+2 && (!finite(options.startedAt)||e.t>=options.startedAt));
+    const lastCore = events.length ? Math.max(...events.map(e => e.t)) : null;
+    let status = options.paused ? 'paused' : !options.connected ? 'stale' : !options.active ? 'inactive' : count === null || !rate || (finite(options.startedAt)&&lastCore===null) ? 'learning' : manual && count >= target ? 'target_reached' : lastCore !== null && now-lastCore > Math.max(90,240/rate) ? 'learning' : 'tracking';
+    const remaining = count === null || target === null ? null : Math.max(0,target-count);
+    if(status==='tracking'&&!finite(remaining/rate*60))status='learning';
+    return {status,count,target,manual:manual!==null,rate,lastCore,remaining,
+      fraction:count===null||target===null ? 0 : Math.min(1,Math.max(0,(count-base)/(target-base))),
+      seconds:status==='tracking' ? remaining/rate*60 : null,
+      fastSeconds:status==='tracking' ? remaining/Math.max(...rates)*60 : null,
+      slowSeconds:status==='tracking' ? remaining/Math.min(...rates)*60 : null,
+      proofComplete:false,fullProofEta:null};
+  }
+  function clock(previous, model, now) {
+    if(model.status!=='tracking')return null;
+    if(previous && previous.target===model.target && previous.count===model.count && previous.source===model.source)return previous;
+    return {target:model.target,count:model.count,source:model.source,deadline:now+model.seconds};
+  }
+  return {estimate,clock};
+})();
+if(typeof module!=='undefined' && module.exports)module.exports=ProofEta;
+if(typeof document!=='undefined') (() => {
   'use strict';
   const $ = id => document.getElementById(id);
   const esc = v => String(v ?? 'Unavailable').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -6,7 +37,79 @@
   const gib = v => typeof v === 'number' ? `${n(v / 2**30,2)} GiB` : 'Unavailable';
   const time = t => typeof t === 'number' ? new Date(t*1000).toLocaleString() : 'Unavailable';
   const kv = (key,value) => `<div class="kv-item"><span>${esc(key)}</span><strong>${esc(value)}</strong></div>`;
-  const state = {live:null, records:[], selected:null, userSelected:false, tab:'live', polling:true, timer:null, lastReceived:0, history:[], previous:new Map(), seen:new Set(), booted:false};
+  const state = {live:null, records:[], selected:null, userSelected:false, tab:'live', polling:true, timer:null, lastReceived:0, history:[], previous:new Map(), seen:new Set(), booted:false, etaClock:null, etaModel:null, etaSource:null, lastEventSeq:null, etaTarget:null, newEventSeqs:new Set()};
+  const readSetting = key => {try{return localStorage.getItem(key);}catch{return null;}};
+  const saveSetting = (key,value) => {try{localStorage.setItem(key,value);}catch{}};
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  let quietMotion = reducedMotion.matches || readSetting('rbzk.motion')==='still';
+  function applyMotion() {
+    document.documentElement.dataset.motion=quietMotion||reducedMotion.matches?'still':'subtle';
+    $('toggle-motion').textContent=document.documentElement.dataset.motion==='still'?'MOTION: STILL':'MOTION: SUBTLE';
+    $('toggle-motion').setAttribute('aria-pressed',document.documentElement.dataset.motion==='still'?'true':'false');
+  }
+  // Polling must preserve expanded evidence and keyboard focus.
+  function setMarkup(id, markup) {
+    const node=$(id);
+    if(node.innerHTML===markup)return;
+    const open=new Set([...node.querySelectorAll('details[open]')].map(d=>d.dataset.detailKey || d.querySelector('summary')?.textContent));
+    const focused=node.contains(document.activeElement)?document.activeElement?.dataset.id:null;
+    node.innerHTML=markup;
+    node.querySelectorAll('details').forEach(d=>{d.open=open.has(d.dataset.detailKey || d.querySelector('summary')?.textContent);});
+    if(focused)[...node.querySelectorAll('[data-id]')].find(b=>b.dataset.id===focused)?.focus({preventScroll:true});
+  }
+  function formatDuration(seconds) {
+    if(typeof seconds!=='number'||!Number.isFinite(seconds))return '—';
+    const s=Math.max(0,Math.ceil(seconds)),h=Math.floor(s/3600),m=Math.floor(s%3600/60);
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  }
+  function rememberEvents(progress) {
+    const seq=Number(progress.seq)||0;
+    state.newEventSeqs=new Set();
+    if(state.lastEventSeq!==null && seq>=state.lastEventSeq && freshRuntime()) {
+      for(const e of (progress.recent_events||[]).filter(e=>!e.replayed && e.seq>state.lastEventSeq).slice(-3))state.newEventSeqs.add(e.seq);
+    }
+    state.lastEventSeq=seq;
+  }
+  function updateEta() {
+    const live=state.live||{},wsl=live.wsl_prover||{},progress=wsl.progress||{};
+    const source=`${wsl.progress_source||progress.path||'unknown'}:${live.wsl_prover?.prover_binary_sha256||''}`;
+    if(source!==state.etaSource) {
+      state.etaSource=source;state.etaClock=null;
+      $('eta-target').value=readSetting(`rbzk.eta.${source}`)||'';state.etaTarget=$('eta-target').value?Number($('eta-target').value):null;
+    }
+    const target=state.etaTarget;
+    const active=freshRuntime() && (live.runtime?.ark_processes||[]).some(p=>p.executable==='/root/nb3-gpu-target/release/ark-prove-gpu-cached-gkr');
+    const model=ProofEta.estimate(progress,{now:Date.now()/1000,target,active,connected:freshRuntime(),paused:!state.polling,startedAt:wsl.phase_started_unix});
+    model.source=`${source}:${wsl.active_phase_dir||''}`;
+    state.etaClock=ProofEta.clock(state.etaClock,model,performance.now()/1000);state.etaModel=model;
+    document.documentElement.dataset.stream=active&&freshRuntime()?'live':'quiet';
+    $('eta-scope').textContent=model.manual?'PLANNED CORE TARGET':'NEXT SAVED-CORE MILESTONE';
+    $('eta-target-label').textContent=model.target?`${n(model.count)} → ${n(model.target)} saved cores`:'Waiting for a progress sample';
+    $('eta-rate').textContent=model.rate?`${n(model.rate,2)} cores / min`:'Learning the current pace';
+    $('eta-range').textContent=model.seconds!==null?`Recent-pace range ${formatDuration(model.fastSeconds)} – ${formatDuration(model.slowSeconds)}`:'A live completion rate is needed for an estimate.';
+    $('eta-run-age').textContent=typeof wsl.latest_resource?.elapsed_s==='number'?`Phase elapsed ${formatDuration(wsl.latest_resource.elapsed_s)}`:'Phase elapsed unavailable';
+    $('eta-proof-total').textContent=model.manual?'Core target projection · verification follows':'Core milestone estimate · full proof total not reported';
+    const bar=$('eta-fill');bar.style.width=`${model.fraction*100}%`;
+    $('eta-progress').setAttribute('aria-valuenow',String(Math.round(model.fraction*100)));
+    $('eta-progress').setAttribute('aria-label',model.manual?'Progress to entered core target':'Progress to next saved-core milestone');
+    const latest=(progress.recent_events||[]).filter(e=>!e.replayed).at(-1);
+    $('eta-last-proof').textContent=latest?`Last ${latest.kind==='shard'?'core':'recursion'} proof · ${time(latest.t)}`:'Waiting for a new proof event';
+    tickEta();
+  }
+  function tickEta() {
+    const model=state.etaModel;if(!model)return;
+    if(!state.polling || !freshRuntime()) {
+      $('eta-clock').textContent=state.polling?'Signal stale':'Display paused';$('eta-finish').textContent='Estimate held';return;
+    }
+    const labels={paused:'Display paused',stale:'Signal stale',inactive:'Prover inactive',learning:'Learning pace',target_reached:'Target reached'};
+    if(model.status!=='tracking') {
+      $('eta-clock').textContent=labels[model.status]||'Waiting';
+      $('eta-finish').textContent=model.status==='target_reached'?'Planning target reached; proving may continue':'Waiting for live proof progress';return;
+    }
+    const seconds=Math.max(0,state.etaClock.deadline-performance.now()/1000);
+    $('eta-clock').textContent=seconds>0?`~ ${formatDuration(seconds)}`:'Awaiting checkpoint';
+    $('eta-finish').textContent=seconds>0?`Estimated milestone ${new Date(Date.now()+seconds*1000).toLocaleTimeString()}`:'Estimate will refresh with the next saved core';
+  }
   const statusClass = s => s === 'running' ? 'live' : s === 'verified receipt' ? 'cyan' : '';
   function freshRuntime() {
     const rt = state.live?.runtime || {};
@@ -60,10 +163,10 @@
     if(state.history.length>180)state.history.shift();
   }
   function render() {
-    const live=state.live||{}, rt=live.runtime||{}, gpu=live.gpu||{}, host=live.host_memory||{}, all=jobs();
+    const live=state.live||{}, rt=live.runtime||{}, gpu=live.gpu||{}, host=live.host_memory||{}, all=jobs().sort((a,b)=>Number(b.id.startsWith('ark-sp1:'))-Number(a.id.startsWith('ark-sp1:')));
     if(!state.userSelected || !state.selected || !all.some(j=>j.id===state.selected))state.selected=all.find(j=>j.running)?.id || all[0]?.id;
     const selected=all.find(j=>j.id===state.selected);
-    $('campaign-list').innerHTML=all.map(j=>`<button class="campaign-btn ${j.id===state.selected?'active':''}" data-id="${esc(j.id)}"><div class="campaign-btn-top">${esc(j.title)}</div><span class="campaign-btn-sub">${esc(j.status)} · ${esc(j.backend)}</span></button>`).join('') || '<p class="panel-sub">Waiting for the machine…</p>';
+    setMarkup('campaign-list',all.map(j=>`<button class="campaign-btn ${j.id===state.selected?'active':''}" data-id="${esc(j.id)}"><div class="campaign-btn-top">${esc(j.title)}</div><span class="campaign-btn-sub">${esc(j.status)} · ${esc(j.backend)}</span></button>`).join('') || '<p class="panel-sub">Waiting for the machine…</p>');
     $('campaign-list').querySelectorAll('button').forEach(b=>b.onclick=()=>select(b.dataset.id));
     $('campaign-title').textContent=selected?.title || 'ZK RAITO NO BITCOINO';
     $('campaign-network').textContent=selected?.network || 'LIVE PROVER OBSERVATIONS';
@@ -83,35 +186,41 @@
     ].map(([label,value,detail])=>`<article class="ribbon-card"><div class="ribbon-head">${esc(label)}</div><div class="ribbon-main"><span class="ribbon-val runtime-value">${esc(value)}</span></div><div class="ribbon-sub">${esc(detail)}</div></article>`).join('');
     $('live-kpis').innerHTML=[['PROCESS',selected?.process?`PID ${selected.process.pid}`:'Inactive'],['CPU TIME',`${n(selected?.cpu_seconds,1)} s`],['PROOF RAM',gib(selected?.ram_bytes)],['SWAP',gib(selected?.swap_bytes)],['VERIFICATION',selected?.audit?.valid?'Hash-bound audit':'Not established']].map(([label,value])=>`<article class="kpi-card"><span class="kpi-label">${esc(label)}</span><strong class="kpi-value runtime-value">${esc(value)}</strong></article>`).join('');
     $('runtime-age').textContent=`${freshRuntime()?'FRESH':'STALE / UNKNOWN'} · sample ${time(rt.sampled_at_unix)}`;
-    $('jobs').innerHTML=all.map(j=>`<article class="observed-job ${j.id===state.selected?'selected-job':''}"><div class="panel-head"><h3>${esc(j.title)}</h3><span class="status-pill ${statusClass(j.status)}">${esc(j.status)}</span></div><div class="kv-grid">${kv('Backend',j.backend)}${kv('Process identity',j.process?`${j.process.pid} / start ${j.process.start_ticks}`:'Not observed')}${kv('Current stage',j.phase || 'No stage observed')}${kv('RAM cap',gib(j.ram_limit_bytes))}${kv('CPU seconds',n(j.cpu_seconds,1))}${kv('Independent audit',j.audit?.valid?`${j.audit.negative_controls_passed}/${j.audit.negative_controls_total} negative controls · proof hash matches`:j.audit?.present?'Receipt present; verification not established':'Not present')}</div><details><summary>Observed journal and evidence source</summary><code>${esc(j.unit)}</code><pre>${esc((j.log_tail||[]).join('\n') || 'No journal entries available')}</pre><p class="source-path">${esc(j.audit?.path)}</p><code>${esc(j.audit?.proof_sha256 || 'No audited proof hash')}</code></details></article>`).join('') || '<p>No runtime observations available.</p>';
+    setMarkup('jobs',all.map(j=>`<article class="observed-job ${j.id===state.selected?'selected-job':''}"><div class="panel-head"><h3>${esc(j.title)}</h3><span class="status-pill ${statusClass(j.status)}">${esc(j.status)}</span></div><div class="kv-grid">${kv('Backend',j.backend)}${kv('Process identity',j.process?`${j.process.pid} / start ${j.process.start_ticks}`:'Not observed')}${kv('Current stage',j.phase || 'No stage observed')}${kv('RAM cap',gib(j.ram_limit_bytes))}${kv('CPU seconds',n(j.cpu_seconds,1))}${kv('Independent audit',j.audit?.valid?`${j.audit.negative_controls_passed}/${j.audit.negative_controls_total} negative controls · proof hash matches`:j.audit?.present?'Receipt present; verification not established':'Not present')}</div><details data-detail-key="${esc(j.id)}"><summary>Observed journal and evidence source</summary><code>${esc(j.unit)}</code><pre>${esc((j.log_tail||[]).join('\n') || 'No journal entries available')}</pre><p class="source-path">${esc(j.audit?.path)}</p><code>${esc(j.audit?.proof_sha256 || 'No audited proof hash')}</code></details></article>`).join('') || '<p>No runtime observations available.</p>');
     const ark=live.wsl_prover||{}, progress=ark.progress||{};
     $('ark-state').textContent=freshRuntime()?(rt.ark_processes?.length?'PROCESS OBSERVED':'INACTIVE · CACHE HISTORY'):'UNKNOWN';
-    $('shard-metrics').innerHTML=kv('Unique cached core shards',progress.exists?n(progress.unique_shards):'Unavailable')+kv('Unique cached reductions',progress.exists?n(progress.unique_reduces):'Unavailable')+kv('Cache source',ark.progress_source || ark.base_dir || 'Unavailable')+kv('ETA','Not established from this run');
+    $('shard-metrics').innerHTML=kv('Unique cached core shards',progress.exists?n(progress.unique_shards):'Unavailable')+kv('Unique cached reductions',progress.exists?n(progress.unique_reduces):'Unavailable')+kv('Cache source',ark.progress_source || ark.base_dir || 'Unavailable')+kv('ETA basis','Measured core throughput · tracker above');
     const events=progress.recent_events||[];
-    $('shard-events').innerHTML=events.slice(-24).map(ev=>`<span class="observed-tile" title="${esc(ev.key)}">${esc(ev.kind)} · ${ev.replayed?'replayed':'proved'} · ${n(ev.ms/1000,1)}s</span>`).join('') || '<p class="panel-sub">No shard completion events observed.</p>';
+    setMarkup('shard-events',events.slice(-24).map(ev=>`<span class="observed-tile ${state.newEventSeqs.has(ev.seq)?'checkpoint-new':''}" data-seq="${esc(ev.seq)}" title="${esc(ev.key)}">${esc(ev.kind)} · ${ev.replayed?'replayed':'proved'} · ${n(ev.ms/1000,1)}s</span>`).join('') || '<p class="panel-sub">No shard completion events observed.</p>');
     $('claims-list').innerHTML=all.filter(j=>j.audit?.statement).map(j=>`<article class="observed-job"><h3>${esc(j.title)} · ${esc(j.audit.valid?'audited historical claim':'unconfirmed receipt')}</h3><pre>${esc(JSON.stringify(j.audit.statement,null,2))}</pre></article>`).join('') || '<p>No payment claim receipt observed.</p>';
-    const show={live:['runtime-panel','shard-panel'],blocks:['evidence-panel'],utxos:['claims-panel'],estimator:['planner-panel']};
-    ['runtime-panel','shard-panel','evidence-panel','claims-panel','planner-panel'].forEach(id=>$(id).hidden=!show[state.tab].includes(id));
-    drawHistory();
+    const show={live:['eta-panel','runtime-panel','shard-panel'],blocks:['evidence-panel'],utxos:['claims-panel'],estimator:['planner-panel']};
+    ['eta-panel','runtime-panel','shard-panel','evidence-panel','claims-panel','planner-panel'].forEach(id=>$(id).hidden=!show[state.tab].includes(id));
+    updateEta();drawHistory();
   }
   async function poll() {
     if(!state.polling)return;
     try {
       const response=await fetch('/api/live',{cache:'no-store',signal:AbortSignal.timeout(10000)});
       if(!response.ok)throw new Error(`Telemetry HTTP ${response.status}`);
-      state.live=await response.json();state.lastReceived=Date.now();rememberSample(state.live);render();
+      state.live=await response.json();state.lastReceived=Date.now();rememberSample(state.live);rememberEvents(state.live.wsl_prover?.progress||{});render();
       const evidence=await fetch('/api/campaigns',{cache:'no-store',signal:AbortSignal.timeout(5000)});
       if(!evidence.ok)throw new Error(`Evidence HTTP ${evidence.status}`);
       const inventory=await evidence.json();state.records=inventory.campaigns||[];
       $('evidence-source').textContent=`${inventory.available?'DISK':'UNAVAILABLE'} · ${state.records.length} reports`;
-      $('evidence-list').innerHTML=state.records.map(r=>`<details class="observed-job"><summary>${esc(r.title)} · ${esc(r.summary?.status || 'recorded evidence')}</summary><p class="source-path">${esc(r.path)}</p><div class="kv-grid">${kv('Modified',time(r.modified_at_unix))}${kv('File SHA-256',r.sha256)}${kv('Report size',`${n(r.bytes)} bytes`)}</div><pre>${esc(JSON.stringify(r.summary,null,2))}</pre></details>`).join('') || '<p>No local result reports found.</p>';
+      setMarkup('evidence-list',state.records.map(r=>`<details class="observed-job"><summary>${esc(r.title)} · ${esc(r.summary?.status || 'recorded evidence')}</summary><p class="source-path">${esc(r.path)}</p><div class="kv-grid">${kv('Modified',time(r.modified_at_unix))}${kv('File SHA-256',r.sha256)}${kv('Report size',`${n(r.bytes)} bytes`)}</div><pre>${esc(JSON.stringify(r.summary,null,2))}</pre></details>`).join('') || '<p>No local result reports found.</p>');
     } catch(error) { $('poll-label').textContent=`CONNECTION LOST · ${error.message}`; $('live-dot').classList.remove('live'); }
     finally { if(state.polling)state.timer=setTimeout(poll,2000); }
   }
-  document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>{state.tab=b.dataset.tab;document.querySelectorAll('.nav-btn').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-selected',x===b?'true':'false');});render();});
+  document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>{state.tab=b.dataset.tab;document.querySelectorAll('.nav-btn').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-selected',x===b?'true':'false');});render();const panels=document.querySelectorAll('.panel:not([hidden])');panels.forEach(p=>{p.classList.remove('view-enter');void p.offsetWidth;p.classList.add('view-enter');setTimeout(()=>p.classList.remove('view-enter'),220);});});
   $('toggle-poll').onclick=()=>{state.polling=!state.polling;if(state.polling)state.lastReceived=0;clearTimeout(state.timer);$('toggle-poll').textContent=state.polling?'PAUSE':'RESUME';render();if(state.polling)poll();};
   $('toggle-theme').onclick=()=>{const dark=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=dark?'grove':'dark';};
   $('planner').onsubmit=async event=>{event.preventDefault();const input=Object.fromEntries([...new FormData(event.target)].map(([k,v])=>[k,Number(v)]));input.hardware_profile='rtx5080_bounded_2gib';try{const response=await fetch('/api/correlate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});const result=await response.json();$('planner-result').textContent=`PROJECTION ONLY\n${JSON.stringify(result,null,2)}`;}catch(error){$('planner-result').textContent=error.message;}};
-  setInterval(()=>{if(Date.now()-state.lastReceived>15000)render();},1000);
+  $('toggle-motion').onclick=()=>{quietMotion=!quietMotion;saveSetting('rbzk.motion',quietMotion?'still':'subtle');applyMotion();};
+  reducedMotion.addEventListener('change',applyMotion);
+  $('eta-target-form').onsubmit=event=>{event.preventDefault();const raw=$('eta-target').value.trim(),value=Number(raw);if(raw&&(!Number.isSafeInteger(value)||value<1||value>10000000)){$('eta-target').setCustomValidity('Enter a whole core target between 1 and 10,000,000.');$('eta-target').reportValidity();return;}$('eta-target').setCustomValidity('');saveSetting(`rbzk.eta.${state.etaSource}`,raw);state.etaTarget=raw?value:null;state.etaClock=null;updateEta();};
+  $('eta-target').oninput=()=> $('eta-target').setCustomValidity('');
+  $('eta-reset').onclick=()=>{$('eta-target').value='';saveSetting(`rbzk.eta.${state.etaSource}`,'');state.etaTarget=null;state.etaClock=null;updateEta();};
+  applyMotion();
+  setInterval(()=>{if(Date.now()-state.lastReceived>15000)render();tickEta();},1000);
   window.addEventListener('resize',drawHistory);render();poll();
 })();

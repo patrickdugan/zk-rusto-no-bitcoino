@@ -1,6 +1,6 @@
 # Native prover console
 
-The Mecha desktop UI now displays observed runtime data, with no embedded campaign results, static payment balances, invented shard totals, countdowns, or simulated proof activity.
+The Mecha desktop UI displays observed runtime data, proof receipts and throughput-based core milestone forecasts.
 
 The original incremental shard cache and measured-unit planner remain available. Cache counts are labeled history; the planner is labeled a projection. Neither establishes a running prover or verification.
 
@@ -62,3 +62,22 @@ run, install the shortcut with `-LiveAssets -ExePath <native executable>`. This
 uses `scripts/launch-live-desktop.ps1` and the existing opt-in local asset loader;
 it does not rebuild or restart a prover. Regular portable launches use embedded
 assets. Rebuilding embeds the updated frontend as usual.
+
+## ETA and motion
+
+The live ETA tracker forecasts the next hundred saved core proofs using observed
+15-minute throughput, with 5- and 30-minute rates providing a recent-pace range.
+It can instead project an explicitly entered core target, saved per campaign.
+The countdown stays anchored between saved core completions. Replays do not
+supply new-proof rates; stale samples, a stopped producer, pauses and long gaps
+hold the estimate. A core milestone or planning target is not full-proof completion;
+remaining verification is separate until a real work total and verification results exist.
+
+Only newly observed proof completions receive a short, small tile animation.
+Historical cache loading does not trigger it. Tab changes have a short fade;
+there are no perpetual proof pulses. The motion toggle persists, and the OS
+reduced-motion preference is always honored. Polling preserves expanded evidence,
+keyboard focus and unapplied target drafts.
+
+Run the ETA regressions with `node --test tests/eta_model.cjs`; the existing CI
+workflow now includes them alongside the Rust and Python checks.

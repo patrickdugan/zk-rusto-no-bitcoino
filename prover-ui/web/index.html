@@ -183,6 +183,15 @@
 
 
         <section class="kpi-grid" id="live-kpis" aria-label="Observed proof progress"></section>
+        <section class="panel eta-panel" id="eta-panel" aria-labelledby="eta-heading">
+          <div class="panel-head"><h2 id="eta-heading">ARK · ETA TRACKER</h2><button type="button" class="ghost-btn" id="toggle-motion" aria-pressed="false">MOTION: SUBTLE</button></div>
+          <div class="eta-layout">
+            <div><span class="kpi-label" id="eta-scope">NEXT SAVED-CORE MILESTONE</span><strong class="eta-clock" id="eta-clock">Connecting</strong><p id="eta-finish" class="panel-sub">Waiting for live progress</p></div>
+            <div class="eta-context"><strong id="eta-target-label">Waiting for a progress sample</strong><span id="eta-rate">Learning the current pace</span><span id="eta-range"></span><span id="eta-proof-total" class="panel-sub"></span></div>
+          </div>
+          <div id="eta-progress" class="eta-progress" role="progressbar" aria-label="Saved-core milestone" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="eta-fill"></div></div>
+          <div class="eta-footer"><span class="tag-mono" id="eta-run-age">Phase elapsed unavailable</span><span class="tag-mono" id="eta-last-proof">Waiting for a new proof event</span><details><summary>Set a core target</summary><form id="eta-target-form"><label for="eta-target">Optional planned total of saved core proofs</label><div class="eta-target-controls"><input id="eta-target" type="number" min="1" max="10000000" step="1" inputmode="numeric"><button class="ghost-btn" type="submit">APPLY</button><button class="ghost-btn" id="eta-reset" type="button">USE NEXT MILESTONE</button></div><p class="panel-sub">An entered target projects the core phase, including saved cache history. Final verification is tracked separately.</p></form></details></div>
+        </section>
         <section class="panel" id="runtime-panel"><div class="panel-head"><h2>LIVE PROCESS &amp; PROOF JOURNAL</h2><span class="tag-mono" id="runtime-age">Connecting</span></div>
           <p class="panel-sub">Process identity, CPU time and cgroup memory from the running machine. A quiet proof stage stays quiet.</p>
           <div id="jobs"></div>

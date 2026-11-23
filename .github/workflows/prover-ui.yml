@@ -27,6 +27,12 @@ jobs:
       - name: Python fallback unit tests
         working-directory: prover-ui
         run: python3 -m unittest discover -s tests -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: ETA and countdown regressions
+        working-directory: prover-ui
+        run: node --test tests/eta_model.cjs
 
   windows-desktop:
     name: Native Windows Desktop App (MSVC + WebView2)

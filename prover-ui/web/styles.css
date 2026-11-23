@@ -1791,3 +1791,27 @@ select {
 #planner input { width: 100%; }
 #campaign-list { max-height: 35vh; overflow: auto; }
 #hardware-ribbon .ribbon-main { min-height: 42px; }
+
+/* Quiet, event-driven motion. No simulated proof activity or repeating pulses. */
+.dot.live::after { animation: none !important; opacity: 0; }
+.eta-layout { display:grid; grid-template-columns:minmax(230px,1fr) 1.3fr; gap:24px; align-items:center; }
+.eta-clock { display:block; font:600 clamp(27px,3vw,46px) var(--font-mono); font-variant-numeric:tabular-nums; letter-spacing:-.04em; margin:12px 0; min-height:1.2em; }
+.eta-context { display:flex; flex-direction:column; gap:10px; font:12px/1.5 var(--font-mono); }
+.eta-context strong { font-size:17px; color:var(--ink); }
+.eta-progress { height:3px; background:var(--line); margin:18px 0; overflow:hidden; }
+#eta-fill { height:100%; width:0; background:var(--crimson); transition:width .4s ease-out; }
+.eta-footer { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; font:11px/1.6 var(--font-mono); }
+.eta-footer details { max-width:520px; }
+.eta-footer summary { cursor:pointer; color:var(--ink-muted); }
+#eta-target-form { padding-top:12px; }
+.eta-target-controls { display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap; }
+#eta-target { max-width:145px; }
+.campaign-btn, .ghost-btn { transition:background-color .16s ease,border-color .16s ease; }
+.checkpoint-new { animation:checkpoint-arrive .65s ease-out 1; }
+.view-enter { animation:quiet-view-enter .18s ease-out 1; }
+@keyframes checkpoint-arrive { from { border-color:var(--crimson); opacity:.65; transform:translateY(2px); } to { border-color:var(--line); opacity:1; transform:translateY(0); } }
+@keyframes quiet-view-enter { from { opacity:.8; transform:translateY(3px); } to { opacity:1; transform:translateY(0); } }
+:root[data-motion="still"] *, :root[data-motion="still"] *::before, :root[data-motion="still"] *::after { animation:none !important; transition:none !important; }
+:root[data-stream="quiet"] .checkpoint-new { animation:none; }
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+@media (max-width:900px) { .eta-layout { grid-template-columns:1fr; gap:12px; } .eta-footer { flex-direction:column; } }
