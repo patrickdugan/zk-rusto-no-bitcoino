@@ -14,6 +14,15 @@ import sys
 import time
 
 MAX_JSON = 2 * 1024 * 1024
+NOVA_PHASES = {
+    b"mnr04-regtest": "Checking settlement in Bitcoin Core",
+    b"mnr04-key-hash": "Deriving the Nova verification key",
+    b"mnr04-prove": "Proving the clearing transaction",
+    b"mnr04-verify": "Independently verifying the clearing proof",
+    b"mnr04-route-key-hash": "Deriving the routed Nova verification key",
+    b"mnr04-route-prove": "Proving the routed settlement",
+    b"mnr04-route-verify": "Independently verifying the routed proof",
+}
 
 
 def read_json(path):
@@ -112,24 +121,51 @@ def inspect_unit(name, expected_exe):
             "swap_limit_bytes": number(fields.get("MemorySwapMax"))}
 
 
-def scan_provers():
+def scan_provers(root=Path("/proc"), tracked_units=()):
     # Process names alone do not establish GPU use; report the observed executable.
-    names = {"ark-prove-gpu-cached-gkr", "ark-prove-gpu", "nb3-prove-gpu", "nb3-prove"}
-    processes = []
-    for proc in Path("/proc").iterdir():
+    ark_names = {"ark-prove-gpu-cached-gkr", "ark-prove-gpu", "nb3-prove-gpu", "nb3-prove"}
+    ark, nova = [], []
+    for proc in root.iterdir():
         if not proc.name.isdigit():
             continue
         try:
             exe = os.readlink(proc / "exe").removesuffix(" (deleted)")
-            if Path(exe).name not in names:
+            name = Path(exe).name
+            if name not in ark_names and name != "shz":
                 continue
             stat = (proc / "stat").read_text().rsplit(")", 1)[1].split()
-            if stat[0] != "Z":
-                processes.append({"pid": int(proc.name), "executable": exe,
-                                  "start_ticks": int(stat[19]), "state": stat[0]})
+            if stat[0] in {"Z", "X", "x"}:
+                continue
+            process = {"pid": int(proc.name), "executable": exe,
+                       "start_ticks": int(stat[19]), "state": stat[0]}
+            if name in ark_names:
+                ark.append(process)
+                continue
+            with (proc / "cmdline").open("rb") as source:
+                args = source.read(4096).split(b"\0", 2)
+            phase = NOVA_PHASES.get(args[1]) if len(args) == 3 else None
+            if phase is None:
+                continue
+            groups = (proc / "cgroup").read_text().splitlines()
+            unit = next((Path(group[3:]).name for group in groups if group.startswith("0::")), "")
+            if unit in tracked_units:
+                continue
+            # A process may have exited or been replaced while sampling its command.
+            after = (proc / "stat").read_text().rsplit(")", 1)[1].split()
+            if after[19] != stat[19] or after[0] in {"Z", "X", "x"}:
+                continue
+            cpu_seconds = (int(after[11]) + int(after[12])) / os.sysconf("SC_CLK_TCK")
+            nova.append({
+                "id": f"mnr04:{process['pid']}:{process['start_ticks']}",
+                "kind": "mnr04", "title": "MNR-04 clearing proof", "network": "SatsHedgeZero",
+                "backend": "Nova / CPU", "phase": phase, "status": "running", "running": True,
+                "process": process, "cpu_seconds": cpu_seconds,
+                "ram_bytes": max(0, int(after[21])) * os.sysconf("SC_PAGE_SIZE"),
+                "unit": unit if unit.endswith(".service") else "Observed process",
+            })
         except (OSError, ValueError, IndexError):
             pass
-    return processes[:16]
+    return ark[:16], nova[:16]
 
 
 def collect(config):
@@ -155,9 +191,10 @@ def collect(config):
                          "verified receipt" if job["audit"]["valid"] else "inactive")
         jobs.append(job)
     ark_progress = Path(config.get("ark_root", "/var/tmp/ark-asp-full-20261117")) / "prover-transient/progress.jsonl"
-    return {"sampled_at_unix": time.time(), "reachable": True, "jobs": jobs,
+    ark, nova = scan_provers(tracked_units={job["unit"] for job in jobs if job["running"]})
+    return {"sampled_at_unix": time.time(), "reachable": True, "jobs": jobs + nova,
             "ark_progress_path": str(ark_progress.resolve()) if ark_progress.is_file() else None,
-            "ark_processes": scan_provers(), "source": "systemd + /proc + cgroup v2 + local audit files"}
+            "ark_processes": ark, "source": "systemd + /proc + cgroup v2 + local audit files"}
 
 
 if __name__ == "__main__":

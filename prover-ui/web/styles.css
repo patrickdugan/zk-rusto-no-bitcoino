@@ -1868,7 +1868,7 @@ select {
 .eta-target-controls { display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap; }
 #eta-target { max-width:145px; }
 .campaign-btn, .ghost-btn { transition:background-color .16s ease,border-color .16s ease; }
-.checkpoint-new { animation:checkpoint-arrive .65s ease-out 1; }
+.checkpoint-new, .worker-increment { animation:checkpoint-arrive .65s ease-out 1; }
 .view-enter { animation:quiet-view-enter .18s ease-out 1; }
 @keyframes checkpoint-arrive { from { border-color:var(--crimson); opacity:.65; transform:translateY(2px); } to { border-color:var(--line); opacity:1; transform:translateY(0); } }
 @keyframes quiet-view-enter { from { opacity:.8; transform:translateY(3px); } to { opacity:1; transform:translateY(0); } }

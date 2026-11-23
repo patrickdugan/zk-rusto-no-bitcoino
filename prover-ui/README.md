@@ -32,7 +32,7 @@ Headless: `cargo test --locked --no-default-features`; Python parity and receipt
 
 `RBZK_ARK_DIR` selects the Ark directory containing `results/`. `RBZK_WSL_ARK_BASE` selects the existing incremental SP1 run/cache. No fixture is substituted for missing sources.
 
-`RBZK_LIVE_CONFIG` optionally names a local JSON file, reread on every observation. Default jobs are the current testnet4 tapleaf and legacy-payment units. To observe another proof run, configure its real unit, executable and output/audit paths:
+`RBZK_LIVE_CONFIG` optionally names a local JSON file, reread on every observation. Default jobs are the current testnet4 tapleaf and legacy-payment units. The process probe also discovers supported local SatsHedgeZero MNR-04 commands, including the routed Nova profile. Its live-workers row reports the observed command stage, CPU time and process RAM. To observe another proof run, configure its real unit, executable and output/audit paths:
 
 ```json
 {

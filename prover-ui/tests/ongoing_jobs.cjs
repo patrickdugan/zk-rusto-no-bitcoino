@@ -49,6 +49,21 @@ test('distinguishes local resource waits from historical proof evidence', () => 
   assert.equal(ongoingJobs({...input,localFresh:false})[1].status, 'Stale');
 });
 
+test('observes a local Nova process alongside the A100 with independent CPU and RAM samples', () => {
+  const job = {id: 'mnr04:17:1234', kind: 'mnr04', title: 'MNR-04 clearing proof',
+    running: true, process: {pid: 17, start_ticks: 1234}, backend: 'Nova / CPU',
+    phase: 'Proving the routed settlement', cpu_seconds: 8.8, ram_bytes: 423 * 2**20};
+  const input = setup({local: [job]});
+  input.ark.sample.nova_running = false;
+  const [ark, nova] = ongoingJobs(input);
+  assert.equal(ark.status, 'Running');
+  assert.equal(nova.where, 'Local machine · Nova / CPU');
+  assert.deepEqual(nova.metrics, [['CPU seconds', 8], ['Process RAM MiB', 423]]);
+  const [, stale] = ongoingJobs({...input, localFresh: false});
+  assert.equal(stale.status, 'Stale');
+  assert.deepEqual(stale.metrics, []);
+});
+
 function sample(t, core, recursion, replayed) {
   return {sampled_at_unix:t,core_new:core,recursion_new:recursion,core_replayed:replayed};
 }

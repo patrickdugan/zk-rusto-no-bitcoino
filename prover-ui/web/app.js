@@ -197,6 +197,10 @@ const ProofEta = (() => {
       const activity=job.status==='resource wait'?'Waiting for resources':'Running';
       rows.push({id:job.id,title:job.title,where:['Local machine',job.backend].filter(Boolean).join(' · '),
         phase:job.phase,status:observedState(localFresh,activity),heardAt:localSample,
+        metrics:job.kind==='mnr04'&&localFresh&&!paused?[
+          ['CPU seconds',Number.isFinite(job.cpu_seconds)?Math.floor(job.cpu_seconds):null],
+          ['Process RAM MiB',Number.isFinite(job.ram_bytes)?Math.floor(job.ram_bytes/2**20):null],
+        ]:[],
         details:'#runtime-panel',detailsLabel:'Process details'});
     }
     return rows;
@@ -286,7 +290,7 @@ if(typeof document!=='undefined') (() => {
   const time = t => typeof t === 'number' ? new Date(t*1000).toLocaleString() : 'Unavailable';
   const kv = (key,value) => `<div class="kv-item"><span>${esc(key)}</span><strong>${esc(value)}</strong></div>`;
   const initialTab = new URLSearchParams(window.location.search).get('view') === 'compute' ? 'compute' : 'live';
-  const state = {live:null, records:[], selected:null, userSelected:false, tab:initialTab, polling:true, timer:null, lastReceived:0, history:[], previous:new Map(), seen:new Set(), booted:false, etaClock:null, etaModel:null, etaSource:null, lastEventSeq:null, etaTarget:null, newEventSeqs:new Set()};
+  const state = {live:null, records:[], selected:null, userSelected:false, tab:initialTab, polling:true, timer:null, lastReceived:0, history:[], previous:new Map(), workerAdvances:new Set(), seen:new Set(), booted:false, etaClock:null, etaModel:null, etaSource:null, lastEventSeq:null, etaTarget:null, newEventSeqs:new Set()};
   const readSetting = key => {try{return localStorage.getItem(key);}catch{return null;}};
   const saveSetting = (key,value) => {try{localStorage.setItem(key,value);}catch{}};
   let checkpointKey=null, checkpointHistory=[];
@@ -828,12 +832,18 @@ if(typeof document!=='undefined') (() => {
     const rt=live.runtime || {}, t=rt.sampled_at_unix;
     if(!rt.fresh || typeof t!=='number' || state.history.at(-1)?.t===t)return;
     let cpu=0, measured=false;
+    const observed=new Map(), advances=new Set();
     for(const job of rt.jobs||[]){
       if(!job.running||!job.process||typeof job.cpu_seconds!=='number')continue;
       const key=`${job.process.pid}:${job.process.start_ticks}`, prev=state.previous.get(key);
-      if(prev && t>prev.t && job.cpu_seconds>=prev.cpu){cpu+=(job.cpu_seconds-prev.cpu)/(t-prev.t)*50;measured=true;}
-      state.previous.set(key,{t,cpu:job.cpu_seconds});
+      if(prev && t>prev.t && job.cpu_seconds>=prev.cpu){
+        cpu+=(job.cpu_seconds-prev.cpu)/(t-prev.t)*50;
+        measured=true;
+        if(Math.floor(job.cpu_seconds)>Math.floor(prev.cpu))advances.add(job.id);
+      }
+      observed.set(key,{t,cpu:job.cpu_seconds});
     }
+    state.previous=observed;state.workerAdvances=advances;
     state.history.push({t,cpu:measured?cpu:null,ram:live.host_memory?.load_percent,gpu:live.gpu?.util_gpu_pct});
     if(state.history.length>180)state.history.shift();
   }
@@ -858,7 +868,7 @@ if(typeof document!=='undefined') (() => {
         <div class="ongoing-name"><h3>${esc(job.title)}</h3><p>${esc(job.where)}</p></div>
         <div class="ongoing-work">
           ${job.phase?`<p>${esc(job.phase)}</p>`:''}
-          ${metrics.length?`<dl>${metrics.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${n(value)}</dd></div>`).join('')}</dl>`:''}
+          ${metrics.length?`<dl>${metrics.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd${label==='CPU seconds'&&job.status==='Running'&&state.workerAdvances.has(job.id)?' class="worker-increment"':''}>${n(value)}</dd></div>`).join('')}</dl>`:''}
           ${increments}
         </div>
         <div class="ongoing-monitor">
