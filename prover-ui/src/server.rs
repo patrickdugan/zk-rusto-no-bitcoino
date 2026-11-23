@@ -39,6 +39,7 @@ pub struct ProverUIApp {
     runtime: crate::runtime::RuntimeCollector,
     runpod: crate::runtime::RuntimeCollector,
     hyperstack_snapshot: Option<PathBuf>,
+    hyperstack_ark_state: Option<PathBuf>,
     stop_flag: AtomicBool,
     stop_cv: (Mutex<bool>, Condvar),
 }
@@ -61,6 +62,7 @@ impl ProverUIApp {
             runpod: crate::runtime::RuntimeCollector::runpod(),
             hyperstack_snapshot: std::env::var_os("RBZK_HYPERSTACK_BENCHMARK_JSON")
                 .map(PathBuf::from),
+            hyperstack_ark_state: std::env::var_os("RBZK_HYPERSTACK_ARK_STATE_JSON").map(PathBuf::from),
             stop_flag: AtomicBool::new(false),
             stop_cv: (Mutex::new(false), Condvar::new()),
         }
@@ -134,6 +136,11 @@ impl ProverUIApp {
         }
         live["runtime"] = runtime;
         live["cloud_runpod"] = self.runpod.snapshot();
+        live["cloud_hyperstack_ark"] = self
+            .hyperstack_ark_state
+            .as_deref()
+            .and_then(read_hyperstack_ark_state)
+            .unwrap_or(Value::Null);
         live["cloud_hyperstack"] = self
             .hyperstack_snapshot
             .as_deref()
@@ -147,9 +154,73 @@ impl ProverUIApp {
     }
 }
 
-fn read_hyperstack_snapshot(path: &Path) -> Option<Value> {
+fn read_hyperstack_ark_state(path: &Path) -> Option<Value> {
+    let (raw, file_time) = read_bounded_cloud_state(path)?;
+    let suffix = raw["name"].as_str()?.strip_prefix("ark-mnr04-a100-")?;
+    if suffix.len() != 10 || !suffix.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
+    let vm_id = raw["vm_id"].as_u64().filter(|id| *id > 0)?;
+    let started = raw["requested_at"].as_u64()?;
+    let stage = raw["stage"].as_str()?;
+    let mut sample = json!({
+        "vm_id": vm_id,
+        "started_at_unix": started,
+        "sampled_at_unix": file_time,
+        "active": true,
+        "stage": "starting",
+    });
+    if raw["cleanup"] == "vm_deleted" {
+        sample["active"] = json!(false);
+        sample["stage"] = json!("stopped");
+    } else if stage.starts_with("ark_heartbeat|") {
+        let fields: Vec<_> = stage.split('|').collect();
+        let ["ark_heartbeat", stamp, phase, progress, core, recursion, replay_core, replay_recursion, vram, ark, nova] =
+            fields.as_slice()
+        else {
+            return None;
+        };
+        if !matches!(*phase, "starting" | "replay" | "shard" | "reduce" | "stopped") {
+            return None;
+        }
+        let stamp: u64 = stamp.parse().ok()?;
+        let progress: u64 = progress.parse().ok()?;
+        if stamp < started || (progress != 0 && !(started..=stamp.saturating_add(2)).contains(&progress)) {
+            return None;
+        }
+        let parse_counter = |text: &str| text.parse::<u64>().ok().filter(|v| *v <= 100_000_000);
+        let parse_bit = |text: &str| match text {
+            "0" => Some(false),
+            "1" => Some(true),
+            _ => None,
+        };
+        sample["sampled_at_unix"] = json!(stamp);
+        sample["stage"] = json!(phase);
+        sample["last_checkpoint_at_unix"] = json!(progress);
+        sample["core_new"] = json!(parse_counter(core)?);
+        sample["recursion_new"] = json!(parse_counter(recursion)?);
+        sample["core_replayed"] = json!(parse_counter(replay_core)?);
+        sample["recursion_replayed"] = json!(parse_counter(replay_recursion)?);
+        sample["vram_used_mib"] = json!(parse_counter(vram)?);
+        sample["ark_running"] = json!(parse_bit(ark)?);
+        sample["nova_running"] = json!(parse_bit(nova)?);
+    } else {
+        sample["stage"] = json!(match stage {
+            "storage_vm_provisioned" => "provisioning",
+            "preparing_inputs" => "preparing",
+            "parallel_ark_and_mnr04" => "starting",
+            "finished" | "results_retrieved" => "returning",
+            "failed" => "failed",
+            _ => return None,
+        });
+    }
+    Some(sample)
+}
+
+fn read_bounded_cloud_state(path: &Path) -> Option<(Value, u64)> {
     let file = std::fs::File::open(path).ok()?;
-    if !file.metadata().ok()?.is_file() {
+    let metadata = file.metadata().ok()?;
+    if !metadata.is_file() {
         return None;
     }
     const MAX_BYTES: u64 = 4096;
@@ -158,7 +229,12 @@ fn read_hyperstack_snapshot(path: &Path) -> Option<Value> {
     if bytes.len() as u64 > MAX_BYTES {
         return None;
     }
-    let raw: Value = serde_json::from_slice(&bytes).ok()?;
+    let modified = metadata.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?.as_secs();
+    Some((serde_json::from_slice(&bytes).ok()?, modified))
+}
+
+fn read_hyperstack_snapshot(path: &Path) -> Option<Value> {
+    let (raw, _) = read_bounded_cloud_state(path)?;
     if raw["schema"] != "rbzk/hyperstack-benchmark/v1" || raw["vm_id"].as_u64()? == 0 {
         return None;
     }
@@ -208,6 +284,35 @@ fn read_hyperstack_snapshot(path: &Path) -> Option<Value> {
 #[cfg(test)]
 mod hyperstack_tests {
     use super::*;
+
+    #[test]
+    fn ark_cloud_state_checks_heartbeat_and_ended_vm() -> Result<()> {
+        let path = std::env::temp_dir().join(format!("rbzk-ark-cloud-{}.json", std::process::id()));
+        let mut state = json!({
+            "name": "ark-mnr04-a100-123abcdef0", "vm_id": 456, "requested_at": 900,
+            "stage": "ark_heartbeat|1000|shard|999|5|3|18|20|8192|1|0",
+            "storage_key_id": 8,
+        });
+        std::fs::write(&path, serde_json::to_vec(&state)?)?;
+        let live = read_hyperstack_ark_state(&path).context("valid Ark heartbeat was discarded")?;
+        assert_eq!(live["core_new"], 5);
+        assert_eq!(live["core_replayed"], 18);
+        assert_eq!(live["sampled_at_unix"], 1000);
+        assert_eq!(live["ark_running"], true);
+        assert!(live.get("storage_key_id").is_none());
+
+        state["stage"] = json!("ark_heartbeat|899|shard|999|5|3|18|20|8192|1|0");
+        std::fs::write(&path, serde_json::to_vec(&state)?)?;
+        assert!(read_hyperstack_ark_state(&path).is_none());
+
+        state["cleanup"] = json!("vm_deleted");
+        std::fs::write(&path, serde_json::to_vec(&state)?)?;
+        let ended = read_hyperstack_ark_state(&path).context("ended pilot state was discarded")?;
+        std::fs::remove_file(path)?;
+        assert_eq!(ended["active"], false);
+        assert_eq!(ended["stage"], "stopped");
+        Ok(())
+    }
 
     #[test]
     fn publishes_only_recognized_benchmark_fields() -> Result<()> {

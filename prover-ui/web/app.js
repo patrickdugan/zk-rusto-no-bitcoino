@@ -403,6 +403,39 @@ if(typeof document!=='undefined') (() => {
     const status=!state.polling?'Display paused':sample.active&&!active?'Telemetry stale':hyperstackStages[sample.stage];
     return {sample,active,status,hardware:sample.a100_confirmed?'NVIDIA A100 80 GB PCIe':'A100 on-demand VM'};
   }
+  function arkCloudSignal() {
+    const sample=state.live?.cloud_hyperstack_ark;
+    const phases={
+      provisioning:'Provisioning A100',preparing:'Downloading checkpoint copy',starting:'Starting prover',
+      replay:'Replaying checkpoints',shard:'Writing core shards',reduce:'Writing recursion checkpoints',
+      returning:'Retrieving results',stopped:'Pilot stopped',failed:'Pilot failed'
+    };
+    if(!sample || !Object.hasOwn(phases,sample.stage))return null;
+    const age=Date.now()/1000-sample.sampled_at_unix;
+    const fresh=state.polling&&Date.now()-state.lastReceived<15000&&age>=-10&&age<35;
+    const progressAge=Date.now()/1000-sample.last_checkpoint_at_unix;
+    const phase=!state.polling?'Display paused':sample.active&&!fresh?'Server heartbeat stale':
+      fresh&&sample.ark_running&&progressAge>=60?'Prover running · awaiting checkpoint':phases[sample.stage];
+    return {sample,phase,fresh,active:sample.active&&fresh};
+  }
+  function renderArkCloud() {
+    const cloud=arkCloudSignal();
+    if(!cloud || (!cloud.sample.active&&state.live?.wsl_prover?.phase_running))return;
+    const {sample,phase}=cloud;
+    const counts=[
+      ['Core shards written',sample.core_new],
+      ['Recursion checkpoints written',sample.recursion_new],
+      ['Core checkpoints replayed',sample.core_replayed],
+      ['Recursion checkpoints replayed',sample.recursion_replayed]
+    ].map(([label,value])=>kv(label,Number.isSafeInteger(value)?n(value):'Awaiting sample')).join('');
+    $('shard-heading').textContent='ARK SP1 · HYPERSTACK SHARDING';
+    $('ark-state').textContent=phase;
+    $('shard-metrics').innerHTML=counts+
+      kv('Server heartbeat',time(sample.sampled_at_unix))+
+      kv('Last checkpoint',sample.last_checkpoint_at_unix?time(sample.last_checkpoint_at_unix):'Awaiting checkpoint');
+    $('shard-events').textContent=sample.nova_running&&cloud.fresh?
+      'MNR-04 is running on the same VM using a separate CPU core.':'';
+  }
   function renderHyperstack(pilot) {
     $('hyperstack-benchmark').hidden=!pilot;
     $('cashu-benchmark').hidden=!pilot;
@@ -566,7 +599,8 @@ if(typeof document!=='undefined') (() => {
     $('poll-label').textContent=!state.polling?'DISPLAY PAUSED':stale?'DISCONNECTED / STALE':`LIVE · ${new Date(live.sampled_at_unix*1000).toLocaleTimeString()}`;
     $('live-dot').classList.toggle('live',state.polling&&!stale);
     const pilot=hyperstackSignal();
-    const activeGpu=pilot?.active ? ['HYPERSTACK · CPU PROVING',pilot.hardware,pilot.status] : cloud.active ?
+    const arkCloud=arkCloudSignal();
+    const activeGpu=arkCloud?.active ? ['HYPERSTACK · ARK SP1','A100 on-demand VM',arkCloud.phase] : pilot?.active ? ['HYPERSTACK · CPU PROVING',pilot.hardware,pilot.status] : cloud.active ?
       [`${cloud.provider.toUpperCase()} GPU`,cloud.gpuName || 'GPU name unavailable',`${cloudMeasure(cloud.cloud.metrics?.gpu_util_percent,'%')} compute · ${cloudMeasure(cloud.cloud.metrics?.gpu_memory_percent,'%')} GPU memory`] :
       ['LOCAL GPU',gpu.available?gpu.name:'Unavailable',gpu.available?`${n(gpu.util_gpu_pct)}% compute · ${gib(gpu.vram_used_mib==null?null:gpu.vram_used_mib*2**20)} VRAM used`:'No local GPU measurement'];
     $('hardware-ribbon').innerHTML=[
@@ -587,7 +621,7 @@ if(typeof document!=='undefined') (() => {
     const show={live:['eta-panel','runtime-panel','shard-panel'],compute:['compute-panel'],blocks:['evidence-panel'],
       utxos:['claims-panel'],estimator:['planner-panel'],cashu:['cashu-panel']};
     Object.values(show).flat().forEach(id=>$(id).hidden=!show[state.tab].includes(id));
-    renderLocalGpu();renderRunpodCloud();updateCampaign();updateEta();drawHistory();
+    renderArkCloud();renderLocalGpu();renderRunpodCloud();updateCampaign();updateEta();drawHistory();
   }
   async function poll() {
     if(!state.polling)return;
