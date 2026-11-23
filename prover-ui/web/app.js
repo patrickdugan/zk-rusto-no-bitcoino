@@ -534,35 +534,51 @@ if(typeof document!=='undefined') (() => {
     state.lastEventSeq=seq;
   }
   function updateEta() {
-    const live=state.live||{},wsl=live.wsl_prover||{},progress=wsl.progress||{};
-    const source=`${wsl.progress_source||progress.path||'unknown'}:${live.wsl_prover?.prover_binary_sha256||''}`;
+    const wsl=state.live?.wsl_prover||{};
+    const localConnected=freshRuntime(), localActive=localConnected&&!!arkProcess();
+    const cloud=arkCloudSignal();
+    const remote=cloud?.sample.active&&cloud.sample.ark_running&&
+      Number.isSafeInteger(cloud.sample.vm_id)&&(cloud.fresh||!localActive)?cloud:null;
+    const progress=remote?(ProofEta.checkpointTrend(checkpointHistory)?.progress || {}):(wsl.progress || {});
+    const connected=remote?remote.fresh:localConnected;
+    const active=remote?remote.active:localActive;
+    const source=remote?`hyperstack:${remote.sample.vm_id}:${remote.sample.started_at_unix}`:
+      `${wsl.progress_source||progress.path||'unknown'}:${wsl.prover_binary_sha256||''}`;
     if(source!==state.etaSource) {
       state.etaSource=source;state.etaClock=null;
       $('eta-target').value=readSetting(`rbzk.eta.${source}`)||'';state.etaTarget=$('eta-target').value?Number($('eta-target').value):null;
     }
     const target=state.etaTarget;
-    const active=freshRuntime() && !!arkProcess();
-    const model=ProofEta.estimate(progress,{now:Date.now()/1000,target,active,connected:freshRuntime(),paused:!state.polling,startedAt:wsl.phase_started_unix});
-    model.source=`${source}:${wsl.active_phase_dir||''}`;
+    const model=ProofEta.estimate(progress,{now:Date.now()/1000,target,active,connected,
+      paused:!state.polling,startedAt:remote?.sample.started_at_unix ?? wsl.phase_started_unix});
+    model.source=remote?source:`${source}:${wsl.active_phase_dir||''}`;
+    model.remote=!!remote;
     state.etaClock=ProofEta.clock(state.etaClock,model,performance.now()/1000);state.etaModel=model;
-    document.documentElement.dataset.stream=active&&freshRuntime()?'live':'quiet';
+    document.documentElement.dataset.stream=active&&connected?'live':'quiet';
+    $('eta-heading').textContent=remote?'Live core checkpoint forecast · Hyperstack':'Live core checkpoint forecast · laptop';
     $('eta-scope').textContent=model.manual?'PLANNED CORE TARGET':'NEXT SAVED-CORE MILESTONE';
     $('eta-target-label').textContent=model.target?`${n(model.count)} → ${n(model.target)} saved cores`:'Waiting for a progress sample';
-    $('eta-rate').textContent=model.rate?`${n(model.rate,2)} cores / min`:'Learning the current pace';
+    $('eta-rate').textContent=model.status==='tracking'?`${n(model.rate,2)} cores / min`:'Waiting for a current core rate';
     $('eta-range').textContent=model.seconds!==null?`Recent-pace range ${formatDuration(model.fastSeconds)} – ${formatDuration(model.slowSeconds)}`:'A live completion rate is needed for an estimate.';
-    $('eta-run-age').textContent=typeof wsl.latest_resource?.elapsed_s==='number'?`Phase elapsed ${formatDuration(wsl.latest_resource.elapsed_s)}`:'Phase elapsed unavailable';
+    $('eta-run-age').textContent=remote?
+      `Lease elapsed ${formatDuration(remote.sample.sampled_at_unix-remote.sample.started_at_unix)}`:
+      typeof wsl.latest_resource?.elapsed_s==='number'?`Phase elapsed ${formatDuration(wsl.latest_resource.elapsed_s)}`:'Phase elapsed unavailable';
     $('eta-proof-total').textContent=model.manual?'Core target projection · verification follows':'Core milestone estimate · full proof total not reported';
     $('eta-progress').hidden=!active||!model.manual||model.status!=='tracking';
     const bar=$('eta-fill');bar.style.width=`${model.fraction*100}%`;
     $('eta-progress').setAttribute('aria-valuenow',String(Math.round(model.fraction*100)));
     $('eta-progress').setAttribute('aria-label',model.manual?'Progress to entered core target':'Progress to next saved-core milestone');
     const latest=(progress.recent_events||[]).filter(e=>!e.replayed).at(-1);
-    $('eta-last-proof').textContent=latest?`Last ${latest.kind==='shard'?'core':'recursion'} proof · ${time(latest.t)}`:'Waiting for a new proof event';
+    $('eta-last-proof').textContent=remote?.sample.last_checkpoint_at_unix?
+      `Last server checkpoint · ${time(remote.sample.last_checkpoint_at_unix)}`:
+      latest?`Last ${latest.kind==='shard'?'core':'recursion'} proof · ${time(latest.t)}`:'Waiting for a new proof event';
     tickEta();
   }
   function tickEta() {
     const model=state.etaModel;if(!model)return;
-    if(!state.polling || !freshRuntime()) {
+    const connected=model.remote?arkCloudSignal()?.fresh:freshRuntime();
+    if(!state.polling || !connected) {
+      document.documentElement.dataset.stream='quiet';
       $('eta-clock').textContent=state.polling?'Signal stale':'Display paused';$('eta-finish').textContent='Estimate held';return;
     }
     const labels={paused:'Display paused',stale:'Signal stale',inactive:'Prover inactive',learning:'Learning pace',target_reached:'Target reached'};
