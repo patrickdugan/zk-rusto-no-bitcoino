@@ -72,13 +72,13 @@
           <span class="nav-icon">01</span>
           <span class="nav-label">LIVE RAM / GPU</span>
         </button>
-        <button class="nav-btn" role="tab" aria-selected="false" data-tab="shards">
+        <button class="nav-btn" role="tab" aria-selected="false" data-tab="blocks">
           <span class="nav-icon">02</span>
-          <span class="nav-label">SHARDS &amp; BLOCKS</span>
+          <span class="nav-label">PROOF EVIDENCE</span>
         </button>
         <button class="nav-btn" role="tab" aria-selected="false" data-tab="utxos">
           <span class="nav-icon">03</span>
-          <span class="nav-label">UTXOS &amp; ARK/CASHU</span>
+          <span class="nav-label">PAYMENT CLAIMS</span>
         </button>
         <button class="nav-btn" role="tab" aria-selected="false" data-tab="estimator">
           <span class="nav-icon">04</span>
@@ -98,7 +98,7 @@
             <text x="28" y="40.5" text-anchor="middle" fill="#F5F5F5" font-family="'Bahnschrift Condensed','Franklin Gothic Demi Cond',Impact,sans-serif" font-size="27" font-weight="900" transform="skewX(-8) translate(4,0)">₿</text>
           </svg>
           <div class="btc-sig-lines">
-            <span>ZERO-KNOWLEDGE</span>
+            <span>PROOF SYSTEMS</span>
             <span>RECURSIVE NOVA</span>
             <span>BITCOIN</span>
           </div>
@@ -107,7 +107,7 @@
 
         <div id="poll-status-line">
           <span class="dot live" id="live-dot"></span>
-          <span id="poll-label">LIVE 1S SSE STREAM</span>
+          <span id="poll-label">CONNECTING</span>
         </div>
         <div class="side-controls">
           <button class="ghost-btn" id="toggle-poll" type="button">PAUSE</button>
@@ -119,78 +119,11 @@
 
     <!-- Main Column -->
     <div class="main-column">
-      <!-- Sticky Open Hairline Telemetry Strip (No SaaS Card Boxes) -->
-      <header class="telemetry-ribbon" aria-label="Live hardware and shard metrics">
-        <article class="ribbon-card">
-          <div class="ribbon-head">
-            <span id="gpu-name-label">GPU · RTX 5080</span>
-            <span class="eta-badge cyan" id="gpu-eta-pill" title="Estimated countdown to next CUDA shard/recursion checkpoint">⏱ --:--</span>
-          </div>
-          <div class="ribbon-main">
-            <span class="ribbon-val" id="gpu-util-val">--%</span>
-            <span class="ribbon-unit" id="gpu-vram-val">-- / -- MiB VRAM</span>
-          </div>
-          <div class="meter"><div class="meter-fill cyan" id="gpu-vram-bar" style="width:0%"></div></div>
-          <div class="ribbon-sub">
-            <span id="gpu-temp-power">--°C · -- W</span>
-            <span id="gpu-clock-pool">-- MHz · 256M cap</span>
-          </div>
-        </article>
-
-        <article class="ribbon-card">
-          <div class="ribbon-head">
-            <span>HOST &amp; WSL RAM</span>
-            <span class="eta-badge emerald" id="host-eta-pill" title="Host memory guard poll / cooldown retry countdown">⏱ --:--</span>
-          </div>
-          <div class="ribbon-main">
-            <span class="ribbon-val" id="host-avail-val">-- GiB free</span>
-            <span class="ribbon-unit" id="host-used-val">-- / -- GiB</span>
-          </div>
-          <div class="meter"><div class="meter-fill emerald" id="host-ram-bar" style="width:0%"></div></div>
-          <div class="ribbon-sub">
-            <span id="vmmem-ws-label">vmmem WS: --</span>
-            <span id="vmmem-commit-label">FLOOR 3.0G</span>
-          </div>
-        </article>
-
-        <article class="ribbon-card">
-          <div class="ribbon-head">
-            <span>WSL CGROUP V2</span>
-            <span class="eta-badge violet" id="cgroup-eta-pill" title="Active cgroup phase runtime / cooldown countdown">⏱ --:--:--</span>
-          </div>
-          <div class="ribbon-main">
-            <span class="ribbon-val" id="cgroup-ram-val">-- MiB</span>
-            <span class="ribbon-unit" id="cgroup-cap-val">/ 2,048 MiB</span>
-          </div>
-          <div class="meter"><div class="meter-fill violet" id="cgroup-ram-bar" style="width:0%"></div></div>
-          <div class="ribbon-sub">
-            <span id="cgroup-swap-label">Swap: -- / 4,096M</span>
-            <span id="disk-free-label">D: --G free</span>
-          </div>
-        </article>
-
-        <article class="ribbon-card" id="ribbon-shard-card">
-          <div class="ribbon-head">
-            <span>SP1 SHARD STREAM</span>
-            <span class="eta-badge amber" id="ribbon-eta-pill" title="Estimated remaining countdown to compressed SP1 proof">⏱ --:--:--</span>
-          </div>
-          <div class="ribbon-main">
-            <span class="ribbon-val" id="live-shards-val">--</span>
-            <span class="ribbon-unit" id="live-reduces-val">+ -- rec</span>
-          </div>
-          <div class="meter"><div class="meter-fill amber" id="live-shard-bar" style="width:50%"></div></div>
-          <div class="ribbon-sub">
-            <span id="session-proved-label">Session: --</span>
-            <span id="store-mib-label">--/m</span>
-          </div>
-        </article>
-      </header>
-
+      <header class="telemetry-ribbon" id="hardware-ribbon" aria-label="Live hardware measurements"></header>
       <main class="workspace-body">
-        <!-- Title-Card Hero Strip (Direct Architectural Translation of ZK RAITO NO BITCOINO) -->
         <section class="campaign-banner" aria-labelledby="campaign-title">
           <div class="hero-top-row">
-            <p class="eyebrow" id="campaign-network">BITCOIN PROVING CAMPAIGN</p>
+            <p class="eyebrow" id="campaign-network">LIVE PROVER OBSERVATIONS</p>
             <div class="hero-top-right">
               <div class="hero-meta-lines">
                 <span>CRYPTO × MECHA</span>
@@ -237,8 +170,8 @@
 
           <div class="hero-bottom-row">
             <div class="badge-stack">
-              <span class="status-pill" id="campaign-badge">VERIFYING</span>
-              <span class="status-pill cyan" id="campaign-eta-pill">⏱ E2E ETA --:--:--</span>
+              <span class="status-pill" id="campaign-badge">WAITING FOR EVIDENCE</span>
+              <span class="status-pill cyan" id="campaign-eta-pill">⏱ WAITING FOR OBSERVATIONS</span>
               <span class="hw-caption" id="campaign-hw"></span>
             </div>
             <div class="ver-stamp">
@@ -248,604 +181,34 @@
           </div>
         </section>
 
-        <!-- 5 Open Architectural KPI Columns (No Boxes, Pure 1px Hairline Dividers) -->
-        <section class="kpi-grid" aria-label="Campaign key metrics">
-          <article class="kpi-card">
-            <div class="kpi-head">
-              <span class="kpi-label">BITCOIN WORKLOAD</span>
-              <span class="eta-badge done" id="kpi-eta-domain">✓ 00:00:00</span>
-            </div>
-            <strong class="kpi-value" id="kpi-domain">--</strong>
-            <span class="kpi-foot" id="kpi-domain-foot">Pinned inputs</span>
-          </article>
-          <article class="kpi-card">
-            <div class="kpi-head">
-              <span class="kpi-label">NOVA 0.76 FOLD</span>
-              <span class="eta-badge done" id="kpi-eta-nova">✓ 00:00:00</span>
-            </div>
-            <strong class="kpi-value" id="kpi-nova">--</strong>
-            <span class="kpi-foot" id="kpi-nova-foot">-- R1CS / step</span>
-          </article>
-          <article class="kpi-card" id="kpi-core-card">
-            <div class="kpi-head">
-              <span class="kpi-label">SP1 CORE SHARDS</span>
-              <span class="eta-badge cyan" id="kpi-eta-core" title="Countdown until all ProveShard tasks complete">⏱ --:--:--</span>
-            </div>
-            <strong class="kpi-value" id="kpi-core-shards">--</strong>
-            <div class="meter kpi-meter"><div class="meter-fill emerald" id="kpi-core-bar" style="width:0%"></div></div>
-            <span class="kpi-foot" id="kpi-threshold-foot">Threshold --</span>
-          </article>
-          <article class="kpi-card" id="kpi-rec-card">
-            <div class="kpi-head">
-              <span class="kpi-label">RECURSIVE REDUCE</span>
-              <span class="eta-badge violet" id="kpi-eta-rec" title="Countdown until 3:1 recursion tree root completes">⏱ --:--:--</span>
-            </div>
-            <strong class="kpi-value" id="kpi-rec-shards">--</strong>
-            <div class="meter kpi-meter"><div class="meter-fill violet" id="kpi-rec-bar" style="width:0%"></div></div>
-            <span class="kpi-foot" id="kpi-fanin-foot">~3:1 compress tree</span>
-          </article>
-          <article class="kpi-card" id="kpi-m14-card">
-            <div class="kpi-head">
-              <span class="kpi-label">BITVM3 FINAL (M14)</span>
-              <span class="eta-badge amber" id="kpi-eta-m14" title="End-to-end countdown including M13 BLAKE3 wrap + M14 785.44M-gate garbled verifier">⏱ --:--:--</span>
-            </div>
-            <strong class="kpi-value" id="kpi-gates">785.44M</strong>
-            <span class="kpi-foot" id="kpi-mem-foot">--</span>
-          </article>
+
+        <section class="kpi-grid" id="live-kpis" aria-label="Observed proof progress"></section>
+        <section class="panel" id="runtime-panel"><div class="panel-head"><h2>LIVE PROCESS &amp; PROOF JOURNAL</h2><span class="tag-mono" id="runtime-age">Connecting</span></div>
+          <p class="panel-sub">Process identity, CPU time and cgroup memory from the running machine. A quiet proof stage stays quiet.</p>
+          <div id="jobs"></div>
+          <div class="sub-panel"><h3>Observed CPU / host memory / GPU activity</h3><canvas id="observations" height="150" aria-label="Measured resource history"></canvas><p id="history-caption" class="panel-sub"></p></div>
         </section>
-
-        <!-- TAB 01: LIVE PROVER & HARDWARE TELEMETRY -->
-        <section class="tab-panel" id="tab-live">
-          <!-- Real-Time Targeting Reticle Cockpit & 60fps Shard Matrix -->
-          <section class="liveness-cockpit mode-proving" id="liveness-cockpit" aria-label="Live ongoing prover operation">
-            <div class="cockpit-scanline"></div>
-            <div class="cockpit-grid">
-              <div class="cockpit-left">
-                <div class="cockpit-hero">
-                  <div class="ring-wrap" aria-hidden="true">
-                    <svg class="ring-svg" viewBox="0 0 84 84">
-                      <!-- Outer hairline targeting ticks -->
-                      <line x1="42" y1="1" x2="42" y2="6" stroke="var(--ink)" stroke-width="1.2" opacity="0.65"/>
-                      <line x1="42" y1="78" x2="42" y2="83" stroke="var(--ink)" stroke-width="1.2" opacity="0.65"/>
-                      <line x1="1" y1="42" x2="6" y2="42" stroke="var(--ink)" stroke-width="1.2" opacity="0.65"/>
-                      <line x1="78" y1="42" x2="83" y2="42" stroke="var(--ink)" stroke-width="1.2" opacity="0.65"/>
-                      <circle cx="42" cy="42" r="35" fill="none" stroke="var(--line-strong)" stroke-width="2.5"/>
-                      <circle id="cockpit-ring-arc" cx="42" cy="42" r="35" fill="none" stroke="var(--crimson)"
-                        stroke-width="3.2" stroke-linecap="butt" stroke-dasharray="219.9" stroke-dashoffset="110"/>
-                      <circle id="cockpit-ring-orbit" cx="42" cy="7" r="3.2" fill="var(--ink)"/>
-                    </svg>
-                    <div class="ring-center">
-                      <strong id="cockpit-timer-val">0.0s</strong>
-                      <small id="cockpit-timer-sub">LIVE</small>
-                    </div>
-                  </div>
-                  <div class="cockpit-status-copy">
-                    <div class="cockpit-eyebrow-row">
-                      <span class="sse-pill" id="sse-heartbeat-pill">
-                        <span class="dot live"></span>
-                        <span id="sse-frame-label">SSE STREAM · 1.0s</span>
-                      </span>
-                      <span class="tag-mono" id="cockpit-attempt-tag">Attempt #1</span>
-                      <span class="replay-pill" id="replay-mode-pill" hidden>REPLAY PREVIEW · REAL MEMO STREAM</span>
-                    </div>
-                    <h2 id="cockpit-headline">Connecting to WSL prover stream…</h2>
-                    <p id="cockpit-detail">Subscribing to real-time 1s SSE telemetry from ark-prove-gpu, host.json, and progress.jsonl.</p>
-                  </div>
-                </div>
-
-                <div class="headroom-progress-box">
-                  <div class="headroom-top">
-                    <span id="cockpit-overall-left">Estimated Task Completion (Core + Active 3:1 Tree)</span>
-                    <strong id="cockpit-overall-right">-- / -- (--%)</strong>
-                  </div>
-                  <div class="meter" style="height:4px;margin-bottom:12px">
-                    <div class="meter-fill emerald" id="cockpit-overall-fill" style="width:0%"></div>
-                  </div>
-                  <div class="headroom-top">
-                    <span id="cockpit-bar-left">In-Flight Task / Headroom Progress</span>
-                    <strong id="cockpit-bar-right">--</strong>
-                  </div>
-                  <div class="meter" style="height:3px">
-                    <div class="meter-fill cyan" id="cockpit-progress-fill" style="width:25%"></div>
-                  </div>
-                </div>
-
-                <!-- Calm Static Stage Bus (Event-Only Completion Pulse) -->
-                <svg class="bus-svg" id="proof-bus-svg" viewBox="0 0 680 84" aria-label="Proof pipeline stage bus">
-                  <defs>
-                    <filter id="glow">
-                      <feGaussianBlur stdDeviation="2.0" result="b"/>
-                      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-                    </filter>
-                  </defs>
-                  <!-- Base wires -->
-                  <line x1="70" y1="36" x2="610" y2="36" stroke="var(--line-strong)" stroke-width="1.4"/>
-                  <line id="bus-active-wire" class="bus-wire-active" x1="70" y1="36" x2="475" y2="36" stroke="var(--crimson)" stroke-width="2"/>
-                  <!-- Static stage chevrons -->
-                  <g fill="none" stroke="var(--ink-dim)" stroke-width="1.3" stroke-linecap="square">
-                    <polyline points="135,32.5 139.5,36 135,39.5"/>
-                    <polyline points="270,32.5 274.5,36 270,39.5"/>
-                    <polyline points="405,32.5 409.5,36 405,39.5"/>
-                    <polyline points="540,32.5 544.5,36 540,39.5"/>
-                  </g>
-                  <!-- Event-only completion pulse layer -->
-                  <g id="bus-particles-layer" filter="url(#glow)"></g>
-                  <!-- Sharp Architectural Reticle Nodes -->
-                  <g transform="translate(70,36)">
-                    <circle r="13" fill="var(--bg)" stroke="var(--ink)" stroke-width="1.6"/>
-                    <text y="3.5" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" font-weight="700">NOVA</text>
-                    <text y="27" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace">4-STEP FOLD</text>
-                  </g>
-                  <g transform="translate(205,36)">
-                    <circle id="bus-node-exec" r="13" fill="var(--bg)" stroke="var(--ink)" stroke-width="1.6"/>
-                    <text y="3.5" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" font-weight="700">EXEC</text>
-                    <text y="27" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace">RISC-V STREAM</text>
-                  </g>
-                  <g transform="translate(340,36)">
-                    <circle id="bus-node-shard" r="15" fill="var(--bg)" stroke="var(--crimson)" stroke-width="2"/>
-                    <text y="3.5" text-anchor="middle" fill="var(--crimson)" font-size="8.5" font-family="monospace" font-weight="700">SHARD</text>
-                    <text y="28" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" id="bus-shard-count">1,131 core</text>
-                  </g>
-                  <g transform="translate(475,36)">
-                    <circle id="bus-node-reduce" r="15" fill="var(--bg)" stroke="var(--ink)" stroke-width="2"/>
-                    <text y="3.5" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" font-weight="700">3:1</text>
-                    <text y="28" text-anchor="middle" fill="var(--ink)" font-size="8.5" font-family="monospace" id="bus-reduce-count">1,032 reduce</text>
-                  </g>
-                  <g transform="translate(610,36)">
-                    <circle id="bus-node-final" r="13" fill="var(--bg)" stroke="var(--line-strong)" stroke-width="1.6"/>
-                    <text y="3.5" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace">M14</text>
-                    <text y="27" text-anchor="middle" fill="var(--ink-dim)" font-size="8.5" font-family="monospace">785.4M GATES</text>
-                  </g>
-                </svg>
-              </div>
-
-              <!-- Right: Live 60fps Shard Matrix + Sliding Completion Feed -->
-              <div class="cockpit-right">
-                <div class="mosaic-head">
-                  <div>
-                    <h3>LIVE SHARD &amp; RECURSION MATRIX</h3>
-                    <div class="mosaic-count-line" id="mosaic-total-count">--</div>
-                  </div>
-                  <button type="button" class="replay-btn" id="replay-completions-btn" title="Visually replay the last 12 recorded shard/recursion completions from progress.jsonl">
-                    ▶ REPLAY LAST 12 SHARDS
-                  </button>
-                </div>
-                <div class="mosaic-canvas-wrap">
-                  <canvas id="shard-mosaic-canvas" width="540" height="108" aria-label="Live shard and recursion completion mosaic"></canvas>
-                </div>
-                <div class="mosaic-tooltip">
-                  <span id="mosaic-hover-label">Hover tile for digest &amp; latency · Leading slot pulses</span>
-                  <span class="mosaic-legend-right"><b style="color:var(--crimson)">■</b> CORE &nbsp;<b style="color:var(--ink)">■</b> REDUCE &nbsp;<b style="color:var(--crimson)">[◉]</b> ACTIVE</span>
-                </div>
-                <div class="completion-feed" id="completion-feed" aria-live="polite"></div>
-              </div>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-head">
-              <div>
-                <h2>END-TO-END NOVA → SP1 CUDA → BLAKE3 → BITVM3 GARBLED PIPELINE</h2>
-                <p class="panel-sub">Verified receipts, active CUDA proving stages, and pending downstream gates stay explicitly separated.</p>
-              </div>
-              <span class="tag-mono" id="pipeline-pin-tag">SP1 6.9.0 · NOVA 0.76.0</span>
-            </div>
-            <div class="pipeline-track" id="pipeline-track"></div>
-          </section>
-
-          <div class="grid-2">
-            <section class="panel">
-              <div class="panel-head">
-                <div>
-                  <h2>WSL CGROUP RAM/SWAP VS WINDOWS HOST HEADROOM</h2>
-                  <p class="panel-sub">Live 2-second trace from <code>resources.jsonl</code> against the 2 GiB Linux cap and 3 GiB Windows floor.</p>
-                </div>
-                <span class="tag-mono" id="mem-chart-tag">2S CADENCE</span>
-              </div>
-              <div class="chart-box">
-                <svg class="chart-svg" id="mem-history-svg" viewBox="0 0 640 210" preserveAspectRatio="none" aria-label="Memory telemetry history"></svg>
-                <div class="chart-legend">
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--ink)"></i>Windows Free (GiB)</span>
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--crimson)"></i>Cgroup RSS (GiB)</span>
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--ink-dim)"></i>Cgroup Swap (GiB)</span>
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--crimson);opacity:0.5"></i>3.0 GiB Host Floor</span>
-                </div>
-              </div>
-            </section>
-
-            <section class="panel">
-              <div class="panel-head">
-                <div>
-                  <h2>GPU COMPUTE / VRAM &amp; CHECKPOINT TASK STREAM</h2>
-                  <p class="panel-sub">Live RTX 5080 utilization &amp; per-task latency (<code>ms</code>) of completed <code>ProveShard</code> and <code>RecursionReduce</code> memos.</p>
-                </div>
-                <span class="tag-mono" id="task-chart-tag">PROGRESS.JSONL</span>
-              </div>
-              <div class="chart-box">
-                <svg class="chart-svg" id="task-history-svg" viewBox="0 0 640 210" preserveAspectRatio="none" aria-label="Task duration and GPU history"></svg>
-                <div class="chart-legend">
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--crimson)"></i>ProveShard (s)</span>
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--ink)"></i>RecursionReduce (s)</span>
-                  <span class="legend-item"><i class="legend-swatch" style="background:var(--ink-muted)"></i>GPU VRAM Used (GiB)</span>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <div class="grid-aside">
-            <section class="panel">
-              <div class="panel-head">
-                <div>
-                  <h2>LIVE WSL PROVER LOG &amp; GUARD LEDGER</h2>
-                  <p class="panel-sub">Streaming tail of active <code>phase.log</code> plus clean resource-hold checkpoints and <code>/dev/shm</code> sweeps.</p>
-                </div>
-                <span class="tag-mono" id="active-phase-name">--</span>
-              </div>
-              <pre class="log-pre" id="phase-log-pre">Waiting for live WSL prover log…</pre>
-              <div class="table-scroll" style="margin-top:14px">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Stop Reason</th>
-                      <th>Exit</th>
-                      <th>Elapsed</th>
-                      <th>Cgroup Peak</th>
-                      <th>Swap Peak</th>
-                      <th>Cleaned /dev/shm</th>
-                    </tr>
-                  </thead>
-                  <tbody id="guard-events-tbody"></tbody>
-                </table>
-              </div>
-            </section>
-
-            <section class="panel">
-              <div class="panel-head">
-                <div>
-                  <h2>HOST VS WSL MEMORY ACCOUNTING</h2>
-                  <p class="panel-sub">Separating Windows resident RAM, <code>vmmemWSL</code> pagefile commit, Linux cgroup RSS, and CUDA driver pools.</p>
-                </div>
-              </div>
-              <div class="mem-split-list" id="mem-accounting-list"></div>
-            </section>
-          </div>
+        <section class="panel" id="shard-panel"><div class="panel-head"><h2>ARK SP1 SHARD CACHE</h2><span class="tag-mono" id="ark-state">Unknown</span></div>
+          <div id="shard-metrics" class="kv-grid"></div><p class="panel-sub">Durable cache history survives a stopped prover. Counts are not a completion percentage or an independent verification.</p>
+          <div id="shard-events"></div>
         </section>
-
-        <!-- TAB 02: RECURSIVE SHARDS <-> BLOCKS, SHINIGAMI LEAVES & UTXOS -->
-        <section class="tab-panel" id="tab-shards" hidden>
-          <div class="grid-aside">
-            <section class="panel">
-              <div class="panel-head">
-                <div>
-                  <h2>RECURSIVE REDUCTION HIERARCHY (DOMAIN PRIMITIVES → BITVM3)</h2>
-                  <p class="panel-sub">How blocks, Shinigami script leaves, payment UTXOs, and Ark VTXOs fold into SP1 shards and M14 gates.</p>
-                </div>
-                <span class="tag-mono">3:1 SP1 COMPRESS FAN-IN</span>
-              </div>
-              <div class="pyramid-stack" id="shard-pyramid"></div>
-            </section>
-
-            <section class="panel">
-              <div class="panel-head">
-                <div>
-                  <h2>M16 MAINNET SP1 GUEST INSTRUCTION &amp; SHARD ATTRIBUTION</h2>
-                  <p class="panel-sub">34,055,622,753 instructions → 13,290 Core Shards + 4,430 Recursion Shards (<code>2^27</code> threshold).</p>
-                </div>
-              </div>
-              <div class="stacked-bar" id="m16-instr-bar"></div>
-              <div class="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Guest Subsystem</th>
-                      <th>Instructions</th>
-                      <th>Share</th>
-                      <th>Core Shards</th>
-                    </tr>
-                  </thead>
-                  <tbody id="m16-instr-tbody"></tbody>
-                </table>
-              </div>
-            </section>
-          </div>
-
-          <section class="panel">
-            <div class="panel-head">
-              <div>
-                <h2>MAINNET CHAINSTATE WINDOW (975,067 .. 975,072): PER-BLOCK NOVA STEPS</h2>
-                <p class="panel-sub">Measured M18 dual-slot step machine (SHA-256 producer + depth-20 Poseidon UTXO leaf consumer) across 32,693 mainnet txs and 74,592 created UTXOs.</p>
-              </div>
-              <span class="tag-mono">224,790 STEPS · 8 SEGMENTS · ROOT 7e18b083…2d1c</span>
-            </div>
-            <div class="chart-box" style="margin-bottom:14px">
-              <svg class="chart-svg" id="m18-blocks-svg" viewBox="0 0 860 200" preserveAspectRatio="none" aria-label="M18 per-block step comparison"></svg>
-              <div class="chart-legend">
-                <span class="legend-item"><i class="legend-swatch" style="background:var(--ink)"></i>SHA-256 Compressions (Producer)</span>
-                <span class="legend-item"><i class="legend-swatch" style="background:var(--crimson)"></i>Poseidon Leaf Updates (Consumer)</span>
-                <span class="legend-item"><i class="legend-swatch" style="background:var(--ink-dim)"></i>Producer Idle Steps (Block 975,072)</span>
-              </div>
-            </div>
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Block Height</th>
-                    <th>Txs</th>
-                    <th>UTXO Creates</th>
-                    <th>In-Win Spends</th>
-                    <th>Pre-Win Spends</th>
-                    <th>SHA-256 Compr.</th>
-                    <th>Leaf Updates</th>
-                    <th>Idle</th>
-                    <th>Nova Steps</th>
-                    <th>Segments</th>
-                  </tr>
-                </thead>
-                <tbody id="m18-blocks-tbody"></tbody>
-              </table>
-            </div>
-          </section>
-
-          <div class="grid-2">
-            <section class="panel">
-              <div class="panel-head">
-                <div>
-                  <h2>M18 PARALLEL NOVA SEGMENTS (<code>z0 → zn</code> STATE CHAINING)</h2>
-                  <p class="panel-sub">8 independent <code>fold-seg</code> workers compressed to 13,800-byte Spartan-IPA proofs (110.4 KB total).</p>
-                </div>
-                <span class="tag-mono">VK a259c50c…1939</span>
-              </div>
-              <div class="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Seg</th>
-                      <th>Step Range</th>
-                      <th>Steps</th>
-                      <th>z0 → zn Chain</th>
-                      <th>Fold Wall</th>
-                      <th>IPA Proof</th>
-                    </tr>
-                  </thead>
-                  <tbody id="m18-segments-tbody"></tbody>
-                </table>
-              </div>
-            </section>
-
-            <section class="panel">
-              <div class="panel-head">
-                <div>
-                  <h2>SHINIGAMI SCRIPT LEAVES, TAPROOT VTXO EXITS &amp; FC03 ENVELOPES</h2>
-                  <p class="panel-sub">M17 Nova folding steps (6,808 R1CS/step), Shinigami Cairo/Stwo Taproot leaves, and FC03 644 vB tapscript carriers.</p>
-                </div>
-                <span class="tag-mono">7,733 CORE CHECKS</span>
-              </div>
-              <div class="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Leaf / Vector</th>
-                      <th>Script / Carrier</th>
-                      <th>Steps</th>
-                      <th>Claims</th>
-                      <th>Prove</th>
-                      <th>Peak RAM</th>
-                    </tr>
-                  </thead>
-                  <tbody id="shinigami-tbody"></tbody>
-                </table>
-              </div>
-            </section>
-          </div>
+        <section class="panel" id="evidence-panel"><div class="panel-head"><h2>LOCAL PROOF EVIDENCE</h2><span class="tag-mono" id="evidence-source"></span></div>
+          <p class="panel-sub">Files are reread from disk. Recorded reports remain historical evidence; their presence does not establish a live process.</p><div id="evidence-list"></div>
         </section>
-
-        <!-- TAB 03: PAYMENT UTXOS, ARK VTXOS & CASHU DESK -->
-        <section class="tab-panel" id="tab-utxos" hidden>
-          <div class="grid-2">
-            <section class="panel">
-              <div class="panel-head">
-                <div>
-                  <h2>MAINNET PAYMENT UTXO (M16 <code>PAY1</code> + M18 UNSPENT LEAF #8)</h2>
-                  <p class="panel-sub">Inclusion proved under genesis-anchored tip 975,072 (M16) AND unspentness proved in depth-20 Poseidon map (M18).</p>
-                </div>
-                <span class="pill-action unspent">UNSPENT · 940,000 SATS</span>
-              </div>
-              <div class="kv-grid" id="pay1-kv-grid"></div>
-              <details style="margin-top:14px">
-                <summary class="mono" style="cursor:pointer;color:var(--crimson)">Inspect Depth-20 Poseidon Indexed Merkle Siblings (Leaf #8 → Root 7e18b083…2d1c)</summary>
-                <pre class="log-pre" id="pay1-siblings-pre" style="margin-top:8px"></pre>
-              </details>
-            </section>
-
-            <section class="panel">
-              <div class="panel-head">
-                <div>
-                  <h2>ARK ASP VTXO POLICY CERTIFICATE (<code>ARK1</code>) &amp; PROOF GROVE</h2>
-                  <p class="panel-sub">Nova-verified 24-scalar state scan over live Proof Grove Bark VTXOs (Core height 679) + NUT-09/20 Cashu bridge.</p>
-                </div>
-                <span class="tag-mono">dd352842…8f41</span>
-              </div>
-              <div class="kv-grid" id="cashu-ark-kv" style="margin-bottom:14px"></div>
-              <div class="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Bark VTXO Outpoint</th>
-                      <th>Policy Action</th>
-                      <th>Before</th>
-                      <th>After</th>
-                      <th>Fee</th>
-                      <th>Expiry</th>
-                    </tr>
-                  </thead>
-                  <tbody id="ark-vtxos-tbody"></tbody>
-                </table>
-              </div>
-            </section>
-          </div>
-
-          <section class="panel" id="ark-zk-upgrade-panel">
-            <div class="panel-head">
-              <div>
-                <h2>CAIRO / SHINIGAMI TAPROOT EXIT &amp; NOVA <code>ArkTransitionV1</code> BRIDGE</h2>
-                <p class="panel-sub">Hardened multi-input Ark forfeit &amp; CSV exit proofs (<code>shinigami@fe9c65e</code>) paired with Nova batch conservation (<code>ark-transition-nova@81140f9</code>) and the live Proof Grove Cashu desk.</p>
-              </div>
-              <span class="pill-action unspent">25/25 ARK CAIRO · 22/22 NOVA MUTATIONS</span>
-            </div>
-            <div class="kv-grid">
-              <div class="kv-item"><span>Cairo / Shinigami Engine</span><strong>4,977/4,977 Core + 2-in Forfeit &amp; CSV Exit</strong></div>
-              <div class="kv-item"><span>Shinigami Stwo Program Hash</span><strong>0x4f57fcf7…4bf9c8b4 (0.25s verify)</strong></div>
-              <div class="kv-item"><span>Nova ArkTransitionV1 VK</span><strong>22ad3282…85dfcdad (1,050 R1CS/step · 11,104 B)</strong></div>
-              <div class="kv-item"><span>Proof Grove Cashu Desk</span><strong><a href="http://127.0.0.1:8765/" target="_blank" rel="noopener noreferrer" style="color:var(--crimson);text-decoration:none">http://127.0.0.1:8765/ ↗</a> (91 Py + 12 Wallet tests)</strong></div>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-head">
-              <div>
-                <h2>PINNED VERIFIER KEYS, PROGRAM DIGESTS &amp; CROSS-PROGRAM ISOLATION</h2>
-                <p class="panel-sub">Every circuit key, SP1 ELF program digest, and M13 BLAKE3 wrap root is SHA-256 pinned; cross-program substitution (e.g. M16 proof presented as ARK1) fails closed.</p>
-              </div>
-              <span class="tag-mono">FAIL-CLOSED PINS</span>
-            </div>
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Artifact / Boundary</th>
-                    <th>Identifier / Pin Digest</th>
-                    <th>Verification Status</th>
-                  </tr>
-                </thead>
-                <tbody id="pins-tbody"></tbody>
-              </table>
-            </div>
-          </section>
+        <section class="panel" id="claims-panel"><div class="panel-head"><h2>PAYMENT CLAIMS</h2><span class="tag-mono">FROM OBSERVED AUDIT RECEIPTS</span></div>
+          <div id="claims-list"></div><p class="panel-sub">Historical script verification does not establish current unspentness, mint funding, an Ark payment, or removal of a trusted administrator. No live wallet balance source is configured.</p>
         </section>
-
-        <!-- TAB 04: WORKLOAD -> SHARD & HARDWARE PLANNER -->
-        <section class="tab-panel" id="tab-estimator" hidden>
-          <section class="panel">
-            <div class="panel-head">
-              <div>
-                <h2>WORKLOAD → RECURSIVE SHARD &amp; RAM/GPU ENVELOPE PLANNER</h2>
-                <p class="panel-sub">Compute Nova folding segments, SP1 core &amp; recursive reduce shards, Linux cgroup RAM, swap, and RTX 5080 VRAM from measured repository unit costs.</p>
-              </div>
-              <span class="status-pill projection">ANALYTICAL PROJECTION · MEASURED UNIT CONSTANTS</span>
-            </div>
-
-            <div class="preset-bar" id="preset-bar">
-              <button type="button" class="preset-btn active" data-preset="m16_mainnet">M16 Mainnet (975,072 hdr + 1 PAY1)</button>
-              <button type="button" class="preset-btn" data-preset="m18_window">M16 + M18 6-Block UTXO Window</button>
-              <button type="button" class="preset-btn" data-preset="ark_live">Ark ASP Live (4 VTXOs · 2 GiB Cap)</button>
-              <button type="button" class="preset-btn" data-preset="ark_round_128">Ark 128-VTXO Round + 16 Exits</button>
-              <button type="button" class="preset-btn" data-preset="shinigami_batch">Shinigami 64-Input Script Batch</button>
-            </div>
-
-            <div class="grid-2">
-              <div class="slider-group">
-                <div class="slider-field">
-                  <div class="slider-head">
-                    <label for="est-header-blocks">Bitcoin Header-Chain Blocks (<code>NHC1</code>, 82,809 R1CS/hdr)</label>
-                    <output id="out-header-blocks">975,072</output>
-                  </div>
-                  <input type="range" id="est-header-blocks" min="0" max="1050000" step="1000" value="975072">
-                </div>
-
-                <div class="slider-field">
-                  <div class="slider-head">
-                    <label for="est-header-shards">Parallel Nova Header Segments (<code>s0..sm</code>)</label>
-                    <output id="out-header-shards">2</output>
-                  </div>
-                  <input type="range" id="est-header-shards" min="0" max="16" step="1" value="2">
-                </div>
-
-                <div class="slider-field">
-                  <div class="slider-head">
-                    <label for="est-window-blocks">M18 Full UTXO-Map Window Blocks (~37,465 Nova steps/blk)</label>
-                    <output id="out-window-blocks">0</output>
-                  </div>
-                  <input type="range" id="est-window-blocks" min="0" max="80" step="1" value="0">
-                </div>
-
-                <div class="slider-field">
-                  <div class="slider-head">
-                    <label for="est-tx-per-block">M18 Avg Transactions / Block (<code>max(sha256, in+2·out)</code>)</label>
-                    <output id="out-tx-per-block">5,449</output>
-                  </div>
-                  <input type="range" id="est-tx-per-block" min="500" max="12000" step="100" value="5449">
-                </div>
-
-                <div class="slider-field">
-                  <div class="slider-head">
-                    <label for="est-payment-utxos">Payment UTXOs Verified (<code>PAY1</code> / Depth-20 Leaves)</label>
-                    <output id="out-payment-utxos">1</output>
-                  </div>
-                  <input type="range" id="est-payment-utxos" min="0" max="256" step="1" value="1">
-                </div>
-
-                <div class="slider-field">
-                  <div class="slider-head">
-                    <label for="est-shinigami-leaves">Shinigami Script / Taproot Leaves (<code>M17</code> + Claims)</label>
-                    <output id="out-shinigami-leaves">0</output>
-                  </div>
-                  <input type="range" id="est-shinigami-leaves" min="0" max="256" step="1" value="0">
-                </div>
-
-                <div class="slider-field">
-                  <div class="slider-head">
-                    <label for="est-ark-vtxos">Ark ASP Managed VTXO Leaves (<code>ARK1</code>, 19,113 R1CS/leaf)</label>
-                    <output id="out-ark-vtxos">0</output>
-                  </div>
-                  <input type="range" id="est-ark-vtxos" min="0" max="512" step="1" value="0">
-                </div>
-
-                <div class="select-row">
-                  <label>
-                    Shinigami Leaf Profile
-                    <select id="est-script-type">
-                      <option value="p2wpkh">P2WPKH Witness v0 (21 steps)</option>
-                      <option value="p2pkh">P2PKH Legacy (10 steps)</option>
-                      <option value="p2wsh">P2WSH Witness v0 (17 steps)</option>
-                      <option value="p2sh_multisig">P2SH Multisig (31 steps)</option>
-                      <option value="taproot_vtxo_exit">Taproot VTXO Exit + Sig Claim (42 steps)</option>
-                    </select>
-                  </label>
-                  <label>
-                    SP1 Element Threshold
-                    <select id="est-threshold">
-                      <option value="26">2^26 (67.1M · Bounded 2 GiB Mode)</option>
-                      <option value="27" selected>2^27 (134.2M · M16 Mainnet Mode)</option>
-                      <option value="28">2^28 (268.4M · High-VRAM Mode)</option>
-                    </select>
-                  </label>
-                </div>
-
-                <div class="select-row">
-                  <label style="grid-column: span 2">
-                    Prover Hardware &amp; Memory Guard Profile
-                    <select id="est-hw-profile">
-                      <option value="rtx5080_12gib" selected>RTX 5080 Laptop GPU (16 GB VRAM · 12 GiB Host Cap · nb3-prove-gpu)</option>
-                      <option value="rtx5080_bounded_2gib">RTX 5080 Bounded Interactive (2 CPU · 2 GiB Cgroup · 3 GiB Win Floor · ark-prove-gpu)</option>
-                      <option value="cpu_20t">Ryzen AI 9 365 CPU-Only Fallback (20 Threads · 12 GiB RSS · nb3-prove)</option>
-                    </select>
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <div class="kv-grid" id="est-results-grid"></div>
-                <div class="sub-panel" style="margin-top:16px">
-                  <div class="panel-head" style="margin-bottom:10px">
-                    <h2>PROJECTED SP1 CORE SHARD ATTRIBUTION</h2>
-                    <span class="tag-mono" id="est-total-tasks-tag">-- total tasks</span>
-                  </div>
-                  <div class="stacked-bar" id="est-attr-bar"></div>
-                  <div class="chart-legend" id="est-attr-legend"></div>
-                </div>
-              </div>
-            </div>
-          </section>
+        <section class="panel" id="planner-panel"><div class="panel-head"><h2>SHARD PLANNER</h2><span class="tag-mono">MODEL · NOT RUN PROGRESS</span></div>
+          <p class="panel-sub">Carbon's measured-unit estimator. These are projections for the entered workload, separate from observed process data.</p>
+          <form id="planner" class="kv-grid">
+            <label>Header blocks<input name="header_blocks" type="number" min="0" value="0"></label>
+            <label>Nova header segments<input name="nova_header_shards" type="number" min="0" value="0"></label>
+            <label>Payment UTXOs<input name="payment_utxos" type="number" min="0" value="0"></label>
+            <label>Shinigami leaves<input name="shinigami_leaves" type="number" min="0" value="0"></label>
+            <label>Ark VTXOs<input name="ark_vtxos" type="number" min="0" value="0"></label>
+            <label>Shard threshold exponent<input name="element_threshold_exp" type="number" min="25" max="28" value="26"></label>
+            <button class="ghost-btn" type="submit">CALCULATE PROJECTION</button>
+          </form><pre id="planner-result">Enter a workload to calculate a projection.</pre>
         </section>
       </main>
     </div>

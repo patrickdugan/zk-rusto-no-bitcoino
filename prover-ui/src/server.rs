@@ -35,7 +35,8 @@ const CSP_HEADER: &str = "default-src 'self'; img-src 'self' data:; style-src 's
 
 pub struct ProverUIApp {
     pub telemetry: TelemetryCollector,
-    campaigns_base: Value,
+    ark_dir: Option<PathBuf>,
+    runtime: crate::runtime::RuntimeCollector,
     stop_flag: AtomicBool,
     stop_cv: (Mutex<bool>, Condvar),
 }
@@ -47,14 +48,14 @@ impl ProverUIApp {
         pipeline_log_path: Option<PathBuf>,
         ark_dir: Option<PathBuf>,
     ) -> Self {
-        let campaigns_base = load_campaigns(ark_dir.as_deref());
         Self {
             telemetry: TelemetryCollector::new(
                 wsl_ark_base,
                 host_heartbeat_path,
                 pipeline_log_path,
             ),
-            campaigns_base,
+            ark_dir,
+            runtime: crate::runtime::RuntimeCollector::new(),
             stop_flag: AtomicBool::new(false),
             stop_cv: (Mutex::new(false), Condvar::new()),
         }
@@ -92,85 +93,46 @@ impl ProverUIApp {
     }
 
     pub fn live_payload(&self) -> Value {
-        self.telemetry.snapshot()
+        let runtime = self.runtime.snapshot();
+        if runtime["fresh"] == true {
+            if let Some(path) = runtime["ark_progress_path"].as_str() {
+                self.telemetry.observe_progress_path(path);
+            }
+        }
+        let mut live = self.telemetry.snapshot();
+        let ark_running = runtime["fresh"] == true
+            && runtime["ark_processes"]
+                .as_array()
+                .is_some_and(|p| !p.is_empty());
+        let wsl = &mut live["wsl_prover"];
+        if runtime["fresh"] == true {
+            if let Some(path) = runtime["ark_progress_path"].as_str() {
+                wsl["progress_source"] = json!(path);
+            }
+        }
+        wsl["phase_running"] = json!(ark_running);
+        wsl["artifact_presence_is_verification"] = json!(false);
+        wsl["completion"] = Value::Null;
+        wsl["limits"] = Value::Null;
+        wsl["liveness"] = json!({"mode":if ark_running {"process_observed"} else {"inactive"}});
+        // Preserve Carbon's incremental shard counters as cache history. Never
+        // turn a stale pipeline-status.json or an output filename into liveness.
+        if !ark_running {
+            wsl["status"] = json!(if runtime["fresh"] == true {
+                "inactive"
+            } else {
+                "unknown"
+            });
+            wsl["liveness"] =
+                json!({"mode":"inactive", "headline":"No live Ark SP1 process observed"});
+            wsl["completion"] = Value::Null;
+        }
+        live["runtime"] = runtime;
+        live
     }
 
     pub fn campaigns_payload(&self) -> Value {
-        let mut data = self.campaigns_base.clone();
-        let wsl = self.telemetry.query_wsl_prover(None);
-        let prog = wsl.get("progress");
-        let comp = wsl.get("completion");
-
-        let unique_shards = prog
-            .and_then(|p| p.get("unique_shards"))
-            .and_then(Value::as_u64)
-            .unwrap_or(0);
-        let unique_reduces = prog
-            .and_then(|p| p.get("unique_reduces"))
-            .and_then(Value::as_u64)
-            .unwrap_or(0);
-        let core_total_est = comp
-            .and_then(|c| c.get("core_total_est"))
-            .cloned()
-            .unwrap_or(Value::Null);
-        let is_exact = comp
-            .and_then(|c| c.get("is_exact"))
-            .and_then(Value::as_bool)
-            .unwrap_or(false);
-        let active_reduce = comp
-            .and_then(|c| c.get("active_tree_reduce_done"))
-            .and_then(Value::as_u64)
-            .unwrap_or(unique_reduces);
-        let reduce_total_est = comp
-            .and_then(|c| c.get("reduce_total_est"))
-            .cloned()
-            .unwrap_or(Value::Null);
-        let overall_pct = comp
-            .and_then(|c| c.get("overall_pct"))
-            .cloned()
-            .unwrap_or(Value::Null);
-        let compressed_exists = wsl
-            .get("compressed_exists")
-            .and_then(Value::as_bool)
-            .unwrap_or(false);
-        let wrap_exists = wsl
-            .get("wrap_v2_exists")
-            .and_then(Value::as_bool)
-            .unwrap_or(false);
-
-        if let Some(arr) = data.get_mut("campaigns").and_then(Value::as_array_mut) {
-            for camp in arr {
-                if camp.get("id").and_then(Value::as_str) == Some("ark-cashu-live") {
-                    if let Some(sm) = camp
-                        .get_mut("summary_metrics")
-                        .and_then(Value::as_object_mut)
-                    {
-                        sm.insert("sp1_core_shards".into(), json!(unique_shards));
-                        sm.insert("sp1_core_shards_total".into(), core_total_est.clone());
-                        sm.insert("sp1_core_shards_is_est".into(), json!(!is_exact));
-                        sm.insert("sp1_recursion_shards".into(), json!(active_reduce));
-                        sm.insert("sp1_recursion_memo_total".into(), json!(unique_reduces));
-                        sm.insert(
-                            "sp1_recursion_shards_total".into(),
-                            reduce_total_est.clone(),
-                        );
-                        sm.insert("completion_pct".into(), overall_pct.clone());
-                    }
-                    if let Some(stages) = camp
-                        .get_mut("pipeline_stages")
-                        .and_then(Value::as_array_mut)
-                    {
-                        if compressed_exists && stages.len() > 3 {
-                            stages[3]["state"] = json!("verified");
-                        }
-                        if wrap_exists && stages.len() > 4 {
-                            stages[4]["state"] = json!("verified");
-                        }
-                    }
-                }
-            }
-        }
-        data
+        load_campaigns(self.ark_dir.as_deref())
     }
 }
 

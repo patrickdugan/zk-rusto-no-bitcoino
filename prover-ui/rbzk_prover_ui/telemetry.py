@@ -523,7 +523,7 @@ class TelemetryCollector:
         run_dir = base / "prover-transient"
         if not (run_dir / "progress.jsonl").exists() and (base / "prover" / "progress.jsonl").exists():
             run_dir = base / "prover"
-        progress = self._progress_cache.read(run_dir / "progress.jsonl")
+        progress = self._progress_cache.read(getattr(self, "_observed_progress_path", run_dir / "progress.jsonl"))
 
         run_cfg_element_threshold = 67_108_864
         run_cfg_path = run_dir / "run.json"

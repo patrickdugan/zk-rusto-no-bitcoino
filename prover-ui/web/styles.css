@@ -1776,3 +1776,18 @@ select {
     border-bottom: 1px solid var(--line);
   }
 }
+/* Observed runtime views retain the original Mecha title card and color system. */
+[hidden] { display: none !important; }
+.runtime-value { font-size: clamp(14px, 1.5vw, 25px); overflow-wrap: anywhere; }
+.observed-job { border-top: 1px solid var(--line); padding: 18px 4px; }
+.selected-job { border-left: 2px solid var(--crimson); padding-left: 14px; }
+.observed-job h3 { font: 600 19px var(--font-display); letter-spacing: .05em; margin: 0 0 12px; }
+.observed-job summary { cursor: pointer; padding: 10px 0; overflow-wrap: anywhere; }
+.observed-job pre, #planner-result { max-height: 340px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.7 var(--font-mono); color: var(--ink-muted); }
+.observed-job code, .source-path, .kv-item strong { overflow-wrap: anywhere; }
+.observed-tile { display: inline-block; font: 11px var(--font-mono); border: 1px solid var(--line); padding: 8px; margin: 4px; }
+#observations { width: 100%; height: 150px; }
+#planner label { display: flex; flex-direction: column; gap: 8px; }
+#planner input { width: 100%; }
+#campaign-list { max-height: 35vh; overflow: auto; }
+#hardware-ribbon .ribbon-main { min-height: 42px; }

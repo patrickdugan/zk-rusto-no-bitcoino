@@ -813,6 +813,7 @@ pub struct TelemetryCollector {
     pub host_heartbeat_path: PathBuf,
     pub pipeline_log_path: PathBuf,
     progress_cache: ProgressTailCache,
+    observed_progress_path: Mutex<Option<PathBuf>>,
     gpu_state: Mutex<GpuState>,
     frame_seq: Mutex<u64>,
 }
@@ -828,6 +829,7 @@ impl TelemetryCollector {
             host_heartbeat_path: host_heartbeat_path.unwrap_or_else(default_host_heartbeat_path),
             pipeline_log_path: pipeline_log_path.unwrap_or_else(default_pipeline_log_path),
             progress_cache: ProgressTailCache::new(),
+            observed_progress_path: Mutex::new(None),
             gpu_state: Mutex::new(GpuState {
                 last_polled: None,
                 cached: json!({ "available": false }),
@@ -870,16 +872,16 @@ impl TelemetryCollector {
                         gpu_info = json!({
                             "available": true,
                             "name": parts[0],
-                            "util_gpu_pct": f(parts[1]).unwrap_or(0.0),
-                            "util_mem_pct": f(parts[2]).unwrap_or(0.0),
-                            "vram_used_mib": f(parts[3]).unwrap_or(0.0),
-                            "vram_free_mib": f(parts[4]).unwrap_or(0.0),
-                            "vram_total_mib": f(parts[5]).unwrap_or(16303.0),
-                            "temp_c": i(parts[6]).unwrap_or(0),
-                            "power_draw_w": f(parts[7]).unwrap_or(0.0),
+                            "util_gpu_pct": f(parts[1]),
+                            "util_mem_pct": f(parts[2]),
+                            "vram_used_mib": f(parts[3]),
+                            "vram_free_mib": f(parts[4]),
+                            "vram_total_mib": f(parts[5]),
+                            "temp_c": i(parts[6]),
+                            "power_draw_w": f(parts[7]),
                             "power_limit_w": f(parts[8]),
-                            "clock_sm_mhz": i(parts[9]).unwrap_or(0),
-                            "clock_mem_mhz": i(parts[10]).unwrap_or(0),
+                            "clock_sm_mhz": i(parts[9]),
+                            "clock_mem_mhz": i(parts[10]),
                             "pstate": parts[11],
                             "processes": [],
                         });
@@ -918,7 +920,7 @@ impl TelemetryCollector {
         gpu_info
     }
 
-    fn wsl_path_to_windows(wsl_path: &str) -> PathBuf {
+    pub(crate) fn wsl_path_to_windows(wsl_path: &str) -> PathBuf {
         let p = Path::new(wsl_path);
         if wsl_path.starts_with("\\\\") || (wsl_path.len() >= 2 && wsl_path.as_bytes()[1] == b':') {
             return p.to_path_buf();
@@ -937,6 +939,12 @@ impl TelemetryCollector {
             }
             let rel = clean.trim_start_matches('/').replace('/', "\\");
             PathBuf::from(r"\\wsl.localhost\Ubuntu-24.04").join(rel)
+        }
+    }
+
+    pub fn observe_progress_path(&self, path: &str) {
+        if self.wsl_ark_base == PathBuf::from(DEFAULT_WSL_ARK_BASE) {
+            *self.observed_progress_path.lock().unwrap() = Some(Self::wsl_path_to_windows(path));
         }
     }
 
@@ -962,7 +970,13 @@ impl TelemetryCollector {
         {
             run_dir = base.join("prover");
         }
-        let progress = self.progress_cache.read(&run_dir.join("progress.jsonl"));
+        let progress_path = self
+            .observed_progress_path
+            .lock()
+            .unwrap()
+            .clone()
+            .unwrap_or_else(|| run_dir.join("progress.jsonl"));
+        let progress = self.progress_cache.read(&progress_path);
 
         let run_cfg_element_threshold = fs::read_to_string(run_dir.join("run.json"))
             .ok()

@@ -1,72 +1,52 @@
-# Prover & Recursive Shard Desktop App (`prover-ui/`)
+# Native prover console
 
-A standalone **native Rust desktop application** (`tao` + `wry` WebView2/WebKit) and ultra-low-overhead (~5 MiB RSS) read-only telemetry console for `zk-rusto-no-bitcoino`.
+The Mecha desktop UI now displays observed runtime data, with no embedded campaign results, static payment balances, invented shard totals, countdowns, or simulated proof activity.
 
-It connects live hardware telemetry (Windows host RAM via `GlobalMemoryStatusEx`, `vmmemWSL` working-set vs private commit via `NtQuerySystemInformation`, Linux cgroup v2 RAM/swap, and NVIDIA RTX 5080 CUDA utilization) with the repository's Nova 0.76, SP1 6.9, Shinigami Script/Taproot, Mainnet `M16`/`M18`, BABE-Nova transparent soldering, and Ark/Cashu (`ARK1` / Proof Grove) proving pipelines.
+The original incremental shard cache and measured-unit planner remain available. Cache counts are labeled history; the planner is labeled a projection. Neither establishes a running prover or verification.
 
-All frontend assets (`index.html`, `styles.css`, `app.js`, `icon.svg`) and provenance JSON receipts are baked directly into the compiled Rust binary (`include_bytes!`), producing a **single portable `.exe`** with zero Python, Node, or external asset dependencies.
+## Sources
 
----
+- Windows physical/commit memory and WSL working set/private commit: native OS queries.
+- GPU name, compute activity, VRAM, temperature and clocks: NVIDIA telemetry. Unsupported readings remain unavailable. GPU-wide activity is not attributed to a proof process.
+- Proof processes: systemd state plus executable, PID, start ticks and cgroup membership. The background probe reads the existing WSL Ubuntu-24.04 environment every three seconds. It starts no proof jobs.
+- CPU time, RAM/swap and limits: actual unit/cgroup counters.
+- Proof stage: the unit journal, including ANSI stripping. No stage progress is synthesized from elapsed time.
+- Independent verification: a successful audit receipt, all fifteen negative controls and the actual output file's matching SHA-256. The UI observes those verifier results; it does not rerun cryptographic verification itself.
+- Local evidence: bounded JSON reports reread from `Ark/results`, with source path, modification time and SHA-256. Reports remain historical evidence.
+- Payment claims: exact public claims from observed audit receipts. No live wallet balance source is configured.
 
-## Download / Run Prebuilt Windows x64 `.exe`
+Samples older than fifteen seconds become stale/unknown; disconnecting or pausing the display never leaves an active indicator. Pausing the display does not stop proving.
 
-Prebuilt standalone Windows x64 binaries (with multi-resolution PE `.ico` resources and embedded WebView2 UI assets) are committed under [`releases/windows-x64/`](releases/windows-x64/):
-
-- `releases/windows-x64/rbzk-prover-desktop.exe` — zero-console native dark-themed GUI application
-- `releases/windows-x64/rbzk-prover-ui.exe` — unified CLI + desktop launcher (`desktop`, `serve`, `status`, `correlate`)
-- `releases/windows-x64/SHA256SUMS.txt` — SHA-256 checksums
-
-To create a native Windows Desktop icon shortcut (`ZK Rusto no Bitcoino Prover.lnk`):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\prover-ui\scripts\install-desktop-shortcut.ps1
-```
-
-## Build & Launch from Source (Native Rust Desktop App)
+## Build and run
 
 ```powershell
-cd prover-ui
-
-# Build optimized standalone binaries (rbzk-prover-desktop.exe & rbzk-prover-ui.exe)
-cargo +1.90.0-x86_64-pc-windows-msvc build --release
-
-# Launch native dark-themed desktop GUI window (zero console window)
+cargo +1.90.0-x86_64-pc-windows-msvc build --locked --release -j 1
 .\target\release\rbzk-prover-desktop.exe
-
-# Or use the unified CLI + GUI binary:
-.\target\release\rbzk-prover-ui.exe desktop --port 8788
-.\target\release\rbzk-prover-ui.exe serve --host 127.0.0.1 --port 8788
-.\target\release\rbzk-prover-ui.exe status
-.\target\release\rbzk-prover-ui.exe correlate --header-blocks 975072 --nova-header-shards 2 --payment-utxos 1
 ```
 
-### Headless / CI Builds (Without GUI Windowing Dependencies)
+Run from `prover-ui`. The bundled older `releases/windows-x64` binaries are preserved; use the freshly built executable above for live observations. Install the shortcut with `scripts/install-desktop-shortcut.ps1 -ExePath <absolute path to the new executable>`.
 
-```bash
-cargo test --no-default-features --locked
-cargo build --release --no-default-features --locked
+Headless: `cargo test --locked --no-default-features`; Python parity and receipt regressions: `python -m unittest discover -s tests -v`. CI already executes both suites. The Python fallback uses the same probe and frontend.
+
+## Configuration
+
+`RBZK_ARK_DIR` selects the Ark directory containing `results/`. `RBZK_WSL_ARK_BASE` selects the existing incremental SP1 run/cache. No fixture is substituted for missing sources.
+
+`RBZK_LIVE_CONFIG` optionally names a local JSON file, reread on every observation. Default jobs are the current testnet4 tapleaf and legacy-payment units. To observe another proof run, configure its real unit, executable and output/audit paths:
+
+```json
+{
+  "proof_root": "/var/tmp/my-proof-run",
+  "jobs": [{
+    "title": "My proof run",
+    "unit": "my-proof.service",
+    "executable": "/absolute/path/to/prover",
+    "proof": "proof.json",
+    "audit": "independent-audit.json",
+    "backend": "Actual backend name",
+    "network": "testnet4"
+  }]
+}
 ```
 
-*(A zero-dependency Python 3.11+ fallback `python -m rbzk_prover_ui serve --port 8788` is also retained in `rbzk_prover_ui/`.)*
-
----
-
-## What It Shows
-
-1. **Live RAM / GPU & WSL Prover Telemetry (`01`)**
-   - **RTX 5080 Laptop GPU (16 GB)**: Live compute %, VRAM residency, SM clock, power draw, temperature (`CREATE_NO_WINDOW`), and `ARK_CUDA_POOL_RELEASE_MIB=256` / `ARK_SP1_TRANSIENT_TRACES=1` pool controls.
-   - **Host vs WSL Memory Accounting**: Queries `GlobalMemoryStatusEx` and `NtQuerySystemInformation` on `vmmemWSL` in `<0.5 ms`, separating **resident working set** from **non-resident pagefile/compressed commit** alongside Linux cgroup v2 `memory.current` (`2,048 MiB` hard cap), `memory.swap.current` (`4,096 MiB` cap), and `host.json` (`FILE_SHARE_READ|WRITE|DELETE`).
-   - **Incremental SP1 Checkpoint Stream**: Tails `progress.jsonl` by byte offset (`<1 ms`/poll) to track unique `ProveShard` (core) and `RecursionReduce` (recursive) memo tasks, proved vs replayed counts, rolling 5m/15m/30m throughput, monotonic `HH:MM:SS` ETA countdowns, and 60fps shard mosaic bursts.
-
-2. **Recursive Shards ↔ Blocks, Shinigami Leaves & UTXOs (`02`)**
-   - **5-Layer Reduction Hierarchy**: Maps Bitcoin domain primitives → Nova 0.76 relaxed-R1CS segments → SP1 core shards → 3:1 recursive compression tree → `M13` BLAKE3 transcript-v2 wrap → `M14` `785,442,492`-gate garbled verifier.
-   - **M16 Mainnet (`0 .. 975,072`)**: Shows the two `NHC1` Nova header shards (`s0`, `s1`) and exact `34,055,622,753`-instruction guest attribution across `13,290` core shards and `4,430` recursion tasks.
-   - **M18 Windowed UTXO Map (`975,067 .. 975,072`)**: Per-block breakdown of transactions, UTXO creates, in-window/pre-window spends, SHA-256 producer compressions, depth-20 Poseidon leaf updates, and the `8` parallel `fold-seg` `z0 → zn` chains (`224,790` steps, `74,593` leaves).
-   - **Shinigami Script, Taproot Leaves & BABE-Nova Soldering**: Compares `M17` Nova step-circuit scripts (`2,756` Core vectors), `shinigami/taproot-provable` Cairo/Stwo Ark VTXO exit chains (`4,977` Core checks), `FC03` `644 vB` Taproot refutation envelopes, and `babe-nova/pasta-ec-w4` (`769,351` gates, `11.74 MiB` ciphertext, `88.4 kvB` standard `AssertLabelsTx`).
-
-3. **Payment UTXOs, Ark VTXOs & Cashu Desk (`03`)**
-   - **Mainnet `PAY1` + `M18` Leaf #8**: Displays `a652ab0c…0045:0` (`940,000 sats` at height `975,067`, 6 confirmations under `975,072`) with its verified depth-20 Poseidon Indexed Merkle Tree unspent proof (`Leaf #8`, all 20 siblings, sealed root `7e18b083…2d1c`).
-   - **Ark ASP Policy (`ARK1`) & Cashu Proof Grove**: Displays the `4` Proof Grove Bark VTXOs at height `679` (`79,440 sats` managed), the `25,000 sat` Cashu NUT-09/20 DLEQ → `10,000 sat` Bark VTXO → `9,165 sat` offline exit flow, and SHA-256 verifier pins.
-
-4. **Shard & Hardware Planner (`04`)**
-   - Interactive workload estimator computing Nova segments/constraints, R1CS commitment basis ($2^{\lceil\log_2 C_1\rceil} + 2^{\lceil\log_2 C_2\rceil}$), SP1 instructions, core & recursive shard counts, and RAM/swap/VRAM envelopes across `2^25`..`2^28` shard thresholds. See [`SHARD_ESTIMATION.md`](SHARD_ESTIMATION.md).
+Configuration registers observation sources; it never launches or resumes a prover. A raw proof filename alone cannot establish verification. Full Ark SP1/BitVM3 completion, current unspentness, mint funding and removal of a trusted administrator are separate claims.

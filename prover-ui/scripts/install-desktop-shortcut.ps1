@@ -1,5 +1,6 @@
 param(
-    [string]$ShortcutName = "ZK Rusto no Bitcoino Prover.lnk"
+    [string]$ShortcutName = "ZK Rusto no Bitcoino Prover.lnk",
+    [string]$ExePath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,8 +12,10 @@ $CandidateBins = @(
     (Join-Path $ProverUiRoot "dist\rbzk-prover-desktop.exe")
 )
 
-$ExePath = $CandidateBins | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $ExePath) {
+    $ExePath = $CandidateBins | Where-Object { Test-Path $_ } | Select-Object -First 1
+}
+if (-not $ExePath -or -not (Test-Path -LiteralPath $ExePath)) {
     throw "rbzk-prover-desktop.exe not found under releases\windows-x64, target\release, or dist."
 }
 

@@ -53,29 +53,16 @@ class ProverUITestSuite(unittest.TestCase):
             self.assertEqual(second["replayed_rows_by_kind"]["shard"], 2)
             self.assertEqual(second["proved_rows_by_kind"]["reduce"], 2)
 
-    def test_campaigns_bind_real_repo_artifacts(self) -> None:
-        data = load_campaigns()
-        by_id = {c["id"]: c for c in data["campaigns"]}
-        self.assertIn("ark-cashu-live", by_id)
-        self.assertIn("m16-mainnet-pay", by_id)
-        self.assertIn("m18-mainnet-utxo", by_id)
-        self.assertIn("m17-shinigami-leaves", by_id)
-        self.assertIn("tn4-recursive-chain", by_id)
-
-        m16 = by_id["m16-mainnet-pay"]
-        self.assertEqual(m16["summary_metrics"]["sp1_core_shards"], 13290)
-        self.assertEqual(m16["summary_metrics"]["sp1_recursion_shards"], 4430)
-        self.assertEqual(m16["summary_metrics"]["final_gates"], 785442492)
-        self.assertEqual(m16["payment_utxo"]["value_sats"], 940000)
-        self.assertIsNotNone(m16["pins"]["m16_statement_file_sha256"])
-
-        m18 = by_id["m18-mainnet-utxo"]
-        self.assertEqual(len(m18["blocks"]), 6)
-        self.assertEqual(len(m18["segments"]), 8)
-        self.assertEqual(sum(b["nova_steps"] for b in m18["blocks"]), 224790)
-        self.assertEqual(m18["utxo_map"]["final_leaves"], 74593)
-        self.assertEqual(m18["utxo_map"]["pay1_leaf"]["index"], 8)
-        self.assertFalse(m18["utxo_map"]["pay1_leaf"]["leaf"]["spent"])
+    def test_campaign_inventory_has_no_fixtures(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(load_campaigns(root)["campaigns"], [])
+            (root / "results").mkdir()
+            report = root / "results/proof.json"
+            report.write_text('{"status":"pending"}')
+            self.assertEqual(load_campaigns(root)["campaigns"][0]["summary"]["status"], "pending")
+            report.unlink()
+            self.assertEqual(load_campaigns(root)["campaigns"], [])
 
     def test_correlator_matches_m16_measured_baseline_and_scales(self) -> None:
         m16_est = estimate_workload(
@@ -193,7 +180,7 @@ class ProverUITestSuite(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            app = ProverUIApp(wsl_ark_base=root, host_heartbeat_path=hb, pipeline_log_path=root / "pipe.log")
+            app = ProverUIApp(wsl_ark_base=root, host_heartbeat_path=hb, pipeline_log_path=root / "pipe.log", ark_dir=root)
             srv = create_server(host="127.0.0.1", port=0, app=app)
             port = srv.server_address[1]
             thread = threading.Thread(target=srv.serve_forever, daemon=True)
@@ -213,11 +200,11 @@ class ProverUITestSuite(unittest.TestCase):
                 self.assertEqual(live["wsl_prover"]["progress"]["unique_shards"], 1)
                 self.assertEqual(live["wsl_prover"]["progress"]["seq"], 1)
                 self.assertEqual(len(live["wsl_prover"]["progress"]["mosaic_tail"]), 1)
-                self.assertTrue(live["wsl_prover"]["phase_running"])
+                self.assertFalse(live["wsl_prover"]["phase_running"])
                 self.assertIn("mode", live["wsl_prover"]["liveness"])
+                self.assertIsNone(live["wsl_prover"]["completion"])
                 self.assertIn("completion", live["wsl_prover"])
-                self.assertEqual(live["wsl_prover"]["completion"]["core_done"], 1)
-                self.assertGreater(live["wsl_prover"]["completion"]["core_total_est"], 5000)
+                self.assertIsNone(live["wsl_prover"]["completion"])
                 self.assertTrue(live["host_guard"]["fresh"])
 
                 # Test SSE /api/stream emits a telemetry frame immediately
@@ -238,8 +225,7 @@ class ProverUITestSuite(unittest.TestCase):
                 res = conn.getresponse()
                 camps = json.loads(res.read().decode("utf-8"))
                 self.assertEqual(res.status, 200)
-                ark_c = [c for c in camps["campaigns"] if c["id"] == "ark-cashu-live"][0]
-                self.assertEqual(ark_c["summary_metrics"]["sp1_core_shards"], 1)
+                self.assertEqual(camps["campaigns"], [])
 
                 conn.request(
                     "POST",

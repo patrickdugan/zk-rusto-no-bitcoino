@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 from .campaigns import load_campaigns
 from .correlator import estimate_workload
 from .telemetry import TelemetryCollector
+from .runtime import RuntimeCollector
 
 
 WEB_DIR = Path(__file__).resolve().parents[1] / "web"
@@ -43,34 +44,30 @@ class ProverUIApp:
             pipeline_log_path=pipeline_log_path,
         )
         self._ark_dir = ark_dir
-        self._campaigns_base = load_campaigns(ark_dir=ark_dir)
         self.stop_event = threading.Event()
+        self.runtime = RuntimeCollector(self.stop_event)
 
     def live_payload(self) -> dict[str, Any]:
-        return self.telemetry.snapshot()
+        runtime = self.runtime.snapshot()
+        progress_path = runtime.get("ark_progress_path")
+        from .telemetry import DEFAULT_WSL_ARK_BASE
+        if runtime["fresh"] and progress_path and self.telemetry.wsl_ark_base == DEFAULT_WSL_ARK_BASE:
+            import os
+            self.telemetry._observed_progress_path = Path(r"\\wsl.localhost\Ubuntu-24.04") / progress_path.lstrip("/") if os.name == "nt" else Path(progress_path)
+        live = self.telemetry.snapshot()
+        ark_running = runtime["fresh"] and bool(runtime.get("ark_processes"))
+        wsl = live["wsl_prover"]
+        if progress_path:
+            wsl["progress_source"] = progress_path
+        wsl.update(phase_running=ark_running, artifact_presence_is_verification=False,
+                   completion=None, limits=None,
+                   liveness={"mode":"process_observed" if ark_running else "inactive"},
+                   status="process_observed" if ark_running else "inactive" if runtime["fresh"] else "unknown")
+        live["runtime"] = runtime
+        return live
 
     def campaigns_payload(self) -> dict[str, Any]:
-        data = json.loads(json.dumps(self._campaigns_base))
-        wsl = self.telemetry.query_wsl_prover()
-        prog = wsl.get("progress") or {}
-        comp = wsl.get("completion") or {}
-        for camp in data.get("campaigns", []):
-            if camp.get("id") == "ark-cashu-live":
-                sm = camp["summary_metrics"]
-                sm["sp1_core_shards"] = prog.get("unique_shards", 0)
-                sm["sp1_core_shards_total"] = comp.get("core_total_est")
-                sm["sp1_core_shards_is_est"] = not bool(comp.get("is_exact", False))
-                sm["sp1_recursion_shards"] = comp.get(
-                    "active_tree_reduce_done", prog.get("unique_reduces", 0)
-                )
-                sm["sp1_recursion_memo_total"] = prog.get("unique_reduces", 0)
-                sm["sp1_recursion_shards_total"] = comp.get("reduce_total_est")
-                sm["completion_pct"] = comp.get("overall_pct")
-                if wsl.get("compressed_exists"):
-                    camp["pipeline_stages"][3]["state"] = "verified"
-                if wsl.get("wrap_v2_exists"):
-                    camp["pipeline_stages"][4]["state"] = "verified"
-        return data
+        return load_campaigns(ark_dir=self._ark_dir)
 
 
 class StoppableThreadingHTTPServer(ThreadingHTTPServer):

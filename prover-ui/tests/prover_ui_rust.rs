@@ -82,40 +82,25 @@ fn incremental_progress_cache_deduplicates_replays_and_parses_logs() {
 }
 
 #[test]
-fn campaigns_bind_real_and_embedded_provenance_artifacts() {
-    let data = load_campaigns(None);
-    let camps = data["campaigns"].as_array().unwrap();
-    let by_id: BTreeMap<&str, &Value> = camps
-        .iter()
-        .map(|c| (c["id"].as_str().unwrap(), c))
-        .collect();
-
-    assert!(by_id.contains_key("ark-cashu-live"));
-    assert!(by_id.contains_key("m16-mainnet-pay"));
-    assert!(by_id.contains_key("m18-mainnet-utxo"));
-    assert!(by_id.contains_key("m17-shinigami-leaves"));
-    assert!(by_id.contains_key("tn4-recursive-chain"));
-
-    let m16 = by_id["m16-mainnet-pay"];
-    assert_eq!(m16["summary_metrics"]["sp1_core_shards"], 13290);
-    assert_eq!(m16["summary_metrics"]["sp1_recursion_shards"], 4430);
-    assert_eq!(m16["summary_metrics"]["final_gates"], 785442492u64);
-    assert_eq!(m16["payment_utxo"]["value_sats"], 940000);
-    assert!(m16["pins"]["m16_statement_file_sha256"].is_string());
-
-    let m18 = by_id["m18-mainnet-utxo"];
-    let blocks = m18["blocks"].as_array().unwrap();
-    let segs = m18["segments"].as_array().unwrap();
-    assert_eq!(blocks.len(), 6);
-    assert_eq!(segs.len(), 8);
-    let total_steps: u64 = blocks
-        .iter()
-        .map(|b| b["nova_steps"].as_u64().unwrap())
-        .sum();
-    assert_eq!(total_steps, 224_790);
-    assert_eq!(m18["utxo_map"]["final_leaves"], 74_593);
-    assert_eq!(m18["utxo_map"]["pay1_leaf"]["index"], 8);
-    assert_eq!(m18["utxo_map"]["pay1_leaf"]["leaf"]["spent"], false);
+fn campaigns_follow_file_creation_changes_and_removal_without_fixture_fallbacks() {
+    let root = std::env::temp_dir().join(format!("rbzk-evidence-{}", std::process::id()));
+    fs::create_dir_all(root.join("results")).unwrap();
+    assert_eq!(load_campaigns(Some(&root))["campaigns"], json!([]));
+    let path = root.join("results/proof-report.json");
+    fs::write(&path, br#"{"status":"pending","network":"testnet4"}"#).unwrap();
+    let first = load_campaigns(Some(&root));
+    assert_eq!(first["campaigns"][0]["summary"]["status"], "pending");
+    let digest = first["campaigns"][0]["sha256"].clone();
+    fs::write(&path, br#"{"status":"verified","network":"testnet4"}"#).unwrap();
+    let next = load_campaigns(Some(&root));
+    assert_eq!(next["campaigns"][0]["summary"]["status"], "verified");
+    assert_eq!(next["campaigns"][0]["kind"], "recorded evidence");
+    assert_ne!(next["campaigns"][0]["sha256"], digest);
+    fs::write(&path, b"{broken").unwrap();
+    assert_eq!(load_campaigns(Some(&root))["campaigns"], json!([]));
+    fs::remove_file(&path).unwrap();
+    assert_eq!(load_campaigns(Some(&root))["campaigns"], json!([]));
+    fs::remove_dir_all(&root).unwrap();
 }
 
 #[test]
@@ -179,7 +164,26 @@ fn raw_http_request(port: u16, req: &str) -> (u16, String) {
     stream.flush().unwrap();
 
     let mut resp = Vec::new();
-    stream.read_to_end(&mut resp).unwrap();
+    loop {
+        let mut byte = [0u8; 1];
+        stream.read_exact(&mut byte).unwrap();
+        resp.push(byte[0]);
+        if resp.ends_with(b"\r\n\r\n") {
+            break;
+        }
+    }
+    let headers = String::from_utf8_lossy(&resp);
+    let length: usize = headers
+        .lines()
+        .find_map(|line| {
+            line.to_ascii_lowercase()
+                .strip_prefix("content-length:")
+                .map(|n| n.trim().parse().unwrap())
+        })
+        .unwrap();
+    let mut body = vec![0u8; length];
+    stream.read_exact(&mut body).unwrap();
+    resp.extend_from_slice(&body);
     let text = String::from_utf8_lossy(&resp).into_owned();
     let (head, body) = text.split_once("\r\n\r\n").unwrap();
     let status: u16 = head
