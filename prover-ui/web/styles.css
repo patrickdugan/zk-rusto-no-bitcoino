@@ -1814,6 +1814,42 @@ select {
 .cashu-roadmap-link p { margin:0; }
 .cashu-roadmap section + section { margin-top:24px; }
 .cashu-roadmap h3, .core-eta-heading { margin:0; font-size:15px; }
+.compute-tab-icon, .compute-icon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.compute-tab-icon { width: 18px; height: 18px; color: var(--crimson); }
+.compute-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; }
+.compute-card { min-width: 0; border: 1px solid var(--line); padding: 16px; background: var(--bg-subtle); }
+.compute-card h3 { margin: 0; font: 700 16px var(--font-display); letter-spacing: .08em; }
+.compute-card-head { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+.compute-gpu-name { display: block; margin-top: 12px; font: 600 clamp(18px, 2vw, 26px) var(--font-sans); overflow-wrap: anywhere; }
+.compute-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 12px 0; background: var(--line); }
+.compute-choices { min-width: 0; margin: 12px 0; padding: 0; border: 0; }
+.compute-choices legend { padding: 0; margin-bottom: 6px; font: 600 12px var(--font-sans); }
+.compute-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 146px), 1fr)); gap: 8px; }
+.compute-option { position: relative; cursor: pointer; }
+.compute-option input { position: absolute; top: 50%; right: 9px; margin: 0; transform: translateY(-50%); accent-color: var(--crimson); cursor: pointer; }
+.compute-option-label { display: flex; gap: 8px; align-items: center; height: 100%; min-height: 54px; border: 1px solid var(--line-strong); padding: 8px 26px 8px 9px; color: var(--ink); overflow-wrap: anywhere; }
+.compute-option:hover .compute-option-label { border-color: var(--ink-muted); }
+.compute-option input:checked + .compute-option-label { border-color: var(--crimson); background: var(--crimson-soft); }
+.compute-option input:focus-visible + .compute-option-label { outline: 2px solid var(--ink); outline-offset: 2px; }
+.compute-option-text { display: grid; gap: 2px; }
+.compute-option-text small { color: var(--ink-muted); font: 11px var(--font-mono); }
+.compute-provider-detail { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+.compute-provider-detail code { overflow-wrap: anywhere; }
+.compute-setup { display: grid; gap: 6px; margin: 0 0 8px; }
+.compute-setup > div { display: grid; grid-template-columns: minmax(68px, 25%) minmax(0, 1fr); gap: 8px; }
+.compute-setup dt { color: var(--ink-muted); }
+.compute-setup dd { margin: 0; overflow-wrap: anywhere; }
+.compute-provider-links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
+.compute-provider-links a { color: var(--ink); text-underline-offset: 2px; }
 .core-eta-heading { border-top:1px solid var(--line); padding:16px 0 8px; }
 .eta-layout { display:grid; grid-template-columns:minmax(230px,1fr) 1.3fr; gap:24px; align-items:center; }
 .eta-clock { display:block; font:600 clamp(27px,3vw,46px) var(--font-mono); font-variant-numeric:tabular-nums; letter-spacing:-.04em; margin:12px 0; min-height:1.2em; }

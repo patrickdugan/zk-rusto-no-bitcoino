@@ -72,6 +72,10 @@
           <span class="nav-icon">01</span>
           <span class="nav-label">LIVE RAM / GPU</span>
         </button>
+        <button class="nav-btn" id="compute-tab" role="tab" aria-selected="false" aria-controls="compute-panel" data-tab="compute">
+          <svg class="compute-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9zM9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3"/></svg>
+          <span class="nav-label">COMPUTE</span>
+        </button>
         <button class="nav-btn" role="tab" aria-selected="false" data-tab="blocks">
           <span class="nav-icon">02</span>
           <span class="nav-label">PROOF EVIDENCE</span>
@@ -240,6 +244,42 @@
         </section>
         <section class="panel" id="claims-panel"><div class="panel-head"><h2>PAYMENT CLAIMS</h2><span class="tag-mono">FROM OBSERVED AUDIT RECEIPTS</span></div>
           <div id="claims-list"></div><p class="panel-sub">Historical script verification does not establish current unspentness, mint funding, an Ark payment, or removal of a trusted administrator. No live wallet balance source is configured.</p>
+        </section>
+        <section class="panel" id="compute-panel" role="tabpanel" aria-labelledby="compute-tab" hidden>
+          <div class="panel-head"><h2>COMPUTE</h2></div>
+          <div class="compute-grid">
+            <section class="compute-card" aria-labelledby="local-gpu-heading">
+              <div class="compute-card-head">
+                <h3 id="local-gpu-heading">LOCAL GPU</h3>
+                <span id="local-gpu-status" class="tag-mono">CONNECTING</span>
+              </div>
+              <strong class="compute-gpu-name" id="local-gpu-name">Waiting for telemetry</strong>
+              <div class="compute-metrics" id="local-gpu-metrics"></div>
+              <p class="panel-sub" id="local-gpu-sample">Source · NVIDIA telemetry</p>
+            </section>
+            <section class="compute-card" aria-labelledby="compute-target-heading">
+              <h3 id="compute-target-heading">PILOT TARGET</h3>
+              <fieldset class="compute-choices" id="compute-target" aria-label="Pilot target">
+                <div class="compute-options">
+                  <label class="compute-option">
+                    <input type="radio" name="compute-target" value="local" checked>
+                    <span class="compute-option-label"><svg class="compute-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="1"/><path d="M8 21h8m-4-4v4"/></svg><strong>Local GPU</strong></span>
+                  </label>
+                  <label class="compute-option">
+                    <input type="radio" name="compute-target" value="cloud" aria-controls="compute-cloud">
+                    <span class="compute-option-label"><svg class="compute-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1 0-9 6 6 0 0 1 11.5 2A3.5 3.5 0 0 1 18 18Z"/></svg><strong>Cloud</strong></span>
+                  </label>
+                </div>
+              </fieldset>
+              <p class="panel-sub">This planning choice is saved in this console. Prover jobs are managed separately.</p>
+              <fieldset class="compute-choices" id="compute-cloud" hidden>
+                <legend>Cloud provider</legend>
+                <div class="compute-options" id="compute-providers"></div>
+                <p class="panel-sub">Posted NVIDIA H100 SXM rates in USD per GPU-hour. Storage is extra.</p>
+                <div class="compute-provider-detail" id="compute-provider-detail" hidden></div>
+              </fieldset>
+            </section>
+          </div>
         </section>
         <section class="panel cashu-roadmap" id="cashu-panel" role="tabpanel" aria-labelledby="cashu-tab" hidden>
           <div class="panel-head"><h2 id="cashu-heading" tabindex="-1">CASHU ROADMAP</h2></div>

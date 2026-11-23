@@ -157,6 +157,24 @@ if(typeof document!=='undefined') (() => {
   const state = {live:null, records:[], selected:null, userSelected:false, tab:'live', polling:true, timer:null, lastReceived:0, history:[], previous:new Map(), seen:new Set(), booted:false, etaClock:null, etaModel:null, etaSource:null, lastEventSeq:null, etaTarget:null, newEventSeqs:new Set()};
   const readSetting = key => {try{return localStorage.getItem(key);}catch{return null;}};
   const saveSetting = (key,value) => {try{localStorage.setItem(key,value);}catch{}};
+  const computeTargetKey = 'rbzk.compute.target';
+  const computeProviderKey = 'rbzk.compute.provider';
+  const computeProviders = [
+    {id:'runpod', name:'Runpod', rate:'$4.39/GPU-hr',
+      icon:'M4 4h10l6 6v10H10l-6-6zM4 9h8l3 3v8M9 4v5m6 6h5',
+      console:'https://console.runpod.io/', pricing:'https://www.runpod.io/pricing',
+      setup:[['Pod','Secure Cloud on demand · 1 × H100 SXM 80 GB'],
+        ['Image','runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404'],
+        ['Workspace','120 GB network volume · full SSH (TCP 22)'],
+        ['Runtime','One-hour auto-stop']]},
+    {id:'hyperstack', name:'Hyperstack', rate:'$3.20/GPU-hr',
+      icon:'M12 3 3 8l9 5 9-5zM3 12l9 5 9-5M3 16l9 5 9-5',
+      console:'https://console.hyperstack.cloud/', pricing:'https://www.hyperstack.cloud/gpu-pricing',
+      setup:[['Published flavor','n3-H100-SXM5x8 · Canada-1 / US-1'],
+        ['Image','Ubuntu 24.04 · R570 · CUDA 12.8 · Docker'],
+        ['Workspace','Persistent volume at /workspace · key-based SSH']],
+      note:'The published SXM flavor has eight GPUs. Confirm stock and the total price for a one-hour pilot.'},
+  ];
   const planKey = 'rbzk.ark-campaign-plan.2026-11-23';
   const planFields = [['core','Expected total saved cores'], ...ProofEta.arkBudgets];
   let campaignPlan = {};
@@ -326,6 +344,65 @@ if(typeof document!=='undefined') (() => {
     const rt = state.live?.runtime || {};
     return state.polling && rt.fresh && Date.now()-state.lastReceived < 15000;
   }
+  function renderLocalGpu() {
+    const gpu=state.live?.gpu;
+    const sampledAt=state.live?.sampled_at_unix;
+    const now=Date.now();
+    const fresh=state.polling && now-state.lastReceived<15000 &&
+      Number.isFinite(sampledAt) && now-sampledAt*1000<15000;
+    const available=fresh && gpu?.available===true;
+    const measure=(value,suffix)=>available && Number.isFinite(value)?`${n(value)}${suffix}`:'Unavailable';
+    const vram=value=>available && Number.isFinite(value)?gib(value*2**20):'Unavailable';
+    $('local-gpu-status').textContent=!state.polling?'DISPLAY PAUSED':
+      !state.live?'CONNECTING':!fresh?'STALE / UNKNOWN':available?'OBSERVED':'UNAVAILABLE';
+    $('local-gpu-name').textContent=available && gpu.name?gpu.name:
+      state.live?'GPU measurement unavailable':'Waiting for telemetry';
+    $('local-gpu-metrics').innerHTML=kv('GPU utilization',measure(gpu?.util_gpu_pct,'%'))+
+      kv('VRAM in use',vram(gpu?.vram_used_mib))+kv('VRAM capacity',vram(gpu?.vram_total_mib))+
+      kv('Temperature',measure(gpu?.temp_c,' °C'));
+    $('local-gpu-sample').textContent=fresh?`NVIDIA telemetry · ${time(sampledAt)}`:'Source · NVIDIA telemetry';
+  }
+  function initCompute() {
+    const targets=$('compute-target');
+    const cloud=$('compute-cloud');
+    const providers=$('compute-providers');
+    const detail=$('compute-provider-detail');
+    providers.innerHTML=computeProviders.map(({id,name,icon,rate})=>`
+      <label class="compute-option">
+        <input type="radio" name="compute-provider" value="${esc(id)}" aria-controls="compute-provider-detail">
+        <span class="compute-option-label">
+          <svg class="compute-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${esc(icon)}"/></svg>
+          <span class="compute-option-text"><strong>${esc(name)}</strong><small>${esc(rate)}</small></span>
+        </span>
+      </label>`).join('');
+
+    function showCloud() {
+      cloud.hidden=targets.querySelector('input:checked').value!=='cloud';
+    }
+    function showProvider() {
+      const selected=providers.querySelector('input:checked')?.value;
+      const provider=computeProviders.find(({id})=>id===selected);
+      detail.hidden=!provider;
+      if (!provider) return;
+      detail.innerHTML=`<dl class="compute-setup">${provider.setup.map(([label,value])=>
+        `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>
+        ${provider.note?`<p class="panel-sub">${esc(provider.note)}</p>`:''}
+        <p class="panel-sub">Pilot kit · <code>prover-ui/pilots/ark-h100/${esc(provider.id)}.md</code></p>
+        <div class="compute-provider-links">
+          <a href="${esc(provider.console)}" target="_blank" rel="noopener">${esc(provider.name)} console</a>
+          <a href="${esc(provider.pricing)}" target="_blank" rel="noopener">Public pricing</a>
+        </div>`;
+    }
+
+    const target=readSetting(computeTargetKey)==='cloud'?'cloud':'local';
+    for (const input of targets.querySelectorAll('input')) input.checked=input.value===target;
+    const provider=readSetting(computeProviderKey);
+    for (const input of providers.querySelectorAll('input')) input.checked=input.value===provider;
+    targets.onchange=({target})=>{saveSetting(computeTargetKey,target.value);showCloud();};
+    providers.onchange=({target})=>{saveSetting(computeProviderKey,target.value);showProvider();};
+    showCloud();
+    showProvider();
+  }
   function jobs() {
     const rt=state.live?.runtime || {}, wsl=state.live?.wsl_prover || {};
     const observed=[...(rt.jobs || [])];
@@ -409,10 +486,10 @@ if(typeof document!=='undefined') (() => {
     const events=progress.recent_events||[];
     setMarkup('shard-events',events.slice(-24).map(ev=>`<span class="observed-tile ${state.newEventSeqs.has(ev.seq)?'checkpoint-new':''}" data-seq="${esc(ev.seq)}" title="${esc(ev.key)}">${esc(ev.kind)} · ${ev.replayed?'replayed':'proved'} · ${n(ev.ms/1000,1)}s</span>`).join('') || '<p class="panel-sub">No shard completion events observed.</p>');
     $('claims-list').innerHTML=all.filter(j=>j.audit?.statement).map(j=>`<article class="observed-job"><h3>${esc(j.title)} · ${esc(j.audit.valid?'audited historical claim':'unconfirmed receipt')}</h3><pre>${esc(JSON.stringify(j.audit.statement,null,2))}</pre></article>`).join('') || '<p>No payment claim receipt observed.</p>';
-    const show={live:['eta-panel','runtime-panel','shard-panel'],blocks:['evidence-panel'],
+    const show={live:['eta-panel','runtime-panel','shard-panel'],compute:['compute-panel'],blocks:['evidence-panel'],
       utxos:['claims-panel'],estimator:['planner-panel'],cashu:['cashu-panel']};
     Object.values(show).flat().forEach(id=>$(id).hidden=!show[state.tab].includes(id));
-    updateCampaign();updateEta();drawHistory();
+    renderLocalGpu();updateCampaign();updateEta();drawHistory();
   }
   async function poll() {
     if(!state.polling)return;
@@ -458,6 +535,7 @@ if(typeof document!=='undefined') (() => {
     updateCampaign();
   };
   applyMotion();
+  initCompute();
   setInterval(()=>{if(Date.now()-state.lastReceived>15000)render();tickEta();tickDeadline();},1000);
   window.addEventListener('resize',drawHistory);render();poll();
 })();
