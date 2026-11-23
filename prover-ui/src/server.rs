@@ -210,6 +210,9 @@ fn read_hyperstack_ark_state(path: &Path, journal: Option<&Path>) -> Option<Valu
         sample["lease_ends_at_unix"] = json!(end);
     }
     sample["spot"] = raw["spot"].clone();
+    if let Some(rate) = raw["rate_usd_per_hour"].as_f64().filter(|rate| *rate > 0.0 && *rate <= 100.0) {
+        sample["rate_usd_per_hour"] = json!(rate);
+    }
     if raw["cleanup"] == "vm_deleted" {
         let local_stage = match stage {
             "overnight_sdk_m13_verification" => Some(("verify_sdk_m13", true)),
@@ -377,6 +380,7 @@ mod hyperstack_tests {
             "name": "ark-mnr04-a100-123abcdef0", "vm_id": 456, "requested_at": 900,
             "stage": "ark_heartbeat|1000|shard|999|5|3|18|20|8192|1|0",
             "storage_key_id": 8,
+            "rate_usd_per_hour": 1.08672043,
         });
         std::fs::write(&path, serde_json::to_vec(&state)?)?;
         let live = read_hyperstack_ark_state(&path, None).context("valid Ark heartbeat was discarded")?;
@@ -384,6 +388,7 @@ mod hyperstack_tests {
         assert_eq!(live["core_replayed"], 18);
         assert_eq!(live["sampled_at_unix"], 1000);
         assert_eq!(live["ark_running"], true);
+        assert_eq!(live["rate_usd_per_hour"], 1.08672043);
         assert!(live.get("storage_key_id").is_none());
 
         state["stage"] = json!("ark_heartbeat|899|shard|999|5|3|18|20|8192|1|0");

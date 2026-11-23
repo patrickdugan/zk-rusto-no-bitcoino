@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const {arkBudgets, arkCampaign, ongoingJobs, rememberCheckpoints, checkpointTrend, checkpointMosaic, a100Budget, arkWorkerLabel} = require('../web/app.js');
+const {arkBudgets, arkCampaign, ongoingJobs, rememberCheckpoints, checkpointTrend, checkpointMosaic, a100Budget, observedBudgetPace, arkWorkerLabel} = require('../web/app.js');
 
 function setup(overrides = {}) {
   const ark = {
@@ -113,6 +113,16 @@ test('the A100 planner prices only scenario cores and handles unknown targets an
   assert.equal(a100Budget({...inputs,target:1727}).cost,null);
   assert.equal(a100Budget({...inputs,credit:0}).runwayCores,0);
   assert.equal(a100Budget({...inputs,rate:0}),null);
+});
+
+test('live budget uses a full fresh-core window and ignores the earlier core replay', () => {
+  const history=[{t:670,core:2,replayed:2000},{t:700,core:4,replayed:4378},{t:1000,core:29,replayed:4378}];
+  const pace=observedBudgetPace(history);
+  assert.deepEqual(pace,{perMinute:5,seconds:300});
+  const cost=a100Budget({saved:4421,target:5421,rate:1.08672043,coresPerMinute:pace.perMinute});
+  assert.equal(cost.cost.toFixed(2),'3.62');
+  assert.equal(observedBudgetPace([...history,{t:1010,core:30,replayed:4380}]),null);
+  assert.equal(observedBudgetPace([{t:700,core:4,replayed:4378},{t:1000,core:4,replayed:4378}]),null);
 });
 
 test('private seed staging is visible without counting a GPU as running', () => {

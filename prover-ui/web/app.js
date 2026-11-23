@@ -247,9 +247,16 @@ const ProofEta = (() => {
     }
     return newest.reverse();
   }
-  function a100Budget({saved,target,rate,credit}) {
-    if(!finite(rate)||rate<=0)return null;
-    const coresPerHour=10.38*60;
+  function observedBudgetPace(history) {
+    const last=history.at(-1);
+    if(!last)return null;
+    const first=history.find(point=>point.replayed===last.replayed && last.t-point.t<=300);
+    const seconds=last.t-first.t, cores=last.core-first.core;
+    return seconds>=240 && cores>0 ? {perMinute:cores*60/seconds,seconds} : null;
+  }
+  function a100Budget({saved,target,rate,credit,coresPerMinute=10.38}) {
+    if(!finite(rate)||rate<=0||!finite(coresPerMinute)||coresPerMinute<=0)return null;
+    const coresPerHour=coresPerMinute*60;
     const hasTarget=Number.isSafeInteger(saved)&&saved>=0&&Number.isSafeInteger(target)&&target>0&&target>=saved&&target<=10000000;
     const hours=hasTarget?(target-saved)/coresPerHour:null;
     const cost=hours===null?null:hours*rate;
@@ -266,7 +273,7 @@ const ProofEta = (() => {
     return Number.isSafeInteger(saved)&&saved>0?'Idle · checkpoints saved':'Idle · no worker running';
   }
   return {estimate,clock,arkCampaign,arkDeadline,arkBudgets,cashuRoadmap,ongoingJobs,
-    rememberCheckpoints,checkpointTrend,checkpointMosaic,a100Budget,arkWorkerLabel,arkStageResources};
+    rememberCheckpoints,checkpointTrend,checkpointMosaic,a100Budget,observedBudgetPace,arkWorkerLabel,arkStageResources};
 })();
 if(typeof module!=='undefined' && module.exports)module.exports=ProofEta;
 if(typeof document!=='undefined') (() => {
@@ -402,14 +409,23 @@ if(typeof document!=='undefined') (() => {
     const saved=usingPublished?1727:localSaved;
     const value=id=>$(id).value===''?null:$(id).valueAsNumber;
     const target=value('budget-target');
-    const rate=value('budget-rate');
-    const estimate=ProofEta.a100Budget({saved,target,rate,credit:value('budget-credit')});
+    const enteredRate=value('budget-rate');
+    const cloud=arkCloudSignal();
+    const leaseRate=cloud?.active&&Number.isFinite(cloud.sample.rate_usd_per_hour)?cloud.sample.rate_usd_per_hour:null;
+    const pace=cloud?.active&&cloud.sample.ark_running?ProofEta.observedBudgetPace(checkpointHistory):null;
+    const rate=enteredRate ?? leaseRate ?? 1.35672043;
+    const coresPerMinute=pace?.perMinute;
+    const estimate=ProofEta.a100Budget({saved,target,rate,credit:value('budget-credit'),coresPerMinute});
     const catchUp=usingPublished&&target===null&&localSaved>saved?
-      ProofEta.a100Budget({saved,target:localSaved,rate}):null;
+      ProofEta.a100Budget({saved,target:localSaved,rate,coresPerMinute}):null;
+    const priceBasis=enteredRate!==null?'Entered price':leaseRate!==null?'Live lease price':'Earlier on-demand quote';
+    const paceBasis=pace?`${n(coresPerMinute,1)} fresh cores/min over ${formatDuration(pace.seconds)}`:
+      'Earlier A100 pilot · 10.38 fresh cores/min';
+    $('budget-basis').textContent=`${priceBasis} · $${n(rate,4)}/h · ${paceBasis}`;
     $('budget-result').textContent=!estimate?'Enter the hourly A100 and IP rate.':
       Number.isSafeInteger(saved)&&Number.isSafeInteger(target)&&target<saved?`Use a scenario total at or above the ${n(saved)} saved cores.`:
       catchUp?`Matching the laptop’s ${n(localSaved)} saved cores would take about ${planningDuration(catchUp.hours*3600)} and $${catchUp.cost.toFixed(2)} in core work.`:
-      estimate.cost===null?`Starting cache · ${Number.isSafeInteger(saved)?n(saved)+' cores':'count unavailable'}. Each additional 1,000 core shards costs about $${estimate.perThousand.toFixed(2)} at the measured pace.`:
+      estimate.cost===null?`Starting cache · ${Number.isSafeInteger(saved)?n(saved)+' cores':'count unavailable'}. Each additional 1,000 core shards costs about $${estimate.perThousand.toFixed(2)} at this pace.`:
       `${n(target-saved)} new cores · ${planningDuration(estimate.hours*3600)} · $${estimate.cost.toFixed(2)} for core work under this scenario.`;
     $('budget-runway').textContent=estimate?.runway==null?'':
       `Credit covers ${n(estimate.runway,2)} A100 hours, or up to ${n(estimate.runwayCores)} new cores before overhead.`+
