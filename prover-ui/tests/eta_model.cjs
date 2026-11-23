@@ -154,6 +154,7 @@ test('Friday evidence distinguishes the recorded demo from the conditional Ark p
   assert.equal(road.friday.find(item=>item.id==='cashu-demo').status,'Recorded regtest demo');
   assert.equal(road.friday.find(item=>item.id==='refusal-demo').status,'Verified regtest payout');
   assert.equal(road.friday.find(item=>item.id==='refusal-demo').done,true);
+  assert.equal(road.friday.find(item=>item.id==='melt-reserve-demo').status,'Verified regtest settlement');
   assert.equal(road.friday.find(item=>item.id==='ark-proof').status,'Conditional · finish unknown');
   assert.equal(road.trust.find(item=>item.id==='issuance').done,false);
   assert.equal(road.trust.find(item=>item.id==='redemption').done,false);

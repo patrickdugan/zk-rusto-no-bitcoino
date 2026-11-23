@@ -137,7 +137,7 @@ const ProofEta = (() => {
       detail:'The desk validated the funding prevout and refused a paid quote without its Shinigami proof. The full gate must also prevent excess issuance outside the desk and bind each authorization to the mint keyset.'},
     {id:'redemption',label:'Fund redemption if the mint refuses',
       status:'Regtest reserve paid · no ETA',
-      detail:'A holder claimed a dedicated reserve while the mint was offline. The full policy still needs to make a normal Cashu redemption and a reserve payout consume the same claim.'},
+      detail:'A regtest melt consumed the original Cashu proofs and funded a reserve for the holder. The mint must accept that initial melt. The full policy still needs a funded exit when the mint refuses before funding.'},
     {id:'adversarial',label:'Verify the end-to-end trust claim',
       detail:'Independently reproduce issuance and refusal-path settlement. Reject issuance replay, excess issuance and invalid or repeated redemption. State the remaining signer, setup and liveness assumptions.'},
   ];
@@ -156,7 +156,10 @@ const ProofEta = (() => {
         detail:'CDK admitted a Core-confirmed deposit and issued Cashu. A successful mint redemption delivered an Ark VTXO. The holder then claimed that VTXO on Bitcoin while the mint and Ark server were offline.'},
       {id:'refusal-demo',label:'Dedicated Cashu reserve paid with the mint offline',
         status:'Verified regtest payout',done:true,
-        detail:'Bitcoin Core confirmed 24,750 sats to the holder after six blocks and a 250-sat fee. Proof Grove holds the recorded Shinigami proof pair for issuance and the offline payout. A shared consumption rule for normal melts and fallback spends remains open.'},
+        detail:'Bitcoin Core confirmed 24,750 sats to the holder after six blocks and a 250-sat fee. Proof Grove holds the recorded Shinigami proof pair for issuance and the offline payout. That run used a separately funded reserve.'},
+      {id:'melt-reserve-demo',label:'Fund the holder reserve by melting Cashu',
+        status:'Verified regtest settlement',done:true,
+        detail:'CDK consumed six Cashu proofs to fund a 24,000-sat reserve and rejected reusing them. Core paid 23,750 sats to the holder after six blocks with the mint offline.'},
       {id:'ark-proof',label:'Ark Nova → SP1 → M13 → BitVM3 off-chain proof',
         status:ark.checksPassed?'Checks reported · audit pending':'Conditional · finish unknown',done:false,
         detail:ark.checksPassed?
