@@ -1,6 +1,6 @@
 'use strict';
 // Test fixture only: public deterministic additive shares, no cryptographic release.
-function signatureFixture(lib){
+function signatureFixture(lib,helpersOnly){
 "use strict";
 const {ck,concat,le,hex,fromHex,eq,hash,context,commit,statement,pin,row}=lib;
 const A=(n,f)=>Array.from({length:n},(_,i)=>f(i));
@@ -54,6 +54,7 @@ function sighash(tx){
  return tag("TapSighash",concat(Uint8Array.of(0,0),le(tx.version,4),le(tx.locktime,4),
  sha(concat(tx.txid,le(tx.vout,4))),sha(le(tx.prevValue)),sha(sc(tx.prevScript)),sha(le(tx.sequence,4)),sha(outs),Uint8Array.of(0),le(0,4)));
 }
+if(helpersOnly)return {sha,tag,be,read,P,N,G,mod,add,neg,mul,lift,pointEq,challenge,verify,sc,sighash};
 // Public deterministic test secrets, deliberately NOT a DKG or secure signing protocol.
 let xs=[3n,5n,11n],ps=xs.map(x=>mul(x,G)),Q=sum(ps);
 if(Q.y&1n){xs=xs.map(x=>N-x);ps=ps.map(neg);Q=neg(Q)}
@@ -90,4 +91,5 @@ const changed=[
 for(const [n,t] of changed){const m=sighash(t);reject(n,!eq(m,msg)&&!verify(be(Q.x),m,sig)&&combine(shares,releaseId,m)===null)}
 return {scope:"Public-key toy additive Schnorr shares; no DKG, no witness encryption, no real Bitcoin UTXO or broadcast",official_bip340_vectors:2,signers:3,signed_sighash:hex(msg),release_id:hex(releaseId),aggregate_xonly_pubkey:hex(be(Q.x)),signature_bytes:sig.length,partial_equations_verified:3,exact_transaction_verified:true,negative_controls:negatives.length,negative_control_names:negatives};
 }
-console.log(JSON.stringify(signatureFixture(require('./trace_fraud.js')),null,2));
+module.exports=signatureFixture;
+if(require.main===module)console.log(JSON.stringify(signatureFixture(require('./trace_fraud.js')),null,2));
