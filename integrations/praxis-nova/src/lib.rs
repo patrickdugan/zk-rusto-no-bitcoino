@@ -195,3 +195,5 @@ mod tests{
 }
 
 pub mod boundary;
+
+pub mod nova_verify;
