@@ -46,6 +46,21 @@ jobs:
         run: |
           set -euo pipefail
           /usr/bin/time -v cargo run --release --manifest-path integrations/praxis-we/Cargo.toml --bin bn254_replay > /tmp/praxis-kernels/bn254-replay.jsonl 2> /tmp/praxis-kernels/bn254-replay-resources.txt
+      - name: PRAXIS-07 packed recurrence and search
+        shell: bash
+        run: |
+          set -euo pipefail
+          for m in 4096 65536 262144; do
+            /usr/bin/time -v cargo run --release --manifest-path integrations/praxis-we/Cargo.toml --bin packed_search -- "$m" >> /tmp/praxis-kernels/packed-search.jsonl 2>> /tmp/praxis-kernels/packed-search-resources.txt
+          done
+      - name: PRAXIS-08 canonical non-native BQS arithmetic
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/praxis-we/bqs_nonnative.js > /tmp/praxis-kernels/praxis-08-bqs.json
+          diff -u integrations/praxis-we/results/praxis-08-bqs.json /tmp/praxis-kernels/praxis-08-bqs.json
+      - name: PRAXIS-09 concrete cost sensitivity
+        run: python3 integrations/praxis-we/full_size_budget.py | tee /tmp/praxis-kernels/full-size-budget.json
       - uses: actions/upload-artifact@v4
         with:
           name: praxis-02-kernels
