@@ -55,3 +55,37 @@ jobs:
         with:
           name: nova-m13-${{ github.sha }}
           path: integrations/bitvm3-nova/m13/ci/
+  replaced-public-values:
+    name: A wrap proof with replaced public values is refused
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      # The library and its test need no guest ELF; only the m13 host binary embeds them.
+      SP1_SKIP_PROGRAM_BUILD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swap on the runner's temporary disk (the SP1 prover crates and the wrap prover exceed 16 GB RAM)
+        run: |
+          sudo fallocate -l 16G /mnt/ci-swap && sudo chmod 600 /mnt/ci-swap && sudo mkswap /mnt/ci-swap && sudo swapon /mnt/ci-swap
+          free -g
+      - name: Toolchain
+        run: |
+          mkdir -p integrations/bitvm3-nova/m13/ci
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler
+          rustup toolchain install 1.90.0 --profile minimal
+      - name: Shrink the control proof, wrap it unedited and with the M16 statement written in, verify both
+        run: |
+          set -o pipefail
+          if cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/m13/wrap/Cargo.toml --lib -- --ignored --nocapture 2>&1 | tee integrations/bitvm3-nova/m13/ci/replaced-public-values.txt; then
+            echo "::notice title=m13 replaced public values::the STARK accepts the edited wrap proof and verify_final refuses it"
+          else
+            echo "::error title=m13 replaced public values::$(grep -E 'panicked|error(\[|:)|FAILED|assertion' integrations/bitvm3-nova/m13/ci/replaced-public-values.txt | head -5 | tr '\n' ' ' | cut -c1-900)"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-m13-replaced-public-values-${{ github.sha }}
+          path: integrations/bitvm3-nova/m13/ci/replaced-public-values.txt

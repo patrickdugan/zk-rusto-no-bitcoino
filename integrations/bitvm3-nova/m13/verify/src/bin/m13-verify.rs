@@ -2,7 +2,12 @@
 //! m13-verify verify-v2 WRAP.bin EXPECT.json    (transcript v2, fixed-cost challenges)
 //!     The complete final verifier, run once on one thread: wall time,
 //!     BLAKE3 compressions per role and (with the `opcount` feature and
-//!     patched p3-koala-bear) every KoalaBear operation.
+//!     patched p3-koala-bear) every KoalaBear operation. `koalabear_ops` is
+//!     the STARK verification; the operations of the public-values digest
+//!     (seven Poseidon2 permutations) are reported apart, as
+//!     `public_values_digest_koalabear_ops`. The patch counts the field
+//!     type's operators, which Poseidon2's internal layers bypass, so that
+//!     second figure is a lower bound; M14 measures the digest as gates.
 //!     M13_TRANSCRIPT_TRACE=PATH writes every transcript byte observed or
 //!     sampled, in order (`ctx::trace_take_runs` format).
 //! m13-verify dump-zerocheck-v2 WRAP.bin OUT.json
@@ -48,6 +53,9 @@ where
     if trace_path.is_some() {
         ctx::trace_start();
     }
+    // Build the Poseidon2 hasher's lazily initialised constants before counting, so the digest
+    // costs the same in the measured run and in the run that isolates it below.
+    let _ = m13_verify::check_public_values_digest(&wrap);
     ctx::reset_counters();
     opcount::reset();
     let t = Instant::now();
@@ -59,7 +67,19 @@ where
     if let Some(p) = trace_path {
         std::fs::write(&p, ctx::trace_take_runs())?;
     }
-    let ops = opcount::snapshot();
+    let all_ops = opcount::snapshot();
+    opcount::reset();
+    m13_verify::check_public_values_digest(&wrap)?;
+    let digest_ops = opcount::snapshot();
+    let ops = all_ops.zip(digest_ops).map(|(a, d)| opcount::FieldOps {
+        add: a.add - d.add,
+        sub: a.sub - d.sub,
+        mul_full: a.mul_full - d.mul_full,
+        mul_const: a.mul_const - d.mul_const,
+        sum_adds: a.sum_adds - d.sum_adds,
+        halve: a.halve - d.halve,
+        mul_2exp: a.mul_2exp - d.mul_2exp,
+    });
     let counts = ctx::read_counters();
     let by_role: BTreeMap<_, _> = ctx::ROLE_NAMES.iter().zip(counts.iter()).map(|(k, v)| (*k, *v)).collect();
     let total: u64 = counts.iter().map(|c| c.compressions).sum();
@@ -71,6 +91,7 @@ where
             "public_values_len": wrap.proof.public_values.len(),
             "blake3": by_role, "blake3_compressions_total": total,
             "koalabear_ops": ops,
+            "public_values_digest_koalabear_ops": digest_ops,
         }))?
     );
     Ok(())

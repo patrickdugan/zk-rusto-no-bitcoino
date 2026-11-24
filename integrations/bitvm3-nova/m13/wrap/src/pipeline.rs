@@ -262,6 +262,31 @@ wrap_with!(
     wrap_blake3_v2, Blake3WrapProverV2, Blake3WrapProofV2, wrap_verifier_v2, verify_wrap_proof_v2
 );
 
+/// [`wrap_blake3_v2`] with the execution record's public values passed through `edit` before the
+/// STARK is proved, and without the final self-check. The wrap AIR constrains only the `digest`
+/// slots, so the result verifies as a STARK whatever `edit` writes into the other slots; it exists
+/// to build the proofs `m13_verify::check_public_values_digest` must refuse (see `tests`).
+pub async fn wrap_blake3_v2_with_public_values(
+    shrink: ShrinkProof,
+    shrink_shape: BTreeMap<String, usize>,
+    vks: &RecursionVks,
+    edit: impl FnOnce(&mut sp1_recursion_executor::RecursionPublicValues<SP1Field>),
+) -> Result<Blake3WrapProofV2> {
+    let program = build_wrap_program(vks, shrink_shape);
+    let prover = Arc::new(Blake3WrapProverV2::new(wrap_verifier_v2().shard_verifier().clone()));
+    let (_, vk) = prover.setup(program.clone(), ProverSemaphore::new(1)).await;
+    let SP1RecursionProof { vk: svk, proof: sproof, vk_merkle_proof } = shrink;
+    let witness = with_vk_merkle(vks, svk, sproof, vk_merkle_proof);
+    let mut stream = Vec::new();
+    Witnessable::<WrapConfig>::write(&witness, &mut stream);
+    let mut record = run_program(&program, stream)?;
+    edit(&mut record.public_values);
+    let (_, proof, permit) =
+        prover.setup_and_prove_shard(program, record, Some(vk.clone()), ProverSemaphore::new(1)).await;
+    let _ = permit.release();
+    Ok(SP1WrapProof { vk, proof })
+}
+
 /// Build SP1's BN254 wrap key from [`build_wrap_program`] and compare it with
 /// the key sp1-prover 6.9.0 embeds (`verify::WRAP_VK_BYTES`). Equality means
 /// the program proved under BLAKE3 is the program SP1 ships.
@@ -293,4 +318,69 @@ pub fn mem_note(phase: &str) {
             .unwrap_or(0.0)
     };
     eprintln!("[m13-mem] {phase}: rss {:.2} GiB, peak {:.2} GiB", field("VmRSS:"), field("VmHWM:"));
+}
+
+#[cfg(test)]
+mod tests {
+    use slop_algebra::AbstractField;
+    use sp1_sdk::{SP1Proof, SP1ProofWithPublicValues};
+
+    use super::*;
+
+    const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../fixtures/");
+
+    fn statement(name: &str) -> FinalStatement {
+        serde_json::from_slice(&std::fs::read(format!("{FIXTURES}{name}")).expect("statement")).expect("statement JSON")
+    }
+
+    /// A prover who controls the wrap step replaces the program key and the committed statement in
+    /// the public values before proving. The STARK accepts the result, because the AIR binds only
+    /// the digest; the final verifier must refuse it.
+    ///
+    /// The control guest's compressed proof (4 testnet4 headers) is shrunk once and wrapped twice:
+    /// unedited, where the final verifier accepts it under its own statement, and edited to show
+    /// the M16 guest's key and statement.
+    ///
+    /// Run with `SP1_SKIP_PROGRAM_BUILD=true cargo test --release --lib -- --ignored`: the library
+    /// needs no guest ELF, and the two wrap proofs take about 11 GB of memory.
+    #[tokio::test(flavor = "multi_thread")]
+    #[ignore = "proves two wrap STARKs (about 11 GB of memory)"]
+    async fn a_wrap_proof_with_replaced_public_values_passes_the_stark_and_is_refused() {
+        let own = statement("c4-statement.json");
+        let claimed = statement("m16-statement.json");
+        assert_ne!(own.program_vk_digest, claimed.program_vk_digest);
+        let key = hex::decode(&claimed.program_vk_digest).unwrap();
+        let committed = hex::decode(&claimed.committed_values_sha256).unwrap();
+
+        let vks = recursion_vks();
+        let mut t = PhaseTimes::default();
+        let compressed = SP1ProofWithPublicValues::load(format!("{FIXTURES}c4-compressed.bin")).expect("fixture");
+        let inner = match compressed.proof {
+            SP1Proof::Compressed(p) => *p,
+            _ => panic!("not a compressed proof"),
+        };
+        let (shrink, shape) = shrink(inner, &vks, &mut t).await.expect("shrink");
+
+        let honest = wrap_blake3_v2_with_public_values(shrink.clone(), shape.clone(), &vks, |_| {}).await.expect("wrap");
+        assert_eq!(verify_final(&honest, &own).expect("the unedited wrap verifies"), own);
+        assert!(verify_final(&honest, &claimed).is_err());
+
+        let forged = wrap_blake3_v2_with_public_values(shrink, shape, &vks, |pv| {
+            for i in 0..8 {
+                pv.sp1_vk_digest[i] =
+                    SP1Field::from_canonical_u32(u32::from_le_bytes(key[4 * i..4 * i + 4].try_into().unwrap()));
+                for j in 0..4 {
+                    pv.committed_value_digest[i][j] = SP1Field::from_canonical_u8(committed[4 * i + j]);
+                }
+            }
+        })
+        .await
+        .expect("wrap with replaced public values");
+
+        verify_wrap_proof_v2(&forged).expect("the STARK accepts the replaced public values");
+        assert_eq!(final_statement(&forged).unwrap(), claimed, "the proof shows the claimed statement");
+        let err = verify_final(&forged, &claimed).expect_err("final verifier accepted replaced public values");
+        assert!(format!("{err:#}").contains("do not hash to the proved digest"), "{err:#}");
+        assert!(verify_final(&forged, &own).is_err());
+    }
 }

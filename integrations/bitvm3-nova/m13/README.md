@@ -84,26 +84,58 @@ SP1's CPU prover accepted the configuration with no changes to SP1. Its generic
 
 1. **Wrap key:** its SHA-256 equals the pin `d42c63e3…b0d7` ([`pins.json`](pins.json)).
 2. **STARK:** the proof verifies under that key, with the key observed into the transcript first.
-3. **Exit code:** the guest's is 0. This is M12's lesson: SP1 reports a refused input as exit code 1, not as an error.
-4. **Completeness:** `is_complete` is 1.
-5. **Guest program:** its key digest equals the pin for the expected guest (A or C).
-6. **Recursion key map:** SP1's root equals the pin `7487c217…f257`.
-7. **Statement:** the committed-values digest equals SHA-256 of the expected statement. For A at
+3. **Public-values digest:** the guest key digest, committed-values digest, exit code, recursion
+   key root and proof nonce hash, under SP1's Poseidon2, to the `digest` public values
+   (`check_public_values_digest`). The wrap machine's AIR constrains only those 8 `digest` slots
+   (sp1-recursion-machine 6.9.0, `chips/public_values.rs`); the wrap program computes the digest
+   in-circuit, and a verifier that does not recompute it reads statement fields the prover was
+   free to choose. SP1's own verifier makes this check (`is_root_public_values_valid`).
+4. **Exit code:** the guest's is 0. This is M12's lesson: SP1 reports a refused input as exit code 1, not as an error.
+5. **Completeness:** `is_complete` is 1. The digest does not cover this slot; the wrap program
+   asserts completeness itself, and the pinned key fixes that program.
+6. **Guest program:** its key digest equals the pin for the expected guest (A or C).
+7. **Recursion key map:** SP1's root equals the pin `7487c217…f257`.
+8. **Statement:** the committed-values digest equals SHA-256 of the expected statement. For A at
    k=1 that is the 1,164-byte statement `d3b478b0…2fa0` (network, k, steps, z0, zn, key and proof
    digests).
 
+Check 3 was added on 2026-11-24. Without it `verify_final` accepted, for any pinned guest and
+statement, a wrap proof whose public values a prover had replaced before proving the wrap STARK:
+one shrink and one wrap of any valid compressed proof. Anything that relied on `verify_final` or
+on the M14 circuit before that date relied on the prover's honesty for the statement.
+
 **Tests** ([`verify/tests/final_verifier.rs`](verify/tests/final_verifier.rs); CI runs them on
-the committed proof). These are all refused:
+the committed proofs). These are all refused:
 - 7 flipped bytes across the file;
-- 5 altered public values: exit code, statement digest, guest key, `is_complete` and key-map
-  root. The **STARK itself** refuses each of these, not only the statement comparison;
-- 4 altered pins.
+- 5 public values altered after proving: exit code, statement digest, guest key, `is_complete`
+  and key-map root. The STARK refuses each of these, because the public values are in its
+  transcript. That says nothing about values replaced before proving;
+- 4 altered pins;
+- 7 public values altered against the digest, among them the nonce and the digest itself, and
+  the control proof's public values with the M16 guest's key and statement copied over them.
+
+All four committed proofs carry SP1's digest.
+
+**A proof with public values replaced before proving**
+([`wrap/src/pipeline.rs`](wrap/src/pipeline.rs), `tests`; CI job `replaced-public-values`). The
+control guest's compressed proof is shrunk once and wrapped twice with
+`wrap_blake3_v2_with_public_values`: unedited, and with the M16 guest's key and committed-values
+digest written into the execution record before the STARK is proved. The unedited proof passes
+`verify_final` under its own statement. The edited one passes the STARK alone, reads back as the
+M16 statement, and is refused by `verify_final` at check 3.
 
 ## Counting the verifier
 
 The counts come from one complete `verify_final` run of the committed proof on one thread. With
 more threads, rayon's parallel reductions add one partial sum per thread, so the addition count
 varies with the thread count and between runs. `m13-verify` therefore pins rayon to one thread.
+
+The counts and the price below are of the STARK verification. `m13-verify` reports the
+public-values digest (check 3, seven Poseidon2 permutations) apart, as
+`public_values_digest_koalabear_ops`, and subtracts it from `koalabear_ops`, so the recorded
+figures are unchanged by that check. The counter patch does not see Poseidon2's internal linear
+layers, which reduce raw Montgomery values without the field type's operators, so the separate
+figure is a lower bound. M14 measures the digest directly: 7,104,181 gates.
 The binary is built two ways:
 
 - **BLAKE3** is counted inside `ctx.rs`, per role. One compression is one 64-byte block, plus one
