@@ -25,7 +25,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/pns-pipe
-          for f in trace_fraud signature_shares costs; do
+          for f in trace_fraud signature_shares costs taproot_csv; do
             node integrations/pns-pipe/$f.js > /tmp/pns-pipe/$f.json
             diff -u integrations/pns-pipe/results/${f//_/-}.json /tmp/pns-pipe/$f.json
           done
