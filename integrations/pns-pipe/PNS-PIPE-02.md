@@ -146,3 +146,55 @@ Reproduce:
     python3 integrations/pns-pipe/fresh_assertion.py
     # Only with trusted bitcoind/bitcoin-cli already installed:
     python3 integrations/pns-pipe/fresh_assertion.py --regtest
+
+
+## 7. Script-enforced delay preflight (PNS-PIPE-02B)
+
+The earlier fresh assertion regtest harness uses wallet-owned key-path
+outputs. A delayed presigned child by itself is not a consensus-enforced
+restriction on other spends authorized by a retained key. The new
+taproot_csv.js fixture instead constructs a two-leaf BIP341 Taproot output
+using the published NUMS internal point (SHA256 of the uncompressed
+secp256k1 generator, lifted to the even-y point). Its unknown discrete log
+is an assumption. The leaves are:
+
+    <fault x-only pubkey> CHECKSIG
+    6 CHECKSEQUENCEVERIFY DROP <optimistic x-only pubkey> CHECKSIG
+
+The delay is a six-block test parameter only, not a safe production window.
+BIP341 leaf/branch hashes, tweak, parity and control paths match a
+published wallet test vector. The BIP340 signing routine matches official
+vector 0. Script-path SIGHASH_DEFAULT uses BIP342 ext_flag=1, no annex,
+one input, key_version=0 and codesep_pos=0xffffffff. Both leaf signatures
+commit to exact transaction fields. Sixteen negative checks executed:
+candidate height below maturity, reconfirmation resets clock, re-signing
+with the retained optimistic key under zero/short/disabled/time-type
+sequence or version 1, wrong control blocks/leaf/parity, key-path vs
+script-path digest, altered recipient, amount/fee or outpoint. The
+restricted offline model accepts at candidate height assertion+6.
+This is a semantic fixture for the two scripts, not a full interpreter or
+consensus test. It uses publicly known TEST secrets, no actual UTXO and
+no secure DKG, FROST or WE.
+
+Explicit counterexamples: a retained fault key can authorize arbitrary
+fault-branch spends immediately; a retained optimistic key can redirect
+after CSV. The NUMS internal key and CSV do not provide a covenant, and
+cannot establish signature erasure or proof-conditioned release. The
+fault branch must be controlled by a properly reviewed multi-party setup
+with the necessary honest-party assumption. The optimistic branch needs
+a similarly justified exact-transaction preauthorization if arbitrary
+post-delay spending is unacceptable. No funds.
+
+Source: BIP341 https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki,
+BIP342 https://github.com/bitcoin/bips/blob/master/bip-0342.mediawiki,
+BIP341 wallet test vectors https://github.com/bitcoin/bips/blob/master/bip-0341/wallet-test-vectors.json
+(blob 11261b00ba24afb90b62109505d9ca5ddd773b3b).
+Run node integrations/pns-pipe/taproot_csv.js; expected receipt:
+results/taproot-csv.json. The current container has neither bitcoind nor
+bitcoin-cli; official download was blocked by DNS. The existing regtest
+harness remains unexecuted. Next: fund this script path only on an isolated
+regtest node, serialize actual script-path spends, use testmempoolaccept
+and block confirmation at earliest eligible height, reorg and competing
+spend tests, independently verify BIP342 sighash, demonstrate retained-key
+counterexamples, and bind actual trace roots and X to the real outputs.
+CI replays offline fixtures; no native node claim.
