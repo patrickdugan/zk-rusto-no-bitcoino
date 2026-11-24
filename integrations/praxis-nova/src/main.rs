@@ -11,8 +11,42 @@ type S2=RelaxedR1CSSNARK<E2,ipa_pc::EvaluationEngine<E2>>;
 type PP=PublicParams<E1,E2,SettlementStep>;
 type RS=RecursiveSNARK<E1,E2,SettlementStep>;
 type CS=CompressedSNARK<E1,E2,SettlementStep,S1,S2>;
+#[derive(Clone,Debug)]
+struct SquarePlusFive;
+impl nova_snark::traits::circuit::StepCircuit<m18_utxo_window::elem::F> for SquarePlusFive {
+    fn arity(&self)->usize{1}
+    fn synthesize<T: nova_snark::frontend::ConstraintSystem<m18_utxo_window::elem::F>>(
+        &self,cs:&mut T,z:&[nova_snark::frontend::num::AllocatedNum<m18_utxo_window::elem::F>]
+    )->Result<Vec<nova_snark::frontend::num::AllocatedNum<m18_utxo_window::elem::F>>,nova_snark::frontend::SynthesisError>{
+        use nova_snark::frontend::{num::AllocatedNum,SynthesisError};
+        use m18_utxo_window::elem::F;
+        let sq=z[0].square(cs.namespace(||"square"))?;
+        let out=AllocatedNum::alloc(cs.namespace(||"plus five"),||Ok(sq.get_value().ok_or(SynthesisError::AssignmentMissing)?+F::from(5u64)))?;
+        cs.enforce(||"bind output",|l|l+sq.get_variable()+(F::from(5u64),T::one()),|l|l+T::one(),|l|l+out.get_variable());
+        Ok(vec![out])
+    }
+}
+fn small_shape(path:&std::path::Path){
+    use m18_utxo_window::elem::F;
+    type P=PublicParams<E1,E2,SquarePlusFive>;
+    type R=RecursiveSNARK<E1,E2,SquarePlusFive>;
+    type C=CompressedSNARK<E1,E2,SquarePlusFive,S1,S2>;
+    let c=SquarePlusFive;let pp=P::setup(&c,&*S1::ck_floor(),&*S2::ck_floor()).unwrap();
+    let z0=vec![F::from(2u64)];let mut r=R::new(&pp,&c,&z0).unwrap();
+    for _ in 0..2{r.prove_step(&pp,&c).unwrap();}
+    let (pk,vk)=C::setup(&pp).unwrap();let proof=C::prove(&pp,&pk,&r).unwrap();
+    assert_eq!(proof.verify(&vk,2,&z0).unwrap(),vec![F::from(86u64)]);
+    let raw=bincode::serialize(&vk).unwrap();
+    let report=praxis_nova_settlement::key_shape::inventory(&raw,1,pp.num_constraints(),pp.num_variables());
+    fs::create_dir_all(path).unwrap();
+    fs::write(path.join("square-key-shape.json"),serde_json::to_vec_pretty(&report).unwrap()).unwrap();
+    println!("{report}");
+}
 fn main(){
     let args:Vec<String>=std::env::args().collect();
+    if args.get(1).map(String::as_str)==Some("--square-shape"){
+        assert_eq!(args.len(),3,"--square-shape OUT");small_shape(std::path::Path::new(&args[2]));return;
+    }
     if args.get(1).map(String::as_str)==Some("--verify"){
         assert_eq!(args.len(),5,"--verify DIR EXPECTED_PNS1_SHA256 EXPECTED_VK_SHA256");
         let pin=|s:&str| -> [u8;32] {hex::decode(s).expect("pin hex").try_into().expect("32-byte pin")};
@@ -37,6 +71,8 @@ fn main(){
     assert!(proof.verify(&vk,steps,&wrong).is_err());
     assert!(proof.verify(&vk,steps-1,&z0).is_err());
     let p=bincode::serialize(&proof).unwrap();let k=bincode::serialize(&vk).unwrap();
+    let shape=praxis_nova_settlement::key_shape::inventory(&k,z0.len(),pp.num_constraints(),pp.num_variables());
+    fs::write(path.join("settlement-key-shape.json"),serde_json::to_vec_pretty(&shape).unwrap()).unwrap();println!("{shape}");
     let b=praxis_nova_settlement::boundary::Boundary{z0,expected_payout:expected,expected_change:change,expected_next_index:claims.last().unwrap().index+1,vk_sha256:Sha256::digest(&k).into()};
     assert!(b.accepts_verified_state(&zn,steps));
     let stable=b.journal().unwrap();fs::write(path.join("pns1-stable-statement.bin"),&stable).unwrap();
