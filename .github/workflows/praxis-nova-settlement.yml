@@ -53,6 +53,31 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/pns-bqs
           /usr/bin/time -v cargo run --release --manifest-path integrations/praxis-nova/bqs/Cargo.toml | tee /tmp/pns-bqs/counts.jsonl
+      - name: IPA scalar and complete affine group BQS regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/praxis-nova/bqs/ipa_bqs.js > /tmp/pns-bqs/ipa-components.json
+          diff -u integrations/praxis-nova/bqs/results/ipa-bqs-components.json /tmp/pns-bqs/ipa-components.json
+      - name: Native IPA proof and fused equation differential
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --release --manifest-path integrations/praxis-nova/bqs/Cargo.toml --bin ipa_native -- /tmp/pns-bqs/ipa-native.json
+      - name: Actual IPA transcript BQS export
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pns-ipa-transcripts
+          cargo run --release --manifest-path integrations/praxis-nova/bqs/Cargo.toml --bin ipa_transcript -- /tmp/pns-bqs/ipa-native.json /tmp/pns-ipa-transcripts | tee /tmp/pns-bqs/ipa-transcript-counts.jsonl
+      - name: Joint IPA opening BQS positive and adversarial assignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          for curve in Pallas Vesta; do
+            /usr/bin/time -v node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-transcripts/"$curve" >> /tmp/pns-bqs/ipa-joint.jsonl 2>> /tmp/pns-bqs/ipa-joint-resources.txt
+          done
+          /usr/bin/time -v node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-transcripts/Pallas --negative >> /tmp/pns-bqs/ipa-joint.jsonl 2>> /tmp/pns-bqs/ipa-joint-resources.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
