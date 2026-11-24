@@ -34,7 +34,7 @@ function setScalar(w,ids,v){
     ck(ids.length===256&&new Set(ids).size===256&&ids.every(i=>i>=2&&i<w.length),"mutable scalar slots");
     for(let j=0;j<256;j++)w[ids[j]]=Number(v>>BigInt(j)&1n);
 }
-function run(dir,badAhat=false,emit=false){
+function run(dir,badAhat=false,emit=false,compact=false){
     const started=Date.now(),manifest=json(dir,"manifest.json"),i=json(dir,"interfaces.json"),
         fixture=json(dir,"fixture.json"),prefix=read(dir,"assignment.bin"),rows=read(dir,"rows.bin");
     ck(i.format==="PNS-IPA-SLOTS/v1"&&i.curve===fixture.curve&&i.rounds===fixture.rounds,"interface");
@@ -82,8 +82,18 @@ function run(dir,badAhat=false,emit=false){
     const before=g.stats(),sc=g.ipaScalars(x,y,ah,rho,ch,scalar),after=g.stats();
     ck(g.failed===0&&sc.bhat.v===le(fixture.b_hat),"IPA scalar differential");
     ck(sc.ws.every((v,j)=>v.v===mod(-ah.v*le(fixture.s[j]),scalar)),"tensor MSM weights");
-    const msm=g.msm([...L,...R,H,...G],[...sc.r2,...sc.ri2,sc.hcoef,...sc.ws],base,64);
-    const res=g.groupAdd(C,msm.r,base);ck(g.failed===0,"group trace");
+    let res,groupAdds,tableEntries=0;
+    if(compact){
+        const {compactAdd,fixedMSM,variableMSM}=require("./compact_msm.js");
+        const v=variableMSM(g,[...L,...R],[...sc.r2,...sc.ri2],base);
+        const f=fixedMSM(g,[H,...G].map(p=>g.pv(p)),[sc.hcoef,...sc.ws],base,8,32,true);
+        res=compactAdd(g,C,compactAdd(g,v.r,f.r,base),base);
+        groupAdds=v.adds+f.adds+2;tableEntries=f.entries;
+    }else{
+        const msm=g.msm([...L,...R,H,...G],[...sc.r2,...sc.ri2,sc.hcoef,...sc.ws],base,64);
+        res=g.groupAdd(C,msm.r,base);groupAdds=msm.group_adds+1;
+    }
+    ck(g.failed===0,"group trace");
     const beforeFinal=g.nrows;
     g.pointEq(res,g.point(O,base,null,true));
     if(badAhat)ck(g.failed>0&&g.first.row>beforeFinal,"altered a_hat not rejected at group equality");
@@ -99,7 +109,7 @@ function run(dir,badAhat=false,emit=false){
         fixture_sha256:sha(read(dir,"fixture.json")),
         scalar_folding_new_unknowns:after.boolean_unknowns-before.boolean_unknowns,
         scalar_folding_equations:after.equations-before.equations,
-        group_additions:msm.group_adds+1,
+        group_additions:groupAdds,compact,fixed_table_entries:tableEntries,
         limb_equations:st.equations,limb_quadratic_equations:st.quadratic_equations,
         total_boolean_unknowns:st.boolean_unknowns,total_equations:manifest.gate_rows+manifest.pin_rows+st.equations,
         max_products_per_equation:Math.max(1,st.max_products_per_equation),
@@ -120,9 +130,9 @@ function run(dir,badAhat=false,emit=false){
 }
 if(require.main===module){
     const args=process.argv.slice(2);
-    ck(args.length>=1,"usage: ipa_joint.js TRANSCRIPT_DIR [--negative] [--emit]");
+    ck(args.length>=1,"usage: ipa_joint.js TRANSCRIPT_DIR [--negative] [--emit] [--compact]");
     const bad=args.includes("--negative"),emit=args.includes("--emit");
     ck(!(bad&&emit),"only export positive assignments");
-    console.log(JSON.stringify(run(args[0],bad,emit)));
+    console.log(JSON.stringify(run(args[0],bad,emit,args.includes("--compact"))));
 }
 module.exports={prefixCheck,run};
