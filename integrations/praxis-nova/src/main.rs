@@ -30,11 +30,14 @@ fn main(){
     assert!(proof.verify(&vk,steps,&wrong).is_err());
     assert!(proof.verify(&vk,steps-1,&z0).is_err());
     let p=bincode::serialize(&proof).unwrap();let k=bincode::serialize(&vk).unwrap();
+    let b=praxis_nova_settlement::boundary::Boundary{z0,expected_payout:expected,expected_change:change,expected_next_index:claims.last().unwrap().index+1,vk_sha256:Sha256::digest(&k).into()};
+    assert!(b.accepts_verified_state(&zn,steps));
+    let stable=b.journal().unwrap();fs::write(path.join("pns1-stable-statement.bin"),&stable).unwrap();
     let mut journal=b"PNV1".to_vec();journal.extend_from_slice(&(steps as u32).to_le_bytes());
     journal.extend_from_slice(&state_bytes(&z0));journal.extend_from_slice(&state_bytes(&zn));
     journal.extend_from_slice(&Sha256::digest(&k));journal.extend_from_slice(&Sha256::digest(&p));
     // Journal is generated AFTER native verification, not a guest-attested SP1 journal.
     for (name,data) in [("proof.bin",p.as_slice()),("vk.bin",k.as_slice()),("z0.bin",&state_bytes(&z0)),("zn.bin",&state_bytes(&zn)),("native-journal.bin",journal.as_slice())]{fs::write(path.join(name),data).unwrap();}
-    let report=serde_json::json!({"scope":"test fixture; no SP1 or Praxis settlement authorization","steps":steps,"state_arity":z0.len(),"step_constraints":constraints,"public_params_seconds":pp_s,"fold_seconds":fold_s,"compressed_setup_seconds":setup_s,"compress_seconds":compress_s,"verify_seconds":verify_s,"proof_bytes":p.len(),"vk_bytes":k.len(),"pp_digest_le":hex::encode(f_to_le(&pp.digest())),"vk_sha256":hex::encode(Sha256::digest(&k)),"journal_sha256":hex::encode(Sha256::digest(&journal)),"native_and_compressed_agree":true,"wrong_start_and_step_count_rejected":true});
+    let report=serde_json::json!({"scope":"test fixture; no SP1 or Praxis settlement authorization","steps":steps,"state_arity":z0.len(),"step_constraints":constraints,"public_params_seconds":pp_s,"fold_seconds":fold_s,"compressed_setup_seconds":setup_s,"compress_seconds":compress_s,"verify_seconds":verify_s,"proof_bytes":p.len(),"vk_bytes":k.len(),"pp_digest_le":hex::encode(f_to_le(&pp.digest())),"vk_sha256":hex::encode(Sha256::digest(&k)),"journal_sha256":hex::encode(Sha256::digest(&journal)),"pns1_sha256":hex::encode(Sha256::digest(&stable)),"native_and_compressed_agree":true,"wrong_start_and_step_count_rejected":true});
     fs::write(path.join("receipt.json"),serde_json::to_vec_pretty(&report).unwrap()).unwrap();println!("{report}");
 }
