@@ -29,6 +29,24 @@ jobs:
             node integrations/pns-pipe/$f.js > /tmp/pns-pipe/$f.json
             diff -u integrations/pns-pipe/results/${f//_/-}.json /tmp/pns-pipe/$f.json
           done
+      - name: Sparse-row micro-ops and algebraic Merkle differential
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/pns-pipe/micro_fraud.js > /tmp/pns-pipe/micro-fraud.json
+          diff -u integrations/pns-pipe/results/micro-fraud.json /tmp/pns-pipe/micro-fraud.json
+      - name: Acyclic assertion context
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile integrations/pns-pipe/fresh_assertion.py
+          python3 integrations/pns-pipe/fresh_assertion.py > /tmp/pns-pipe/fresh-assertion.json
+          python3 - <<'PY'
+          import json
+          with open('/tmp/pns-pipe/fresh-assertion.json') as f: actual=json.load(f)
+          with open('integrations/pns-pipe/results/fresh-assertion.json') as f: expected=json.load(f)
+          assert actual==expected
+          PY
       - name: Native local fraud BQS and actual Pasta kernel
         shell: bash
         run: |
