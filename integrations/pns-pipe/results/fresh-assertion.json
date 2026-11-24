@@ -1,0 +1,10 @@
+{
+  "anchor": "c005509df736c0fdc86348f32b4b200262ebc0b87b98ab3300fe56dc65a2c4bb",
+  "anchor_mutations": 5,
+  "assertion_txid": "4c4c7c7b6a336696a8840ea8ac2dbbaf3457455b1e1fafb8e68ed56552f0bd8d",
+  "domain_mutations": 9,
+  "release_id": "a3e4b9520b6a6ca0edc49481216b848c340dbd8d9e85e061a9ef6ca51e5215d6",
+  "release_mutations": 7,
+  "scope": "synthetic context serialization; no Bitcoin spend or WE",
+  "trace_domain": "484b4263beb2a5e07eb600c3de31ab43769cd7cf715640b82d3eb9231f158a47"
+}

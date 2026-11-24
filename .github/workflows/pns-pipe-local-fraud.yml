@@ -1,0 +1,61 @@
+name: pns-pipe-local-fraud
+on:
+  pull_request:
+    paths:
+      - 'integrations/pns-pipe/**'
+      - 'integrations/praxis-nova/bqs/**'
+      - '.github/workflows/pns-pipe-local-fraud.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pns-pipe-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  local-fraud:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.90.0
+      - name: Replay exact reference, signature and cost fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pns-pipe
+          for f in trace_fraud signature_shares costs taproot_csv; do
+            node integrations/pns-pipe/$f.js > /tmp/pns-pipe/$f.json
+            diff -u integrations/pns-pipe/results/${f//_/-}.json /tmp/pns-pipe/$f.json
+          done
+      - name: Sparse-row micro-ops and algebraic Merkle differential
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/pns-pipe/micro_fraud.js > /tmp/pns-pipe/micro-fraud.json
+          diff -u integrations/pns-pipe/results/micro-fraud.json /tmp/pns-pipe/micro-fraud.json
+      - name: Acyclic assertion context
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile integrations/pns-pipe/fresh_assertion.py
+          python3 integrations/pns-pipe/fresh_assertion.py > /tmp/pns-pipe/fresh-assertion.json
+          python3 - <<'PY'
+          import json
+          with open('/tmp/pns-pipe/fresh-assertion.json') as f: actual=json.load(f)
+          with open('integrations/pns-pipe/results/fresh-assertion.json') as f: expected=json.load(f)
+          assert actual==expected
+          PY
+      - name: Native local fraud BQS and actual Pasta kernel
+        shell: bash
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v cargo run --release --manifest-path integrations/pns-pipe/Cargo.toml > /tmp/pns-pipe/native.json 2> /tmp/pns-pipe/resources.txt
+          cat /tmp/pns-pipe/native.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pns-pipe-local-fraud-receipts
+          path: /tmp/pns-pipe/
+          if-no-files-found: ignore
