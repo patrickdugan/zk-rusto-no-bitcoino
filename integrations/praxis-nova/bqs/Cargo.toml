@@ -1,5 +1,6 @@
 [package]
 name = "praxis-nova-bqs"
+default-run = "praxis-nova-bqs"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.90"
