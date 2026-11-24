@@ -1,0 +1,149 @@
+name: praxis-nova-settlement
+on:
+  pull_request:
+    paths:
+      - 'integrations/praxis-nova/**'
+      - 'integrations/bitvm3-nova/m18/**'
+      - '.github/workflows/praxis-nova-settlement.yml'
+  workflow_dispatch:
+concurrency:
+  group: praxis-nova-settlement-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  cpu-fold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.90.0
+      - name: Fixed shape and negative constraints
+        run: cargo test --release --manifest-path integrations/praxis-nova/Cargo.toml -- --nocapture
+      - name: Native recursive and compressed proof pilot
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/praxis-nova-pilot
+          /usr/bin/time -v cargo run --release --manifest-path integrations/praxis-nova/Cargo.toml -- /tmp/praxis-nova-pilot 2> /tmp/praxis-nova-pilot/resources.txt
+          test "$(wc -c < /tmp/praxis-nova-pilot/pns1-stable-statement.bin)" -eq 440
+      - name: Exact IPA key-domain inventory and static schedule costs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --release --manifest-path integrations/praxis-nova/Cargo.toml -- --square-shape /tmp/praxis-nova-pilot
+          python3 integrations/praxis-nova/bqs/price_key_shapes.py /tmp/praxis-nova-pilot/square-key-shape.json /tmp/praxis-nova-pilot/settlement-key-shape.json | tee /tmp/praxis-nova-pilot/ipa-shape-costs.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: praxis-nova-pilot
+          path: /tmp/praxis-nova-pilot/
+          if-no-files-found: ignore
+  direct-nova-bqs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.90.0
+      - name: Exact Pasta limb arithmetic replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pns-bqs
+          node integrations/praxis-nova/bqs/limb_reference.js > /tmp/pns-bqs/limb-reference.json
+          diff -u integrations/praxis-nova/bqs/results/limb-reference.json /tmp/pns-bqs/limb-reference.json
+      - name: Gate truth tables and acceptance pins
+        run: cargo test --release --manifest-path integrations/praxis-nova/bqs/Cargo.toml
+      - name: Native Nova arithmetic and Spartan round BQS differential
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pns-bqs
+          /usr/bin/time -v cargo run --release --manifest-path integrations/praxis-nova/bqs/Cargo.toml | tee /tmp/pns-bqs/counts.jsonl
+      - name: IPA scalar and complete affine group BQS regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/praxis-nova/bqs/ipa_bqs.js > /tmp/pns-bqs/ipa-components.json
+          diff -u integrations/praxis-nova/bqs/results/ipa-bqs-components.json /tmp/pns-bqs/ipa-components.json
+      - name: Full-width synthetic IPA and final scalar negative control
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/praxis-nova/bqs/ipa_synthetic_fullwidth.js > /tmp/pns-bqs/ipa-synthetic-fullwidth.json
+          diff -u integrations/praxis-nova/bqs/results/ipa-synthetic-fullwidth.json /tmp/pns-bqs/ipa-synthetic-fullwidth.json
+      - name: Compact group-law and fixed-window MSM regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/praxis-nova/bqs/compact_msm_test.js > /tmp/pns-bqs/compact-msm.json
+          diff -u integrations/praxis-nova/bqs/results/compact-msm.json /tmp/pns-bqs/compact-msm.json
+          node integrations/praxis-nova/bqs/ipa_compact_fullwidth.js > /tmp/pns-bqs/ipa-compact-fullwidth.json
+          diff -u integrations/praxis-nova/bqs/results/ipa-compact-fullwidth.json /tmp/pns-bqs/ipa-compact-fullwidth.json
+      - name: Native IPA proof and fused equation differential
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --release --manifest-path integrations/praxis-nova/bqs/Cargo.toml --bin ipa_native -- /tmp/pns-bqs/ipa-native.json
+      - name: Actual IPA transcript BQS export
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pns-ipa-transcripts
+          cargo run --release --manifest-path integrations/praxis-nova/bqs/Cargo.toml --bin ipa_transcript -- /tmp/pns-bqs/ipa-native.json /tmp/pns-ipa-transcripts | tee /tmp/pns-bqs/ipa-transcript-counts.jsonl
+      - name: Joint IPA opening BQS positive and adversarial assignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          for curve in Pallas Vesta; do
+            /usr/bin/time -v node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-transcripts/"$curve" >> /tmp/pns-bqs/ipa-joint.jsonl 2>> /tmp/pns-bqs/ipa-joint-resources.txt
+          done
+          /usr/bin/time -v node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-transcripts/Pallas --negative >> /tmp/pns-bqs/ipa-joint.jsonl 2>> /tmp/pns-bqs/ipa-joint-resources.txt
+      - name: Compact joint native IPA BQS differential
+        shell: bash
+        run: |
+          set -euo pipefail
+          for curve in Pallas Vesta; do
+            /usr/bin/time -v node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-transcripts/"$curve" --compact >> /tmp/pns-bqs/ipa-compact-joint.jsonl 2>> /tmp/pns-bqs/ipa-compact-joint-resources.txt
+          done
+          /usr/bin/time -v node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-transcripts/Pallas --compact --negative >> /tmp/pns-bqs/ipa-compact-joint.jsonl 2>> /tmp/pns-bqs/ipa-compact-joint-resources.txt
+          cat /tmp/pns-bqs/ipa-joint.jsonl /tmp/pns-bqs/ipa-compact-joint.jsonl
+      - name: Exact wide transcript reduction regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/praxis-nova/bqs/wide_reduction.js > /tmp/pns-bqs/wide-reduction.json
+          diff -u integrations/praxis-nova/bqs/results/wide-reduction.json /tmp/pns-bqs/wide-reduction.json
+      - name: Raw Keccak output and compact IPA joint differential
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --release --manifest-path integrations/praxis-nova/bqs/Cargo.toml --bin ipa_raw_transcript -- /tmp/pns-bqs/ipa-native.json /tmp/pns-ipa-raw | tee /tmp/pns-bqs/ipa-raw-transcript-counts.jsonl
+          for curve in Pallas Vesta; do
+            node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-raw/"$curve" --compact >> /tmp/pns-bqs/ipa-raw-joint.jsonl
+          done
+          node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-raw/Pallas --compact --negative >> /tmp/pns-bqs/ipa-raw-joint.jsonl
+          cat /tmp/pns-bqs/ipa-raw-joint.jsonl
+          python3 - <<'PY'
+          import json
+          def load(name):
+              with open('/tmp/pns-bqs/'+name) as f: return [json.loads(l) for l in f]
+          old=load('ipa-compact-joint.jsonl')
+          raw=load('ipa-raw-joint.jsonl')
+          assert len(old)==len(raw)==3
+          for a,b in zip(old,raw):
+              assert a['curve']==b['curve'] and a['mutated_a_hat']==b['mutated_a_hat']
+              assert a['accepted']==b['accepted']==(not b['mutated_a_hat'])
+              assert b['raw_transcript']
+              assert b['challenge_reduction_cost']=={'boolean_unknowns':3690,'equations':42}
+              assert b['total_boolean_unknowns']<a['total_boolean_unknowns']
+              print(json.dumps({'curve':b['curve'],'mutated_a_hat':b['mutated_a_hat'],'old_unknowns':a['total_boolean_unknowns'],'new_unknowns':b['total_boolean_unknowns'],'saved_unknowns':a['total_boolean_unknowns']-b['total_boolean_unknowns']}))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pns-direct-bqs-counts
+          path: /tmp/pns-bqs/
+          if-no-files-found: ignore

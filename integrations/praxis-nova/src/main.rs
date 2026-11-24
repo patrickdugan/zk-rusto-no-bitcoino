@@ -1,0 +1,96 @@
+//! CPU-only three-step compressed Nova proof export. Test keys, no funds.
+use ff::Field;
+use nova_snark::{nova::{PublicParams,RecursiveSNARK,CompressedSNARK},provider::{PallasEngine,VestaEngine,ipa_pc},spartan::snark::RelaxedR1CSSNARK,traits::snark::RelaxedR1CSSNARKTrait};
+use praxis_nova_settlement::{SettlementStep,fixture,native,check_final,state_bytes,synth};
+use m18_utxo_window::elem::f_to_le;
+use sha2::{Digest,Sha256};
+use std::{fs,path::PathBuf,time::Instant};
+type E1=PallasEngine;type E2=VestaEngine;
+type S1=RelaxedR1CSSNARK<E1,ipa_pc::EvaluationEngine<E1>>;
+type S2=RelaxedR1CSSNARK<E2,ipa_pc::EvaluationEngine<E2>>;
+type PP=PublicParams<E1,E2,SettlementStep>;
+type RS=RecursiveSNARK<E1,E2,SettlementStep>;
+type CS=CompressedSNARK<E1,E2,SettlementStep,S1,S2>;
+#[derive(Clone,Debug)]
+struct SquarePlusFive;
+impl nova_snark::traits::circuit::StepCircuit<m18_utxo_window::elem::F> for SquarePlusFive {
+    fn arity(&self)->usize{1}
+    fn synthesize<T: nova_snark::frontend::ConstraintSystem<m18_utxo_window::elem::F>>(
+        &self,cs:&mut T,z:&[nova_snark::frontend::num::AllocatedNum<m18_utxo_window::elem::F>]
+    )->Result<Vec<nova_snark::frontend::num::AllocatedNum<m18_utxo_window::elem::F>>,nova_snark::frontend::SynthesisError>{
+        use nova_snark::frontend::{num::AllocatedNum,SynthesisError};
+        use m18_utxo_window::elem::F;
+        let sq=z[0].square(cs.namespace(||"square"))?;
+        let out=AllocatedNum::alloc(cs.namespace(||"plus five"),||Ok(sq.get_value().ok_or(SynthesisError::AssignmentMissing)?+F::from(5u64)))?;
+        cs.enforce(||"bind output",|l|l+sq.get_variable()+(F::from(5u64),T::one()),|l|l+T::one(),|l|l+out.get_variable());
+        Ok(vec![out])
+    }
+}
+fn small_shape(path:&std::path::Path){
+    use m18_utxo_window::elem::F;
+    type P=PublicParams<E1,E2,SquarePlusFive>;
+    type R=RecursiveSNARK<E1,E2,SquarePlusFive>;
+    type C=CompressedSNARK<E1,E2,SquarePlusFive,S1,S2>;
+    let c=SquarePlusFive;let pp=P::setup(&c,&*S1::ck_floor(),&*S2::ck_floor()).unwrap();
+    let z0=vec![F::from(2u64)];let mut r=R::new(&pp,&c,&z0).unwrap();
+    for _ in 0..2{r.prove_step(&pp,&c).unwrap();}
+    let (pk,vk)=C::setup(&pp).unwrap();let proof=C::prove(&pp,&pk,&r).unwrap();
+    assert_eq!(proof.verify(&vk,2,&z0).unwrap(),vec![F::from(86u64)]);
+    let raw=bincode::serialize(&vk).unwrap();
+    let report=praxis_nova_settlement::key_shape::inventory(&raw,1,pp.num_constraints(),pp.num_variables());
+    fs::create_dir_all(path).unwrap();
+    fs::write(path.join("square-key-shape.json"),serde_json::to_vec_pretty(&report).unwrap()).unwrap();
+    println!("{report}");
+}
+fn main(){
+    let args:Vec<String>=std::env::args().collect();
+    if args.get(1).map(String::as_str)==Some("--square-shape"){
+        assert_eq!(args.len(),3,"--square-shape OUT");small_shape(std::path::Path::new(&args[2]));return;
+    }
+    if args.get(1).map(String::as_str)==Some("--verify"){
+        assert_eq!(args.len(),5,"--verify DIR EXPECTED_PNS1_SHA256 EXPECTED_VK_SHA256");
+        let pin=|s:&str| -> [u8;32] {hex::decode(s).expect("pin hex").try_into().expect("32-byte pin")};
+        let z=praxis_nova_settlement::nova_verify::verify_dir(std::path::Path::new(&args[2]),pin(&args[3]),pin(&args[4])).unwrap();
+        println!("native_nova_verified=true final_state_arity={}",z.len());return;
+    }
+    let path=PathBuf::from(std::env::args().nth(1).expect("usage: praxis-nova-settlement OUTPUT_DIR"));
+    fs::create_dir_all(&path).unwrap();
+    let (z0,claims,expected,change)=fixture();let steps=claims.len();
+    let (constraints,ok,_)=synth(&z0,&claims[0]);assert!(ok);
+    let t=Instant::now();let pp=PP::setup(&SettlementStep::default(),&*S1::ck_floor(),&*S2::ck_floor()).unwrap();let pp_s=t.elapsed().as_secs_f64();
+    let t=Instant::now();let mut rs=RS::new(&pp,&SettlementStep{claim:claims[0].clone()},&z0).unwrap();
+    let mut want=z0;
+    for c in &claims{rs.prove_step(&pp,&SettlementStep{claim:c.clone()}).unwrap();want=native(&want,c).unwrap();}
+    let fold_s=t.elapsed().as_secs_f64();let verified=rs.verify(&pp,steps,&z0).unwrap();assert_eq!(verified,want);
+    assert!(check_final(&z0,&verified,expected,change,steps));
+    let t=Instant::now();let (pk,vk)=CS::setup(&pp).unwrap();let setup_s=t.elapsed().as_secs_f64();
+    let t=Instant::now();let proof=CS::prove(&pp,&pk,&rs).unwrap();let compress_s=t.elapsed().as_secs_f64();
+    let t=Instant::now();let zn=proof.verify(&vk,steps,&z0).unwrap();let verify_s=t.elapsed().as_secs_f64();
+    assert_eq!(zn,want);assert!(check_final(&z0,&zn,expected,change,steps));
+    let mut wrong=z0;wrong[3]+=m18_utxo_window::elem::F::ONE;
+    assert!(proof.verify(&vk,steps,&wrong).is_err());
+    assert!(proof.verify(&vk,steps-1,&z0).is_err());
+    let p=bincode::serialize(&proof).unwrap();let k=bincode::serialize(&vk).unwrap();
+    let shape=praxis_nova_settlement::key_shape::inventory(&k,z0.len(),pp.num_constraints(),pp.num_variables());
+    fs::write(path.join("settlement-key-shape.json"),serde_json::to_vec_pretty(&shape).unwrap()).unwrap();println!("{shape}");
+    let b=praxis_nova_settlement::boundary::Boundary{z0,expected_payout:expected,expected_change:change,expected_next_index:claims.last().unwrap().index+1,vk_sha256:Sha256::digest(&k).into()};
+    assert!(b.accepts_verified_state(&zn,steps));
+    let stable=b.journal().unwrap();fs::write(path.join("pns1-stable-statement.bin"),&stable).unwrap();
+    // Fixture pins derived locally solely for reproducibility, never for production authorization.
+    use praxis_nova_settlement::nova_verify::{verify,digest};
+    let jp=digest(&stable);let kp=digest(&k);
+    assert_eq!(verify(&stable,&k,&p,jp,kp).unwrap(),zn);
+    let mut bad=stable.clone();bad[360]^=1;
+    assert!(verify(&bad,&k,&p,jp,kp).is_err());
+    assert!(verify(&bad,&k,&p,digest(&bad),kp).is_err());
+    assert!(verify(&stable,&k,&p,jp,[1;32]).is_err());
+    let mut tail=p.clone();tail.push(0);
+    assert!(verify(&stable,&k,&tail,jp,kp).is_err());
+    let mut journal=b"PNV1".to_vec();journal.extend_from_slice(&(steps as u32).to_le_bytes());
+    journal.extend_from_slice(&state_bytes(&z0));journal.extend_from_slice(&state_bytes(&zn));
+    journal.extend_from_slice(&Sha256::digest(&k));journal.extend_from_slice(&Sha256::digest(&p));
+    // Journal is generated AFTER native verification, only a diagnostic receipt.
+    for (name,data) in [("proof.bin",p.as_slice()),("vk.bin",k.as_slice()),("z0.bin",&state_bytes(&z0)),("zn.bin",&state_bytes(&zn)),("native-journal.bin",journal.as_slice())]{fs::write(path.join(name),data).unwrap();}
+    let report=serde_json::json!({"scope":"Nova-only test fixture; no Praxis settlement authorization","steps":steps,"state_arity":z0.len(),"step_constraints":constraints,"public_params_seconds":pp_s,"fold_seconds":fold_s,"compressed_setup_seconds":setup_s,"compress_seconds":compress_s,"verify_seconds":verify_s,"proof_bytes":p.len(),"vk_bytes":k.len(),"pp_digest_le":hex::encode(f_to_le(&pp.digest())),"vk_sha256":hex::encode(Sha256::digest(&k)),"journal_sha256":hex::encode(Sha256::digest(&journal)),"pns1_sha256":hex::encode(Sha256::digest(&stable)),"pinned_native_oracle_controls":4,"native_and_compressed_agree":true,"wrong_start_and_step_count_rejected":true});
+    fs::write(path.join("receipt.json"),serde_json::to_vec_pretty(&report).unwrap()).unwrap();println!("{report}");
+}

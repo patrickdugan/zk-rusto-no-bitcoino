@@ -1,0 +1,23 @@
+[package]
+name = "praxis-nova-bqs"
+default-run = "praxis-nova-bqs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+license = "GPL-3.0-only"
+
+[workspace]
+
+[dependencies]
+garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "8fa7efe495ea1bd4675f9c8bbd29f0b6e8bee051", default-features = false }
+nova-snark = "=0.76.0"
+ff = "0.13"
+sha2 = "0.10"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bincode = "1.3"
+
+[profile.test]
+opt-level = 3

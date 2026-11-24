@@ -1,0 +1,83 @@
+{
+  "scope": "Exact limb BQS arithmetic reference; challenge hash must be bound by actual transcript circuit",
+  "radix": "2^32",
+  "signed_carry_width": 37,
+  "max_integer_residual_bound": "590295810294281142287",
+  "gate_truth_table_assignments": 128,
+  "fields": [
+    {
+      "field": "PallasBase",
+      "positive_checks": 152,
+      "negative_controls": 201,
+      "counts": {
+        "mul_standalone": {
+          "boolean_unknowns": 2623,
+          "equations": 48,
+          "max_products": 8
+        },
+        "mul_incremental": {
+          "boolean_unknowns": 1589,
+          "equations": 32,
+          "max_products": 8
+        },
+        "add_incremental": {
+          "boolean_unknowns": 532,
+          "equations": 16,
+          "max_products": 0
+        },
+        "wide_incremental": {
+          "boolean_unknowns": 1330,
+          "equations": 24,
+          "max_products": 0
+        },
+        "sumcheck_degree_2_arithmetic_only": {
+          "boolean_unknowns": 7906,
+          "equations": 192,
+          "max_products": 8
+        },
+        "sumcheck_degree_3_arithmetic_only": {
+          "boolean_unknowns": 11076,
+          "equations": 264,
+          "max_products": 8
+        }
+      }
+    },
+    {
+      "field": "VestaBase",
+      "positive_checks": 152,
+      "negative_controls": 201,
+      "counts": {
+        "mul_standalone": {
+          "boolean_unknowns": 2623,
+          "equations": 48,
+          "max_products": 8
+        },
+        "mul_incremental": {
+          "boolean_unknowns": 1589,
+          "equations": 32,
+          "max_products": 8
+        },
+        "add_incremental": {
+          "boolean_unknowns": 532,
+          "equations": 16,
+          "max_products": 0
+        },
+        "wide_incremental": {
+          "boolean_unknowns": 1330,
+          "equations": 24,
+          "max_products": 0
+        },
+        "sumcheck_degree_2_arithmetic_only": {
+          "boolean_unknowns": 7906,
+          "equations": 192,
+          "max_products": 8
+        },
+        "sumcheck_degree_3_arithmetic_only": {
+          "boolean_unknowns": 11076,
+          "equations": 264,
+          "max_products": 8
+        }
+      }
+    }
+  ]
+}

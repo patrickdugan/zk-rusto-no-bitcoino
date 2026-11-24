@@ -1,0 +1,26 @@
+{
+  "scope": "Exact 512-bit transcript digest reduction with shared input slots; native hash integration separate CI",
+  "limb_bits": 86,
+  "carry_bits": 91,
+  "max_integer_residual_bound": "113739903423640188706283569349767039185738500398907393",
+  "fields": [
+    {
+      "field": "PallasBase",
+      "positives": 24,
+      "negative_controls": 97,
+      "incremental": {
+        "boolean_unknowns": 1230,
+        "equations": 14
+      }
+    },
+    {
+      "field": "VestaBase",
+      "positives": 24,
+      "negative_controls": 97,
+      "incremental": {
+        "boolean_unknowns": 1230,
+        "equations": 14
+      }
+    }
+  ]
+}

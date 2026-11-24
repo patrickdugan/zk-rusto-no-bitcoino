@@ -1,0 +1,107 @@
+{
+  "scope": "Exact fixed-base and compact group-law BQS components; deterministic public test bases; no full verifier",
+  "curves": [
+    {
+      "curve": "Pallas",
+      "positive_checks": 11,
+      "negative_controls": 9,
+      "compact_affine_add_incremental": {
+        "boolean_unknowns": 5639,
+        "equations": 133
+      },
+      "fixed_base_two_term_fullwidth": [
+        {
+          "width": 4,
+          "shifted": true,
+          "group_additions": 128,
+          "table_entries": 2048,
+          "lookups": 128,
+          "boolean_unknowns": 789248,
+          "equations": 18560,
+          "linear_form_terms": 3898878
+        },
+        {
+          "width": 6,
+          "shifted": true,
+          "group_additions": 86,
+          "table_entries": 5504,
+          "lookups": 86,
+          "boolean_unknowns": 534404,
+          "equations": 12642,
+          "linear_form_terms": 2662386
+        },
+        {
+          "width": 8,
+          "shifted": true,
+          "group_additions": 64,
+          "table_entries": 16384,
+          "lookups": 64,
+          "boolean_unknowns": 409984,
+          "equations": 9536,
+          "linear_form_terms": 2120702
+        },
+        {
+          "width": 8,
+          "shifted": false,
+          "group_additions": 312,
+          "table_entries": 512,
+          "lookups": 64,
+          "boolean_unknowns": 1808456,
+          "equations": 42520,
+          "linear_form_terms": 9512280
+        }
+      ]
+    },
+    {
+      "curve": "Vesta",
+      "positive_checks": 11,
+      "negative_controls": 9,
+      "compact_affine_add_incremental": {
+        "boolean_unknowns": 5639,
+        "equations": 133
+      },
+      "fixed_base_two_term_fullwidth": [
+        {
+          "width": 4,
+          "shifted": true,
+          "group_additions": 128,
+          "table_entries": 2048,
+          "lookups": 128,
+          "boolean_unknowns": 789248,
+          "equations": 18560,
+          "linear_form_terms": 3898878
+        },
+        {
+          "width": 6,
+          "shifted": true,
+          "group_additions": 86,
+          "table_entries": 5504,
+          "lookups": 86,
+          "boolean_unknowns": 534404,
+          "equations": 12642,
+          "linear_form_terms": 2662386
+        },
+        {
+          "width": 8,
+          "shifted": true,
+          "group_additions": 64,
+          "table_entries": 16384,
+          "lookups": 64,
+          "boolean_unknowns": 409984,
+          "equations": 9536,
+          "linear_form_terms": 2120702
+        },
+        {
+          "width": 8,
+          "shifted": false,
+          "group_additions": 312,
+          "table_entries": 512,
+          "lookups": 64,
+          "boolean_unknowns": 1808456,
+          "equations": 42520,
+          "linear_form_terms": 9512280
+        }
+      ]
+    }
+  ]
+}

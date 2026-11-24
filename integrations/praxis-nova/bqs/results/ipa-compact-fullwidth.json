@@ -1,0 +1,37 @@
+{
+  "scope": "Full-width synthetic IPA arithmetic with compact group law and fixed public shifted tables; chosen challenges; no transcript claim",
+  "positive": {
+    "mutated": false,
+    "accepted": true,
+    "group_additions": 506,
+    "variable_additions": 408,
+    "fixed_additions": 96,
+    "fixed_table_entries": 24576,
+    "boolean_unknowns": 3117520,
+    "new_boolean_unknowns": 3117519,
+    "equations": 75026,
+    "quadratic_equations": 52834,
+    "max_products_per_equation": 16,
+    "failed_rows": 0,
+    "first_failure": null
+  },
+  "negative": {
+    "mutated": true,
+    "accepted": false,
+    "group_additions": 506,
+    "variable_additions": 408,
+    "fixed_additions": 96,
+    "fixed_table_entries": 24576,
+    "boolean_unknowns": 3117520,
+    "new_boolean_unknowns": 3117519,
+    "equations": 75026,
+    "quadratic_equations": 52834,
+    "max_products_per_equation": 16,
+    "failed_rows": 17,
+    "first_failure": {
+      "row": 75010,
+      "name": "",
+      "residual": "-3839192145"
+    }
+  }
+}
