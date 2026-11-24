@@ -6,6 +6,7 @@ pub mod ext;
 pub mod field;
 pub mod hash;
 pub mod multilinear;
+pub mod poseidon2;
 pub mod sample;
 pub mod sumcheck;
 

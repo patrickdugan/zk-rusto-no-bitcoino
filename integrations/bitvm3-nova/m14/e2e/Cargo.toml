@@ -10,9 +10,10 @@ description = "M14: the complete M13 final verifier (SP1 wrap layer, BLAKE3, tra
 
 [dependencies]
 m14-circuit = { path = "../circuit" }
+m14-claim = { path = "../claim" }
 m12-gates = { path = "../../m12/gates" }
 m13-verify = { path = "../../m13/verify" }
-garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "8fa7efe495ea1bd4675f9c8bbd29f0b6e8bee051", default-features = false }
+garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "af374b4a5bb5a805ecaea749c61ff446986e8f10", default-features = false }
 sp1-hypercube = "=6.9.0"
 sp1-primitives = "=6.9.0"
 sp1-recursion-machine = { version = "=6.9.0", default-features = false }

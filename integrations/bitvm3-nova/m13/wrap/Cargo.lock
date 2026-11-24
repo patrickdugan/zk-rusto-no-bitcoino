@@ -1875,6 +1875,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "m13-statement"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "m13-verify"
 version = "0.1.0"
 dependencies = [
@@ -1882,6 +1889,7 @@ dependencies = [
  "bincode",
  "blake3",
  "hex",
+ "m13-statement",
  "p3-koala-bear",
  "serde",
  "serde_json",

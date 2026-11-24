@@ -18,6 +18,7 @@ name = "m13-verify"
 path = "src/bin/m13-verify.rs"
 
 [dependencies]
+m13-statement = { path = "../statement" }
 sp1-hypercube = "=6.9.0"
 sp1-primitives = "=6.9.0"
 sp1-recursion-machine = { version = "=6.9.0", default-features = false }

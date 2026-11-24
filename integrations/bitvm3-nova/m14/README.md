@@ -3,7 +3,8 @@
 M13 left a native verifier of the SP1 wrap layer under BLAKE3 ([`../m13/verify`](../m13/verify)) and a
 garbled price derived from operation counts of one verification. M14 builds that verifier as a
 Boolean circuit with a fixed shape, keeping every check `verify_final` makes (wrap key pin, STARK,
-exit code 0, completeness, guest key, recursion key root, committed statement digest).
+public-values digest, exit code 0, completeness, guest key, recursion key root, committed
+statement digest).
 
 Order of work:
 1. field arithmetic (KoalaBear, its degree-4 extension, challenge sampling);
@@ -15,6 +16,24 @@ Order of work:
 Steps 1 and 2 are in [`circuit/`](circuit). Steps 3 and 4 are in [`e2e/`](e2e): the complete final
 verifier, run on real proofs in plain execution and garbled (see
 [The complete final verifier](#the-complete-final-verifier)).
+
+## Claim artifacts and separate roles
+
+The `m14-claim` CLI now has `setup`, `verify-artifacts`, `release`, and `evaluate` commands.
+Setup retains the ciphertext stream and input-label commitments, with a versioned manifest
+binding the statement, supported circuit build, public evaluator parameters and output-label
+hashes. A new instance uses a fresh 32-byte secret seed. Evaluation takes the independently
+agreed manifest and release hashes, the proof and one selected label per input wire.
+
+The garbler writes a durable single-use reservation before releasing labels. An identical proof
+can be retried into a new output directory. Another proof requires a fresh setup. The public and
+private artifact directories must be separate, and evaluator code does not receive paired
+labels or the garbler seed.
+
+See [`claim/SECURITY.md`](claim/SECURITY.md) for commands, file formats, resource limits, recovery,
+and remaining setup/dispute obligations. The previous seed-based `setup`/`evaluate` CLI and its
+JSON reports are incompatible with this format. The new `claim` crate tests transport with a
+tiny circuit; the existing full M14 suites continue to check the complete verifier.
 
 ## The complete final verifier
 
@@ -47,23 +66,67 @@ Each stage follows sp1-hypercube 6.9.0's `verify_shard` and the verifiers it cal
   recursion key root and committed-values digest equal to the pinned statement.
   - The wrap key is a circuit constant.
   - Every input field element is range-checked (< p).
+- **Public-values digest** ([`full.rs`](e2e/src/full.rs), [`poseidon2.rs`](circuit/src/poseidon2.rs)):
+  the guest key digest, committed-values digest, exit code, recursion key root and proof nonce
+  hash, under SP1's Poseidon2, to the `digest` public values. See
+  [The public-values digest](#the-public-values-digest).
 
 The shape (chips, heights, column counts, path depths) comes from the pinned proof and is fixed.
 Every proof value is an input. Values the native verifier recomputes and compares (sumcheck points
 and claims, LogUp evaluation point) are derived instead of read.
 
-| Measured on the committed proof (c4, transcript v2) | |
+| The circuit for the committed proof's shape (c4, transcript v2) | |
 | --- | ---: |
-| Non-free gates (= ciphertexts) | **785,442,492** |
-| Ciphertext per circuit at 16 bytes per gate | 12.6 GB |
+| Non-free gates (= ciphertexts) | **792,546,673** |
+| of which the STARK and the statement equalities (measured on the committed proof) | 785,442,492 |
+| of which the public-values digest (measured alone) | 7,104,181 |
+| Ciphertext per circuit at 16 bytes per gate | 12.7 GB |
 | Input bits (52,203 field elements, extension elements and digests) | 8,635,080 |
-| Plain execution, whole circuit (one thread, Windows) | 143 s |
+| Plain execution, 785,442,492-gate circuit (one thread, Windows) | 143 s |
+
+`full` and `garbled` require the total (`full::NON_FREE_GATES`) on every run.
 
 Against the estimates:
 - M13 priced this verifier at 1.21–1.97 × 10^9 gates from operation counts.
-- The built circuit is 785 M: 2.5× below M13's upper tier.
+- The built circuit is 793 M: 2.5× below M13's upper tier.
 - That is 14× below the upstream garbled Groth16 verifier (1.12 × 10^10).
 - It is 43× below M12's Poseidon2 figure.
+
+### The public-values digest
+
+Added 2026-11-24. SP1's wrap machine constrains 8 of its 187 public values: the `digest` slots
+(sp1-recursion-machine 6.9.0, `chips/public_values.rs`). The wrap program computes that digest
+in-circuit as Poseidon2 over the guest key digest, the committed-values digest, the exit code, the
+recursion key root and the proof nonce. Every other public value is free: a prover running the
+wrap step can write any guest key and any committed statement into them, and the STARK still
+verifies. SP1's own verifiers recompute the digest for that reason (`is_root_public_values_valid`).
+
+Before this date `verify_final` and this circuit compared the statement fields with the pins and
+did not recompute the digest, so both accepted such a proof for any statement. They now require
+the digest ([`m13_verify::check_public_values_digest`](../m13/verify/src/lib.rs), `full::root_digest`).
+
+- The gadget ([`circuit/src/poseidon2.rs`](circuit/src/poseidon2.rs)) is SP1's permutation
+  (width 16, x^3, 8 external and 20 internal rounds, `slop_koala_bear::RC16`) and its padding-free
+  sponge. One permutation is 1,015,339 gates; the hash of the 53 elements is 7,103,933.
+- The hash reads the public-value wires, not the pinned constants, so the gate count is the same
+  for every statement.
+- [`circuit/tests/poseidon2.rs`](circuit/tests/poseidon2.rs) checks it against p3's permutation and
+  sponge and counts it in execution and as garbler ciphertexts.
+  [`e2e/tests/statement.rs`](e2e/tests/statement.rs) checks it against
+  `sp1_primitives::poseidon2_hasher` and on the public values of the three committed proofs: each
+  satisfies the statement predicate under its own pins, and the control proof's public values with
+  the M16 guest's key and statement written over them do not.
+- [`../m13/wrap`](../m13/wrap/src/pipeline.rs) builds the real thing: a wrap proof whose public
+  values were replaced before proving. Its STARK verifies and `verify_final` refuses it
+  (`pipeline::tests`, run in CI).
+
+**Garbled artifacts made before this change are for the 785,442,492-gate circuit, which accepts a
+proof with replaced public values. Do not evaluate claims against them; run `m14-claim setup`
+again.** The circuit identity in the manifest changes with the sources, so the new CLI refuses the
+old manifests.
+
+The timings and gate counts quoted below for dated runs (2026-11-08, 2026-11-11) are of the
+785,442,492-gate circuit.
 
 **Checks** ([`e2e/tests`](e2e/tests)):
 - `stages`: SP1 accepts the real proof natively, by its own `verify_logup_gkr` and
@@ -75,7 +138,8 @@ Against the estimates:
 - `full`: `m13_verify::verify_final` accepts the committed proof, and so does the circuit. The
   circuit rejects:
   - a flipped Merkle path bit;
-  - a changed public value;
+  - a changed public value (changed after proving, which the transcript catches; a public value
+    replaced before proving is the digest's case, above);
   - a changed FRI row value;
   - a non-canonical field encoding (x + p);
   - the right proof under another pinned statement.
@@ -85,12 +149,12 @@ Against the estimates:
   different values) is accepted by the circuit built from the committed proof's shape, under its
   own statement.
 - `garbled`: the whole circuit garbled and evaluated.
-  - The garbler (AES half-gates, the repo's `GarbleMode`) streams its 785,442,492 ciphertexts
+  - The garbler (AES half-gates, the repo's `GarbleMode`) streams its 792,546,673 ciphertexts
     through a bounded channel to an evaluator running concurrently.
   - The evaluator holds only the input labels of the proof's 8,635,080 bits.
   - For the real proof, its output label is the garbler's label for accept; for a proof with one
     flipped bit, the label for reject.
-  - Each garble-plus-evaluate run takes 209 s here.
+  - Each garble-plus-evaluate run of the 785,442,492-gate circuit took 209 s here.
 
 A diagnostic check list (`final_verifier_parts`) found one bug while this was built: SP1 folds
 each BaseFold message as m₀ + β·m₁, not by interpolation. The fix is in the history.
@@ -152,6 +216,7 @@ statement digest `cae6068f…c869`. Measured 2026-11-11 (WSL2):
 - `sample.rs`: fixed-cost challenge sampling (see below).
 - `hash.rs`: BLAKE3 of any fixed length (chunks, flags, counters, parent tree), M13's byte
   transcript, Merkle leaf and node hashing, path roots and digest equality.
+- `poseidon2.rs`: SP1's Poseidon2 over KoalaBear and its sponge, for the public-values digest.
 - `sumcheck.rs`: `slop_sumcheck::partially_verify_sumcheck_proof`.
   - It checks p_0(0) + p_0(1) against the claim, then p_{i-1}(α_{i-1}) = p_i(0) + p_i(1) for
     each later round.
