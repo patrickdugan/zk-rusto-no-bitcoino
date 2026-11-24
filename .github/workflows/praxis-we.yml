@@ -17,6 +17,17 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Unit and malformed artifact tests
         run: cargo test --release --manifest-path integrations/praxis-we/Cargo.toml
+      - name: Independent arithmetic kernels
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/praxis-kernels
+          { rustc -Vv; uname -a; lscpu; } > /tmp/praxis-kernels/host.txt
+          cargo run --release --manifest-path integrations/praxis-we/Cargo.toml --bin rank2_kernels -- 1000000 | tee /tmp/praxis-kernels/kernels.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: praxis-02-kernels
+          path: /tmp/praxis-kernels/
       - name: Budget sensitivity
         run: python3 integrations/praxis-we/budget.py
       - name: Export real gym fixture (known toxic waste, benchmark only)
