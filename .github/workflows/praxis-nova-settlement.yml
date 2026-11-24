@@ -110,6 +110,37 @@ jobs:
           done
           /usr/bin/time -v node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-transcripts/Pallas --compact --negative >> /tmp/pns-bqs/ipa-compact-joint.jsonl 2>> /tmp/pns-bqs/ipa-compact-joint-resources.txt
           cat /tmp/pns-bqs/ipa-joint.jsonl /tmp/pns-bqs/ipa-compact-joint.jsonl
+      - name: Exact wide transcript reduction regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/praxis-nova/bqs/wide_reduction.js > /tmp/pns-bqs/wide-reduction.json
+          diff -u integrations/praxis-nova/bqs/results/wide-reduction.json /tmp/pns-bqs/wide-reduction.json
+      - name: Raw Keccak output and compact IPA joint differential
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --release --manifest-path integrations/praxis-nova/bqs/Cargo.toml --bin ipa_raw_transcript -- /tmp/pns-bqs/ipa-native.json /tmp/pns-ipa-raw | tee /tmp/pns-bqs/ipa-raw-transcript-counts.jsonl
+          for curve in Pallas Vesta; do
+            node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-raw/"$curve" --compact >> /tmp/pns-bqs/ipa-raw-joint.jsonl
+          done
+          node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-raw/Pallas --compact --negative >> /tmp/pns-bqs/ipa-raw-joint.jsonl
+          cat /tmp/pns-bqs/ipa-raw-joint.jsonl
+          python3 - <<'PY'
+          import json
+          def load(name):
+              with open('/tmp/pns-bqs/'+name) as f: return [json.loads(l) for l in f]
+          old=load('ipa-compact-joint.jsonl')
+          raw=load('ipa-raw-joint.jsonl')
+          assert len(old)==len(raw)==3
+          for a,b in zip(old,raw):
+              assert a['curve']==b['curve'] and a['mutated_a_hat']==b['mutated_a_hat']
+              assert a['accepted']==b['accepted']==(not b['mutated_a_hat'])
+              assert b['raw_transcript']
+              assert b['challenge_reduction_cost']=={'boolean_unknowns':3690,'equations':42}
+              assert b['total_boolean_unknowns']<a['total_boolean_unknowns']
+              print(json.dumps({'curve':b['curve'],'mutated_a_hat':b['mutated_a_hat'],'old_unknowns':a['total_boolean_unknowns'],'new_unknowns':b['total_boolean_unknowns'],'saved_unknowns':a['total_boolean_unknowns']-b['total_boolean_unknowns']}))
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
