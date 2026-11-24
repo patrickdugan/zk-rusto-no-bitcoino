@@ -1,0 +1,39 @@
+name: Groth16 header checkpoints
+on:
+  push:
+    paths:
+      - 'integrations/groth16-gym/**'
+      - '.github/workflows/groth16-checkpoints.yml'
+  pull_request:
+    paths:
+      - 'integrations/groth16-gym/**'
+      - '.github/workflows/groth16-checkpoints.yml'
+jobs:
+  bounded-checkpoints:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Check gym formatting
+        run: cargo fmt --manifest-path integrations/groth16-gym/Cargo.toml --all -- --check
+      - name: Unit tests for checkpoint CLI
+        run: cargo test --manifest-path integrations/groth16-gym/Cargo.toml --release --bin checkpoint_headers
+      - name: Build native Groth16 checkpoint binary
+        run: cargo build --manifest-path integrations/groth16-gym/Cargo.toml --release --bin checkpoint_headers
+      - name: Prove, resume, verify, reject corrupted proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          BIN=integrations/groth16-gym/target/release/checkpoint_headers
+          ROOT="${RUNNER_TEMP}/groth16-checkpoints"
+          "$BIN" prove "$ROOT" --start 959617 --end 959618 --chunk-size 1 --max-new-chunks 1
+          "$BIN" prove "$ROOT" --start 959617 --end 959618 --chunk-size 1
+          "$BIN" verify "$ROOT" --start 959617 --end 959618 --chunk-size 1
+          "$BIN" prove "$ROOT" --start 959617 --end 959618 --chunk-size 1
+          printf x >> "$ROOT/batch_959617_to_959617/proof.bin"
+          if "$BIN" verify "$ROOT" --start 959617 --end 959618 --chunk-size 1; then
+            echo "ERROR: tampered proof accepted"
+            exit 1
+          fi
