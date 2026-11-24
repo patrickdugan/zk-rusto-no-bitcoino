@@ -61,6 +61,59 @@ fn arithmetic<E:Engine>(field:PastaField,mul:bool){
     stats["negative_controls"]=2.into();stats["elapsed_seconds"]=t.elapsed().as_secs_f64().into();
     println!("{stats}");
 }
+
+// Two rounds with shared transcript, using the M7 fixture schedule.
+// A second fixture resets the transcript before round 2; all its arithmetic
+// is internally valid for that reset transcript, but must fail this relation.
+fn chain_fixture<E:Engine>(reset:bool)->(Vec<Vec<u8>>,E::Scalar,E::Scalar){
+    let context=E::Scalar::from(7u64);let initial=E::Scalar::from(19u64);
+    let prefix=||{let mut t=E::TE::new(b"nova-chain-fixture");t.absorb(b"context",&context);t};
+    let mut t=prefix();let mut value=initial;let mut polys=vec![];
+    let mut tape=vec![context.to_repr().as_ref().to_vec(),initial.to_repr().as_ref().to_vec()];
+    for i in 0..2{
+        if reset&&i>0{t=prefix();}
+        let a0=if i==0{-E::Scalar::ONE}else{E::Scalar::from(4u64)};
+        let a2=E::Scalar::from((i*13+11) as u64);
+        let p=UniPoly::from_coeffs(vec![a0,value-a0-a0-a2,a2]).unwrap();
+        let bytes=<UniPoly<E::Scalar> as TranscriptReprTrait<E::GE>>::to_transcript_bytes(&p);
+        assert_eq!(bytes.len(),64);
+        tape.extend(bytes.chunks_exact(32).map(|b|b.to_vec()));
+        t.absorb(b"p",&p);let r=t.squeeze(b"c").unwrap();value=p.evaluate(&r);
+        polys.push(p.compress());
+    }
+    let suffix=t.squeeze(b"after").unwrap();
+    if !reset{
+        let mut t=prefix();let (actual,rs)=SumcheckProof::<E>::new(polys).verify(initial,2,2,&mut t).unwrap();
+        assert_eq!(actual,value);assert_eq!(rs.len(),2);assert_eq!(t.squeeze(b"after").unwrap(),suffix);
+    }
+    tape.push(value.to_repr().as_ref().to_vec());tape.push(suffix.to_repr().as_ref().to_vec());
+    (tape,value,suffix)
+}
+fn chain_probe<E:Engine>(field:PastaField){
+    use garbled_snark_verifier::{CircuitContext,Gate};
+    let (tape,_,_)=chain_fixture::<E>(false);let t=Instant::now();let mut c=Compiler::new();
+    let w:Vec<Word>=tape.iter().map(|b|c.word(b)).collect();
+    let mut tr=Transcript::new(&mut c,field,b"nova-chain-fixture");
+    tr.absorb_scalar(&mut c,b"context",&w[0]);
+    let polynomials=vec![vec![w[2],w[3]],vec![w[4],w[5]]];
+    let reduction=sumcheck::chain::reduce(&mut c,&mut tr,&w[1],&polynomials,2,2);
+    let valid=reduction.check_final(&mut c,&w[6]);
+    let suffix=tr.squeeze(&mut c,b"after").check(&mut c,&w[7]);
+    let ok=c.issue_wire();c.add_gate(Gate::and(valid,suffix,ok));c.accept(ok);c.seal();
+    for (i,word) in w[..2].iter().enumerate(){for(j,v)in word.iter().enumerate(){c.pin(*v,(tape[i][j/8]>>(j%8))&1!=0);}}
+    assert!(c.check(&c.assignment));
+    let (reset,_,_)=chain_fixture::<E>(true);
+    let bits=|tape:&[Vec<u8>]|tape.iter().flat_map(|w|w.iter().flat_map(|b|(0..8).map(move|i|(b>>i)&1))).collect::<Vec<_>>();
+    // The final claim and suffix are not pinned to the original assignment
+    // in this component test; rejection depends on the constrained transcript.
+    assert!(!c.check(&c.evaluate(&bits(&reset))),"reset transcript admitted");
+    let mut bad=bits(&tape);bad[7*256]^=1;
+    assert!(!c.check(&c.evaluate(&bad)),"altered suffix admitted");
+    let mut stats=c.stats();stats["kind"]="sumcheck_chain".into();stats["field"]=format!("{field:?}").into();
+    stats["rounds"]=2.into();stats["degree"]=2.into();stats["native_round_verified"]=true.into();
+    stats["negative_controls"]=2.into();stats["elapsed_seconds"]=t.elapsed().as_secs_f64().into();println!("{stats}");
+}
+
 fn main(){
     let args:Vec<_>=std::env::args().collect();assert!(args.len()<=2,"optional export dir");
     let out=args.get(1).map(Path::new);
@@ -68,6 +121,7 @@ fn main(){
     arithmetic::<VestaEngine>(PastaField::PallasBase,false);
     arithmetic::<PallasEngine>(PastaField::VestaBase,true);
     arithmetic::<VestaEngine>(PastaField::PallasBase,true);
+    chain_probe::<PallasEngine>(PastaField::VestaBase);
     for degree in [2,3]{
         round::<PallasEngine>(PastaField::VestaBase,degree,out);
         round::<VestaEngine>(PastaField::PallasBase,degree,out);
