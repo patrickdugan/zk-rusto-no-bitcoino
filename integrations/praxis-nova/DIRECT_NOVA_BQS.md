@@ -22,3 +22,5 @@ CPU only initially. Start with the tiny native proof and field/transcript kernel
 ## Implemented backend
 
 See [PNS-04A/B](bqs/README.md) for the direct CircuitContext-to-BQS lowering, exact optimized Pasta limb arithmetic results, and registered native Spartan/transcript differential. The complete native compressed Nova verifier is still the acceptance target.
+
+PNS-04C's native IPA and shared-slot BQS CI passed (45381516633). See [PNS-04D](bqs/PNS-04D-COMPACT-MSM.md) for the optimized complete group law and fixed-base MSM, measured synthetic opening reduction, and actual key-domain pricing gate. Remain Nova-only.
