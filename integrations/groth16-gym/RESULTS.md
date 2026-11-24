@@ -22,27 +22,95 @@ verified its proof and rejected a wrong public input. Proofs are 128 bytes
 A first SPV run on the same machine took 42 s setup and 76 s prove, with a
 4.5 GB peak. Prove time varies with background load.
 
+"Peak RSS" here is Windows' `PeakWorkingSetSize`. Windows can trim a
+process's working set, so this figure can be lower than the memory the
+process committed.
+
+## Cross-check: Linux VM (2026-11-04)
+
+4-thread Xeon with 15.7 GB RAM, Linux, where peak RSS is `VmHWM`. This was a
+partial sweep, stopped during the 32-header run, and its raw output is not
+in `results/`. Every run verified and rejected a wrong public input.
+
+| Circuit | Constraints | Prove | Peak RSS | MSI peak |
+| --- | --- | --- | --- | --- |
+| SPV payment | 1,796,669 | 24.3 s | 5.3 GB | 4.7 GB |
+| Header chain, 1 header | 121,782 | 1.2 s | 0.38 GB | 0.33 GB |
+| Header chain, 2 headers | 243,334 | 2.3 s | 0.76 GB | 0.64 GB |
+| Header chain, 4 headers | 486,438 | 4.4 s | 1.5 GB | 1.3 GB |
+| Header chain, 8 headers | 972,646 | 11.5 s | 2.9 GB | 2.5 GB |
+| Header chain, 16 headers | 1,945,062 | 23.1 s | 5.7 GB | 4.8 GB |
+
+On Linux, peak memory grows in a straight line at about 2.9 KB per
+constraint, about 15–20% above the MSI at every size. On the MSI, the rate
+falls to 2.1 KB at 32 headers and 1.3 KB at 64. That drop may be Windows
+trimming the working set, not lower demand. At the Linux rate, 32 headers
+would need about 11.4 GB and 64 headers about 22 GB.
+
+## Hard memory limit: Acer (2026-11-04)
+
+Intel i5-11400H with 12 threads and 23.8 GB RAM, Windows 11, MSVC build.
+Each proof ran under `run-capped.ps1 -LimitGB 14`: a Windows job object
+whose 14 GiB limit on committed memory the OS enforces. "Peak commit" is
+the job's peak committed memory, which Windows cannot trim. The raw output
+is `results/subhanallah-capped.jsonl`.
+
+| Circuit | Constraints | Setup | Prove | Peak commit | Peak working set | MSI peak |
+| --- | --- | --- | --- | --- | --- | --- |
+| Header chain, 16 headers | 1,945,062 | 37 s | 29 s | 5.1 GiB | 4.9 GiB | 4.7 GiB |
+| Header chain, 32 headers | 3,889,894 | 83 s | 144 s | 10.3 GiB | 9.9 GiB | 7.8 GiB |
+| Header chain, 40 headers | 4,862,310 | 118 s | 244 s | 13.3 GiB | 12.6 GiB | — |
+| Header chain, 44 headers | 5,348,518 | 252 s | 260 s | 14.5 GiB | 13.8 GiB | — |
+| Header chain, 64 headers | 7,779,558 | — | — | stopped at the 14 GiB limit | — | 10.2 GiB |
+
+The 40- and 44-header runs used a 15 GiB limit; the others used 14 GiB.
+Every completed run verified its proof and rejected a wrong public input.
+The 64-header run failed an allocation about 105 s in. At 32 headers,
+building the constraint system alone took 8.3 GiB, so it most likely
+failed during that step. A first 40-header run under a 13 GiB limit failed
+292 s in, while proving. The 44-header setup time is high probably because
+the machine was near its free RAM and paged.
+
+Committed memory is 2.8–2.9 KB per constraint from 16 to 44 headers, about
+0.33 GiB per header, in line with the Linux VM. The MSI's lower 32- and
+64-header figures were working-set trimming, not lower demand. At that
+rate, 64 headers needs about 20.6 GiB.
+
+Proving time per header rises with chain length: 1.8 s at 16 headers,
+4.5 s at 32, 6.1 s at 40 and 5.9 s at 44. Setup is a one-time cost per
+circuit size, because keys are reused.
+
 ## Reading it for a 15.5 GB DDR4 laptop
 
-**SPV payment.** Peak 4.7 GB, so it fits with a large margin. This is the
-payment statement the SP1 route proves, as a BN254 Groth16 proof BitVM can
-verify. The SP1 route's Groth16 step (`pay-wrap`) peaked at 19.1 GB host RSS
-and took 15:21 on the 8-vCPU VPS (`btc-wrap.time` in the VPS archive), so it
-does not fit that laptop.
+**SPV payment.** Peak 4.7–5.3 GB, so it fits with a large margin. This is
+the payment statement the SP1 route proves, as a BN254 Groth16 proof. BitVM
+cannot verify it as it is: the circuit has 7 public inputs, and BitVM's
+chunked verifier takes one (see `README.md`, "BitVM"). The SP1 route's
+Groth16 step (`pay-wrap`) peaked at 19.1 GB host RSS and took 15:21 on the
+8-vCPU VPS (`btc-wrap.time` in the VPS archive), so it does not fit that
+laptop.
 
-**Header chains.** Peak memory per constraint is 2.0–2.5 KB up to 32
-headers, and 1.3 KB at 64 headers. That gives:
-- 32 headers (8.0 GB): fit comfortably;
-- 64 headers (10.4 GB): fit if Windows leaves about 11 GB free;
-- the laptop's ceiling, estimated (not measured) from the 64-header rate:
-  about 64–70 headers per proof.
+**Header chains.** Measured under a hard limit on the Acer (above), at
+2.8 KB of committed memory per constraint:
+- **16 headers:** 5.1 GiB, so it fits.
+- **32 headers:** 10.3 GiB. It fits if Windows and other programs leave
+  about 10.5 GiB free.
+- **64 headers:** about 20.6 GiB, so it does not fit. It also did not fit
+  under a 14 GiB limit.
+- **Ceiling:** 40 headers needs 13.3 GiB, and it failed under a 13 GiB
+  limit. With 12–13 GiB of headroom, the laptop's ceiling is about 36–38
+  headers per proof. This replaces the earlier estimate of 64–70 headers.
+
+`run-capped.ps1` checks a single size on the laptop itself, for example
+`-LimitGB 13 headers 36`. `run-gym.ps1 -CapGB` predicts from the working
+set, so on Windows its predictions can be low.
 
 Longer chains need recursion or folding, for example the Nova header-chain
 proofs (1.4 GB flat), with Groth16 only on the final statement.
 
 **Time on DDR4 with fewer cores.** These runs used 20 threads. Expect
-proportionally longer times; memory figures carry over. `run-gym.ps1 -CapGB
-12` measures it directly.
+proportionally longer times. Memory figures may not carry over between
+Windows and Linux (see above).
 
 **Reference.** RISC0's STARK-to-Groth16 step (`bsb-r0 groth16`, storage-prover
 bootstrap) peaked at 1.46 GB and took 3:17 on the VPS. Wrapping through a
