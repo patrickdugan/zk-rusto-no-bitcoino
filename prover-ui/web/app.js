@@ -132,15 +132,17 @@ const ProofEta = (() => {
   }
   const cashuTrustMilestones = [
     {id:'backing',label:'Prove live backing and mint liabilities',
-      detail:'Bind spendable Bitcoin or Ark collateral and outstanding Cashu claims to the same state. Detect spent collateral, expiry, reorgs and double-counted backing.'},
+      status:'Nova fixture verified · no ETA',
+      detail:'Stock Nova verification accepted the protected ledger fixture. Its journal binds reserves, issuance intents, live claims and spent claims. Production needs canonical Bitcoin observation, available witnesses and independent handling of bearer notes issued outside that ledger.'},
     {id:'issuance',label:'Enforce proof-bound Cashu issuance',
-      status:'Regtest gate tested · no ETA',
-      detail:'The desk validated the funding prevout and refused a paid quote without its Shinigami proof. The full gate must also prevent excess issuance outside the desk and bind each authorization to the mint keyset.'},
+      status:'Protected batch verified · no ETA',
+      detail:'The V3 CDK fixture bound six notes to a frozen blinded batch and confirmed reserve. Offline verification checked DLEQ and reblinding under independent pins. A mint can still issue bearer notes outside the protected profile.'},
     {id:'redemption',label:'Fund redemption if the mint refuses',
-      status:'Regtest reserve paid · no ETA',
-      detail:'A regtest melt consumed the original Cashu proofs and funded a reserve for the holder. The mint must accept that initial melt. The full policy still needs a funded exit when the mint refuses before funding.'},
+      status:'Protected regtest exit verified · no ETA',
+      detail:'The V3 protected claim had a funded reserve at issuance. Ordinary protected melt and timed holder recovery compete for the same Bitcoin outpoint. The separate historical 23,750-sat fixture required a cooperative melt to fund its reserve.'},
     {id:'adversarial',label:'Verify the end-to-end trust claim',
-      detail:'Independently reproduce issuance and refusal-path settlement. Reject issuance replay, excess issuance and invalid or repeated redemption. State the remaining signer, setup and liveness assumptions.'},
+      status:'Full settlement composition open · no ETA',
+      detail:'Regtest and Nova controls cover conflicting spends, replay, changed beneficiaries, reorg handling and protected admission. The complete SP1 settlement proof and BitVM3 verifier composition remain open.'},
   ];
   function cashuRoadmap(ark, records) {
     const shinigami = [
@@ -159,13 +161,25 @@ const ProofEta = (() => {
         status:'Verified regtest payout',done:true,
         detail:'Bitcoin Core confirmed 24,750 sats to the holder after six blocks and a 250-sat fee. Proof Grove holds the recorded Shinigami proof pair for issuance and the offline payout. That run used a separately funded reserve.'},
       {id:'melt-reserve-demo',label:'Fund the holder reserve by melting Cashu',
-        status:'Verified regtest settlement',done:true,
-        detail:'CDK consumed six Cashu proofs to fund a 24,000-sat reserve and rejected reusing them. Core paid 23,750 sats to the holder after six blocks with the mint offline.'},
+        status:'Archived regtest settlement',done:true,
+        detail:'The campaign recorded a CDK-funded 24,000-sat reserve and a 23,750-sat offline payout. The exact Cairo replay matched all 24 public output words. The original Bitcoin blocks and independent checkpoint are still needed.'},
+      {id:'exact-melt-stark',label:'PG-ZK-01 · Prove the exact 23,750-sat statement',
+        status:'Archived verifier acceptance open',done:false,
+        detail:'The archived Cairo prover now uses CUDA for disk-backed Blake2s Merkle commitments. The full historical STARK remains pending. Acceptance requires stock Scarb, the pinned program and profile, all 24 public words and their mutation tests.'},
+      {id:'nova-protected',label:'PG-ZK-02 · Verify protected reserve accounting',
+        status:'Verified Nova fixture',done:true,
+        detail:'The fixture journal and compressed proof exercise reserve registration, issuance, split, swap and redemption. Replay and accounting mutations are covered. Production reserve completeness and external bearer liabilities remain open.'},
+      {id:'protected-holder',label:'PG-ZK-03 · Exercise a funded holder exit',
+        status:'Verified protected regtest exit',done:true,
+        detail:'Bitcoin Core confirmed the holder-only payout after six blocks on a reserve tied to the V3 issuance. Cooperative melt and emergency exit spend the same outpoint, so they can settle only once on the active chain.'},
+      {id:'cashu-bitvm',label:'PG-ZK-04 · Bind Cashu settlement to BitVM3',
+        status:'Sized fixture · full composition open',done:false,
+        detail:'The fixed Cashu record circuit measured 71,477 non-free gates. A funded one-byte dispute paid both challenge and reclaim paths on regtest. Full SP1 proof verification and Bitcoin-enforced settlement composition remain open.'},
       {id:'ark-proof',label:'Ark Nova → SP1 → M13 → BitVM3 off-chain proof',
-        status:ark.checksPassed?'Checks reported · audit pending':'Conditional · finish unknown',done:false,
+        status:'Suspended · checkpoints preserved',done:false,
         detail:ark.checksPassed?
-          'The coordinator reported all proof checks passed. Include this claim after auditing the statement and artifact hashes.':
-          'Include the four-VTXO maintenance-policy proof if independent SP1 and M13 checks, honest M14 evaluation, full-circuit bit-flip rejection and the evidence audit finish by the cutoff.'},
+          'The coordinator reported proof checks. The archived statement and artifact hashes still require an independent audit.':
+          'General-purpose Ark proving is suspended while Cashu verification continues. The existing checkpoint archive is preserved.'},
     ];
     return {friday,trust:cashuTrustMilestones.map(item=>({status:'Open · no ETA',...item,done:false}))};
   }

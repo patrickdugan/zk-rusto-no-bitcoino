@@ -162,14 +162,18 @@ const historicalTapleaf = {summary:{
   status:'independently_verified_real_tapleaf',
 }};
 
-test('Friday evidence distinguishes the recorded demo from the conditional Ark proof',()=>{
+test('the Cashu roadmap keeps fixture evidence and open proof gates separate',()=>{
   const road=cashuRoadmap(arkCampaign(gpu(),campaignLive),[historicalPayment,historicalTapleaf]);
   assert.equal(road.friday.find(item=>item.id==='shinigami').done,true);
   assert.equal(road.friday.find(item=>item.id==='cashu-demo').status,'Recorded regtest demo');
   assert.equal(road.friday.find(item=>item.id==='refusal-demo').status,'Verified regtest payout');
   assert.equal(road.friday.find(item=>item.id==='refusal-demo').done,true);
-  assert.equal(road.friday.find(item=>item.id==='melt-reserve-demo').status,'Verified regtest settlement');
-  assert.equal(road.friday.find(item=>item.id==='ark-proof').status,'Conditional · finish unknown');
+  assert.equal(road.friday.find(item=>item.id==='melt-reserve-demo').status,'Archived regtest settlement');
+  assert.equal(road.friday.find(item=>item.id==='exact-melt-stark').done,false);
+  assert.equal(road.friday.find(item=>item.id==='nova-protected').status,'Verified Nova fixture');
+  assert.equal(road.friday.find(item=>item.id==='protected-holder').status,'Verified protected regtest exit');
+  assert.equal(road.friday.find(item=>item.id==='cashu-bitvm').done,false);
+  assert.equal(road.friday.find(item=>item.id==='ark-proof').status,'Suspended · checkpoints preserved');
   assert.equal(road.trust.find(item=>item.id==='issuance').done,false);
   assert.equal(road.trust.find(item=>item.id==='redemption').done,false);
 });
@@ -185,7 +189,7 @@ test('a duplicate or misbound Shinigami receipt cannot establish both historical
 test('terminal Ark checks still leave the audit and every admin-trust gate open',()=>{
   const terminal=arkCampaign({status:'all_proof_checks_passed',compressed_exists:true,wrap_v2_exists:true},campaignLive);
   const road=cashuRoadmap(terminal,[historicalPayment,historicalTapleaf]);
-  assert.equal(road.friday.find(item=>item.id==='ark-proof').status,'Checks reported · audit pending');
+  assert.equal(road.friday.find(item=>item.id==='ark-proof').status,'Suspended · checkpoints preserved');
   assert.equal(road.friday.find(item=>item.id==='ark-proof').done,false);
   assert.deepEqual(road.trust.map(item=>item.id),['backing','issuance','redemption','adversarial']);
   assert.ok(road.trust.every(item=>!item.done && item.status.endsWith('· no ETA')));
