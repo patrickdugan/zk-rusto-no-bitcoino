@@ -24,6 +24,15 @@ jobs:
           mkdir -p /tmp/praxis-kernels
           { rustc -Vv; uname -a; lscpu; } > /tmp/praxis-kernels/host.txt
           cargo run --release --manifest-path integrations/praxis-we/Cargo.toml --bin rank2_kernels -- 1000000 | tee /tmp/praxis-kernels/kernels.jsonl
+      - name: Centered target-group search reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          for m in 128 1024 4096; do
+            for distance in -123456 123456; do
+              /usr/bin/time -v cargo run --release --manifest-path integrations/praxis-we/Cargo.toml --bin centered_search -- "$m" "$distance" >> /tmp/praxis-kernels/centered-search.jsonl 2>> /tmp/praxis-kernels/centered-search-resources.txt
+            done
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: praxis-02-kernels
