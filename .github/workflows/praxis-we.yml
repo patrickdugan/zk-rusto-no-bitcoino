@@ -37,6 +37,12 @@ jobs:
         with:
           name: praxis-02-kernels
           path: /tmp/praxis-kernels/
+      - name: PRAXIS-04 exact QAP and tie regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/praxis-we/rank_gap_ties.js > /tmp/praxis-04.json
+          diff -u integrations/praxis-we/results/praxis-04-toy.json /tmp/praxis-04.json
       - name: Budget sensitivity
         run: python3 integrations/praxis-we/budget.py
       - name: Export real gym fixture (known toxic waste, benchmark only)
