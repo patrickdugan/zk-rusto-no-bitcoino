@@ -31,3 +31,24 @@ jobs:
           name: praxis-nova-pilot
           path: /tmp/praxis-nova-pilot/
           if-no-files-found: ignore
+  direct-nova-bqs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.90.0
+      - name: Gate truth tables and acceptance pins
+        run: cargo test --release --manifest-path integrations/praxis-nova/bqs/Cargo.toml
+      - name: Native Nova arithmetic and Spartan round BQS differential
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pns-bqs
+          /usr/bin/time -v cargo run --release --manifest-path integrations/praxis-nova/bqs/Cargo.toml | tee /tmp/pns-bqs/counts.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pns-direct-bqs-counts
+          path: /tmp/pns-bqs/
+          if-no-files-found: ignore
