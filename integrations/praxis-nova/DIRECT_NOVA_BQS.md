@@ -18,3 +18,7 @@ Let x be an independently registered canonical PNS1 statement and the exact Nova
 ## Resource gates
 
 CPU only initially. Start with the tiny native proof and field/transcript kernels. Require exact native differential receipt and BQS shape/count receipt before large QAP allocations. Publish relation hashes and wire order. No 7.88 GiB or laptop-time claim for Nova-specific WE. No real collateral. Bitcoin release still requires authenticated ciphertext availability, exact presigned transaction and a signing ceremony that addresses plaintext signature retention.
+
+## Implemented backend
+
+See [PNS-04A/B](bqs/README.md) for the direct CircuitContext-to-BQS lowering, exact optimized Pasta limb arithmetic results, and registered native Spartan/transcript differential. The complete native compressed Nova verifier is still the acceptance target.
