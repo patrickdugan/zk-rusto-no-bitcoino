@@ -199,12 +199,22 @@ const ProofEta = (() => {
     for(const job of local) {
       if(!job.running && !job.process && job.status!=='resource wait')continue;
       const activity=job.status==='resource wait'?'Waiting for resources':'Running';
-      rows.push({id:job.id,title:job.title,where:['Local machine',job.backend].filter(Boolean).join(' · '),
-        phase:job.phase,status:observedState(localFresh,activity),heardAt:localSample,
-        metrics:job.kind==='mnr04'&&localFresh&&!paused?[
+      const isNova=job.kind==='mnr04'||job.kind==='mnr05';
+      const pct=localFresh&&!paused&&finite(job.progress_pct)?Math.min(100,Math.max(0,job.progress_pct)):null;
+      const metrics=[];
+      if(isNova&&localFresh&&!paused) {
+        if(pct!==null)metrics.push(['Progress %',Math.round(pct)]);
+        if(Number.isSafeInteger(job.fold_step)&&Number.isSafeInteger(job.fold_total)&&job.fold_total>0) {
+          metrics.push(['Fold step',job.fold_step],['Fold total',job.fold_total]);
+        }
+        metrics.push(
           ['CPU seconds',Number.isFinite(job.cpu_seconds)?Math.floor(job.cpu_seconds):null],
           ['Process RAM MiB',Number.isFinite(job.ram_bytes)?Math.floor(job.ram_bytes/2**20):null],
-        ]:[],
+        );
+      }
+      rows.push({id:job.id,title:job.title,where:['Local machine',job.backend].filter(Boolean).join(' · '),
+        phase:job.phase,status:observedState(localFresh,activity),heardAt:localSample,
+        progressPct:pct,metrics,
         details:'#runtime-panel',detailsLabel:'Process details'});
     }
     return rows;
@@ -1775,7 +1785,8 @@ if(typeof document!=='undefined') (() => {
         </div>
         <div class="ongoing-work">
           ${job.phase ? `<p>${esc(job.phase)}</p>` : ''}
-          ${metrics.length ? `<dl>${metrics.map(([label, val]) => `<div><dt>${esc(label)}</dt><dd${label === 'CPU seconds' && job.status === 'Running' && state.workerAdvances.has(job.id) ? ' class="worker-increment"' : ''}>${n(val)}</dd></div>`).join('')}</dl>` : ''}
+          ${Number.isFinite(job.progressPct) ? `<div class="meter-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(job.progressPct)}" style="margin:6px 0 8px"><div class="meter-fill cyan" style="width:${Math.max(2, job.progressPct).toFixed(1)}%"></div></div>` : ''}
+          ${metrics.length ? `<dl>${metrics.map(([label, val]) => `<div><dt>${esc(label)}</dt><dd${label === 'CPU seconds' && job.status === 'Running' && state.workerAdvances.has(job.id) ? ' class="worker-increment"' : ''}>${label === 'Progress %' ? `${n(val)}%` : n(val)}</dd></div>`).join('')}</dl>` : ''}
           ${increments}
         </div>
       </article>`;
@@ -1880,6 +1891,27 @@ if(typeof document!=='undefined') (() => {
       const ramPct = Number.isFinite(m.memory_used_gib) && Number.isFinite(vm.ram_gib) && vm.ram_gib > 0 ? Math.min(100, (m.memory_used_gib / vm.ram_gib) * 100) : 0;
       if ($('cockpit-bar2-right')) $('cockpit-bar2-right').textContent = Number.isFinite(m.memory_used_gib) ? `${n(m.memory_used_gib, 2)} / ${n(vm.ram_gib, 0)} GiB (${ramPct.toFixed(0)}%)` : `${n(vm.ram_gib, 0)} GiB allocated`;
       if ($('cockpit-bar2-fill')) $('cockpit-bar2-fill').style.width = `${Math.max(2, ramPct).toFixed(1)}%`;
+    } else if (freshRuntime() && (state.live?.runtime?.jobs || []).some(j => j.running && (j.kind === 'mnr05' || j.kind === 'mnr04'))) {
+      const nvJob = (state.live?.runtime?.jobs || []).find(j => j.running && (j.kind === 'mnr05' || j.kind === 'mnr04'));
+      const pct = Number.isFinite(nvJob.progress_pct) ? Math.min(100, Math.max(0, nvJob.progress_pct)) : null;
+      const ramMiB = Number.isFinite(nvJob.ram_bytes) ? Math.round(nvJob.ram_bytes / 2**20) : null;
+      if ($('cockpit-stage-tag')) $('cockpit-stage-tag').textContent = `LOCAL NOVA · PID ${nvJob.process?.pid || '--'}${pct !== null ? ` · ${pct.toFixed(1)}%` : ''}`;
+      if ($('cockpit-headline')) $('cockpit-headline').textContent = String(nvJob.title || 'LOCAL NOVA PROVER ACTIVE').toUpperCase();
+      if ($('cockpit-detail')) $('cockpit-detail').textContent = `${nvJob.phase || 'Folding R1CS steps'} · ${ramMiB !== null ? `${n(ramMiB)} MiB RSS · ` : ''}${nvJob.backend || 'Nova / CPU'}`;
+      if ($('cockpit-bar1-left')) $('cockpit-bar1-left').textContent = 'Nova Recursive Folding & Spartan/IPA Progress';
+      if ($('cockpit-bar1-right')) $('cockpit-bar1-right').textContent = pct !== null
+        ? `${Number.isSafeInteger(nvJob.completed_steps) && Number.isSafeInteger(nvJob.total_steps) ? `${nvJob.completed_steps} / ${nvJob.total_steps} stages · ` : ''}${pct.toFixed(1)}%`
+        : `${Math.floor(nvJob.cpu_seconds || 0)}s CPU`;
+      if ($('cockpit-bar1-fill')) $('cockpit-bar1-fill').style.width = pct !== null ? `${Math.max(2, pct).toFixed(1)}%` : '35%';
+      if ($('cockpit-bar2-left')) $('cockpit-bar2-left').textContent = Number.isSafeInteger(nvJob.fold_total) && nvJob.fold_total > 0 ? 'Current Circuit Recursive Fold Step' : 'Saved Laptop Checkpoint Cache';
+      if (Number.isSafeInteger(nvJob.fold_step) && Number.isSafeInteger(nvJob.fold_total) && nvJob.fold_total > 0) {
+        const foldPct = Math.min(100, (nvJob.fold_step / nvJob.fold_total) * 100);
+        if ($('cockpit-bar2-right')) $('cockpit-bar2-right').textContent = `Fold ${nvJob.fold_step} / ${nvJob.fold_total} (${foldPct.toFixed(0)}%)`;
+        if ($('cockpit-bar2-fill')) $('cockpit-bar2-fill').style.width = `${Math.max(4, foldPct).toFixed(1)}%`;
+      } else {
+        if ($('cockpit-bar2-right')) $('cockpit-bar2-right').textContent = `${n(savedCore)} core · ${n(progress.unique_reduces)} rec`;
+        if ($('cockpit-bar2-fill')) $('cockpit-bar2-fill').style.width = savedCore > 0 ? '100%' : '0%';
+      }
     } else {
       if ($('cockpit-stage-tag')) $('cockpit-stage-tag').textContent = 'IDLE · CACHE PRESERVED';
       if ($('cockpit-headline')) $('cockpit-headline').textContent = 'NO ACTIVE PROVER · RESUMABLE CACHE READY';
@@ -2092,6 +2124,44 @@ if(typeof document!=='undefined') (() => {
       $('kpi-5-badge').textContent = 'LIVE API';
       $('kpi-5-badge').className = 'eta-badge amber';
       $('kpi-5-foot').textContent = `Polled ${clockTime(hsLive.sampledAt)}`;
+    } else if (selected?.kind === 'mnr05' || selected?.kind === 'mnr04') {
+      const pct = Number.isFinite(selected.progress_pct) ? Math.min(100, Math.max(0, selected.progress_pct)) : null;
+      const ramMiB = Number.isFinite(selected.ram_bytes) ? Math.round(selected.ram_bytes / 2**20) : null;
+      $('kpi-1-label').textContent = 'LOCAL NOVA WORKER';
+      $('kpi-1-val').textContent = selected.process ? `PID ${selected.process.pid}` : 'Inactive';
+      $('kpi-1-badge').textContent = String(selected.status || 'RUNNING').toUpperCase();
+      $('kpi-1-badge').className = `eta-badge ${selected.running ? 'cyan' : 'emerald'}`;
+      $('kpi-1-foot').textContent = selected.backend || 'Nova / CPU';
+
+      $('kpi-2-label').textContent = 'PROOF PROGRESS';
+      $('kpi-2-val').textContent = pct !== null ? `${pct.toFixed(1)}%` : '--';
+      $('kpi-2-badge').textContent = Number.isSafeInteger(selected.completed_steps) && Number.isSafeInteger(selected.total_steps)
+        ? `${selected.completed_steps} / ${selected.total_steps} STAGES` : (selected.running ? 'PROVING' : 'IDLE');
+      $('kpi-2-badge').className = 'eta-badge cyan';
+      $('kpi-2-bar').style.width = pct !== null ? `${Math.max(4, pct).toFixed(1)}%` : '30%';
+      $('kpi-2-foot').textContent = selected.phase || 'Nova R1CS folding';
+
+      $('kpi-3-label').textContent = 'RECURSIVE FOLDS';
+      $('kpi-3-val').textContent = Number.isSafeInteger(selected.fold_step) && Number.isSafeInteger(selected.fold_total)
+        ? `${selected.fold_step} / ${selected.fold_total}` : '8 + 3';
+      $('kpi-3-badge').textContent = 'ZERO SETUP';
+      $('kpi-3-badge').className = 'eta-badge violet';
+      $('kpi-3-bar').style.width = Number.isSafeInteger(selected.fold_step) && Number.isSafeInteger(selected.fold_total) && selected.fold_total > 0
+        ? `${Math.min(100, (selected.fold_step / selected.fold_total) * 100).toFixed(1)}%` : '100%';
+      $('kpi-3-foot').textContent = 'Secq256k1 (8) + BN254 IPA (3)';
+
+      $('kpi-4-label').textContent = 'CPU & RSS';
+      $('kpi-4-val').textContent = ramMiB !== null ? `${n(ramMiB)} MiB` : '--';
+      $('kpi-4-badge').textContent = Number.isFinite(selected.cpu_seconds) ? `${Math.floor(selected.cpu_seconds)}s CPU` : 'CPU';
+      $('kpi-4-badge').className = 'eta-badge emerald';
+      $('kpi-4-bar').style.width = '100%';
+      $('kpi-4-foot').textContent = '0 MiB GPU VRAM · RTX 5080 free';
+
+      $('kpi-5-label').textContent = 'NETWORK & TARGET';
+      $('kpi-5-val').textContent = 'CORE 31.1';
+      $('kpi-5-badge').textContent = 'BITVM3 + PTLC';
+      $('kpi-5-badge').className = 'eta-badge amber';
+      $('kpi-5-foot').textContent = selected.network || 'SatsHedgeZero';
     } else {
       $('kpi-1-label').textContent = 'LOCAL PROCESS';
       $('kpi-1-val').textContent = selected.process ? `PID ${selected.process.pid}` : 'Inactive';

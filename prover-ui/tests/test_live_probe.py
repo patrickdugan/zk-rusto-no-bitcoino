@@ -52,6 +52,52 @@ class ProbeTests(unittest.TestCase):
                 self.assertNotIn("private-path", json.dumps(nova))
                 self.assertEqual(probe.scan_provers(root, {"fixture.service"})[1], [])
 
+    def test_mnr05_progress_binds_strictly_to_live_pid_and_start_ticks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            prog_file = root / "mnr05-progress.json"
+            proc = root / "42"
+            proc.mkdir()
+            fields = ["0"] * 22
+            fields[0], fields[11], fields[12], fields[19], fields[21] = "R", "500", "100", "9876", "128"
+            (proc / "stat").write_text("42 (shz-mnr05-bitvm3-ln-dlc) " + " ".join(fields))
+            (proc / "cgroup").write_text("0::/user.slice\n")
+            (proc / "cmdline").write_bytes(b"shz-mnr05-bitvm3-ln-dlc\0run-all\0/secret/dir\0")
+
+            prog_file.write_text(json.dumps({
+                "schema": "rbzk-nova-progress-v1",
+                "pid": 42,
+                "start_ticks": 9876,
+                "progress_pct": 43.5,
+                "phase": "Secq256k1 BIP-340 Schnorr fold 7 / 8",
+                "completed_steps": 9,
+                "total_steps": 20,
+                "fold_step": 7,
+                "fold_total": 8,
+                "recent_lines": ["[12.0s | 43.5%] fold 7/8"],
+            }))
+            with (
+                patch.object(probe.os, "readlink", return_value="/mnt/d/target/shz-mnr05-bitvm3-ln-dlc"),
+                patch.object(probe.os, "sysconf", side_effect={"SC_CLK_TCK": 100, "SC_PAGE_SIZE": 4096}.__getitem__, create=True),
+            ):
+                _, nova = probe.scan_provers(root, progress_file=prog_file)
+                self.assertEqual(len(nova), 1)
+                self.assertEqual(nova[0]["kind"], "mnr05")
+                self.assertEqual(nova[0]["progress_pct"], 43.5)
+                self.assertEqual(nova[0]["fold_step"], 7)
+                self.assertEqual(nova[0]["fold_total"], 8)
+                self.assertNotIn("/secret/dir", json.dumps(nova))
+
+                # Mismatched start_ticks (reused PID / stale progress file) must NOT attach stale %
+                prog_file.write_text(json.dumps({
+                    "schema": "rbzk-nova-progress-v1",
+                    "pid": 42,
+                    "start_ticks": 1111,
+                    "progress_pct": 99.0,
+                }))
+                _, nova_stale = probe.scan_provers(root, progress_file=prog_file)
+                self.assertNotIn("progress_pct", nova_stale[0])
+
     def test_output_presence_does_not_verify_and_mutation_revokes_receipt(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

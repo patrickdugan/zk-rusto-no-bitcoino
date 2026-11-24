@@ -64,6 +64,23 @@ test('observes a local Nova process alongside the A100 with independent CPU and 
   assert.deepEqual(stale.metrics, []);
 });
 
+test('surfaces live progress % and fold step for SHZ-MNR-05 Nova jobs and clears on stale signal', () => {
+  const job = {id: 'mnr05:42:9876', kind: 'mnr05', title: 'SHZ-MNR-05 BitVM3 & PTLC Nova proof',
+    running: true, process: {pid: 42, start_ticks: 9876}, backend: 'Nova Spartan/IPA · CPU',
+    phase: 'Secq256k1 BIP-340 Schnorr fold 6 / 8', progress_pct: 39.0, fold_step: 6, fold_total: 8,
+    cpu_seconds: 14.2, ram_bytes: 612 * 2**20};
+  const [mnr05] = ongoingJobs(setup({ark: null, local: [job]}));
+  assert.equal(mnr05.status, 'Running');
+  assert.equal(mnr05.progressPct, 39.0);
+  assert.deepEqual(mnr05.metrics, [
+    ['Progress %', 39], ['Fold step', 6], ['Fold total', 8], ['CPU seconds', 14], ['Process RAM MiB', 612],
+  ]);
+  const [stale] = ongoingJobs(setup({ark: null, local: [job], localFresh: false}));
+  assert.equal(stale.status, 'Stale');
+  assert.equal(stale.progressPct, null);
+  assert.deepEqual(stale.metrics, []);
+});
+
 function sample(t, core, recursion, replayed) {
   return {sampled_at_unix:t,core_new:core,recursion_new:recursion,core_replayed:replayed};
 }
