@@ -193,3 +193,5 @@ mod tests{
         reject(&s,&Claim{amount:0,..c.clone()});
     }
 }
+
+pub mod boundary;
