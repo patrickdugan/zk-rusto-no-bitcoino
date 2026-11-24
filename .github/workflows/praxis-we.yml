@@ -61,6 +61,8 @@ jobs:
           diff -u integrations/praxis-we/results/praxis-08-bqs.json /tmp/praxis-kernels/praxis-08-bqs.json
       - name: PRAXIS-09 concrete cost sensitivity
         run: python3 integrations/praxis-we/full_size_budget.py | tee /tmp/praxis-kernels/full-size-budget.json
+      - name: PRAXIS-10 canonical settlement context
+        run: python3 integrations/praxis-we/settlement_context.py | tee /tmp/praxis-kernels/settlement-context.json
       - uses: actions/upload-artifact@v4
         with:
           name: praxis-02-kernels
