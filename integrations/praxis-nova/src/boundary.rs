@@ -1,4 +1,4 @@
-//! Stable statement for a future SP1 guest and Groth16 wrapper.
+//! Stable statement for direct Nova verification and a future Praxis BQS.
 //! External policy and exact Bitcoin transaction must authenticate these values.
 //! This module does NOT verify M16/M18, a transaction, or a Nova proof.
 use crate::{State,check_final,f_to_le,fu,u64_field,NZ,CAP,MAX_MONEY,F};
