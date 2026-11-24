@@ -1,0 +1,45 @@
+{
+  "scope": "Executed fixed-shape group and scalar BQS components; native IPA transcript composition separate CI",
+  "curves": [
+    {
+      "curve": "Pallas",
+      "positive_checks": 9,
+      "negative_controls": 13,
+      "counts": {
+        "affine_add_incremental": {
+          "boolean_unknowns": 14297,
+          "equations": 494
+        },
+        "two_term_8bit_msm": {
+          "group_adds": 40,
+          "boolean_unknowns": 576084,
+          "equations": 20406
+        },
+        "ipa_scalar_3round": {
+          "boolean_unknowns": 50299,
+          "equations": 1072
+        }
+      }
+    },
+    {
+      "curve": "Vesta",
+      "positive_checks": 9,
+      "negative_controls": 13,
+      "counts": {
+        "affine_add_incremental": {
+          "boolean_unknowns": 14297,
+          "equations": 494
+        },
+        "two_term_8bit_msm": {
+          "group_adds": 40,
+          "boolean_unknowns": 576084,
+          "equations": 20406
+        },
+        "ipa_scalar_3round": {
+          "boolean_unknowns": 50299,
+          "equations": 1072
+        }
+      }
+    }
+  ]
+}
