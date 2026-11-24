@@ -120,6 +120,7 @@ fn garbled_final_verifier_accepts_the_real_proof_and_rejects_a_mutation() {
     let (accept, reject, gates) = garble_and_evaluate(&proof, &expect, bits.clone());
     eprintln!("M14-E2E garbled+evaluated: {gates} ciphertexts, {:.1} s", t.elapsed().as_secs_f64());
     assert!(accept && !reject, "evaluator did not obtain the accept label for the real proof");
+    assert_eq!(gates as u64, full::NON_FREE_GATES, "ciphertexts of the garbled final verifier");
 
     let mut bad = bits;
     let at = bad.len() - 40;

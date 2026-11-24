@@ -59,6 +59,8 @@ fn final_verifier_circuit_on_the_real_proof() {
         t.elapsed().as_secs_f64()
     );
     assert!(ok, "the circuit rejects the real final proof");
+    assert_eq!(bits.len() as u64, full::INPUT_BITS);
+    assert_eq!(gates, full::NON_FREE_GATES, "gate count of the final verifier");
 
     // A flipped bit in the last Merkle path digest.
     let mut b = bits.clone();

@@ -10,8 +10,8 @@ use m14_e2e::{
 use sha2::{Digest, Sha256};
 
 const CAPACITY: usize = 1 << 24;
-const INPUT_BITS: u64 = 8_635_080;
-const CIPHERTEXTS: u64 = 785_442_492;
+const INPUT_BITS: u64 = full::INPUT_BITS;
+const CIPHERTEXTS: u64 = full::NON_FREE_GATES;
 const REFERENCE: &[u8] = include_bytes!("../../../../m13/fixtures/c4-wrap-blake3-v2.bin");
 const USAGE: &str = "usage:
   m14-claim setup STATEMENT.json PUBLIC_DIR PRIVATE_DIR
@@ -37,6 +37,7 @@ fn spec() -> CircuitSpec {
         include_bytes!("../../../circuit/src/field.rs"),
         include_bytes!("../../../circuit/src/ext.rs"),
         include_bytes!("../../../circuit/src/hash.rs"),
+        include_bytes!("../../../circuit/src/poseidon2.rs"),
         include_bytes!("../../../circuit/src/sample.rs"),
         include_bytes!("../../../circuit/src/sumcheck.rs"),
         include_bytes!("../../../circuit/src/multilinear.rs"),

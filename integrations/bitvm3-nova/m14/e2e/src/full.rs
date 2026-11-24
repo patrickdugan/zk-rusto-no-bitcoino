@@ -5,6 +5,9 @@
 //! - The STARK: preamble, LogUp-GKR, zerocheck, jagged PCS with stacked BaseFold.
 //! - The statement: exit code 0, complete, and the guest key digest, recursion key root and
 //!   committed-values digest equal to the pinned ones.
+//! - The public-values digest: those fields and the proof nonce hash (SP1's Poseidon2) to the
+//!   `digest` slots, the only public values the wrap AIR constrains. Without it the statement
+//!   fields are whatever the prover wrote.
 //!
 //! Output: one wire, 1 iff the proof verifies and states the pinned statement.
 use std::borrow::Borrow;
@@ -15,6 +18,7 @@ use m13_verify::{FinalStatement, ValidatedFinalStatement};
 use m14_circuit::{
     field::{self as f, Fe},
     hash::Transcript,
+    poseidon2,
 };
 
 use slop_uni_stark::SymbolicExpression;
@@ -25,6 +29,15 @@ use crate::{
     pcs::{self, PcsShape},
     verifier::{self, Inputs, Shape},
 };
+
+/// Input wires of [`final_verifier`] for the pinned (c4) proof shape.
+pub const INPUT_BITS: u64 = 8_635_080;
+/// Non-free gates of [`final_verifier`] for that shape, the same for every statement:
+/// 785,442,492 for the STARK and the statement equalities, plus [`ROOT_DIGEST_GATES`].
+pub const NON_FREE_GATES: u64 = 785_442_492 + ROOT_DIGEST_GATES;
+/// What the public-values digest adds: the Poseidon2 hash of 53 elements, 8 comparisons and their
+/// conjunction into the statement.
+pub const ROOT_DIGEST_GATES: u64 = 7_104_181;
 
 /// Everything fixed when the circuit is built: the pinned key and proof shape, the AIR
 /// constraints, and the pinned statement.
@@ -99,7 +112,27 @@ pub fn statement<C: CircuitContext>(c: &mut C, pv: &[Fe], e: &ValidatedFinalStat
     for i in 0..32 {
         is(c, o.committed_value_digest[i / 4][i % 4], e.committed_values_sha256()[i] as u32);
     }
+    oks.extend(root_digest(c, pv, &o));
     f::and_all(c, &oks)
+}
+
+/// `m13_verify::check_public_values_digest`: the `digest` slots equal SP1's root digest of
+/// `sp1_vk_digest`, `committed_value_digest`, `exit_code`, `vk_root` and `proof_nonce`. The hash
+/// reads the public-value wires, not the pinned constants, so the gate count does not depend on
+/// the statement. One wire per digest element.
+fn root_digest<C: CircuitContext>(c: &mut C, pv: &[Fe], o: &RecursionPublicValues<u32>) -> Vec<W> {
+    let at = |i: &u32| pv[*i as usize].clone();
+    let input: Vec<Fe> = o
+        .sp1_vk_digest
+        .iter()
+        .chain(o.committed_value_digest.iter().flatten())
+        .chain(std::iter::once(&o.exit_code))
+        .chain(o.vk_root.iter())
+        .chain(o.proof_nonce.iter())
+        .map(at)
+        .collect();
+    let digest = poseidon2::hash(c, &input);
+    digest.iter().zip(o.digest.iter()).map(|(d, slot)| f::eq(c, d, &pv[*slot as usize])).collect()
 }
 
 /// The whole final verifier on input wires `w` (the bits of [`items`]).

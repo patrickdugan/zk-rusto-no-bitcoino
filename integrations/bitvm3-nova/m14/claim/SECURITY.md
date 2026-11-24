@@ -13,7 +13,7 @@ cargo +1.90.0 build --release --locked \
   --manifest-path integrations/bitvm3-nova/m14/e2e/Cargo.toml --bin m14-claim
 ```
 
-The following commands describe a full M14 run. Setup writes about 12.6 GB of ciphertexts and
+The following commands describe a full M14 run. Setup writes about 12.7 GB of ciphertexts and
 553 MB of input commitments. Each release writes about 138 MB of selected labels. Run setup
 only on a machine with sufficient disk and RAM. It performs garbling of the existing fixed
 verifier; it does not generate a new Nova/SP1 proof.
