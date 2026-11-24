@@ -1,0 +1,86 @@
+{
+  "cases": [
+    {
+      "instance": {
+        "session": "abaa0deea090813d81711f9311e9daf97948c8fd4f4096fc1928d27be07c0132",
+        "row_root": "5eecc99e99ad405204094b150868c6db13a5724bc381edd0f4cab4ddb98725e6",
+        "trace_root": "ee28d01eb70f04c6d33a47ab7dd61ad1452c8759f59ff157c310678cf62efe39",
+        "row_count": 3,
+        "slot_count": 520
+      },
+      "witness": {
+        "row_index": 2,
+        "row": "0200000000000000000100000000000007020000000000000800000000000000",
+        "row_path": [
+          "87da2e07f6174f03173e44c2b9fec17c336cb1bc546de9b6369dec1a0e667a15",
+          "abaffb66203f3295fdd6c97c2a5cf3a72d34c919db5846ff33f32b96bec7c923"
+        ],
+        "slots": [
+          {
+            "page": "0500000000000000000000000000000000000000000000000000000000000000",
+            "path": [
+              "2f7ca32e07edf8b98e9120d24f03bae1fec2b4eba5e02eb20330e44333096edb",
+              "fb3aa03d1b1b9e33aa8ac3728fa47175f25fac654bca786670aec0fa7bcd8243"
+            ]
+          },
+          {
+            "page": "0100000000000000000000000000000000000000000000000000000000000000",
+            "path": [
+              "22635208cded17252304e1fc56c41968464dba5d217f5662f81b54c575c1aece",
+              "fb3aa03d1b1b9e33aa8ac3728fa47175f25fac654bca786670aec0fa7bcd8243"
+            ]
+          },
+          {
+            "page": "0000000000000000000000000000000000000000000000000000000000000000",
+            "path": [
+              "52eeab34b41f17b236f0fbe60331816e32e8552e35e20c4020e154ab1eddd057",
+              "c722ddb4fee4c34b379688e1991045b59ab00f5739b632f7618b7a4927fb0f91"
+            ]
+          }
+        ]
+      },
+      "expected_fraud": true
+    },
+    {
+      "instance": {
+        "session": "abaa0deea090813d81711f9311e9daf97948c8fd4f4096fc1928d27be07c0132",
+        "row_root": "5eecc99e99ad405204094b150868c6db13a5724bc381edd0f4cab4ddb98725e6",
+        "trace_root": "98134589b6b1e01a8cb055bb103f03e4a3ced22c6cca019316f11625c296de1d",
+        "row_count": 3,
+        "slot_count": 520
+      },
+      "witness": {
+        "row_index": 2,
+        "row": "0200000000000000000100000000000007020000000000000800000000000000",
+        "row_path": [
+          "87da2e07f6174f03173e44c2b9fec17c336cb1bc546de9b6369dec1a0e667a15",
+          "abaffb66203f3295fdd6c97c2a5cf3a72d34c919db5846ff33f32b96bec7c923"
+        ],
+        "slots": [
+          {
+            "page": "0500000000000000000000000000000000000000000000000000000000000000",
+            "path": [
+              "2f7ca32e07edf8b98e9120d24f03bae1fec2b4eba5e02eb20330e44333096edb",
+              "c30963f0c812186ce12e5570725a517a49268b3ca6a82422428c0a1cec7b5992"
+            ]
+          },
+          {
+            "page": "0100000000000000000000000000000000000000000000000000000000000000",
+            "path": [
+              "22635208cded17252304e1fc56c41968464dba5d217f5662f81b54c575c1aece",
+              "c30963f0c812186ce12e5570725a517a49268b3ca6a82422428c0a1cec7b5992"
+            ]
+          },
+          {
+            "page": "8000000000000000000000000000000000000000000000000000000000000000",
+            "path": [
+              "52eeab34b41f17b236f0fbe60331816e32e8552e35e20c4020e154ab1eddd057",
+              "c722ddb4fee4c34b379688e1991045b59ab00f5739b632f7618b7a4927fb0f91"
+            ]
+          }
+        ]
+      },
+      "expected_fraud": false
+    }
+  ]
+}
