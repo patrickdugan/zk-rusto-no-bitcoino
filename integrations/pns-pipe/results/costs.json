@@ -1,0 +1,98 @@
+{
+  "scope": "Static gate-source count and hypothetical matched cohort; excludes real WE/setup/fees/availability and custody principal",
+  "keccak_one_rate_block_gate_count": 193174,
+  "local_relation_scenarios": [
+    {
+      "scenario_rows": 3,
+      "scenario_slots": 520,
+      "row_depth": 2,
+      "page_depth": 2,
+      "hash_permutations": 12,
+      "witness_bytes": 392,
+      "boolean_unknowns": 2335435,
+      "bqs_equations_excluding_implicit_bitness": 2332300,
+      "gate_rows": 2332298,
+      "max_products_per_equation": 1,
+      "packed_trace_bytes": 65,
+      "uncompressed_32_byte_row_records": 96
+    },
+    {
+      "scenario_rows": 1048576,
+      "scenario_slots": 1048576,
+      "row_depth": 20,
+      "page_depth": 12,
+      "hash_permutations": 60,
+      "witness_bytes": 1928,
+      "boolean_unknowns": 11669227,
+      "bqs_equations_excluding_implicit_bitness": 11653804,
+      "gate_rows": 11653802,
+      "max_products_per_equation": 1,
+      "packed_trace_bytes": 131072,
+      "uncompressed_32_byte_row_records": 33554432
+    },
+    {
+      "scenario_rows": 8589934592,
+      "scenario_slots": 8589934592,
+      "row_depth": 33,
+      "page_depth": 25,
+      "hash_permutations": 112,
+      "witness_bytes": 3592,
+      "boolean_unknowns": 21780835,
+      "bqs_equations_excluding_implicit_bitness": 21752100,
+      "gate_rows": 21752098,
+      "max_products_per_equation": 1,
+      "packed_trace_bytes": 1073741824,
+      "uncompressed_32_byte_row_records": 274877906944
+    }
+  ],
+  "capital_scenarios": [
+    {
+      "name": "existing route, precomputed setup",
+      "setupHours": 0,
+      "challengeDays": 7,
+      "withdrawals": 3600,
+      "batch_size": 24,
+      "mean_payout_sats": 100000,
+      "bond_per_batch_sats": 2400000,
+      "annual_opportunity_rate": 0.1,
+      "bond_sat_days": 2535000000.000101,
+      "incremental_advance_sat_days": 2569500000.00009,
+      "peak_bond_sats": 86400000,
+      "peak_advance_sats": 86900000,
+      "opportunity_cost_sats": 1398493.150685,
+      "additional_cost_budget_vs_baseline_sats_per_withdrawal": 0
+    },
+    {
+      "name": "local fraud, equal challenge, illustrative setup",
+      "setupHours": 2,
+      "challengeDays": 7,
+      "withdrawals": 3600,
+      "batch_size": 24,
+      "mean_payout_sats": 100000,
+      "bond_per_batch_sats": 2400000,
+      "annual_opportunity_rate": 0.1,
+      "bond_sat_days": 2565000000.000095,
+      "incremental_advance_sat_days": 2599500000.000091,
+      "peak_bond_sats": 86400000,
+      "peak_advance_sats": 87900000,
+      "opportunity_cost_sats": 1414931.506849,
+      "additional_cost_budget_vs_baseline_sats_per_withdrawal": -4.56621
+    },
+    {
+      "name": "local fraud, 24h challenge sensitivity only",
+      "setupHours": 2,
+      "challengeDays": 1,
+      "withdrawals": 3600,
+      "batch_size": 24,
+      "mean_payout_sats": 100000,
+      "bond_per_batch_sats": 2400000,
+      "annual_opportunity_rate": 0.1,
+      "bond_sat_days": 405000000.000009,
+      "incremental_advance_sat_days": 439500000,
+      "peak_bond_sats": 14400000,
+      "peak_advance_sats": 15900000,
+      "opportunity_cost_sats": 231369.863014,
+      "additional_cost_budget_vs_baseline_sats_per_withdrawal": 324.200913
+    }
+  ]
+}
