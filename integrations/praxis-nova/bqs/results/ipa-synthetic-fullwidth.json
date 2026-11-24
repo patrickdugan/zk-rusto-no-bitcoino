@@ -12,5 +12,20 @@
     "failed_rows": 0,
     "first_failure": null
   },
-  "negative_native_joint_CI_pending": true
+  "negative": {
+    "mutated": true,
+    "accepted": false,
+    "group_additions": 647,
+    "boolean_unknowns": 9645610,
+    "new_boolean_unknowns": 9645609,
+    "equations": 333154,
+    "quadratic_equations": 147697,
+    "max_products_per_equation": 16,
+    "failed_rows": 17,
+    "first_failure": {
+      "row": 333138,
+      "name": "",
+      "residual": "-3839192145"
+    }
+  }
 }
