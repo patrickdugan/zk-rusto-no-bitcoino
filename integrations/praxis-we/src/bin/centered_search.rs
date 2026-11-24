@@ -8,7 +8,7 @@ use ark_serialize::CanonicalSerialize;
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, time::Instant};
 
-type GT = PairingOutput<Bn254>;
+pub(crate) type GT = PairingOutput<Bn254>;
 
 fn scalar(n: i128) -> Fr {
     let x = Fr::from_le_bytes_mod_order(&n.unsigned_abs().to_le_bytes());
@@ -27,7 +27,7 @@ fn fingerprint(p: &GT, bits: u32) -> u64 {
 }
 
 #[derive(Default, Debug)]
-struct Counts { babies: u64, giants: u64, exact_checks: u64 }
+pub(crate) struct Counts { pub(crate) babies: u64, pub(crate) giants: u64, pub(crate) exact_checks: u64 }
 
 // Uses full subgroup equality on BOTH signs of every matching baby index.
 // The caller chooses a finite giant-step budget; exhaustion is explicit.
@@ -89,7 +89,7 @@ fn search(base: GT, target: GT, bound: i128, m: usize, max_giants: u64,
 // Reject zero weight. Identity search base is permitted by the paper.
 // These group inputs are synthetic test fixtures, never attacker-controlled
 // deserialization. This is a correctness kernel, not ciphertext validation.
-fn recover(lambda: GT, psi: GT, lambda_alpha: GT, psi_alpha: GT,
+pub(crate) fn recover(lambda: GT, psi: GT, lambda_alpha: GT, psi_alpha: GT,
            key_alpha: GT, xi: Fr, center: i128, bound: i128,
            m: usize, max_giants: u64, bits: u32)
            -> Result<(Option<GT>, Counts), &'static str> {
