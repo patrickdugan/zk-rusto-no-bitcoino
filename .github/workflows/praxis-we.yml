@@ -1,0 +1,39 @@
+name: praxis-we-preflight
+on:
+  pull_request:
+    paths:
+      - 'integrations/praxis-we/**'
+      - 'integrations/groth16-gym/**'
+      - '.github/workflows/praxis-we.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  artifact-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Unit and malformed artifact tests
+        run: cargo test --release --manifest-path integrations/praxis-we/Cargo.toml
+      - name: Budget sensitivity
+        run: python3 integrations/praxis-we/budget.py
+      - name: Export real gym fixture (known toxic waste, benchmark only)
+        run: cargo run --release --manifest-path integrations/groth16-gym/Cargo.toml -- spv --out /tmp/praxis-fixture
+      - name: Verify exact exported statement and reject altered pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=/tmp/praxis-fixture
+          vk=$(sha256sum "$dir/vk.bin" | cut -d' ' -f1)
+          inputs=$(sha256sum "$dir/public_inputs.bin" | cut -d' ' -f1)
+          manifest=integrations/praxis-we/Cargo.toml
+          cargo run --release --manifest-path "$manifest" -- "$dir" "$vk" "$inputs"
+          if cargo run --release --manifest-path "$manifest" -- "$dir" "$(printf '%064d' 0)" "$inputs"; then
+            echo 'Wrong VK pin accepted'; exit 1
+          fi
+          printf '\x00' >> "$dir/proof.bin"
+          if cargo run --release --manifest-path "$manifest" -- "$dir" "$vk" "$inputs"; then
+            echo 'Trailing byte accepted'; exit 1
+          fi
