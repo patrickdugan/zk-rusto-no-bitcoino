@@ -1,0 +1,33 @@
+name: praxis-nova-settlement
+on:
+  pull_request:
+    paths:
+      - 'integrations/praxis-nova/**'
+      - 'integrations/bitvm3-nova/m18/**'
+      - '.github/workflows/praxis-nova-settlement.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cpu-fold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.90.0
+      - name: Fixed shape and negative constraints
+        run: cargo test --release --manifest-path integrations/praxis-nova/Cargo.toml -- --nocapture
+      - name: Native recursive and compressed proof pilot
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/praxis-nova-pilot
+          /usr/bin/time -v cargo run --release --manifest-path integrations/praxis-nova/Cargo.toml -- /tmp/praxis-nova-pilot 2> /tmp/praxis-nova-pilot/resources.txt
+          test "$(wc -c < /tmp/praxis-nova-pilot/pns1-stable-statement.bin)" -eq 440
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: praxis-nova-pilot
+          path: /tmp/praxis-nova-pilot/
+          if-no-files-found: ignore
