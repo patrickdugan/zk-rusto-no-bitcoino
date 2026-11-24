@@ -1,0 +1,73 @@
+{
+  "scope": "Pinned Poseidon arithmetic hash and fixed sparse-row micro-op fraud prototype; no complete Nova trace or WE",
+  "upstream_vectors": 3,
+  "hashes": [
+    {
+      "arity": 2,
+      "boolean_unknowns": 67818,
+      "equations": 268
+    },
+    {
+      "arity": 4,
+      "boolean_unknowns": 86360,
+      "equations": 341
+    }
+  ],
+  "local": {
+    "rows": 16,
+    "slots": 11,
+    "witness_native_rejections": 7,
+    "positive": {
+      "boolean_unknowns": 1386157,
+      "new_boolean_unknowns": 1386156,
+      "equations": 5454,
+      "quadratic_equations": 4938,
+      "max_products_per_equation": 4,
+      "failed_rows": 0,
+      "first_failure": null,
+      "linear_form_terms": 9594250,
+      "max_row_terms": 5844,
+      "accepted": true,
+      "hashes": 20
+    },
+    "negative": {
+      "boolean_unknowns": 1386157,
+      "new_boolean_unknowns": 1386156,
+      "equations": 5454,
+      "quadratic_equations": 4938,
+      "max_products_per_equation": 4,
+      "failed_rows": 1,
+      "first_failure": {
+        "row": 5454,
+        "name": "nonzero fault",
+        "residual": "-1"
+      },
+      "linear_form_terms": 9594250,
+      "max_row_terms": 5844,
+      "accepted": false,
+      "hashes": 20
+    }
+  },
+  "arithmetic": [
+    {
+      "field": "PallasBase",
+      "original_rows": 49,
+      "original_slots": 2625,
+      "micro_ops": 12481,
+      "trace_slots": 12430,
+      "field_trace_bytes": 397760,
+      "program_bytes": 798784,
+      "mutated_failed_rows": 2
+    },
+    {
+      "field": "VestaBase",
+      "original_rows": 49,
+      "original_slots": 2625,
+      "micro_ops": 12481,
+      "trace_slots": 12430,
+      "field_trace_bytes": 397760,
+      "program_bytes": 798784,
+      "mutated_failed_rows": 2
+    }
+  ]
+}
