@@ -1,0 +1,28 @@
+{
+  "scope": "Public-key toy additive Schnorr shares; no DKG, no witness encryption, no real Bitcoin UTXO or broadcast",
+  "official_bip340_vectors": 2,
+  "signers": 3,
+  "signed_sighash": "a1e26e0fe93342ad46202bfb6f99fb91e2d5232a007fcfeaedde921e7b079086",
+  "release_id": "01243dac788cd2fcd969f830f193ea83e4298d3f7fdcb292fce94fbb1ddbecca",
+  "aggregate_xonly_pubkey": "2b4ea0a797a443d293ef5cff444f4979f06acfebd7e86d277475656138385b6c",
+  "signature_bytes": 64,
+  "partial_equations_verified": 3,
+  "exact_transaction_verified": true,
+  "negative_controls": 14,
+  "negative_control_names": [
+    "missing share",
+    "duplicate signer",
+    "changed scalar",
+    "mixed assertion",
+    "outpoint",
+    "vout",
+    "prevout amount",
+    "prevout script",
+    "payout amount/fee",
+    "recipient",
+    "additional output",
+    "sequence",
+    "locktime",
+    "version"
+  ]
+}
