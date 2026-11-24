@@ -1,0 +1,351 @@
+{
+  "scope": "Deterministic exponent model, toy parameters, no security guarantee",
+  "sampler": {
+    "checks": 15664,
+    "max_abs": 8,
+    "centered_g5": {
+      "0": {
+        "mean_square": 3.624,
+        "max_abs": 5,
+        "counts": {
+          "0": 120,
+          "1": 115,
+          "2": 90,
+          "3": 53,
+          "4": 20,
+          "5": 4,
+          "-1": 105,
+          "-2": 72,
+          "-3": 35,
+          "-4": 10,
+          "-5": 1
+        }
+      },
+      "1": {
+        "mean_square": 3.624,
+        "max_abs": 5,
+        "counts": {
+          "0": 120,
+          "1": 115,
+          "2": 90,
+          "3": 53,
+          "4": 20,
+          "5": 4,
+          "-1": 105,
+          "-2": 72,
+          "-3": 35,
+          "-4": 10,
+          "-5": 1
+        }
+      },
+      "2": {
+        "mean_square": 3.624,
+        "max_abs": 5,
+        "counts": {
+          "0": 120,
+          "1": 115,
+          "2": 90,
+          "3": 53,
+          "4": 20,
+          "5": 4,
+          "-1": 105,
+          "-2": 72,
+          "-3": 35,
+          "-4": 10,
+          "-5": 1
+        }
+      },
+      "3": {
+        "mean_square": 3.624,
+        "max_abs": 5,
+        "counts": {
+          "0": 120,
+          "1": 115,
+          "2": 90,
+          "3": 53,
+          "4": 20,
+          "5": 4,
+          "-3": 35,
+          "-2": 72,
+          "-1": 105,
+          "-4": 10,
+          "-5": 1
+        }
+      },
+      "4": {
+        "mean_square": 3.624,
+        "max_abs": 5,
+        "counts": {
+          "0": 120,
+          "1": 115,
+          "2": 90,
+          "3": 53,
+          "4": 20,
+          "5": 4,
+          "-1": 105,
+          "-2": 72,
+          "-3": 35,
+          "-4": 10,
+          "-5": 1
+        }
+      },
+      "5": {
+        "mean_square": 3.624,
+        "max_abs": 5,
+        "counts": {
+          "0": 120,
+          "1": 115,
+          "2": 90,
+          "3": 53,
+          "4": 20,
+          "5": 4,
+          "-3": 35,
+          "-2": 72,
+          "-1": 105,
+          "-4": 10,
+          "-5": 1
+        }
+      },
+      "6": {
+        "mean_square": 3.624,
+        "max_abs": 5,
+        "counts": {
+          "0": 120,
+          "1": 115,
+          "2": 90,
+          "3": 53,
+          "4": 20,
+          "5": 4,
+          "-3": 35,
+          "-4": 10,
+          "-5": 1,
+          "-2": 72,
+          "-1": 105
+        }
+      },
+      "7": {
+        "mean_square": 3.624,
+        "max_abs": 5,
+        "counts": {
+          "0": 120,
+          "1": 115,
+          "2": 90,
+          "3": 53,
+          "4": 20,
+          "5": 4,
+          "-5": 1,
+          "-4": 10,
+          "-3": 35,
+          "-2": 72,
+          "-1": 105
+        }
+      }
+    }
+  },
+  "variants": [
+    {
+      "field": "F97",
+      "n": 4,
+      "K1": 1,
+      "K2": 2,
+      "chunked": false,
+      "valid_recoveries": 48,
+      "zero_key_weight": 0,
+      "invalid_witness_rejections": 144,
+      "real_group_fixtures": []
+    },
+    {
+      "field": "F97",
+      "n": 4,
+      "K1": 2,
+      "K2": 1,
+      "chunked": true,
+      "valid_recoveries": 48,
+      "zero_key_weight": 0,
+      "invalid_witness_rejections": 144,
+      "real_group_fixtures": []
+    },
+    {
+      "field": "F97",
+      "n": 8,
+      "K1": 2,
+      "K2": 2,
+      "chunked": true,
+      "valid_recoveries": 48,
+      "zero_key_weight": 0,
+      "invalid_witness_rejections": 144,
+      "real_group_fixtures": []
+    },
+    {
+      "field": "BN254 Fr",
+      "n": 4,
+      "K1": 1,
+      "K2": 2,
+      "chunked": false,
+      "valid_recoveries": 48,
+      "zero_key_weight": 0,
+      "invalid_witness_rejections": 144,
+      "real_group_fixtures": [
+        {
+          "name": "n4_k1_s1",
+          "g1": 31,
+          "g2": 220,
+          "pairings_per_comb": 22,
+          "zero_psi": false
+        },
+        {
+          "name": "n4_k1_s12",
+          "g1": 31,
+          "g2": 220,
+          "pairings_per_comb": 22,
+          "zero_psi": true
+        }
+      ]
+    },
+    {
+      "field": "BN254 Fr",
+      "n": 4,
+      "K1": 2,
+      "K2": 1,
+      "chunked": true,
+      "valid_recoveries": 48,
+      "zero_key_weight": 0,
+      "invalid_witness_rejections": 144,
+      "real_group_fixtures": [
+        {
+          "name": "n4_k2_s1",
+          "g1": 30,
+          "g2": 190,
+          "pairings_per_comb": 16,
+          "zero_psi": false
+        },
+        {
+          "name": "n4_k2_s12",
+          "g1": 30,
+          "g2": 190,
+          "pairings_per_comb": 16,
+          "zero_psi": true
+        }
+      ]
+    },
+    {
+      "field": "BN254 Fr",
+      "n": 8,
+      "K1": 2,
+      "K2": 2,
+      "chunked": true,
+      "valid_recoveries": 48,
+      "zero_key_weight": 0,
+      "invalid_witness_rejections": 144,
+      "real_group_fixtures": [
+        {
+          "name": "n8_k2_s1",
+          "g1": 30,
+          "g2": 396,
+          "pairings_per_comb": 25,
+          "zero_psi": false
+        },
+        {
+          "name": "n8_k2_s12",
+          "g1": 30,
+          "g2": 396,
+          "pairings_per_comb": 25,
+          "zero_psi": true
+        }
+      ]
+    }
+  ],
+  "mutations": [
+    {
+      "n": 4,
+      "K1": 1,
+      "controls": [
+        {
+          "kind": "quotient",
+          "comb_changed": true,
+          "original_key_recovered": false
+        },
+        {
+          "kind": "remainder",
+          "comb_changed": true,
+          "original_key_recovered": false
+        },
+        {
+          "kind": "mask",
+          "comb_changed": true,
+          "original_key_recovered": false
+        },
+        {
+          "kind": "alpha_copy",
+          "comb_changed": true,
+          "original_key_recovered": false
+        },
+        {
+          "kind": "wrong_statement",
+          "original_key_recovered": false
+        }
+      ]
+    },
+    {
+      "n": 4,
+      "K1": 2,
+      "controls": [
+        {
+          "kind": "quotient",
+          "comb_changed": true,
+          "original_key_recovered": false
+        },
+        {
+          "kind": "remainder",
+          "comb_changed": true,
+          "original_key_recovered": false
+        },
+        {
+          "kind": "mask",
+          "comb_changed": true,
+          "original_key_recovered": false
+        },
+        {
+          "kind": "alpha_copy",
+          "comb_changed": true,
+          "original_key_recovered": false
+        },
+        {
+          "kind": "wrong_statement",
+          "original_key_recovered": false
+        }
+      ]
+    },
+    {
+      "n": 8,
+      "K1": 2,
+      "controls": [
+        {
+          "kind": "quotient",
+          "comb_changed": true,
+          "original_key_recovered": false
+        },
+        {
+          "kind": "remainder",
+          "comb_changed": true,
+          "original_key_recovered": false
+        },
+        {
+          "kind": "mask",
+          "comb_changed": true,
+          "original_key_recovered": false
+        },
+        {
+          "kind": "alpha_copy",
+          "comb_changed": true,
+          "original_key_recovered": false
+        },
+        {
+          "kind": "wrong_statement",
+          "original_key_recovered": false
+        }
+      ]
+    }
+  ],
+  "zero_weight": "rejected"
+}
