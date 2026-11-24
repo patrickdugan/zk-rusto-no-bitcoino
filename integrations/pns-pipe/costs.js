@@ -14,11 +14,11 @@ function pricing(){
  // Deterministic stationary withdrawal cohort. Times in integer hours,
  // include all post-horizon tails. No simulated cryptographic performance.
  function simulate(s){
-   const interval=24/120,withdrawals=120*30,batch=24,amount=100000,bond=2400000,rate=.10;
+   const interval=12,withdrawals=120*30,batch=24,amount=100000,bond=2400000,rate=.10;
    const events=[];
    const event=(start,end,v,k)=>{events.push([start,k,v],[end,k,-v])};
    for(let j=0;j<withdrawals;j+=batch){
-     const ready=(j+batch-1)*interval,activation=ready+s.setupHours,end=activation+s.challengeDays*24+1;
+     const ready=(j+batch-1)*interval,activation=ready+60*s.setupHours,end=activation+s.challengeDays*1440+60;
      event(ready,end,bond,0);
      for(let i=j;i<j+batch;i++)event(i*interval,end,amount,1);
    }
@@ -30,7 +30,7 @@ function pricing(){
      for(let k=0;k<2;k++)peak[k]=Math.max(peak[k],balances[k]);last=time;
    }
    if(balances.some(v=>v!==0))throw Error("cohort balance");
-   const round=x=>Math.round(x*1e6)/1e6,days=satHours.map(x=>round(x/24)),cost=round((days[0]+days[1])*rate/365);
+   const round=x=>Math.round(x*1e6)/1e6,days=satHours.map(x=>round(x/1440)),cost=round((days[0]+days[1])*rate/365);
    return {...s,withdrawals,batch_size:batch,mean_payout_sats:amount,bond_per_batch_sats:bond,annual_opportunity_rate:rate,
       bond_sat_days:days[0],incremental_advance_sat_days:days[1],peak_bond_sats:peak[0],peak_advance_sats:peak[1],opportunity_cost_sats:cost};
  }
