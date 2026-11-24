@@ -37,7 +37,8 @@ function setScalar(w,ids,v){
 function run(dir,badAhat=false,emit=false,compact=false){
     const started=Date.now(),manifest=json(dir,"manifest.json"),i=json(dir,"interfaces.json"),
         fixture=json(dir,"fixture.json"),prefix=read(dir,"assignment.bin"),rows=read(dir,"rows.bin");
-    ck(i.format==="PNS-IPA-SLOTS/v1"&&i.curve===fixture.curve&&i.rounds===fixture.rounds,"interface");
+    const raw=i.format==="PNS-IPA-RAW-SLOTS/v1";
+    ck((raw||i.format==="PNS-IPA-SLOTS/v1")&&i.curve===fixture.curve&&i.rounds===fixture.rounds,"interface");
     const base=i.curve==="Pallas"?PALLAS:VESTA,scalar=i.curve==="Pallas"?VESTA:PALLAS;
     ck(i.curve==="Pallas"||i.curve==="Vesta","curve");
     ck(i.rounds>=1&&i.rounds<=3&&i.l.length===i.rounds&&i.r.length===i.rounds&&i.challenges.length===i.rounds,"round shape");
@@ -65,8 +66,12 @@ function run(dir,badAhat=false,emit=false,compact=false){
     const g=new Bqs(prefix,false,onRow);
     const imp=ids=>g.importScalar(ids,scalar);
     const x=Array.from({length:i.rounds},(_,j)=>imp(i.point.slice(j*256,(j+1)*256)));
-    const y=imp(i.evaluation),ah=imp(i.a_hat),rho=imp(i.rho),ch=i.challenges.map(imp);
-    const suffix=imp(i.suffix);
+    const y=imp(i.evaluation),ah=imp(i.a_hat);
+    const beforeReduction=g.stats();
+    const reduce=raw?ids=>require("./wide_reduction.js").reduce(g,ids,scalar).r:imp;
+    const rho=reduce(i.rho),ch=i.challenges.map(reduce),suffix=reduce(i.suffix);
+    const reductionCost={boolean_unknowns:g.stats().boolean_unknowns-beforeReduction.boolean_unknowns,
+        equations:g.stats().equations-beforeReduction.equations};
     ck(x.every((v,j)=>v.v===le(fixture.point[j]))&&y.v===le(fixture.evaluation)&&
        rho.v===le(fixture.rho)&&ch.every((v,j)=>v.v===le(fixture.challenges[j]))&&suffix.v===le(fixture.suffix),"native scalar differential");
     ck(ah.v===(le(fixture.a_hat)+(badAhat?1n:0n))%scalar,"a_hat interface");
@@ -101,6 +106,7 @@ function run(dir,badAhat=false,emit=false,compact=false){
     const st=g.stats(),report={
         curve:i.curve,rounds:i.rounds,opening_terms:G.length+2*i.rounds+1,
         native_positive:!badAhat,mutated_a_hat:badAhat,accepted:g.failed===0,
+        raw_transcript:raw,challenge_reduction_cost:reductionCost,
         prefix_equations:manifest.gate_rows+manifest.pin_rows,
         prefix_boolean_unknowns:manifest.boolean_unknowns,
         prefix_quadratic_equations:original.quadratic,
