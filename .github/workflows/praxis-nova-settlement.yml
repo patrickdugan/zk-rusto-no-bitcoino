@@ -39,6 +39,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.90.0
+      - name: Exact Pasta limb arithmetic replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pns-bqs
+          node integrations/praxis-nova/bqs/limb_reference.js > /tmp/pns-bqs/limb-reference.json
+          diff -u integrations/praxis-nova/bqs/results/limb-reference.json /tmp/pns-bqs/limb-reference.json
       - name: Gate truth tables and acceptance pins
         run: cargo test --release --manifest-path integrations/praxis-nova/bqs/Cargo.toml
       - name: Native Nova arithmetic and Spartan round BQS differential
