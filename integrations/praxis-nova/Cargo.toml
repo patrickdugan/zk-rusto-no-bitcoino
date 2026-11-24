@@ -12,6 +12,7 @@ nova-snark = "=0.76.0"
 ff = "0.13"
 m18-utxo-window = { path = "../bitvm3-nova/m18" }
 sha2 = "0.10"
+serde = "1"
 serde_json = "1"
 hex = "0.4"
 bincode = "1.3"
