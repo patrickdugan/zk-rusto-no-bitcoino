@@ -169,7 +169,9 @@ test('the Cashu roadmap keeps fixture evidence and open proof gates separate',()
   assert.equal(road.friday.find(item=>item.id==='refusal-demo').status,'Verified regtest payout');
   assert.equal(road.friday.find(item=>item.id==='refusal-demo').done,true);
   assert.equal(road.friday.find(item=>item.id==='melt-reserve-demo').status,'Archived regtest settlement');
-  assert.equal(road.friday.find(item=>item.id==='exact-melt-stark').done,false);
+  assert.equal(road.friday.find(item=>item.id==='exact-melt-stark').done,true);
+  assert.equal(road.friday.find(item=>item.id==='exact-melt-audit').done,true);
+  assert.equal(road.friday.find(item=>item.id==='exact-melt-chain').done,false);
   assert.equal(road.friday.find(item=>item.id==='nova-protected').status,'Verified Nova fixture');
   assert.equal(road.friday.find(item=>item.id==='protected-holder').status,'Verified protected regtest exit');
   assert.equal(road.friday.find(item=>item.id==='cashu-bitvm').done,false);
