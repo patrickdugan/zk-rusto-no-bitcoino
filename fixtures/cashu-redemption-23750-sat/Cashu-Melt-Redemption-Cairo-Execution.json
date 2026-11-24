@@ -1,0 +1,52 @@
+{
+  "schema": "proofdesk/melt-funded-shinigami-execution/v1",
+  "status": "redemption_statement_executed_on_regtest",
+  "network": "regtest",
+  "finished_at": "2026-11-23T20:27:13.506648+00:00",
+  "funding_context": "settled_wallet_melt",
+  "live_core_checked_before_and_after_execution": true,
+  "public_output_words_matched": 24,
+  "program": {
+    "shinigami_revision": "19cb9fab4664e8f7fc4936f018d9c59ccac5883c",
+    "scarb_version": "2.19.6",
+    "program_hash": "0xdbda06ad0006b1d166c1634af58314bc255e1dbbd378c6553c6c35a17a9cb0"
+  },
+  "input_sha256": {
+    "bin/scarb": "b76b6a5fe53c9f5f940ea91e919238daecb86f97d2a6090c6279718ae6f649f9",
+    "bin/scarb-execute": "0942b466980bbaabe248bd8d1fa1faab4880d50753a26b5abef336dc25c5259e",
+    "bin/scarb-verify": "d6b77b191ba50edb968ecc559d3ce933293b2d040daa93d746016a7d3310ab31",
+    "bin/prove-clean": "fd2e89986a8b65d401d9af257b3040361c3544ee00fd03cad9915f076c5ba240",
+    "main.executable.json": "697615bf5f2c888b79dd36e299cef0cc2194be8003fa2e9bae2f53bb0f5e6aed",
+    "profile.json": "62670efbaaf0ba945a291e18153ca0d27a49d6c8882899cc2d7b4d4b51953ecd",
+    "testnet4-tapleaf-args.json": "e3a9a9fd876c61a409fc3a30eb008a37f161f5adb970eb7a5d48838aa24c9b07",
+    "redemption_executable": "a30a90d6a80b402459f86d217cdd75017707df05f3b559e44f379a97f264e276",
+    "redemption_arguments": "7aca1d10ec99c91fec2617e95d0a68ae2202e2a03326137d9eafda9014ef41a6"
+  },
+  "execution": {
+    "exit_code": 0,
+    "elapsed_seconds": 10.908,
+    "peak_rss_kib": 1636668,
+    "user_cpu_seconds": 2.06,
+    "system_cpu_seconds": 8.54
+  },
+  "statement_sha256": "f4dd55f29dcef204a7469ef9c338f5e51a74e4c0b3be995207cf2a28f7b4a849",
+  "funding_outpoint": "51bf73de53a364d423bd8ec05ac2aee1a8b28d34853386c7510fcde87575bd16:0",
+  "reserve_plan_id": "b886e5ee1cda012b9c21af95069cd7ff86dc0fd024767f1e193030a932f14dfb",
+  "wallet_melt_commitment": "31392a34495f87e8cea2afe4cfcf03c4db485456e8ce57a92bc18b52b385f172",
+  "source_proofs_spent": 6,
+  "cashu_replay_rejection_code": 11001,
+  "reserve_sats": 24000,
+  "payout_sats": 23750,
+  "payout_fee_sats": 250,
+  "relative_delay_blocks": 6,
+  "mint_offline": true,
+  "confirmed_spend": "098f615affde586e827d5167b86382a2a2c490c5e5c5f5806183bce5a012eceb",
+  "confirmed_spend_wtxid": "7d74ac108dcf7e912f76fdb8e3a4f9fc75e884efca291e09f92fa48a021231a0",
+  "negative_controls": {
+    "early_spend": "reserve too young",
+    "changed_prevout_amount": "invalid holder signature"
+  },
+  "stark_proof_generated": false,
+  "shinigami_issuance_proof_verified_in_this_run": false,
+  "bitvm3_verified_in_this_run": false
+}
