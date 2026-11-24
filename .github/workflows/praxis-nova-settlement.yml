@@ -28,6 +28,12 @@ jobs:
           mkdir -p /tmp/praxis-nova-pilot
           /usr/bin/time -v cargo run --release --manifest-path integrations/praxis-nova/Cargo.toml -- /tmp/praxis-nova-pilot 2> /tmp/praxis-nova-pilot/resources.txt
           test "$(wc -c < /tmp/praxis-nova-pilot/pns1-stable-statement.bin)" -eq 440
+      - name: Exact IPA key-domain inventory and static schedule costs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --release --manifest-path integrations/praxis-nova/Cargo.toml -- --square-shape /tmp/praxis-nova-pilot
+          python3 integrations/praxis-nova/bqs/price_key_shapes.py /tmp/praxis-nova-pilot/square-key-shape.json /tmp/praxis-nova-pilot/settlement-key-shape.json | tee /tmp/praxis-nova-pilot/ipa-shape-costs.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -68,6 +74,14 @@ jobs:
           set -euo pipefail
           node integrations/praxis-nova/bqs/ipa_synthetic_fullwidth.js > /tmp/pns-bqs/ipa-synthetic-fullwidth.json
           diff -u integrations/praxis-nova/bqs/results/ipa-synthetic-fullwidth.json /tmp/pns-bqs/ipa-synthetic-fullwidth.json
+      - name: Compact group-law and fixed-window MSM regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/praxis-nova/bqs/compact_msm_test.js > /tmp/pns-bqs/compact-msm.json
+          diff -u integrations/praxis-nova/bqs/results/compact-msm.json /tmp/pns-bqs/compact-msm.json
+          node integrations/praxis-nova/bqs/ipa_compact_fullwidth.js > /tmp/pns-bqs/ipa-compact-fullwidth.json
+          diff -u integrations/praxis-nova/bqs/results/ipa-compact-fullwidth.json /tmp/pns-bqs/ipa-compact-fullwidth.json
       - name: Native IPA proof and fused equation differential
         shell: bash
         run: |
@@ -87,6 +101,15 @@ jobs:
             /usr/bin/time -v node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-transcripts/"$curve" >> /tmp/pns-bqs/ipa-joint.jsonl 2>> /tmp/pns-bqs/ipa-joint-resources.txt
           done
           /usr/bin/time -v node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-transcripts/Pallas --negative >> /tmp/pns-bqs/ipa-joint.jsonl 2>> /tmp/pns-bqs/ipa-joint-resources.txt
+      - name: Compact joint native IPA BQS differential
+        shell: bash
+        run: |
+          set -euo pipefail
+          for curve in Pallas Vesta; do
+            /usr/bin/time -v node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-transcripts/"$curve" --compact >> /tmp/pns-bqs/ipa-compact-joint.jsonl 2>> /tmp/pns-bqs/ipa-compact-joint-resources.txt
+          done
+          /usr/bin/time -v node integrations/praxis-nova/bqs/ipa_joint.js /tmp/pns-ipa-transcripts/Pallas --compact --negative >> /tmp/pns-bqs/ipa-compact-joint.jsonl 2>> /tmp/pns-bqs/ipa-compact-joint-resources.txt
+          cat /tmp/pns-bqs/ipa-joint.jsonl /tmp/pns-bqs/ipa-compact-joint.jsonl
       - uses: actions/upload-artifact@v4
         if: always()
         with:
