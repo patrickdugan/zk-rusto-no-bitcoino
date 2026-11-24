@@ -4,7 +4,7 @@ Repository https://github.com/patrickdugan/zk-rusto-no-bitcoino
 Draft PR https://github.com/patrickdugan/zk-rusto-no-bitcoino/pull/33
 Branch research/pns-pipe-01-local-fraud (child of PR #32).
 Read integrations/pns-pipe/README.md, PNS-PIPE-02.md, micro_fraud.js,
-poseidon-params.json, fresh_assertion.py and receipts. Check actual head and CI.
+poseidon-params.json, fresh_assertion.py, taproot_csv.js and receipts. Check actual head and CI.
 Read Bitcoin PIPEs v2 https://www.allocinit.xyz/uploads/pipesv2.pdf and
 Praxis https://eprint.iacr.org/2026/2971; preserve the Nova-only constraint.
 PR #32 direct verifier/IPA research remains an independent positive route.
@@ -48,8 +48,12 @@ review. No real funds or paid compute.
    Bitcoin Core installation. Validate six-block BIP68 timing at the exact
    earliest height, old-funding-clock adversary, conflict, txid and BIP341
    binding, reorg/reconfirmation and fee escalation. Integrate real trace
-   roots with the acyclic T -> A -> assertion txid -> X context. Design
-   an enforceable Taproot/CSV branch and compare key-path preauthorization.
+   roots with the acyclic T -> A -> assertion txid -> X context. Extend the executed offline NUMS two-leaf Taproot/CSV fixture (16 negative
+   controls, BIP341 wallet and BIP340 signing vectors) to real script-path
+   consensus tests. Compare key-path preauthorization. Preserve separate
+   fault and optimistic keys; demonstrate that retained fault authority
+   bypasses WE and retained optimistic authority can redirect after CSV.
+   The local runtime lacked Bitcoin Core and DNS blocked the download.
    Explicitly show retained-key bypass in the test baseline. Require an
    authenticated committee setup manifest before assertion broadcast and
    availability for the full window. Missing data is not a local fault.
@@ -79,3 +83,8 @@ Commit derivations, independently executable tests, exact receipts, CI
 URLs, and a continuation ledger on PR #33 or a child branch. Continue
 as far as possible in one session; do not merge without verification.
 Clearly mark executed versus pending, proved versus conjectural.
+
+Latest additional gate: run the two-leaf NUMS Taproot script-path fixture on
+an isolated Bitcoin Core node. Verify BIP342 actual spends and six-block
+CSV maturity, reorg and redirection counterexamples. The 16 offline controls
+passed, but consensus tests remain pending. No production delay is selected.
