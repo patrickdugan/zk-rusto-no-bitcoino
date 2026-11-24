@@ -56,7 +56,15 @@ fn arithmetic<E:Engine>(field:PastaField,mul:bool){
     inp[512]^=1;assert!(!c.check(&c.evaluate(&inp)));
     // all-one 256-bit operand is larger than either Pasta modulus
     inp[..256].fill(1);assert!(!c.check(&c.evaluate(&inp)));
-    let mut stats=c.stats();stats["kind"]=(if mul{"pasta_mul"}else{"pasta_add"}).into();
+    // Exact source-level count for expanded gates at the pinned fork revision.
+    let pop:usize=field.modulus_le().iter().map(|x|x.count_ones() as usize).sum();
+    let canonical=768+pop;let add=2816+pop;let dbl=1536+pop;let select=1792;
+    let admit=3*canonical+2;
+    let static_count=if mul{admit+dbl+add+select+127*(2*dbl+select+add)+768+1}
+        else{admit+add+768+1};
+    assert_eq!(c.rows.len(),static_count,"source-level count disagrees with expanded graph");
+    let mut stats=c.stats();stats["static_source_gate_count"]=static_count.into();
+    stats["kind"]=(if mul{"pasta_mul"}else{"pasta_add"}).into();
     stats["field"]=format!("{field:?}").into();stats["native_arithmetic_verified"]=true.into();
     stats["negative_controls"]=2.into();stats["elapsed_seconds"]=t.elapsed().as_secs_f64().into();
     println!("{stats}");
