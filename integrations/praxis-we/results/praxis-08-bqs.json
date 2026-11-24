@@ -1,0 +1,16 @@
+{
+  "scope": "BQS non-native Fp multiplication primitive in Fr; full Groth16 verifier absent",
+  "field_moduli": {
+    "p": "21888242871839275222246405745257275088696311157297823662689037894645226208583",
+    "q": "21888242871839275222246405745257275088548364400416034343698204186575808495617"
+  },
+  "radix": "65536",
+  "max_integer_residual": "1236963229727",
+  "canonical_residual_bound": "196610",
+  "valid_products": 105,
+  "negative_controls": 635,
+  "boolean_unknowns": 2883,
+  "equations": 96,
+  "linear_equations": 64,
+  "max_products_per_equation": 16
+}

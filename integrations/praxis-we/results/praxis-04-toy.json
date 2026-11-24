@@ -1,0 +1,95 @@
+{
+  "q": 17,
+  "n": 4,
+  "c0": 3,
+  "omega": 13,
+  "cosets": [
+    [
+      1,
+      13,
+      16,
+      4
+    ],
+    [
+      3,
+      5,
+      14,
+      12
+    ]
+  ],
+  "P0": [
+    0,
+    2,
+    6,
+    7,
+    8
+  ],
+  "rho": 8,
+  "fixtures": {
+    "true_multi": {
+      "witnesses": [
+        [
+          1,
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          0,
+          0,
+          1
+        ]
+      ],
+      "projective_rank1_checked": 5220,
+      "passing_rank1_lines": 2,
+      "qap_row_rank": 5,
+      "qap_equivalence_all_symmetric": true
+    },
+    "false_free": {
+      "witnesses": [],
+      "projective_rank1_checked": 5220,
+      "passing_rank1_lines": 0,
+      "qap_row_rank": 4,
+      "qap_equivalence_all_symmetric": true
+    }
+  },
+  "cheats": {
+    "rank2": {
+      "passes": true,
+      "tied": false,
+      "gp": {
+        "max": 9,
+        "total": 81
+      }
+    },
+    "rank3": {
+      "passes": true,
+      "tied": false,
+      "gp": {
+        "max": 3,
+        "total": 81
+      }
+    },
+    "degenerate_kernel_rank2": {
+      "passes": true,
+      "tied": true,
+      "gp": {
+        "max": 9,
+        "total": 81
+      },
+      "kernel_vector": [
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  },
+  "injective_false": {
+    "passing_tied_dimension": 7,
+    "projective_null_vectors_checked": 5220,
+    "nonzero_low_rank_nullspaces": 0
+  },
+  "scope": "Toy exact arithmetic; independent sampler only; no MSIS hardness, ciphertext, extraction theorem, or security claim."
+}

@@ -1,0 +1,95 @@
+name: praxis-we-preflight
+on:
+  pull_request:
+    paths:
+      - 'integrations/praxis-we/**'
+      - 'integrations/groth16-gym/**'
+      - '.github/workflows/praxis-we.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  artifact-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Unit and malformed artifact tests
+        run: cargo test --release --manifest-path integrations/praxis-we/Cargo.toml
+      - name: Independent arithmetic kernels
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/praxis-kernels
+          { rustc -Vv; uname -a; lscpu; } > /tmp/praxis-kernels/host.txt
+          cargo run --release --manifest-path integrations/praxis-we/Cargo.toml --bin rank2_kernels -- 1000000 | tee /tmp/praxis-kernels/kernels.jsonl
+      - name: Centered target-group search reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          for m in 128 1024 4096; do
+            for distance in -123456 123456; do
+              /usr/bin/time -v cargo run --release --manifest-path integrations/praxis-we/Cargo.toml --bin centered_search -- "$m" "$distance" >> /tmp/praxis-kernels/centered-search.jsonl 2>> /tmp/praxis-kernels/centered-search-resources.txt
+            done
+          done
+      - name: PRAXIS-05 exact Enc and Dec reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/praxis-we/praxis_full_reference.js > /tmp/praxis-kernels/praxis-05-reference.json
+          diff -u integrations/praxis-we/results/praxis-05-reference.json /tmp/praxis-kernels/praxis-05-reference.json
+          node integrations/praxis-we/praxis_full_reference.js --fixtures > /tmp/praxis-kernels/praxis-05-bn254.txt
+          diff -u integrations/praxis-we/results/praxis-05-bn254.txt /tmp/praxis-kernels/praxis-05-bn254.txt
+      - name: PRAXIS-06 real group differential
+        shell: bash
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v cargo run --release --manifest-path integrations/praxis-we/Cargo.toml --bin bn254_replay > /tmp/praxis-kernels/bn254-replay.jsonl 2> /tmp/praxis-kernels/bn254-replay-resources.txt
+      - name: PRAXIS-07 packed recurrence and search
+        shell: bash
+        run: |
+          set -euo pipefail
+          for m in 4096 65536 262144; do
+            /usr/bin/time -v cargo run --release --manifest-path integrations/praxis-we/Cargo.toml --bin packed_search -- "$m" >> /tmp/praxis-kernels/packed-search.jsonl 2>> /tmp/praxis-kernels/packed-search-resources.txt
+          done
+      - name: PRAXIS-08 canonical non-native BQS arithmetic
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/praxis-we/bqs_nonnative.js > /tmp/praxis-kernels/praxis-08-bqs.json
+          diff -u integrations/praxis-we/results/praxis-08-bqs.json /tmp/praxis-kernels/praxis-08-bqs.json
+      - name: PRAXIS-09 concrete cost sensitivity
+        run: python3 integrations/praxis-we/full_size_budget.py | tee /tmp/praxis-kernels/full-size-budget.json
+      - name: PRAXIS-10 canonical settlement context
+        run: python3 integrations/praxis-we/settlement_context.py | tee /tmp/praxis-kernels/settlement-context.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: praxis-02-kernels
+          path: /tmp/praxis-kernels/
+      - name: PRAXIS-04 exact QAP and tie regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node integrations/praxis-we/rank_gap_ties.js > /tmp/praxis-04.json
+          diff -u integrations/praxis-we/results/praxis-04-toy.json /tmp/praxis-04.json
+      - name: Budget sensitivity
+        run: python3 integrations/praxis-we/budget.py
+      - name: Export real gym fixture (known toxic waste, benchmark only)
+        run: cargo run --release --manifest-path integrations/groth16-gym/Cargo.toml -- spv --out /tmp/praxis-fixture
+      - name: Verify exact exported statement and reject altered pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=/tmp/praxis-fixture
+          vk=$(sha256sum "$dir/vk.bin" | cut -d' ' -f1)
+          inputs=$(sha256sum "$dir/public_inputs.bin" | cut -d' ' -f1)
+          manifest=integrations/praxis-we/Cargo.toml
+          cargo run --release --manifest-path "$manifest" -- "$dir" "$vk" "$inputs"
+          if cargo run --release --manifest-path "$manifest" -- "$dir" "$(printf '%064d' 0)" "$inputs"; then
+            echo 'Wrong VK pin accepted'; exit 1
+          fi
+          printf '\x00' >> "$dir/proof.bin"
+          if cargo run --release --manifest-path "$manifest" -- "$dir" "$vk" "$inputs"; then
+            echo 'Trailing byte accepted'; exit 1
+          fi
