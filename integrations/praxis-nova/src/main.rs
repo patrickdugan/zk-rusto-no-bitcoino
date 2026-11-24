@@ -12,6 +12,13 @@ type PP=PublicParams<E1,E2,SettlementStep>;
 type RS=RecursiveSNARK<E1,E2,SettlementStep>;
 type CS=CompressedSNARK<E1,E2,SettlementStep,S1,S2>;
 fn main(){
+    let args:Vec<String>=std::env::args().collect();
+    if args.get(1).map(String::as_str)==Some("--verify"){
+        assert_eq!(args.len(),5,"--verify DIR EXPECTED_PNS1_SHA256 EXPECTED_VK_SHA256");
+        let pin=|s:&str| -> [u8;32] {hex::decode(s).expect("pin hex").try_into().expect("32-byte pin")};
+        let z=praxis_nova_settlement::nova_verify::verify_dir(std::path::Path::new(&args[2]),pin(&args[3]),pin(&args[4])).unwrap();
+        println!("native_nova_verified=true final_state_arity={}",z.len());return;
+    }
     let path=PathBuf::from(std::env::args().nth(1).expect("usage: praxis-nova-settlement OUTPUT_DIR"));
     fs::create_dir_all(&path).unwrap();
     let (z0,claims,expected,change)=fixture();let steps=claims.len();
@@ -33,11 +40,21 @@ fn main(){
     let b=praxis_nova_settlement::boundary::Boundary{z0,expected_payout:expected,expected_change:change,expected_next_index:claims.last().unwrap().index+1,vk_sha256:Sha256::digest(&k).into()};
     assert!(b.accepts_verified_state(&zn,steps));
     let stable=b.journal().unwrap();fs::write(path.join("pns1-stable-statement.bin"),&stable).unwrap();
+    // Fixture pins derived locally solely for reproducibility, never for production authorization.
+    use praxis_nova_settlement::nova_verify::{verify,digest};
+    let jp=digest(&stable);let kp=digest(&k);
+    assert_eq!(verify(&stable,&k,&p,jp,kp).unwrap(),zn);
+    let mut bad=stable.clone();bad[360]^=1;
+    assert!(verify(&bad,&k,&p,jp,kp).is_err());
+    assert!(verify(&bad,&k,&p,digest(&bad),kp).is_err());
+    assert!(verify(&stable,&k,&p,jp,[1;32]).is_err());
+    let mut tail=p.clone();tail.push(0);
+    assert!(verify(&stable,&k,&tail,jp,kp).is_err());
     let mut journal=b"PNV1".to_vec();journal.extend_from_slice(&(steps as u32).to_le_bytes());
     journal.extend_from_slice(&state_bytes(&z0));journal.extend_from_slice(&state_bytes(&zn));
     journal.extend_from_slice(&Sha256::digest(&k));journal.extend_from_slice(&Sha256::digest(&p));
-    // Journal is generated AFTER native verification, not a guest-attested SP1 journal.
+    // Journal is generated AFTER native verification, only a diagnostic receipt.
     for (name,data) in [("proof.bin",p.as_slice()),("vk.bin",k.as_slice()),("z0.bin",&state_bytes(&z0)),("zn.bin",&state_bytes(&zn)),("native-journal.bin",journal.as_slice())]{fs::write(path.join(name),data).unwrap();}
-    let report=serde_json::json!({"scope":"test fixture; no SP1 or Praxis settlement authorization","steps":steps,"state_arity":z0.len(),"step_constraints":constraints,"public_params_seconds":pp_s,"fold_seconds":fold_s,"compressed_setup_seconds":setup_s,"compress_seconds":compress_s,"verify_seconds":verify_s,"proof_bytes":p.len(),"vk_bytes":k.len(),"pp_digest_le":hex::encode(f_to_le(&pp.digest())),"vk_sha256":hex::encode(Sha256::digest(&k)),"journal_sha256":hex::encode(Sha256::digest(&journal)),"pns1_sha256":hex::encode(Sha256::digest(&stable)),"native_and_compressed_agree":true,"wrong_start_and_step_count_rejected":true});
+    let report=serde_json::json!({"scope":"Nova-only test fixture; no Praxis settlement authorization","steps":steps,"state_arity":z0.len(),"step_constraints":constraints,"public_params_seconds":pp_s,"fold_seconds":fold_s,"compressed_setup_seconds":setup_s,"compress_seconds":compress_s,"verify_seconds":verify_s,"proof_bytes":p.len(),"vk_bytes":k.len(),"pp_digest_le":hex::encode(f_to_le(&pp.digest())),"vk_sha256":hex::encode(Sha256::digest(&k)),"journal_sha256":hex::encode(Sha256::digest(&journal)),"pns1_sha256":hex::encode(Sha256::digest(&stable)),"pinned_native_oracle_controls":4,"native_and_compressed_agree":true,"wrong_start_and_step_count_rejected":true});
     fs::write(path.join("receipt.json"),serde_json::to_vec_pretty(&report).unwrap()).unwrap();println!("{report}");
 }
