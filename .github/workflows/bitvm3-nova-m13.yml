@@ -78,10 +78,14 @@ jobs:
       - name: Shrink the control proof, wrap it unedited and with the M16 statement written in, verify both
         run: |
           set -o pipefail
-          if cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/m13/wrap/Cargo.toml --lib -- --ignored --nocapture 2>&1 | tee integrations/bitvm3-nova/m13/ci/replaced-public-values.txt; then
-            echo "::notice title=m13 replaced public values::the STARK accepts the edited wrap proof and verify_final refuses it"
+          out=integrations/bitvm3-nova/m13/ci/replaced-public-values.txt
+          # Job logs need a sign-in; annotations do not. The notice carries the harness's own
+          # result line, and the step fails unless exactly the one proving test ran and passed.
+          if cargo +1.90.0 test --release --locked --manifest-path integrations/bitvm3-nova/m13/wrap/Cargo.toml --lib -- --ignored --nocapture 2>&1 | tee "$out" \
+            && result=$(grep -E '^test result: ok\. 1 passed; 0 failed' "$out"); then
+            echo "::notice title=m13 replaced public values::a_wrap_proof_with_replaced_public_values_passes_the_stark_and_is_refused: $result"
           else
-            echo "::error title=m13 replaced public values::$(grep -E 'panicked|error(\[|:)|FAILED|assertion' integrations/bitvm3-nova/m13/ci/replaced-public-values.txt | head -5 | tr '\n' ' ' | cut -c1-900)"
+            echo "::error title=m13 replaced public values::$(grep -E 'panicked|error(\[|:)|FAILED|assertion|^test result' "$out" | head -5 | tr '\n' ' ' | cut -c1-900)"
             exit 1
           fi
       - uses: actions/upload-artifact@v4
