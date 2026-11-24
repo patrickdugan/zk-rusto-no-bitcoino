@@ -22,7 +22,7 @@ impl Boundary{
         check_final(&self.z0,zn,self.expected_payout,self.expected_change,steps)&&
         zn[8]==fu(self.expected_next_index)
     }
-    /// Stable 432-byte journal. No proof bytes, proof hash, random nonce or
+    /// Stable 440-byte journal. No proof bytes, proof hash, random nonce or
     /// independently supplied proof-derived digest.
     pub fn journal(&self)->Result<Vec<u8>,&'static str>{
         let count=self.count().ok_or("count")?;
