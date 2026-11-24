@@ -49,6 +49,15 @@ impl RuntimeCollector {
         )
     }
 
+    pub(crate) fn hyperstack() -> Self {
+        Self::collect(
+            "rbzk-hyperstack",
+            json!({"provider":"Hyperstack","authenticated":false,"status":"connecting","running_count":0,"total_count":0,"instances":[],"buckets":[]}),
+            60,
+            crate::runpod::probe_hyperstack,
+        )
+    }
+
     fn collect(
         name: &str,
         initial: Value,
@@ -85,7 +94,8 @@ impl RuntimeCollector {
             .as_f64()
             .filter(|t| *t <= unix_now_f64() + 2.0)
             .map(|t| (unix_now_f64() - t).max(0.0));
-        let fresh = value["reachable"] == true && age.is_some_and(|a| a <= 15.0);
+        let max_age = if value["provider"].is_string() { 25.0 } else { 15.0 };
+        let fresh = value["reachable"] == true && age.is_some_and(|a| a <= max_age);
         value["age_seconds"] = json!(age);
         value["fresh"] = json!(fresh);
         if !fresh {

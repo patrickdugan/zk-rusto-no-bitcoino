@@ -38,6 +38,7 @@ pub struct ProverUIApp {
     ark_dir: Option<PathBuf>,
     runtime: crate::runtime::RuntimeCollector,
     runpod: crate::runtime::RuntimeCollector,
+    hyperstack_live: crate::runtime::RuntimeCollector,
     hyperstack_snapshot: Option<PathBuf>,
     hyperstack_ark_state: Option<PathBuf>,
     hyperstack_ark_seed: Option<PathBuf>,
@@ -61,6 +62,7 @@ impl ProverUIApp {
             ark_dir,
             runtime: crate::runtime::RuntimeCollector::new(),
             runpod: crate::runtime::RuntimeCollector::runpod(),
+            hyperstack_live: crate::runtime::RuntimeCollector::hyperstack(),
             hyperstack_snapshot: std::env::var_os("RBZK_HYPERSTACK_BENCHMARK_JSON")
                 .map(PathBuf::from),
             hyperstack_ark_state: std::env::var_os("RBZK_HYPERSTACK_ARK_STATE_JSON").map(PathBuf::from),
@@ -138,6 +140,7 @@ impl ProverUIApp {
         }
         live["runtime"] = runtime;
         live["cloud_runpod"] = self.runpod.snapshot();
+        live["cloud_hyperstack_vms"] = self.hyperstack_live.snapshot();
         live["cloud_hyperstack_ark"] = self
             .hyperstack_ark_state
             .as_deref()
@@ -390,6 +393,7 @@ fn read_hyperstack_snapshot(path: &Path) -> Option<Value> {
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod hyperstack_tests {
     use super::*;
 

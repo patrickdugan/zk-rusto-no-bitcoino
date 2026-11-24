@@ -12,6 +12,7 @@ use crate::telemetry::unix_now_f64;
 
 const RUNPOD_ENDPOINT: &str = "https://api.runpod.io/graphql";
 const PRIME_ENDPOINT: &str = "https://api.primeintellect.ai/api/v1/pods/";
+const HYPERSTACK_API_BASE: &str = "https://infrahub-api.nexgencloud.com/v1";
 const PODS_QUERY: &str = "query DesktopPodTelemetry { myself { pods {
     id name desiredStatus machine { gpuDisplayName }
     runtime { uptimeInSeconds gpus { gpuUtilPercent memoryUtilPercent }
@@ -312,6 +313,369 @@ pub(crate) fn probe() -> Value {
     state("credentials_required", false)
 }
 
+fn read_key_file(path: &std::path::Path) -> Option<String> {
+    let mut content = String::new();
+    fs::File::open(path)
+        .ok()?
+        .take(1025)
+        .read_to_string(&mut content)
+        .ok()?;
+    if content.len() > 1024 {
+        return None;
+    }
+    let first = content
+        .trim_start_matches('\u{feff}')
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())?;
+    validate_key(first)
+}
+
+#[cfg(windows)]
+fn desktop_directory() -> Option<PathBuf> {
+    use std::os::windows::ffi::OsStringExt;
+    #[link(name = "shell32")]
+    extern "system" {
+        fn SHGetFolderPathW(
+            hwnd: *mut core::ffi::c_void,
+            csidl: i32,
+            token: *mut core::ffi::c_void,
+            flags: u32,
+            path: *mut u16,
+        ) -> i32;
+    }
+    const CSIDL_DESKTOPDIRECTORY: i32 = 0x0010;
+    let mut buf = [0u16; 260];
+    let hr = unsafe {
+        SHGetFolderPathW(
+            core::ptr::null_mut(),
+            CSIDL_DESKTOPDIRECTORY,
+            core::ptr::null_mut(),
+            0,
+            buf.as_mut_ptr(),
+        )
+    };
+    if hr != 0 {
+        return None;
+    }
+    let len = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+    (len > 0).then(|| PathBuf::from(std::ffi::OsString::from_wide(&buf[..len])))
+}
+
+#[cfg(not(windows))]
+fn desktop_directory() -> Option<PathBuf> {
+    home_directory().map(|home| home.join("Desktop"))
+}
+
+fn hyperstack_credential() -> Option<String> {
+    if let Ok(key) = env::var("HYPERSTACK_API_KEY") {
+        if let Some(valid) = validate_key(&key) {
+            return Some(valid);
+        }
+    }
+    if let Some(explicit) = env::var_os("RBZK_HYPERSTACK_API_KEY_FILE") {
+        if let Some(valid) = read_key_file(&PathBuf::from(explicit)) {
+            return Some(valid);
+        }
+    }
+    let mut candidates = Vec::new();
+    if let Some(home) = home_directory() {
+        candidates.push(home.join(".hyperstack").join("api-key"));
+        candidates.push(home.join("Desktop").join("hyper.txt.txt"));
+        candidates.push(home.join("Desktop").join("hyper.txt"));
+    }
+    if let Some(desktop) = desktop_directory() {
+        candidates.push(desktop.join("hyper.txt.txt"));
+        candidates.push(desktop.join("hyper.txt"));
+    }
+    for candidate in candidates {
+        if let Some(valid) = read_key_file(&candidate) {
+            return Some(valid);
+        }
+    }
+    None
+}
+
+fn hyperstack_request(key: &str, path: &str) -> Option<(u16, Value)> {
+    let endpoint = format!("{HYPERSTACK_API_BASE}/{path}");
+    let mut command = Command::new(if cfg!(windows) { "curl.exe" } else { "curl" });
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    command
+        .env_remove("HYPERSTACK_API_KEY")
+        .env_remove("RUNPOD_API_KEY")
+        .env_remove("PRIME_API_KEY")
+        .args([
+            "--disable",
+            "--silent",
+            "--proto",
+            "=https",
+            "--connect-timeout",
+            "4",
+            "--max-time",
+            "8",
+            "--max-filesize",
+            "524288",
+            "--header",
+            "@-",
+            "--header",
+            "Accept: application/json",
+            "--write-out",
+            "\n%{http_code}",
+            &endpoint,
+        ]);
+    let mut child = command
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+    let header = child
+        .stdin
+        .take()?
+        .write_all(format!("api_key: {key}\n").as_bytes());
+    let output = child.wait_with_output().ok()?;
+    if header.is_err() || !output.status.success() || output.stdout.len() as u64 > 524_292 {
+        return None;
+    }
+    let (body, code) = std::str::from_utf8(&output.stdout)
+        .ok()?
+        .rsplit_once('\n')?;
+    let status: u16 = code.parse().ok()?;
+    let payload = if status == 200 {
+        serde_json::from_str(body).ok()?
+    } else {
+        Value::Null
+    };
+    Some((status, payload))
+}
+
+fn latest_metric_value(metrics_doc: &Value, key: &str) -> Option<f64> {
+    let series = metrics_doc.get(key)?;
+    let rows = series.get("data")?.as_array()?;
+    for row in rows.iter().rev() {
+        if let Some(arr) = row.as_array() {
+            if let Some(val) = arr.last().and_then(Value::as_f64).filter(|v| v.is_finite()) {
+                return Some(val);
+            }
+        } else if let Some(val) = row.as_f64().filter(|v| v.is_finite()) {
+            return Some(val);
+        }
+    }
+    None
+}
+
+fn parse_hyperstack_metrics(metrics_doc: &Value) -> Value {
+    let mut out = serde_json::Map::new();
+    if let Some(cpu) = latest_metric_value(metrics_doc, "cpu") {
+        out.insert("cpu_percent".into(), json!(cpu));
+    }
+    if let Some(mem) = latest_metric_value(metrics_doc, "memory.usages") {
+        let unit = metrics_doc["memory.usages"]["unit"]
+            .as_str()
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        let mem_gib = if unit.contains("gib") || unit == "gb" {
+            mem
+        } else if unit.contains("mib") || unit == "mb" {
+            mem / 1024.0
+        } else if unit.contains("kib") || unit == "kb" {
+            mem / (1024.0 * 1024.0)
+        } else if mem > 10_000_000.0 {
+            mem / 1_073_741_824.0
+        } else if mem > 2048.0 {
+            mem / 1024.0
+        } else {
+            mem
+        };
+        out.insert("memory_used_gib".into(), json!((mem_gib * 100.0).round() / 100.0));
+    }
+    if let Some(dr) = latest_metric_value(metrics_doc, "disk.read") {
+        out.insert("disk_read".into(), json!(dr));
+    }
+    if let Some(dw) = latest_metric_value(metrics_doc, "disk.write") {
+        out.insert("disk_write".into(), json!(dw));
+    }
+    Value::Object(out)
+}
+
+fn scrub_hyperstack_vm(vm: &Value, metrics: Option<Value>) -> Option<Value> {
+    let id = vm["id"].as_u64().filter(|id| *id > 0)?;
+    let name = vm["name"].as_str()?.trim();
+    if name.is_empty() {
+        return None;
+    }
+    let flavor = &vm["flavor"];
+    let env_obj = &vm["environment"];
+    let flavor_name = flavor["name"].as_str().unwrap_or("");
+    let gpu = flavor["gpu"]
+        .as_str()
+        .filter(|s| !s.trim().is_empty() && !s.eq_ignore_ascii_case("none"))
+        .map(str::to_owned);
+    let gpu_count = flavor["gpu_count"].as_u64().unwrap_or(0);
+    let spot = flavor["features"]["spot"].as_bool().unwrap_or_else(|| {
+        flavor_name.to_ascii_lowercase().contains("spot")
+    });
+    let status = vm["status"].as_str().unwrap_or("UNKNOWN");
+    let power_state = vm["power_state"].as_str();
+    let vm_state = vm["vm_state"].as_str();
+    let active = matches!(
+        status.to_ascii_uppercase().as_str(),
+        "ACTIVE" | "RUNNING" | "BUILD" | "CREATING" | "PROVISIONING" | "REBOOTING" | "STARTING"
+    );
+
+    Some(json!({
+        "id": id,
+        "name": name,
+        "status": status,
+        "active": active,
+        "power_state": power_state,
+        "vm_state": vm_state,
+        "flavor": flavor_name,
+        "gpu": gpu,
+        "gpu_count": gpu_count,
+        "cpu": flavor["cpu"].as_u64(),
+        "ram_gib": flavor["ram"].as_f64(),
+        "disk_gb": flavor["disk"].as_u64(),
+        "region": env_obj["region"].as_str(),
+        "environment": env_obj["name"].as_str(),
+        "image": vm["image"]["name"].as_str(),
+        "spot": spot,
+        "created_at": vm["created_at"].as_str(),
+        "labels": vm["labels"].as_array().map(|arr| {
+            arr.iter()
+                .filter_map(Value::as_str)
+                .take(12)
+                .collect::<Vec<_>>()
+        }).unwrap_or_default(),
+        "metrics": metrics.unwrap_or_else(|| json!({})),
+    }))
+}
+
+fn hyperstack_inventory_snapshot(
+    vms_doc: &Value,
+    buckets_doc: Option<&Value>,
+    metrics_by_id: &std::collections::HashMap<u64, Value>,
+) -> Value {
+    let instances: Vec<Value> = vms_doc["instances"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|vm| {
+            let id = vm["id"].as_u64()?;
+            scrub_hyperstack_vm(vm, metrics_by_id.get(&id).cloned())
+        })
+        .collect();
+
+    let buckets: Vec<Value> = buckets_doc
+        .and_then(|doc| doc["buckets"].as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|b| {
+            let name = b["name"].as_str()?;
+            Some(json!({
+                "name": name,
+                "region": b["region"].as_str(),
+                "num_objects": b["num_objects"].as_u64(),
+                "size_bytes": b["size_bytes"].as_u64(),
+                "created_at": b["created_at"].as_str(),
+            }))
+        })
+        .collect();
+
+    let running_count = instances.iter().filter(|vm| vm["active"] == true).count();
+    let status = if running_count > 0 {
+        "active"
+    } else if !instances.is_empty() {
+        "stopped"
+    } else {
+        "no_running_vm"
+    };
+
+    json!({
+        "provider": "Hyperstack",
+        "authenticated": true,
+        "reachable": true,
+        "status": status,
+        "sampled_at_unix": unix_now_f64(),
+        "running_count": running_count,
+        "total_count": instances.len(),
+        "instances": instances,
+        "buckets": buckets,
+    })
+}
+
+pub(crate) fn probe_hyperstack() -> Value {
+    let Some(key) = hyperstack_credential() else {
+        return json!({
+            "provider": "Hyperstack",
+            "authenticated": false,
+            "reachable": false,
+            "status": "credentials_required",
+            "sampled_at_unix": unix_now_f64(),
+            "running_count": 0,
+            "total_count": 0,
+            "instances": [],
+            "buckets": [],
+        });
+    };
+
+    let vms_doc = match hyperstack_request(&key, "core/virtual-machines?page=1&pageSize=50") {
+        Some((200, doc)) => doc,
+        Some((401 | 403, _)) => {
+            return json!({
+                "provider": "Hyperstack",
+                "authenticated": false,
+                "reachable": false,
+                "status": "unauthorized",
+                "sampled_at_unix": unix_now_f64(),
+                "running_count": 0,
+                "total_count": 0,
+                "instances": [],
+                "buckets": [],
+            });
+        }
+        _ => {
+            return json!({
+                "provider": "Hyperstack",
+                "authenticated": true,
+                "reachable": false,
+                "status": "unavailable",
+                "sampled_at_unix": unix_now_f64(),
+                "running_count": 0,
+                "total_count": 0,
+                "instances": [],
+                "buckets": [],
+            });
+        }
+    };
+
+    let mut metrics_by_id = std::collections::HashMap::new();
+    if let Some(arr) = vms_doc["instances"].as_array() {
+        for vm in arr
+            .iter()
+            .filter(|v| v["status"].as_str() == Some("ACTIVE"))
+            .take(4)
+        {
+            if let Some(id) = vm["id"].as_u64() {
+                if let Some((200, mdoc)) =
+                    hyperstack_request(&key, &format!("core/virtual-machines/{id}/metrics"))
+                {
+                    metrics_by_id.insert(id, parse_hyperstack_metrics(&mdoc));
+                }
+            }
+        }
+    }
+
+    let buckets_doc = hyperstack_request(&key, "object-storage/buckets")
+        .and_then(|(code, doc)| (code == 200).then_some(doc));
+
+    hyperstack_inventory_snapshot(&vms_doc, buckets_doc.as_ref(), &metrics_by_id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -379,5 +743,50 @@ mod tests {
             prime_snapshot(&json!({"data":[running],"total_count":2}), false)["status"],
             "multiple_pods"
         );
+    }
+
+    #[test]
+    fn hyperstack_inventory_discovers_named_nodes_and_redacts_network_secrets() {
+        let vms = json!({
+            "instances": [
+                {
+                    "id": 1180123,
+                    "name": "cashu-shinigami-a100-live",
+                    "status": "ACTIVE",
+                    "power_state": "Running",
+                    "vm_state": "active",
+                    "floating_ip": "198.51.100.42",
+                    "keypair": {"public_key": "ssh-ed25519 AAAA..."},
+                    "flavor": {"name": "n3-A100x1-spot", "gpu": "A100-80G-PCIe", "gpu_count": 1, "cpu": 28, "ram": 118.0, "disk": 200},
+                    "environment": {"name": "default-CANADA-1", "region": "CANADA-1"},
+                    "image": {"name": "Ubuntu 24.04 CUDA 12.8"},
+                    "created_at": "2026-11-23T22:20:00",
+                    "labels": ["cashu", "prover"]
+                }
+            ]
+        });
+        let buckets = json!({
+            "buckets": [
+                {"name": "ark-mnr04-a100-a6e283d956", "region": "CANADA-1", "num_objects": 3855, "size_bytes": 17578195145u64}
+            ]
+        });
+        let mut metrics = std::collections::HashMap::new();
+        metrics.insert(
+            1180123,
+            parse_hyperstack_metrics(&json!({
+                "cpu": {"unit": "%", "data": [[1700000000, 64.5]]},
+                "memory.usages": {"unit": "MiB", "data": [[1700000000, 16384.0]]}
+            })),
+        );
+        let snap = hyperstack_inventory_snapshot(&vms, Some(&buckets), &metrics);
+        assert_eq!(snap["status"], "active");
+        assert_eq!(snap["running_count"], 1);
+        assert_eq!(snap["instances"][0]["name"], "cashu-shinigami-a100-live");
+        assert_eq!(snap["instances"][0]["spot"], true);
+        assert_eq!(snap["instances"][0]["metrics"]["cpu_percent"], 64.5);
+        assert_eq!(snap["instances"][0]["metrics"]["memory_used_gib"], 16.0);
+        assert_eq!(snap["buckets"][0]["num_objects"], 3855);
+        assert!(!snap.to_string().contains("198.51.100.42"));
+        assert!(!snap.to_string().contains("ssh-ed25519"));
     }
 }

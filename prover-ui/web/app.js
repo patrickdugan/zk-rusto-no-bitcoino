@@ -610,6 +610,31 @@ if(typeof document!=='undefined') (() => {
     };
   }
 
+  function parseUtcSeconds(isoStr) {
+    if (typeof isoStr !== 'string' || !isoStr.trim()) return null;
+    const norm = /(?:Z|[+-]\d\d:\d\d)$/i.test(isoStr.trim()) ? isoStr.trim() : `${isoStr.trim()}Z`;
+    const ms = Date.parse(norm);
+    return Number.isFinite(ms) ? ms / 1000 : null;
+  }
+
+  function hyperstackLiveSignal() {
+    const raw = state.live?.cloud_hyperstack_vms;
+    const received = state.polling && Date.now() - state.lastReceived < 15000;
+    const fresh = received && raw?.fresh === true;
+    const authenticated = raw?.authenticated === true;
+    const instances = Array.isArray(raw?.instances) ? raw.instances : [];
+    const activeInstances = instances.filter(vm => vm?.active === true);
+    const buckets = Array.isArray(raw?.buckets) ? raw.buckets : [];
+    const totalBucketBytes = buckets.reduce((acc, b) => acc + (Number(b?.size_bytes) || 0), 0);
+    const totalBucketObjects = buckets.reduce((acc, b) => acc + (Number(b?.num_objects) || 0), 0);
+    return {
+      raw, fresh, authenticated, instances, activeInstances, buckets,
+      totalBucketBytes, totalBucketObjects,
+      sampledAt: raw?.sampled_at_unix,
+      status: raw?.status || 'connecting',
+    };
+  }
+
   // --- Event-Driven Completion Burst Choreography (Toasts, Stage Bus Pulse, Canvas Shockwave) ---
   function emitCheckpointVisual(ev, tileIdxOverride = null, isReplayPreview = false) {
     const isReduce = ev.kind === 'reduce';
@@ -763,6 +788,18 @@ if(typeof document!=='undefined') (() => {
       frac = Math.min(0.96, curS / 40);
       ringArc.setAttribute('stroke', 'var(--crimson)');
       orbitSpeed = 680;
+    } else if (hyperstackLiveSignal().activeInstances.length > 0) {
+      isLiveWorker = true;
+      const hs = hyperstackLiveSignal();
+      const selVm = hs.activeInstances.find(v => `hyperstack-vm:${v.id}` === state.selected) || hs.activeInstances[0];
+      const created = parseUtcSeconds(selVm.created_at);
+      const up = created !== null ? Math.max(0, nowSec - created) : 0;
+      timerVal.textContent = created !== null ? formatCompactAge(up) : String(selVm.status || 'LIVE');
+      if (timerSub) timerSub.textContent = selVm.gpu ? 'CLOUD GPU' : 'CLOUD NODE';
+      const cpuPct = Number(selVm.metrics?.cpu_percent);
+      frac = Number.isFinite(cpuPct) ? Math.min(0.98, Math.max(0.12, cpuPct / 100)) : 0.45;
+      ringArc.setAttribute('stroke', 'var(--crimson)');
+      orbitSpeed = 760;
     } else {
       const saved = wsl.progress?.unique_shards;
       timerVal.textContent = Number.isSafeInteger(saved) ? n(saved) : 'IDLE';
@@ -1430,12 +1467,70 @@ if(typeof document!=='undefined') (() => {
 
     const pilot = hyperstackSignal();
     const arkCloud = arkCloudSignal();
+    const hsLive = hyperstackLiveSignal();
     $('compute-source-state').textContent = arkCloud?.active
       ? `ACTIVE DISPLAY SOURCE · HYPERSTACK A100 SPOT VM #${arkCloud.sample.vm_id}`
+      : hsLive.activeInstances.length
+      ? `ACTIVE DISPLAY SOURCE · HYPERSTACK · ${hsLive.activeInstances[0].name.toUpperCase()}`
       : pilot?.active ? 'ACTIVE DISPLAY SOURCE · HYPERSTACK · CPU PROVING'
       : signal.active ? `ACTIVE DISPLAY SOURCE · ${signal.provider.toUpperCase()} · ${signal.gpuName || 'GPU'}`
       : 'ACTIVE DISPLAY SOURCE · LOCAL GPU';
     renderHyperstack(pilot);
+    renderHyperstackLive(hsLive);
+  }
+
+  function renderHyperstackLive(hs) {
+    const statusEl = $('hyperstack-live-status');
+    const summaryEl = $('hyperstack-live-summary');
+    const metricsEl = $('hyperstack-live-metrics');
+    const listEl = $('hyperstack-live-list');
+    const sampleEl = $('hyperstack-live-sample');
+    if (!statusEl || !summaryEl) return;
+
+    const statusLabels = {
+      connecting: 'CONNECTING',
+      credentials_required: 'NO API KEY FOUND',
+      unauthorized: 'KEY REJECTED',
+      unavailable: 'API UNREACHABLE',
+      active: `${hs.activeInstances.length} ACTIVE VM${hs.activeInstances.length === 1 ? '' : 'S'}`,
+      stopped: `${hs.instances.length} STOPPED VM${hs.instances.length === 1 ? '' : 'S'}`,
+      no_running_vm: 'CONNECTED · 0 ACTIVE VMS',
+    };
+    statusEl.textContent = !state.polling ? 'PAUSED' : (statusLabels[hs.status] || String(hs.status || 'UNKNOWN').toUpperCase());
+    summaryEl.textContent = hs.activeInstances.length
+      ? hs.activeInstances.map(v => v.name).join(' · ')
+      : hs.authenticated
+      ? '0 active VMs on Hyperstack API'
+      : 'Hyperstack API key not configured';
+
+    metricsEl.innerHTML = kv('Active VMs', hs.authenticated ? n(hs.activeInstances.length) : 'Unavailable')
+      + kv('Total VMs', hs.authenticated ? n(hs.instances.length) : 'Unavailable')
+      + kv('S3 Buckets', hs.authenticated ? n(hs.buckets.length) : 'Unavailable')
+      + kv('Bucket Storage', hs.buckets.length ? `${n(hs.totalBucketBytes / 1e9, 2)} GB (${n(hs.totalBucketObjects)} objs)` : '0 GB');
+
+    const vmMarkup = hs.instances.map(vm => {
+      const m = vm.metrics || {};
+      const hw = [vm.gpu ? `${vm.gpu_count || 1}× ${vm.gpu}` : null, vm.cpu ? `${vm.cpu} vCPU` : null, vm.ram_gib ? `${n(vm.ram_gib, 0)} GiB RAM` : null, vm.disk_gb ? `${vm.disk_gb} GB disk` : null].filter(Boolean).join(' · ');
+      const liveM = [
+        Number.isFinite(m.cpu_percent) ? `CPU ${n(m.cpu_percent, 1)}%` : null,
+        Number.isFinite(m.memory_used_gib) ? `RAM ${n(m.memory_used_gib, 1)} GiB` : null,
+      ].filter(Boolean).join(' · ');
+      return `<div class="observed-job" style="padding:8px 0">
+        <div class="panel-head" style="margin-bottom:4px">
+          <strong class="mono">${esc(vm.name)} <span style="color:var(--ink-dim)">#${esc(vm.id)}</span></strong>
+          <span class="status-pill ${vm.active ? 'live' : ''}">${esc(vm.status)}</span>
+        </div>
+        <p class="panel-sub">${esc(vm.flavor || '--')} · ${esc(vm.region || '--')} · ${esc(hw || '--')}</p>
+        ${liveM ? `<p class="panel-sub" style="color:var(--ink)">Live metrics: ${esc(liveM)}</p>` : ''}
+      </div>`;
+    }).join('');
+
+    const bucketMarkup = hs.buckets.map(b =>
+      `<div class="panel-sub mono" style="padding:4px 0;border-top:1px solid var(--line)">BUCKET: <strong>${esc(b.name)}</strong> · ${esc(b.region || '--')} · ${n((b.size_bytes || 0) / 1e9, 2)} GB · ${n(b.num_objects)} objs</div>`
+    ).join('');
+
+    listEl.innerHTML = (vmMarkup || (hs.authenticated ? '<p class="panel-sub">No virtual machines currently returned by Hyperstack <code>/v1/core/virtual-machines</code>.</p>' : '')) + bucketMarkup;
+    sampleEl.textContent = hs.sampledAt ? `Hyperstack API · polled ${clockTime(hs.sampledAt)}` : 'Read-only API · Virtual Machines & Object Storage';
   }
 
   function renderArkCloud(arkCloud) {
@@ -1525,7 +1620,38 @@ if(typeof document!=='undefined') (() => {
         audit: {present: false, valid: false},
       });
     }
-    return observed.map(j => freshRuntime() || (j.id === 'ark-sp1:campaign' && arkCloud?.fresh)
+    const hsLive = hyperstackLiveSignal();
+    for (const vm of hsLive.instances) {
+      if (arkCloud?.active && arkCloud.sample.vm_id === vm.id) continue;
+      const hw = [vm.gpu ? `${vm.gpu_count || 1}× ${vm.gpu}` : `${vm.cpu || '?'} vCPU`, vm.flavor].filter(Boolean).join(' · ');
+      const m = vm.metrics || {};
+      const mText = [
+        Number.isFinite(m.cpu_percent) ? `CPU ${n(m.cpu_percent, 1)}%` : null,
+        Number.isFinite(m.memory_used_gib) ? `RAM ${n(m.memory_used_gib, 1)}/${n(vm.ram_gib, 0)} GiB` : (vm.ram_gib ? `${n(vm.ram_gib, 0)} GiB RAM` : null),
+        vm.region || null,
+      ].filter(Boolean).join(' · ');
+      observed.push({
+        id: `hyperstack-vm:${vm.id}`,
+        title: vm.name,
+        network: `HYPERSTACK · ${String(vm.region || 'CLOUD').toUpperCase()}`,
+        backend: hw || 'Hyperstack VM',
+        running: !!vm.active,
+        status: vm.active ? 'running' : String(vm.status || 'stopped').toLowerCase(),
+        process: null,
+        phase: `${vm.status || 'ACTIVE'} · ${mText || vm.flavor || 'Cloud node'}`,
+        unit: `Hyperstack VM #${vm.id} (${vm.environment || vm.region || 'cloud'})`,
+        log_tail: [
+          `VM ID: ${vm.id} · Name: ${vm.name}`,
+          `Status: ${vm.status} (power=${vm.power_state || '--'}, state=${vm.vm_state || '--'})`,
+          `Flavor: ${vm.flavor || '--'} · Spot: ${vm.spot ? 'yes' : 'no'} · Image: ${vm.image || '--'}`,
+          `Hardware: ${vm.gpu ? `${vm.gpu_count || 1}× ${vm.gpu}, ` : ''}${vm.cpu || '--'} vCPU, ${vm.ram_gib || '--'} GiB RAM, ${vm.disk_gb || '--'} GB disk`,
+          `Created: ${vm.created_at || '--'} · Region: ${vm.region || '--'}`,
+        ],
+        audit: {present: false, valid: false},
+        hyperstackVm: vm,
+      });
+    }
+    return observed.map(j => freshRuntime() || (j.id === 'ark-sp1:campaign' && arkCloud?.fresh) || (j.hyperstackVm && hsLive.fresh)
       ? j : {...j, running: false, status: state.polling ? 'stale / unknown' : 'display paused'});
   }
 
@@ -1603,10 +1729,30 @@ if(typeof document!=='undefined') (() => {
 
   function renderOngoingJobs(local, ark, shinigami) {
     const localFresh = freshRuntime();
-    const localOnly = local.filter(j => !(j.id === 'ark-sp1:campaign' && ark?.sample?.active && !j.process));
+    const localOnly = local.filter(j => !j.hyperstackVm && !(j.id === 'ark-sp1:campaign' && ark?.sample?.active && !j.process));
     const rows = ProofEta.ongoingJobs({
       local: localOnly, ark, shinigami, localFresh, localSample: state.live?.runtime?.sampled_at_unix, paused: !state.polling,
     });
+    const hsLive = hyperstackLiveSignal();
+    for (const vm of hsLive.instances) {
+      if (ark?.active && ark.sample.vm_id === vm.id) continue;
+      if (!vm.active) continue;
+      const m = vm.metrics || {};
+      const metrics = [];
+      if (Number.isFinite(m.cpu_percent)) metrics.push(['CPU %', Math.round(m.cpu_percent)]);
+      if (Number.isFinite(m.memory_used_gib)) metrics.push(['RAM GiB', Math.round(m.memory_used_gib)]);
+      if (Number.isSafeInteger(vm.cpu)) metrics.push(['vCPUs', vm.cpu]);
+      if (Number.isFinite(vm.ram_gib)) metrics.push(['Total GiB', Math.round(vm.ram_gib)]);
+      rows.unshift({
+        id: `hyperstack-vm:${vm.id}`,
+        title: vm.name,
+        where: `Hyperstack · ${vm.flavor || (vm.gpu || 'VM')} · ${vm.region || 'Cloud'}`,
+        phase: `VM #${vm.id} · ${vm.status}${vm.spot ? ' (Spot)' : ''} · ${vm.image || 'Linux'}`,
+        status: !state.polling ? 'Paused' : !hsLive.fresh ? 'Stale' : String(vm.status).toUpperCase() === 'ACTIVE' ? 'Running' : 'Preparing',
+        heardAt: hsLive.sampledAt,
+        metrics,
+      });
+    }
     const running = rows.filter(j => j.status === 'Running').length;
     const waiting = rows.filter(j => ['Preparing', 'Waiting for resources', 'Collecting results'].includes(j.status)).length;
     const stale = rows.filter(j => j.status === 'Stale').length;
@@ -1718,6 +1864,22 @@ if(typeof document!=='undefined') (() => {
       if ($('cockpit-bar1-left')) $('cockpit-bar1-left').textContent = 'Local Checkpoint Cache';
       if ($('cockpit-bar1-right')) $('cockpit-bar1-right').textContent = `${n(savedCore)} core · ${n(progress.unique_reduces)} rec`;
       if ($('cockpit-bar1-fill')) $('cockpit-bar1-fill').style.width = '100%';
+    } else if (hyperstackLiveSignal().activeInstances.length > 0) {
+      const hs = hyperstackLiveSignal();
+      const vm = hs.activeInstances.find(v => `hyperstack-vm:${v.id}` === state.selected) || hs.activeInstances[0];
+      const m = vm.metrics || {};
+      const created = parseUtcSeconds(vm.created_at);
+      const upStr = created !== null ? formatDuration(Math.max(0, Date.now() / 1000 - created)) : '--:--:--';
+      if ($('cockpit-stage-tag')) $('cockpit-stage-tag').textContent = `HYPERSTACK VM #${vm.id} · ${String(vm.status || 'ACTIVE').toUpperCase()}`;
+      if ($('cockpit-headline')) $('cockpit-headline').textContent = `${String(vm.name).toUpperCase()} · ${vm.flavor || 'CLOUD NODE'}`;
+      if ($('cockpit-detail')) $('cockpit-detail').textContent = `${vm.region || 'Hyperstack'} · ${vm.gpu ? `${vm.gpu_count || 1}× ${vm.gpu} · ` : ''}${vm.cpu || '--'} vCPU · ${n(vm.ram_gib, 0)} GiB RAM · ${vm.disk_gb || '--'} GB disk · Uptime ${upStr}`;
+      if ($('cockpit-bar1-left')) $('cockpit-bar1-left').textContent = 'Hyperstack VM CPU Utilization (Live /metrics)';
+      if ($('cockpit-bar1-right')) $('cockpit-bar1-right').textContent = Number.isFinite(m.cpu_percent) ? `${n(m.cpu_percent, 1)}% CPU` : 'Awaiting metrics sample';
+      if ($('cockpit-bar1-fill')) $('cockpit-bar1-fill').style.width = Number.isFinite(m.cpu_percent) ? `${Math.min(100, Math.max(2, m.cpu_percent)).toFixed(1)}%` : '20%';
+      if ($('cockpit-bar2-left')) $('cockpit-bar2-left').textContent = 'Hyperstack VM Memory Usage';
+      const ramPct = Number.isFinite(m.memory_used_gib) && Number.isFinite(vm.ram_gib) && vm.ram_gib > 0 ? Math.min(100, (m.memory_used_gib / vm.ram_gib) * 100) : 0;
+      if ($('cockpit-bar2-right')) $('cockpit-bar2-right').textContent = Number.isFinite(m.memory_used_gib) ? `${n(m.memory_used_gib, 2)} / ${n(vm.ram_gib, 0)} GiB (${ramPct.toFixed(0)}%)` : `${n(vm.ram_gib, 0)} GiB allocated`;
+      if ($('cockpit-bar2-fill')) $('cockpit-bar2-fill').style.width = `${Math.max(2, ramPct).toFixed(1)}%`;
     } else {
       if ($('cockpit-stage-tag')) $('cockpit-stage-tag').textContent = 'IDLE · CACHE PRESERVED';
       if ($('cockpit-headline')) $('cockpit-headline').textContent = 'NO ACTIVE PROVER · RESUMABLE CACHE READY';
@@ -1739,6 +1901,8 @@ if(typeof document!=='undefined') (() => {
     const wsl = live.wsl_prover || {};
     const prog = wsl.progress || {};
     const archive = ProofEta.arkArchive(arkCloud?.sample);
+    const hsLive = hyperstackLiveSignal();
+    const primaryHsVm = hsLive.activeInstances.find(v => `hyperstack-vm:${v.id}` === state.selected) || hsLive.activeInstances[0] || null;
 
     // 1. Top Ribbon Col 1: Active GPU / Cloud
     if (arkCloud?.active) {
@@ -1750,6 +1914,16 @@ if(typeof document!=='undefined') (() => {
       $('rib-gpu-bar').style.width = `${Math.max(8, vPct).toFixed(1)}%`;
       $('rib-gpu-sub-l').textContent = arkCloud.phase;
       $('rib-gpu-sub-r').textContent = `Rpt ${clockTime(s.sampled_at_unix)}`;
+    } else if (primaryHsVm) {
+      const m = primaryHsVm.metrics || {};
+      $('rib-gpu-label').textContent = `HYPERSTACK · ${primaryHsVm.name.toUpperCase()}`;
+      $('rib-gpu-val').textContent = primaryHsVm.gpu ? primaryHsVm.gpu : `${primaryHsVm.cpu || '--'} vCPU`;
+      $('rib-gpu-unit').textContent = `VM #${primaryHsVm.id} · ${primaryHsVm.region || ''}`;
+      $('rib-gpu-badge').textContent = String(primaryHsVm.status || 'ACTIVE').toUpperCase();
+      $('rib-gpu-badge').className = 'eta-badge cyan';
+      $('rib-gpu-bar').style.width = Number.isFinite(m.cpu_percent) ? `${Math.min(100, Math.max(8, m.cpu_percent)).toFixed(1)}%` : '35%';
+      $('rib-gpu-sub-l').textContent = `${primaryHsVm.flavor || 'Hyperstack VM'}${Number.isFinite(m.cpu_percent) ? ` · CPU ${n(m.cpu_percent, 1)}%` : ''}`;
+      $('rib-gpu-sub-r').textContent = `API ${clockTime(hsLive.sampledAt)}`;
     } else if (pilot?.active) {
       $('rib-gpu-label').textContent = 'HYPERSTACK · CPU PILOT';
       $('rib-gpu-val').textContent = pilot.hardware;
@@ -1796,17 +1970,21 @@ if(typeof document!=='undefined') (() => {
     }
 
     // 3. Top Ribbon Col 3: Workers & Private Bucket
-    const cloudRunning = (arkCloud?.active && arkCloud.sample.ark_running ? 1 : 0) + (pilot?.active ? 1 : 0);
-    const localRunning = freshRuntime() ? all.filter(j => j.running && j.id !== 'ark-sp1:campaign').length + (live.runtime?.ark_processes || []).length : 0;
+    const hsExtra = hsLive.activeInstances.filter(v => !(arkCloud?.active && arkCloud.sample.vm_id === v.id)).length;
+    const cloudRunning = (arkCloud?.active && arkCloud.sample.ark_running ? 1 : 0) + (pilot?.active ? 1 : 0) + hsExtra;
+    const localRunning = freshRuntime() ? all.filter(j => j.running && !j.hyperstackVm && j.id !== 'ark-sp1:campaign').length + (live.runtime?.ark_processes || []).length : 0;
     const totalRunning = workerSummary?.running ?? (cloudRunning + localRunning);
+    const s3Bytes = archive.storage ? archive.storage.bucket_bytes : hsLive.totalBucketBytes;
+    const s3Objs = archive.storage ? archive.storage.objects : hsLive.totalBucketObjects;
+    const hasS3 = s3Bytes > 0 || s3Objs > 0;
     $('rib-workers-val').textContent = `${cloudRunning} Cloud · ${localRunning} Loc`;
-    $('rib-workers-unit').textContent = archive.storage ? `${n(archive.storage.bucket_bytes / 1e9, 2)} GB S3` : 'No bucket';
+    $('rib-workers-unit').textContent = hasS3 ? `${n(s3Bytes / 1e9, 2)} GB S3` : 'No bucket';
     $('rib-workers-badge').textContent = `${totalRunning} RUNNING`;
     $('rib-workers-badge').className = `eta-badge ${totalRunning > 0 ? 'cyan' : 'violet'}`;
     $('rib-workers-bar').style.width = totalRunning > 0 ? '100%' : '12%';
     $('rib-workers-bar').className = `meter-fill ${totalRunning > 0 ? 'cyan' : 'violet'}`;
-    $('rib-workers-sub-l').textContent = archive.storage ? `${n(archive.storage.objects)} bucket objects` : 'Private storage idle';
-    $('rib-workers-sub-r').textContent = archive.storage ? `Obs ${clockTime(archive.storage.sampled_at_unix)}` : 'Local runtime';
+    $('rib-workers-sub-l').textContent = hasS3 ? `${n(s3Objs)} bucket objects` : (hsLive.authenticated ? 'Hyperstack API live' : 'Private storage idle');
+    $('rib-workers-sub-r').textContent = archive.storage ? `Obs ${clockTime(archive.storage.sampled_at_unix)}` : (hsLive.sampledAt ? `API ${clockTime(hsLive.sampledAt)}` : 'Local runtime');
 
     // 4. Top Ribbon Col 4: SP1 Shard Stream
     if (arkCloud?.active) {
@@ -1876,6 +2054,44 @@ if(typeof document!=='undefined') (() => {
       $('kpi-5-badge').textContent = 'NOV 27 23:59Z';
       $('kpi-5-badge').className = 'eta-badge amber';
       $('kpi-5-foot').textContent = $('overview-eta')?.textContent || 'Set scenario target below';
+    } else if (selected?.hyperstackVm) {
+      const vm = selected.hyperstackVm;
+      const m = vm.metrics || {};
+      const created = parseUtcSeconds(vm.created_at);
+      const upStr = created !== null ? formatDuration(Math.max(0, Date.now() / 1000 - created)) : '--:--:--';
+      $('kpi-1-label').textContent = 'HYPERSTACK NODE';
+      $('kpi-1-val').textContent = `VM #${vm.id}`;
+      $('kpi-1-badge').textContent = String(vm.status || 'ACTIVE').toUpperCase();
+      $('kpi-1-badge').className = `eta-badge ${vm.active ? 'cyan' : 'emerald'}`;
+      $('kpi-1-foot').textContent = `${vm.flavor || 'Cloud'} · ${vm.spot ? 'Spot' : 'On-Demand'}`;
+
+      $('kpi-2-label').textContent = vm.gpu ? 'GPU & VCPU' : 'COMPUTE VCPUS';
+      $('kpi-2-val').textContent = vm.gpu ? `${vm.gpu_count || 1}× ${vm.gpu}` : `${vm.cpu || '--'} vCPU`;
+      $('kpi-2-badge').textContent = Number.isFinite(m.cpu_percent) ? `CPU ${n(m.cpu_percent, 1)}%` : `${vm.cpu || '--'} CORES`;
+      $('kpi-2-badge').className = 'eta-badge cyan';
+      $('kpi-2-bar').style.width = Number.isFinite(m.cpu_percent) ? `${Math.min(100, m.cpu_percent).toFixed(1)}%` : '20%';
+      $('kpi-2-foot').textContent = `${vm.cpu || '--'} vCPU · ${vm.flavor || '--'}`;
+
+      const ramPct = Number.isFinite(m.memory_used_gib) && Number.isFinite(vm.ram_gib) && vm.ram_gib > 0 ? Math.min(100, (m.memory_used_gib / vm.ram_gib) * 100) : 0;
+      $('kpi-3-label').textContent = 'VM MEMORY';
+      $('kpi-3-val').textContent = Number.isFinite(m.memory_used_gib) ? `${n(m.memory_used_gib, 1)} / ${n(vm.ram_gib, 0)}G` : `${n(vm.ram_gib, 0)} GiB`;
+      $('kpi-3-badge').textContent = Number.isFinite(m.memory_used_gib) ? `${ramPct.toFixed(0)}% RAM` : 'ALLOCATED';
+      $('kpi-3-badge').className = 'eta-badge violet';
+      $('kpi-3-bar').style.width = `${Math.max(4, ramPct).toFixed(1)}%`;
+      $('kpi-3-foot').textContent = 'Hyperstack live /metrics';
+
+      $('kpi-4-label').textContent = 'REGION & DISK';
+      $('kpi-4-val').textContent = String(vm.region || 'CLOUD').toUpperCase();
+      $('kpi-4-badge').textContent = vm.disk_gb ? `${vm.disk_gb} GB` : 'DISK';
+      $('kpi-4-badge').className = 'eta-badge emerald';
+      $('kpi-4-bar').style.width = '100%';
+      $('kpi-4-foot').textContent = vm.environment || vm.image || 'Hyperstack';
+
+      $('kpi-5-label').textContent = 'VM UPTIME';
+      $('kpi-5-val').textContent = upStr;
+      $('kpi-5-badge').textContent = 'LIVE API';
+      $('kpi-5-badge').className = 'eta-badge amber';
+      $('kpi-5-foot').textContent = `Polled ${clockTime(hsLive.sampledAt)}`;
     } else {
       $('kpi-1-label').textContent = 'LOCAL PROCESS';
       $('kpi-1-val').textContent = selected.process ? `PID ${selected.process.pid}` : 'Inactive';
@@ -1944,9 +2160,12 @@ if(typeof document!=='undefined') (() => {
     $('campaign-eta-pill').className = `status-pill ${statusClass(selected?.status)}`;
     $('campaign-badge').textContent = selected?.checksPassed ? 'OFF-CHAIN CHECKS PASSED'
       : selected?.audit?.valid ? 'RECORDED AUDIT · HASH MATCHES'
+      : selected?.hyperstackVm ? `HYPERSTACK VM #${selected.hyperstackVm.id} · ${String(selected.hyperstackVm.status || 'LIVE').toUpperCase()}`
       : arkCloud?.active ? `A100 SPOT VM #${arkCloud.sample.vm_id} · LIVE`
       : 'OBSERVED CAMPAIGN · UNVERIFIED';
-    $('campaign-hw').textContent = selected?.id === 'ark-sp1:campaign' && arkCloud?.active
+    $('campaign-hw').textContent = selected?.hyperstackVm
+      ? `Hyperstack ${selected.hyperstackVm.flavor || 'Cloud'} · ${selected.hyperstackVm.gpu ? `${selected.hyperstackVm.gpu_count || 1}× ${selected.hyperstackVm.gpu}` : `${selected.hyperstackVm.cpu || '--'} vCPU`} · ${n(selected.hyperstackVm.ram_gib, 0)} GiB RAM · ${selected.hyperstackVm.region || ''}`
+      : selected?.id === 'ark-sp1:campaign' && arkCloud?.active
       ? `Hyperstack ${arkCloud.sample.spot ? 'A100 Spot' : 'A100 On-Demand'} · ${n(arkCloud.sample.vram_used_mib)} MiB VRAM · $${Number(arkCloud.sample.rate_usd_per_hour || 0).toFixed(2)}/hr`
       : selected?.running && selected.process
       ? `Local PID ${selected.process.pid} · ${selected.backend}`
