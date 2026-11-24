@@ -225,6 +225,12 @@ fn main(){
     }
     let kernel=nova_kernel();
     let costs=[cost(3,520),cost(1<<20,1<<20),cost(1<<33,1<<33)];
+    let expected:Value=serde_json::from_str(include_str!("../results/costs.json")).unwrap();
+    for (a,b) in costs.iter().zip(expected["local_relation_scenarios"].as_array().unwrap()){
+        for key in ["scenario_rows","scenario_slots","row_depth","page_depth","hash_permutations","witness_bytes","boolean_unknowns","bqs_equations_excluding_implicit_bitness","gate_rows","max_products_per_equation"]{
+            assert_eq!(a[key],b[key],"static/source count mismatch for {key}");
+        }
+    }
     println!("{}",json!({"fixture_results":reports,"native_kernel":kernel,"costs":costs,
         "scope":"Boolean committed trace, exact local relation shape; large sizes are illustrative, not full Nova estimates"}));
 }
