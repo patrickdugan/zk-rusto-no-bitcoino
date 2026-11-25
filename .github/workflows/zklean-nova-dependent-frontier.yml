@@ -1,0 +1,57 @@
+name: zkLean Nova dependent frontier
+on:
+  push:
+    branches:
+      - research/zkl-nova-14-20261125
+    paths:
+      - 'integrations/zklean-nova/**'
+      - '.github/workflows/zklean-nova-dependent-frontier.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zklean-dependent-frontier-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  dependent-frontier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      NODE_OPTIONS: '--max-old-space-size=4096'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce frontier conformance and compare baseline endpoints
+        run: |
+          mkdir -p /tmp/dependent-frontier-proof
+          node integrations/zklean-nova/dependent_frontier.cjs > /tmp/dependent-frontier-proof/sample.json
+          diff -u integrations/zklean-nova/dependent_frontier_sample.json /tmp/dependent-frontier-proof/sample.json
+          node -e 'const fs=require("fs"),assert=require("assert");const a=JSON.parse(fs.readFileSync("integrations/zklean-nova/dependent_shared_sample.json"));const b=JSON.parse(fs.readFileSync("/tmp/dependent-frontier-proof/sample.json"));assert.deepStrictEqual(a.cases.map(x=>[x.name,x.initial,x.terminal]),b.cases.map(x=>[x.name,x.initial.slice(0,4),x.terminal.slice(0,4)]));'
+      - name: Generate and check all 957 assignments
+        run: |
+          /usr/bin/time -v -o /tmp/dependent-frontier-proof/generation-time.txt node integrations/zklean-nova/dependent_frontier.cjs --full /tmp/dependent-frontier-fixture > /tmp/dependent-frontier-proof/full.json
+          sha256sum /tmp/dependent-frontier-fixture/matrix.json /tmp/dependent-frontier-fixture/*.bin > /tmp/dependent-frontier-proof/fixtures.sha256
+      - name: Compile pinned Nova and Spartan
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version > /tmp/dependent-frontier-proof/rustc.txt
+          cargo +1.90.0 generate-lockfile --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml
+          cargo +1.90.0 tree --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml > /tmp/dependent-frontier-proof/dependencies.txt
+          cargo +1.90.0 build --release --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml --bin dependent_frontier
+      - name: Fold and compress all four frontier derivations
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o /tmp/dependent-frontier-proof/time.txt integrations/zklean-nova/nova-smoke/target/release/dependent_frontier /tmp/dependent-frontier-fixture /tmp/dependent-frontier-proof | tee /tmp/dependent-frontier-proof/receipt.json
+          sha256sum /tmp/dependent-frontier-proof/*.bin > /tmp/dependent-frontier-proof/payloads.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zklean-dependent-frontier-${{ github.sha }}
+          path: |
+            /tmp/dependent-frontier-proof/
+            integrations/zklean-nova/nova-smoke/Cargo.lock
