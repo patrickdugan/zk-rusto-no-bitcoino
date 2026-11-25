@@ -5,6 +5,7 @@ on:
       - 'integrations/zkl-nova-calibration/src/bin/typed_core/**'
       - 'integrations/zkl-nova-calibration/src/bin/indexed.rs'
       - 'integrations/zkl-nova-calibration/typing-fixtures.json'
+      - 'integrations/zkl-nova-calibration/typing_*.py'
       - 'integrations/zkl-nova-calibration/typing_examples.lean'
       - '.github/workflows/zkl-typed-pi.yml'
   push:
@@ -12,6 +13,7 @@ on:
     paths:
       - 'integrations/zkl-nova-calibration/src/bin/typed_core/**'
       - 'integrations/zkl-nova-calibration/typing-fixtures.json'
+      - 'integrations/zkl-nova-calibration/typing_*.py'
       - '.github/workflows/zkl-typed-pi.yml'
 permissions:
   contents: read
@@ -25,6 +27,17 @@ jobs:
       CARGO_PROFILE_RELEASE_DEBUG: '0'
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Regenerate frozen fixtures and native controls
+        run: |
+          set -euo pipefail
+          python integrations/zkl-nova-calibration/typing_reference.py --out "$RUNNER_TEMP/typing-fixtures.json"
+          cmp "$RUNNER_TEMP/typing-fixtures.json" integrations/zkl-nova-calibration/typing-fixtures.json
+          python integrations/zkl-nova-calibration/typing_audit.py
+          python integrations/zkl-nova-calibration/typing_lean.py "$RUNNER_TEMP/typing-fixtures.json" --out "$RUNNER_TEMP/typing_examples.lean"
+          cmp "$RUNNER_TEMP/typing_examples.lean" integrations/zkl-nova-calibration/typing_examples.lean
       - uses: dtolnay/rust-toolchain@stable
       - name: Build Nova with typed public compiler
         run: |
