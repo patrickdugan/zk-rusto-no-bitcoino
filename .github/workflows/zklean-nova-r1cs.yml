@@ -1,0 +1,26 @@
+name: zkLean Nova sparse R1CS conformance
+on:
+  pull_request:
+    paths:
+      - 'integrations/zklean-nova/**'
+      - 'integrations/bitvm2-nova/fixtures/nht4-genesis-0-2020-k5.poseidon.json'
+      - '.github/workflows/zklean-nova-r1cs.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zklean-r1cs-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  sparse-r1cs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check pinned parameter fixture and synthesize matrices
+        run: |
+          node integrations/zklean-nova/r1cs.cjs > /tmp/zklean-r1cs-receipt.json
+          diff -u integrations/zklean-nova/r1cs_results.json /tmp/zklean-r1cs-receipt.json
