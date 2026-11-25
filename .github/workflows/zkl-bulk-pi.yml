@@ -1,0 +1,78 @@
+name: ZKL bulk lift dependent Pi
+on:
+  pull_request:
+    paths:
+      - 'integrations/zkl-nova-calibration/src/bin/bulk.rs'
+      - 'integrations/zkl-nova-calibration/bulk*'
+      - '.github/workflows/zkl-bulk-pi.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'integrations/zkl-nova-calibration/src/bin/bulk.rs'
+      - 'integrations/zkl-nova-calibration/bulk*'
+      - '.github/workflows/zkl-bulk-pi.yml'
+permissions:
+  contents: read
+concurrency:
+  group: zkl-bulk-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  bulk-nova:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - depth: 6
+            fixture: bulk-fixtures.json
+            digest: 7b92eb7d07ea7981bf1376d5263db4d68276ec550271592ea715c53614b00d88
+          - depth: 9
+            fixture: bulk-stress.json
+            digest: 415433897e7776c40ee27ae7a273f4b725c247a2910be120d880dcefb1de451e
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+      DEPTH: ${{ matrix.depth }}
+      FIXTURE: ${{ matrix.fixture }}
+      FIXTURE_DIGEST: ${{ matrix.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reproduce equations, fixtures and native diagnostics
+        run: |
+          set -euo pipefail
+          cd integrations/zkl-nova-calibration
+          python unified_reference.py
+          python bulk_rule_spec.py
+          test "$(sha256sum bulk-rules.json | cut -d' ' -f1)" = 8f5e0ac6253cacd2aea23219068a1564b901839e25615c7691cbee97811408cd
+          git diff --exit-code -- bulk-rules.json
+          python bulk_reference.py
+          python bulk_audit.py
+          python bulk_boundaries.py
+          python bulk_scaling.py
+          python bulk_stress.py
+          test "$(sha256sum "$FIXTURE" | cut -d' ' -f1)" = "$FIXTURE_DIGEST"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build pinned Nova bulk circuit
+        run: |
+          cargo generate-lockfile --manifest-path integrations/zkl-nova-calibration/Cargo.toml
+          cargo build --locked --release --manifest-path integrations/zkl-nova-calibration/Cargo.toml --bin bulk
+      - name: Synthesize and verify the bulk profile
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v timeout 1000s integrations/zkl-nova-calibration/target/release/bulk "integrations/zkl-nova-calibration/$FIXTURE" --compress "$DEPTH" | tee zkl-bulk-results.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl-bulk-d${{ matrix.depth }}
+          path: |
+            zkl-bulk-results.jsonl
+            integrations/zkl-nova-calibration/bulk-rules.json
+            integrations/zkl-nova-calibration/bulk-fixtures.json
+            integrations/zkl-nova-calibration/bulk-stress.json
+            integrations/zkl-nova-calibration/bulk-scaling-results.json
+            integrations/zkl-nova-calibration/Cargo.lock
