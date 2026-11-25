@@ -1,0 +1,427 @@
+{
+  "scope": "Native relation and independent reference checks; no cryptographic proof is claimed.",
+  "coordinated_vj_matrix": {
+    "candidates": 2592,
+    "accepted": 36,
+    "rejected": 2556,
+    "recursor_heads": [
+      3,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "carrier_choices": 2,
+    "endpoint_choices": 3,
+    "base_choices": 2
+  },
+  "spine_and_scope_cases": [
+    {
+      "name": "non_application",
+      "accepted": false
+    },
+    {
+      "name": "missing_proof_argument",
+      "accepted": false
+    },
+    {
+      "name": "extra_J_argument",
+      "accepted": false
+    },
+    {
+      "name": "missing_refl_endpoint",
+      "accepted": false
+    },
+    {
+      "name": "extra_refl_argument",
+      "accepted": false
+    },
+    {
+      "name": "bare_refl_constant",
+      "accepted": false
+    },
+    {
+      "name": "neutral_proof",
+      "accepted": false
+    },
+    {
+      "name": "neutral_recursor",
+      "accepted": false
+    },
+    {
+      "name": "loose_bound_endpoint",
+      "accepted": false
+    },
+    {
+      "name": "loose_bound_base",
+      "accepted": false
+    },
+    {
+      "name": "loose_bound_motive",
+      "accepted": false
+    },
+    {
+      "name": "closed_bound_variable_in_motive",
+      "accepted": true
+    },
+    {
+      "name": "free_level_endpoint",
+      "accepted": true
+    },
+    {
+      "name": "beta_wrapper_around_proof",
+      "accepted": false
+    },
+    {
+      "name": "convertible_distinct_destination",
+      "accepted": false
+    },
+    {
+      "name": "wrong_constructor_0",
+      "accepted": false
+    },
+    {
+      "name": "wrong_constructor_1",
+      "accepted": false
+    },
+    {
+      "name": "wrong_constructor_2",
+      "accepted": false
+    },
+    {
+      "name": "wrong_constructor_3",
+      "accepted": false
+    },
+    {
+      "name": "wrong_constructor_4",
+      "accepted": false
+    },
+    {
+      "name": "wrong_constructor_5",
+      "accepted": false
+    },
+    {
+      "name": "wrong_constructor_6",
+      "accepted": false
+    },
+    {
+      "name": "wrong_constructor_8",
+      "accepted": false
+    },
+    {
+      "name": "wrong_constructor_9",
+      "accepted": false
+    },
+    {
+      "name": "wrong_constructor_10",
+      "accepted": false
+    }
+  ],
+  "distinct_row_id_rejections": [
+    "carrier",
+    "proof_endpoint",
+    "destination",
+    "reduct"
+  ],
+  "reference_rejections": [
+    {
+      "field": 1,
+      "kind": "self"
+    },
+    {
+      "field": 1,
+      "kind": "future"
+    },
+    {
+      "field": 1,
+      "kind": "context"
+    },
+    {
+      "field": 2,
+      "kind": "self"
+    },
+    {
+      "field": 2,
+      "kind": "future"
+    },
+    {
+      "field": 2,
+      "kind": "context"
+    }
+  ],
+  "nat_head_domain": [
+    {
+      "tag": "VZ",
+      "head": 0,
+      "accepted": false
+    },
+    {
+      "tag": "VN",
+      "head": 0,
+      "accepted": false
+    },
+    {
+      "tag": "VZ",
+      "head": 1,
+      "accepted": false
+    },
+    {
+      "tag": "VN",
+      "head": 1,
+      "accepted": false
+    },
+    {
+      "tag": "VZ",
+      "head": 2,
+      "accepted": false
+    },
+    {
+      "tag": "VN",
+      "head": 2,
+      "accepted": false
+    },
+    {
+      "tag": "VZ",
+      "head": 3,
+      "accepted": true
+    },
+    {
+      "tag": "VN",
+      "head": 3,
+      "accepted": true
+    },
+    {
+      "tag": "VZ",
+      "head": 4,
+      "accepted": true
+    },
+    {
+      "tag": "VN",
+      "head": 4,
+      "accepted": true
+    },
+    {
+      "tag": "VZ",
+      "head": 5,
+      "accepted": true
+    },
+    {
+      "tag": "VN",
+      "head": 5,
+      "accepted": true
+    },
+    {
+      "tag": "VZ",
+      "head": 6,
+      "accepted": false
+    },
+    {
+      "tag": "VN",
+      "head": 6,
+      "accepted": false
+    },
+    {
+      "tag": "VZ",
+      "head": 7,
+      "accepted": false
+    },
+    {
+      "tag": "VN",
+      "head": 7,
+      "accepted": false
+    },
+    {
+      "tag": "VZ",
+      "head": 8,
+      "accepted": false
+    },
+    {
+      "tag": "VN",
+      "head": 8,
+      "accepted": false
+    },
+    {
+      "tag": "VZ",
+      "head": 9,
+      "accepted": false
+    },
+    {
+      "tag": "VN",
+      "head": 9,
+      "accepted": false
+    },
+    {
+      "tag": "VZ",
+      "head": 10,
+      "accepted": false
+    },
+    {
+      "tag": "VN",
+      "head": 10,
+      "accepted": false
+    }
+  ],
+  "environment": {
+    "declaration_sorts": [
+      2,
+      1,
+      1,
+      0,
+      2,
+      3,
+      2,
+      0,
+      0,
+      2,
+      3
+    ],
+    "recursively_frozen": true,
+    "nat_prefix_unchanged": true,
+    "signature_matrix": {
+      "candidates": 55,
+      "accepted": 5,
+      "rejected": 50
+    }
+  },
+  "coordinated_typing_premise_rejections": [
+    "wrong_refl_endpoint",
+    "wrong_destination_proof",
+    "wrong_base_type",
+    "wrong_motive_arity",
+    "wrong_motive_universe",
+    "carrier_above_Sort1",
+    "wrong_source_type"
+  ],
+  "typed_sources": [
+    {
+      "name": "reflexivity",
+      "accepted": true,
+      "rows": 42,
+      "vj_rows": 0
+    },
+    {
+      "name": "function_carrier",
+      "accepted": true,
+      "rows": 61,
+      "vj_rows": 0
+    },
+    {
+      "name": "proposition_carrier",
+      "accepted": true,
+      "rows": 66,
+      "vj_rows": 0
+    },
+    {
+      "name": "neutral_transport",
+      "accepted": true,
+      "rows": 2942,
+      "vj_rows": 0
+    },
+    {
+      "name": "transport_requires_eliminator",
+      "accepted": false
+    },
+    {
+      "name": "refl_cannot_replace_neutral_path",
+      "accepted": false
+    },
+    {
+      "name": "proof_dependent_motive",
+      "accepted": true,
+      "rows": 918,
+      "vj_rows": 0
+    },
+    {
+      "name": "proof_dependent_base_cannot_be_reused",
+      "accepted": false
+    },
+    {
+      "name": "forced_J2_conversion",
+      "accepted": true,
+      "rows": 790,
+      "vj_rows": 1
+    },
+    {
+      "name": "forced_J2_after_beta_conversion",
+      "accepted": true,
+      "rows": 1050,
+      "vj_rows": 1
+    },
+    {
+      "name": "forced_J2_after_Nat_conversion",
+      "accepted": true,
+      "rows": 1607,
+      "vj_rows": 1,
+      "vz_rows": 4
+    },
+    {
+      "name": "forced_J1_conversion",
+      "accepted": true,
+      "rows": 842,
+      "vj_rows": 1
+    },
+    {
+      "name": "forced_J0_proof_index_conversion",
+      "accepted": true,
+      "rows": 1614,
+      "vj_rows": 1
+    },
+    {
+      "name": "distinct_proof_indices",
+      "accepted": false
+    },
+    {
+      "name": "wrong_endpoint_goal",
+      "accepted": false
+    },
+    {
+      "name": "unsupported_carrier_universe",
+      "accepted": false
+    }
+  ],
+  "previous_nat_certificates": [
+    {
+      "name": "polymorphic_identity",
+      "rows": 33
+    },
+    {
+      "name": "dependent_application",
+      "rows": 133
+    },
+    {
+      "name": "beta_conversion",
+      "rows": 88
+    },
+    {
+      "name": "impredicative_predicate_identity",
+      "rows": 113
+    },
+    {
+      "name": "nat_zero",
+      "rows": 4
+    },
+    {
+      "name": "nat_recursion",
+      "rows": 193
+    },
+    {
+      "name": "iota_zero_type",
+      "rows": 193
+    },
+    {
+      "name": "iota_succ_type",
+      "rows": 227
+    },
+    {
+      "name": "dependent_nat_elimination",
+      "rows": 538
+    },
+    {
+      "name": "prop_nat_elimination",
+      "rows": 525
+    }
+  ],
+  "previous_nat_rows": 2047,
+  "passed": true
+}

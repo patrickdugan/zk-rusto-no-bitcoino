@@ -1,0 +1,130 @@
+name: zkLean Nova equality and transport
+on:
+  push:
+    branches:
+      - research/zkl-nova-17-20261125
+    paths:
+      - 'integrations/zklean-nova/equality*.cjs'
+      - 'integrations/zklean-nova/equality_fixtures.json'
+      - 'integrations/zklean-nova/equality_results.json'
+      - 'integrations/zklean-nova/equality_adversarial_results.json'
+      - 'integrations/zklean-nova/equality_frontier_sample.json'
+      - 'integrations/zklean-nova/nat_inductive_fixtures.json'
+      - 'integrations/zklean-nova/nat_inductive_results.json'
+      - 'integrations/zklean-nova/nat_optimized_fixtures.json'
+      - 'integrations/bitvm2-nova/fixtures/nht4-genesis-0-2020-k5.poseidon.json'
+      - 'integrations/zklean-nova/EqualityTransport.lean'
+      - 'integrations/zklean-nova/nova-smoke/src/bin/equality_frontier.rs'
+      - 'integrations/zklean-nova/nova-smoke/Cargo.toml'
+      - 'integrations/zklean-nova/nova-smoke/Cargo.lock'
+      - '.github/workflows/zklean-nova-equality.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zklean-equality-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NODE_OPTIONS: '--max-old-space-size=4096'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce native proofs and independent adversarial cases
+        run: |
+          mkdir -p /tmp/equality-native
+          node integrations/zklean-nova/equality.cjs --fixtures > /tmp/equality-native/native.json
+          node -e 'const fs=require("fs"),assert=require("assert");const a=JSON.parse(fs.readFileSync("/tmp/equality-native/native.json"));assert.deepStrictEqual(a.fixtures,JSON.parse(fs.readFileSync("integrations/zklean-nova/equality_fixtures.json")));assert.deepStrictEqual(a.result,JSON.parse(fs.readFileSync("integrations/zklean-nova/equality_results.json")));'
+          node integrations/zklean-nova/equality_adversarial.cjs > /tmp/equality-native/adversarial.json
+          diff -u integrations/zklean-nova/equality_adversarial_results.json /tmp/equality-native/adversarial.json
+          node integrations/zklean-nova/equality_lean.cjs --check > /tmp/equality-native/lean-source.json
+      - name: Check all exported declarations with the pinned Lean kernel
+        run: |
+          curl --fail --location --retry 2 https://github.com/leanprover/lean4/releases/download/v4.24.0/lean-4.24.0-linux.tar.zst -o /tmp/lean.tar.zst
+          echo 'b14f5e5159219dd1a1956c3b806813319f5e94ccd5bdfd56f54520609a5bb5ec  /tmp/lean.tar.zst' | sha256sum --check
+          mkdir -p /tmp/lean
+          tar --zstd -xf /tmp/lean.tar.zst -C /tmp/lean --strip-components=1
+          /tmp/lean/bin/lean --version | tee /tmp/equality-native/lean-version.txt
+          set -o pipefail
+          /usr/bin/time -v -o /tmp/equality-native/lean-time.txt /tmp/lean/bin/lean integrations/zklean-nova/EqualityTransport.lean | tee /tmp/equality-native/lean.txt
+          node -e 'const fs=require("fs"),assert=require("assert");const s=fs.readFileSync("/tmp/equality-native/lean.txt","utf8");assert.strictEqual((s.match(/does not depend on any axioms/g)||[]).length,21);assert(!s.includes("sorryAx"));'
+      - name: Reproduce the authenticated sample across all thirty rules
+        run: |
+          /usr/bin/time -v -o /tmp/equality-native/sample-time.txt node integrations/zklean-nova/equality_frontier.cjs > /tmp/equality-native/sample.json
+          diff -u integrations/zklean-nova/equality_frontier_sample.json /tmp/equality-native/sample.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zklean-equality-native-${{ github.sha }}
+          path: /tmp/equality-native/
+  prove:
+    needs: conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      NODE_OPTIONS: '--max-old-space-size=4096'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate and check every assignment in this shard
+        run: |
+          mkdir -p /tmp/equality-proof
+          /usr/bin/time -v -o /tmp/equality-proof/generation-time.txt node integrations/zklean-nova/equality_frontier.cjs --full /tmp/equality-fixture --shard ${{ matrix.shard }}/4 > /tmp/equality-proof/full.json
+          sha256sum /tmp/equality-fixture/matrix.json /tmp/equality-fixture/*.bin > /tmp/equality-proof/fixtures.sha256
+          cp /tmp/equality-fixture/matrix.json /tmp/equality-proof/matrix.json
+      - name: Compile pinned Nova and Spartan
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version > /tmp/equality-proof/rustc.txt
+          cargo +1.90.0 tree --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml > /tmp/equality-proof/dependencies.txt
+          cargo +1.90.0 build --release --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml --bin equality_frontier
+          cp integrations/zklean-nova/nova-smoke/Cargo.lock /tmp/equality-proof/Cargo.lock
+      - name: Fold and compress each derivation with the shared circuit
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o /tmp/equality-proof/time.txt integrations/zklean-nova/nova-smoke/target/release/equality_frontier /tmp/equality-fixture /tmp/equality-proof --shard ${{ matrix.shard }}/4 | tee /tmp/equality-proof/receipt.json
+          sha256sum /tmp/equality-proof/*.bin > /tmp/equality-proof/payloads.sha256
+          node integrations/zklean-nova/equality_receipts.cjs seal /tmp/equality-fixture /tmp/equality-proof "$GITHUB_SHA" "$GITHUB_RUN_ID" ${{ matrix.shard }}/4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zklean-equality-shard${{ matrix.shard }}-${{ github.sha }}
+          path: /tmp/equality-proof/
+  aggregate:
+    env:
+      NODE_OPTIONS: '--max-old-space-size=4096'
+    needs: prove
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: zklean-equality-shard*-${{ github.sha }}
+          path: /tmp/equality-artifacts
+      - name: Verify full corpus coverage and identical matrices and verifier keys
+        run: |
+          set -o pipefail
+          node integrations/zklean-nova/equality_receipts.cjs combine /tmp/equality-artifacts "$GITHUB_SHA" "$GITHUB_RUN_ID" | tee /tmp/equality-hosted-receipt.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zklean-equality-receipt-${{ github.sha }}
+          path: /tmp/equality-hosted-receipt.json

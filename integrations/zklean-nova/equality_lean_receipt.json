@@ -1,0 +1,52 @@
+{
+  "toolchain": "Lean 4.24.0",
+  "compiler_version": "Lean (version 4.24.0, x86_64-unknown-linux-gnu, commit 797c613eb9b6d4ec95db23e3e00af9ac6657f24b, Release)",
+  "compiler_commit": "797c613eb9b6d4ec95db23e3e00af9ac6657f24b",
+  "release_url": "https://github.com/leanprover/lean4/releases/download/v4.24.0/lean-4.24.0-linux.tar.zst",
+  "release_archive_sha256": "b14f5e5159219dd1a1956c3b806813319f5e94ccd5bdfd56f54520609a5bb5ec",
+  "lean_source": "EqualityTransport.lean",
+  "lean_source_sha256": "322240c58926890d35069dbc909a42864da244ad6a2d8282c9547e3530b822a5",
+  "command": [
+    "lean",
+    "EqualityTransport.lean"
+  ],
+  "compiler_status": "passed",
+  "exit_code": 0,
+  "elapsed_seconds": 0.639,
+  "exported_declarations": 21,
+  "signature_checks": 11,
+  "no_axiom_reports": 21,
+  "no_axiom_declarations": [
+    "ZkLeanEquality.polymorphic_identity",
+    "ZkLeanEquality.dependent_application",
+    "ZkLeanEquality.beta_conversion",
+    "ZkLeanEquality.impredicative_predicate_identity",
+    "ZkLeanEquality.nat_zero",
+    "ZkLeanEquality.nat_recursion",
+    "ZkLeanEquality.iota_zero_type",
+    "ZkLeanEquality.iota_succ_type",
+    "ZkLeanEquality.dependent_nat_elimination",
+    "ZkLeanEquality.prop_nat_elimination",
+    "ZkLeanEquality.equality_reflexivity",
+    "ZkLeanEquality.equality_symmetry",
+    "ZkLeanEquality.equality_transitivity",
+    "ZkLeanEquality.propositional_transport",
+    "ZkLeanEquality.dependent_transport",
+    "ZkLeanEquality.equality_congruence",
+    "ZkLeanEquality.proof_dependent_elimination",
+    "ZkLeanEquality.equality_iota_type",
+    "ZkLeanEquality.equality_iota_value",
+    "ZkLeanEquality.equality_iota_proposition",
+    "ZkLeanEquality.equality_iota_proof_index"
+  ],
+  "compiler_stdout_warning_count": 17,
+  "compiler_stdout_warnings": {
+    "unused variable `x0`": 6,
+    "unused variable `x1`": 5,
+    "unused variable `x3`": 1,
+    "unused variable `x5`": 2,
+    "unused variable `x7`": 3
+  },
+  "compiler_stderr": "",
+  "scope": "Lean kernel checks of exported source declarations under Lean semantics."
+}

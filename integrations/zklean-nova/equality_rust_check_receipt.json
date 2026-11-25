@@ -1,0 +1,17 @@
+{
+  "toolchain": "Rust 1.90.0",
+  "version": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "command": [
+    "cargo",
+    "check",
+    "--bin",
+    "equality_frontier"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "elapsed_seconds": 51.634,
+  "source_sha256": "8d5d6f97bba53a7e309e2a6ed4d3188e8a5d176de5b9db3d8f5b722ff2a48ffb",
+  "source": "nova-smoke/src/bin/equality_frontier.rs",
+  "cargo_lock_sha256": "8c73f8e3ee7eef723e44027eef625ebad20d8025eb6aa3fe077148ac88577143",
+  "warnings": 0
+}

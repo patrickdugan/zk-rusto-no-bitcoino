@@ -1,0 +1,1539 @@
+{
+  "environment": [
+    [
+      "S",
+      1
+    ],
+    [
+      "C",
+      0
+    ],
+    [
+      "P",
+      [
+        "C",
+        0
+      ],
+      [
+        "C",
+        0
+      ]
+    ],
+    [
+      "P",
+      [
+        "P",
+        [
+          "C",
+          0
+        ],
+        [
+          "S",
+          0
+        ]
+      ],
+      [
+        "P",
+        [
+          "A",
+          [
+            "B",
+            0
+          ],
+          [
+            "C",
+            1
+          ]
+        ],
+        [
+          "P",
+          [
+            "P",
+            [
+              "C",
+              0
+            ],
+            [
+              "P",
+              [
+                "A",
+                [
+                  "B",
+                  2
+                ],
+                [
+                  "B",
+                  0
+                ]
+              ],
+              [
+                "A",
+                [
+                  "B",
+                  3
+                ],
+                [
+                  "A",
+                  [
+                    "C",
+                    2
+                  ],
+                  [
+                    "B",
+                    1
+                  ]
+                ]
+              ]
+            ]
+          ],
+          [
+            "P",
+            [
+              "C",
+              0
+            ],
+            [
+              "A",
+              [
+                "B",
+                3
+              ],
+              [
+                "B",
+                0
+              ]
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "P",
+      [
+        "P",
+        [
+          "C",
+          0
+        ],
+        [
+          "S",
+          1
+        ]
+      ],
+      [
+        "P",
+        [
+          "A",
+          [
+            "B",
+            0
+          ],
+          [
+            "C",
+            1
+          ]
+        ],
+        [
+          "P",
+          [
+            "P",
+            [
+              "C",
+              0
+            ],
+            [
+              "P",
+              [
+                "A",
+                [
+                  "B",
+                  2
+                ],
+                [
+                  "B",
+                  0
+                ]
+              ],
+              [
+                "A",
+                [
+                  "B",
+                  3
+                ],
+                [
+                  "A",
+                  [
+                    "C",
+                    2
+                  ],
+                  [
+                    "B",
+                    1
+                  ]
+                ]
+              ]
+            ]
+          ],
+          [
+            "P",
+            [
+              "C",
+              0
+            ],
+            [
+              "A",
+              [
+                "B",
+                3
+              ],
+              [
+                "B",
+                0
+              ]
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "P",
+      [
+        "P",
+        [
+          "C",
+          0
+        ],
+        [
+          "S",
+          2
+        ]
+      ],
+      [
+        "P",
+        [
+          "A",
+          [
+            "B",
+            0
+          ],
+          [
+            "C",
+            1
+          ]
+        ],
+        [
+          "P",
+          [
+            "P",
+            [
+              "C",
+              0
+            ],
+            [
+              "P",
+              [
+                "A",
+                [
+                  "B",
+                  2
+                ],
+                [
+                  "B",
+                  0
+                ]
+              ],
+              [
+                "A",
+                [
+                  "B",
+                  3
+                ],
+                [
+                  "A",
+                  [
+                    "C",
+                    2
+                  ],
+                  [
+                    "B",
+                    1
+                  ]
+                ]
+              ]
+            ]
+          ],
+          [
+            "P",
+            [
+              "C",
+              0
+            ],
+            [
+              "A",
+              [
+                "B",
+                3
+              ],
+              [
+                "B",
+                0
+              ]
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "P",
+      [
+        "S",
+        1
+      ],
+      [
+        "P",
+        [
+          "B",
+          0
+        ],
+        [
+          "P",
+          [
+            "B",
+            1
+          ],
+          [
+            "S",
+            0
+          ]
+        ]
+      ]
+    ],
+    [
+      "P",
+      [
+        "S",
+        1
+      ],
+      [
+        "P",
+        [
+          "B",
+          0
+        ],
+        [
+          "A",
+          [
+            "A",
+            [
+              "A",
+              [
+                "C",
+                6
+              ],
+              [
+                "B",
+                1
+              ]
+            ],
+            [
+              "B",
+              0
+            ]
+          ],
+          [
+            "B",
+            0
+          ]
+        ]
+      ]
+    ],
+    [
+      "P",
+      [
+        "S",
+        1
+      ],
+      [
+        "P",
+        [
+          "B",
+          0
+        ],
+        [
+          "P",
+          [
+            "P",
+            [
+              "B",
+              1
+            ],
+            [
+              "P",
+              [
+                "A",
+                [
+                  "A",
+                  [
+                    "A",
+                    [
+                      "C",
+                      6
+                    ],
+                    [
+                      "B",
+                      2
+                    ]
+                  ],
+                  [
+                    "B",
+                    1
+                  ]
+                ],
+                [
+                  "B",
+                  0
+                ]
+              ],
+              [
+                "S",
+                0
+              ]
+            ]
+          ],
+          [
+            "P",
+            [
+              "A",
+              [
+                "A",
+                [
+                  "B",
+                  0
+                ],
+                [
+                  "B",
+                  1
+                ]
+              ],
+              [
+                "A",
+                [
+                  "A",
+                  [
+                    "C",
+                    7
+                  ],
+                  [
+                    "B",
+                    2
+                  ]
+                ],
+                [
+                  "B",
+                  1
+                ]
+              ]
+            ],
+            [
+              "P",
+              [
+                "B",
+                3
+              ],
+              [
+                "P",
+                [
+                  "A",
+                  [
+                    "A",
+                    [
+                      "A",
+                      [
+                        "C",
+                        6
+                      ],
+                      [
+                        "B",
+                        4
+                      ]
+                    ],
+                    [
+                      "B",
+                      3
+                    ]
+                  ],
+                  [
+                    "B",
+                    0
+                  ]
+                ],
+                [
+                  "A",
+                  [
+                    "A",
+                    [
+                      "B",
+                      3
+                    ],
+                    [
+                      "B",
+                      1
+                    ]
+                  ],
+                  [
+                    "B",
+                    0
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "P",
+      [
+        "S",
+        1
+      ],
+      [
+        "P",
+        [
+          "B",
+          0
+        ],
+        [
+          "P",
+          [
+            "P",
+            [
+              "B",
+              1
+            ],
+            [
+              "P",
+              [
+                "A",
+                [
+                  "A",
+                  [
+                    "A",
+                    [
+                      "C",
+                      6
+                    ],
+                    [
+                      "B",
+                      2
+                    ]
+                  ],
+                  [
+                    "B",
+                    1
+                  ]
+                ],
+                [
+                  "B",
+                  0
+                ]
+              ],
+              [
+                "S",
+                1
+              ]
+            ]
+          ],
+          [
+            "P",
+            [
+              "A",
+              [
+                "A",
+                [
+                  "B",
+                  0
+                ],
+                [
+                  "B",
+                  1
+                ]
+              ],
+              [
+                "A",
+                [
+                  "A",
+                  [
+                    "C",
+                    7
+                  ],
+                  [
+                    "B",
+                    2
+                  ]
+                ],
+                [
+                  "B",
+                  1
+                ]
+              ]
+            ],
+            [
+              "P",
+              [
+                "B",
+                3
+              ],
+              [
+                "P",
+                [
+                  "A",
+                  [
+                    "A",
+                    [
+                      "A",
+                      [
+                        "C",
+                        6
+                      ],
+                      [
+                        "B",
+                        4
+                      ]
+                    ],
+                    [
+                      "B",
+                      3
+                    ]
+                  ],
+                  [
+                    "B",
+                    0
+                  ]
+                ],
+                [
+                  "A",
+                  [
+                    "A",
+                    [
+                      "B",
+                      3
+                    ],
+                    [
+                      "B",
+                      1
+                    ]
+                  ],
+                  [
+                    "B",
+                    0
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "P",
+      [
+        "S",
+        1
+      ],
+      [
+        "P",
+        [
+          "B",
+          0
+        ],
+        [
+          "P",
+          [
+            "P",
+            [
+              "B",
+              1
+            ],
+            [
+              "P",
+              [
+                "A",
+                [
+                  "A",
+                  [
+                    "A",
+                    [
+                      "C",
+                      6
+                    ],
+                    [
+                      "B",
+                      2
+                    ]
+                  ],
+                  [
+                    "B",
+                    1
+                  ]
+                ],
+                [
+                  "B",
+                  0
+                ]
+              ],
+              [
+                "S",
+                2
+              ]
+            ]
+          ],
+          [
+            "P",
+            [
+              "A",
+              [
+                "A",
+                [
+                  "B",
+                  0
+                ],
+                [
+                  "B",
+                  1
+                ]
+              ],
+              [
+                "A",
+                [
+                  "A",
+                  [
+                    "C",
+                    7
+                  ],
+                  [
+                    "B",
+                    2
+                  ]
+                ],
+                [
+                  "B",
+                  1
+                ]
+              ]
+            ],
+            [
+              "P",
+              [
+                "B",
+                3
+              ],
+              [
+                "P",
+                [
+                  "A",
+                  [
+                    "A",
+                    [
+                      "A",
+                      [
+                        "C",
+                        6
+                      ],
+                      [
+                        "B",
+                        4
+                      ]
+                    ],
+                    [
+                      "B",
+                      3
+                    ]
+                  ],
+                  [
+                    "B",
+                    0
+                  ]
+                ],
+                [
+                  "A",
+                  [
+                    "A",
+                    [
+                      "B",
+                      3
+                    ],
+                    [
+                      "B",
+                      1
+                    ]
+                  ],
+                  [
+                    "B",
+                    0
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ],
+  "declaration_sorts": [
+    2,
+    1,
+    1,
+    0,
+    2,
+    3,
+    2,
+    0,
+    0,
+    2,
+    3
+  ],
+  "declaration_checks": 11,
+  "cases": {
+    "polymorphic_identity": {
+      "rows": 33,
+      "tags": {
+        "E": 1,
+        "S": 2,
+        "B": 2,
+        "L": 3,
+        "P": 3,
+        "JS": 1,
+        "X": 2,
+        "F": 2,
+        "I0": 5,
+        "I2": 2,
+        "Q0": 2,
+        "JV": 3,
+        "Q1": 1,
+        "JP": 2,
+        "JL": 2
+      }
+    },
+    "dependent_application": {
+      "rows": 133,
+      "tags": {
+        "E": 1,
+        "S": 2,
+        "B": 3,
+        "P": 13,
+        "A": 7,
+        "L": 9,
+        "JS": 2,
+        "X": 6,
+        "F": 4,
+        "I0": 28,
+        "I2": 26,
+        "Q0": 5,
+        "JV": 8,
+        "JP": 6,
+        "Q1": 6,
+        "JA": 3,
+        "JL": 4
+      }
+    },
+    "beta_conversion": {
+      "rows": 88,
+      "tags": {
+        "E": 1,
+        "S": 2,
+        "B": 2,
+        "L": 4,
+        "A": 3,
+        "P": 10,
+        "JS": 5,
+        "X": 4,
+        "F": 3,
+        "I0": 12,
+        "I2": 10,
+        "Q0": 4,
+        "JV": 5,
+        "JP": 6,
+        "JL": 4,
+        "JA": 2,
+        "Q1": 1,
+        "VR": 2,
+        "VB": 1,
+        "VP": 4,
+        "VS": 1,
+        "VT": 1,
+        "JC": 1
+      }
+    },
+    "impredicative_predicate_identity": {
+      "rows": 113,
+      "tags": {
+        "E": 1,
+        "S": 3,
+        "B": 3,
+        "P": 11,
+        "A": 5,
+        "L": 9,
+        "JS": 2,
+        "X": 5,
+        "F": 4,
+        "I0": 24,
+        "I2": 20,
+        "Q0": 4,
+        "JV": 7,
+        "JP": 5,
+        "Q1": 4,
+        "JA": 2,
+        "JL": 4
+      }
+    },
+    "nat_zero": {
+      "rows": 4,
+      "tags": {
+        "E": 1,
+        "C": 2,
+        "JK": 1
+      }
+    },
+    "nat_recursion": {
+      "rows": 193,
+      "tags": {
+        "E": 1,
+        "C": 4,
+        "L": 3,
+        "A": 20,
+        "B": 4,
+        "S": 2,
+        "P": 15,
+        "JK": 10,
+        "X": 4,
+        "F": 3,
+        "I0": 45,
+        "JS": 3,
+        "JP": 7,
+        "JL": 5,
+        "I2": 38,
+        "JA": 11,
+        "VR": 1,
+        "VB": 4,
+        "VS": 2,
+        "JC": 3,
+        "Q0": 2,
+        "JV": 3,
+        "VP": 2,
+        "Q1": 1
+      }
+    },
+    "iota_zero_type": {
+      "rows": 193,
+      "tags": {
+        "E": 1,
+        "C": 4,
+        "S": 3,
+        "L": 3,
+        "A": 15,
+        "B": 4,
+        "JK": 6,
+        "VR": 1,
+        "F": 3,
+        "I0": 49,
+        "I2": 36,
+        "VZ": 1,
+        "VS": 3,
+        "P": 16,
+        "X": 5,
+        "JS": 8,
+        "JP": 7,
+        "JL": 5,
+        "JA": 8,
+        "VB": 3,
+        "JC": 4,
+        "Q0": 2,
+        "JV": 3,
+        "VP": 2,
+        "Q1": 1
+      }
+    },
+    "iota_succ_type": {
+      "rows": 227,
+      "tags": {
+        "E": 1,
+        "C": 4,
+        "S": 3,
+        "L": 3,
+        "A": 25,
+        "B": 4,
+        "JK": 7,
+        "VR": 1,
+        "F": 3,
+        "I0": 56,
+        "I2": 38,
+        "VN": 2,
+        "VB": 7,
+        "VZ": 1,
+        "VA": 2,
+        "VT": 4,
+        "VS": 3,
+        "P": 16,
+        "X": 5,
+        "JS": 8,
+        "JP": 7,
+        "JL": 5,
+        "JA": 10,
+        "JC": 4,
+        "Q0": 2,
+        "JV": 3,
+        "VP": 2,
+        "Q1": 1
+      }
+    },
+    "dependent_nat_elimination": {
+      "rows": 538,
+      "tags": {
+        "E": 1,
+        "C": 4,
+        "S": 3,
+        "P": 41,
+        "B": 4,
+        "A": 38,
+        "L": 12,
+        "JK": 13,
+        "X": 16,
+        "F": 5,
+        "I0": 131,
+        "I2": 142,
+        "JS": 8,
+        "JP": 22,
+        "Q0": 10,
+        "JV": 22,
+        "Q1": 14,
+        "JA": 21,
+        "JL": 9,
+        "VR": 5,
+        "VP": 7,
+        "VB": 3,
+        "VS": 2,
+        "JC": 2,
+        "VA": 2,
+        "VT": 1
+      }
+    },
+    "prop_nat_elimination": {
+      "rows": 525,
+      "tags": {
+        "E": 1,
+        "C": 4,
+        "S": 2,
+        "P": 40,
+        "B": 4,
+        "A": 38,
+        "L": 12,
+        "JK": 13,
+        "X": 16,
+        "F": 5,
+        "I0": 126,
+        "I2": 142,
+        "JS": 5,
+        "JP": 19,
+        "Q0": 10,
+        "JV": 22,
+        "Q1": 14,
+        "JA": 21,
+        "JL": 9,
+        "VR": 5,
+        "VP": 7,
+        "VB": 3,
+        "VS": 2,
+        "JC": 2,
+        "VA": 2,
+        "VT": 1
+      }
+    },
+    "equality_reflexivity": {
+      "rows": 40,
+      "tags": {
+        "E": 1,
+        "C": 4,
+        "A": 10,
+        "S": 1,
+        "B": 2,
+        "P": 3,
+        "JK": 3,
+        "I0": 7,
+        "I2": 7,
+        "JA": 2
+      }
+    },
+    "equality_symmetry": {
+      "rows": 622,
+      "tags": {
+        "E": 1,
+        "S": 3,
+        "B": 6,
+        "C": 3,
+        "A": 82,
+        "L": 19,
+        "P": 53,
+        "JS": 2,
+        "X": 6,
+        "F": 6,
+        "I0": 141,
+        "I2": 196,
+        "Q0": 5,
+        "JV": 15,
+        "Q1": 11,
+        "JK": 6,
+        "JA": 24,
+        "JP": 10,
+        "JL": 6,
+        "VR": 7,
+        "VA": 7,
+        "VB": 4,
+        "VT": 2,
+        "VS": 1,
+        "JC": 2,
+        "VP": 4
+      }
+    },
+    "equality_transitivity": {
+      "rows": 862,
+      "tags": {
+        "E": 1,
+        "S": 3,
+        "B": 8,
+        "C": 3,
+        "A": 104,
+        "L": 32,
+        "P": 73,
+        "JS": 2,
+        "X": 8,
+        "F": 8,
+        "I0": 199,
+        "I2": 284,
+        "Q0": 7,
+        "JV": 21,
+        "Q1": 21,
+        "JK": 7,
+        "JA": 27,
+        "JP": 14,
+        "JL": 8,
+        "VR": 8,
+        "VA": 9,
+        "VB": 4,
+        "VT": 2,
+        "VS": 1,
+        "JC": 2,
+        "VP": 6
+      }
+    },
+    "propositional_transport": {
+      "rows": 767,
+      "tags": {
+        "E": 1,
+        "S": 3,
+        "B": 7,
+        "P": 73,
+        "A": 90,
+        "C": 3,
+        "L": 32,
+        "JS": 3,
+        "X": 9,
+        "F": 8,
+        "I0": 171,
+        "I2": 240,
+        "Q0": 7,
+        "JV": 19,
+        "Q1": 20,
+        "JP": 15,
+        "JA": 21,
+        "JK": 4,
+        "JL": 8,
+        "VR": 9,
+        "VA": 8,
+        "VB": 4,
+        "VT": 2,
+        "VS": 1,
+        "JC": 2,
+        "VP": 7
+      }
+    },
+    "dependent_transport": {
+      "rows": 774,
+      "tags": {
+        "E": 1,
+        "S": 3,
+        "B": 7,
+        "P": 75,
+        "A": 90,
+        "C": 3,
+        "L": 32,
+        "JS": 3,
+        "X": 9,
+        "F": 8,
+        "I0": 175,
+        "I2": 242,
+        "Q0": 7,
+        "JV": 19,
+        "Q1": 20,
+        "JP": 15,
+        "JA": 21,
+        "JK": 4,
+        "JL": 8,
+        "VR": 8,
+        "VA": 8,
+        "VB": 4,
+        "VT": 2,
+        "VS": 1,
+        "JC": 2,
+        "VP": 7
+      }
+    },
+    "equality_congruence": {
+      "rows": 705,
+      "tags": {
+        "E": 1,
+        "C": 4,
+        "P": 54,
+        "A": 89,
+        "B": 6,
+        "L": 19,
+        "S": 2,
+        "JK": 14,
+        "X": 7,
+        "F": 6,
+        "I0": 172,
+        "JP": 11,
+        "I2": 230,
+        "JA": 29,
+        "Q0": 5,
+        "Q1": 11,
+        "JV": 11,
+        "JS": 1,
+        "JL": 6,
+        "VR": 6,
+        "VA": 7,
+        "VB": 4,
+        "VT": 2,
+        "VS": 1,
+        "JC": 2,
+        "VP": 5
+      }
+    },
+    "proof_dependent_elimination": {
+      "rows": 392,
+      "tags": {
+        "E": 1,
+        "C": 5,
+        "A": 56,
+        "B": 5,
+        "S": 3,
+        "P": 36,
+        "L": 10,
+        "JK": 14,
+        "X": 6,
+        "F": 4,
+        "I0": 93,
+        "I2": 112,
+        "JA": 18,
+        "Q0": 5,
+        "JV": 7,
+        "JS": 1,
+        "JP": 6,
+        "Q1": 6,
+        "JL": 4
+      }
+    },
+    "equality_iota_type": {
+      "rows": 325,
+      "tags": {
+        "E": 1,
+        "C": 5,
+        "A": 44,
+        "B": 5,
+        "S": 4,
+        "L": 4,
+        "JK": 7,
+        "VR": 3,
+        "F": 2,
+        "I0": 84,
+        "I2": 95,
+        "VA": 3,
+        "VJ": 1,
+        "VS": 2,
+        "P": 35,
+        "JA": 13,
+        "X": 2,
+        "Q0": 1,
+        "JV": 1,
+        "JS": 3,
+        "JP": 2,
+        "JL": 2,
+        "VB": 2,
+        "VT": 1,
+        "JC": 3
+      }
+    },
+    "equality_iota_value": {
+      "rows": 310,
+      "tags": {
+        "E": 1,
+        "C": 5,
+        "A": 44,
+        "B": 5,
+        "L": 4,
+        "S": 3,
+        "P": 35,
+        "JK": 8,
+        "I0": 76,
+        "I2": 93,
+        "JA": 13,
+        "X": 2,
+        "F": 2,
+        "Q0": 1,
+        "JV": 1,
+        "JS": 1,
+        "JP": 2,
+        "JL": 2,
+        "VR": 3,
+        "VB": 2,
+        "VA": 3,
+        "VT": 1,
+        "VS": 1,
+        "JC": 2
+      }
+    },
+    "equality_iota_proposition": {
+      "rows": 332,
+      "tags": {
+        "E": 1,
+        "C": 5,
+        "A": 44,
+        "B": 5,
+        "S": 3,
+        "L": 4,
+        "P": 35,
+        "JK": 8,
+        "I0": 88,
+        "I2": 95,
+        "JA": 16,
+        "VR": 3,
+        "F": 2,
+        "VA": 3,
+        "VJ": 1,
+        "VS": 2,
+        "X": 2,
+        "Q0": 1,
+        "JV": 1,
+        "JS": 3,
+        "JP": 2,
+        "JL": 2,
+        "VB": 2,
+        "VT": 1,
+        "JC": 3
+      }
+    },
+    "equality_iota_proof_index": {
+      "rows": 497,
+      "tags": {
+        "E": 1,
+        "C": 5,
+        "A": 50,
+        "S": 3,
+        "P": 42,
+        "B": 5,
+        "L": 7,
+        "JK": 17,
+        "I0": 129,
+        "I2": 153,
+        "JA": 27,
+        "X": 5,
+        "F": 4,
+        "JS": 2,
+        "JP": 7,
+        "Q0": 3,
+        "JV": 5,
+        "Q1": 2,
+        "JL": 4,
+        "VR": 6,
+        "VA": 8,
+        "VP": 3,
+        "VJ": 1,
+        "VS": 2,
+        "VB": 2,
+        "VT": 1,
+        "JC": 3
+      }
+    }
+  },
+  "optimization": {
+    "polymorphic_identity": {
+      "original": 52,
+      "exact": 33,
+      "semantic": 33,
+      "pruned": 33
+    },
+    "dependent_application": {
+      "original": 340,
+      "exact": 133,
+      "semantic": 133,
+      "pruned": 133
+    },
+    "beta_conversion": {
+      "original": 276,
+      "exact": 92,
+      "semantic": 90,
+      "pruned": 88
+    },
+    "impredicative_predicate_identity": {
+      "original": 289,
+      "exact": 113,
+      "semantic": 113,
+      "pruned": 113
+    },
+    "nat_zero": {
+      "original": 4,
+      "exact": 4,
+      "semantic": 4,
+      "pruned": 4
+    },
+    "nat_recursion": {
+      "original": 350,
+      "exact": 218,
+      "semantic": 206,
+      "pruned": 193
+    },
+    "iota_zero_type": {
+      "original": 376,
+      "exact": 224,
+      "semantic": 211,
+      "pruned": 193
+    },
+    "iota_succ_type": {
+      "original": 528,
+      "exact": 275,
+      "semantic": 252,
+      "pruned": 227
+    },
+    "dependent_nat_elimination": {
+      "original": 1865,
+      "exact": 556,
+      "semantic": 549,
+      "pruned": 538
+    },
+    "prop_nat_elimination": {
+      "original": 1863,
+      "exact": 543,
+      "semantic": 536,
+      "pruned": 525
+    },
+    "equality_reflexivity": {
+      "original": 42,
+      "exact": 40,
+      "semantic": 40,
+      "pruned": 40
+    },
+    "equality_symmetry": {
+      "original": 2965,
+      "exact": 644,
+      "semantic": 635,
+      "pruned": 622
+    },
+    "equality_transitivity": {
+      "original": 4699,
+      "exact": 887,
+      "semantic": 878,
+      "pruned": 862
+    },
+    "propositional_transport": {
+      "original": 3964,
+      "exact": 791,
+      "semantic": 782,
+      "pruned": 767
+    },
+    "dependent_transport": {
+      "original": 3966,
+      "exact": 798,
+      "semantic": 789,
+      "pruned": 774
+    },
+    "equality_congruence": {
+      "original": 3216,
+      "exact": 734,
+      "semantic": 725,
+      "pruned": 705
+    },
+    "proof_dependent_elimination": {
+      "original": 918,
+      "exact": 392,
+      "semantic": 392,
+      "pruned": 392
+    },
+    "equality_iota_type": {
+      "original": 790,
+      "exact": 353,
+      "semantic": 344,
+      "pruned": 325
+    },
+    "equality_iota_value": {
+      "original": 666,
+      "exact": 326,
+      "semantic": 320,
+      "pruned": 310
+    },
+    "equality_iota_proposition": {
+      "original": 842,
+      "exact": 359,
+      "semantic": 350,
+      "pruned": 332
+    },
+    "equality_iota_proof_index": {
+      "original": 1614,
+      "exact": 536,
+      "semantic": 527,
+      "pruned": 497
+    }
+  },
+  "totals": {
+    "original": 29625,
+    "exact": 8051,
+    "semantic": 7909,
+    "pruned": 7673
+  },
+  "valid_cases": 21,
+  "nat_regressions": 10,
+  "negative_source_cases": 12,
+  "wrong_statement_rejections": 21,
+  "self_reference_rejections": 7359,
+  "random_mutations": 1680,
+  "mutations_accepted": 29,
+  "mutations_rejected": 1651,
+  "accepted_mutations_reference_valid": 29,
+  "vj_positive_controls": 3,
+  "vj_negative_controls": 9,
+  "vj_controls": {
+    "valid_universe_0": true,
+    "valid_universe_1": true,
+    "valid_universe_2": true,
+    "wrong_destination": false,
+    "wrong_refl_source": false,
+    "wrong_refl_carrier": false,
+    "wrong_constructor": false,
+    "wrong_recursor": false,
+    "unknown_recursor": false,
+    "forged_rhs": false,
+    "truncated_spine": false,
+    "neutral_proof": false
+  },
+  "typed_vj_heads": {
+    "equality_iota_proof_index": [
+      8
+    ],
+    "equality_iota_proposition": [
+      9
+    ],
+    "equality_iota_type": [
+      10
+    ]
+  },
+  "max_pruned": 862
+}
