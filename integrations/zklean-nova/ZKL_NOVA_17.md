@@ -1,6 +1,6 @@
 # ZKL-NOVA-17: equality and dependent transport
 
-2026-11-25. Native conformance, the independent adversarial suite, Lean 4.24.0 kernel export checks, and the authenticated all-rule arithmetic sample pass. The full 7,673-row Nova and Spartan gate is prepared for four bounded CPU jobs; its result will be recorded after the hosted run completes.
+2026-11-25. The full gate passes: native conformance, the independent adversarial suite, Lean 4.24.0 kernel export checks, all 7,673 row assignments, 21 recursive proofs and 21 compressed proofs. Four CPU shards produced identical matrix and serialized verifier-key bytes. Hosted run [45608709882](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882) tested source `2849ae1124ff53066e8d143cacee19dc308ccf82`; [Rust CI 45608709578](https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709578) also passed on that source. The exact downloaded aggregate is retained in `nova17_hosted_receipt.json`, with artifact authentication and local replay evidence in `nova17_hosted_audit.json`.
 
 ## Verified Nat predecessor
 
@@ -110,9 +110,9 @@ There are 84 targeted goal and assigned-wire rejections, together with 235 regen
 
 The workflow `.github/workflows/zklean-nova-equality.yml` first reproduces both native suites, checks the deterministic Lean export and kernel result, and compares the arithmetic sample. It then partitions the 21 fixtures by original index modulo four. The four job sizes are 2,326, 1,943, 1,405 and 1,999 rows. Each CPU job has a sixty-minute limit, two build threads and two Rayon threads.
 
-Every row receives a full assignment check. Rust recomputes the goal digest and genesis, validates the matrix pins and native Poseidon vectors, checks each explicit step, folds the complete derivation, and verifies its recursive and compressed endpoints. It tests every initial-state coordinate and two incorrect step counts against both proof verifiers. The expected total is 336 recursive and 336 compressed verifier rejections, with 42 malformed-step rejections. Every proof and verifier key passes a serialization round trip, and each unsealed prefix fails the admission policy.
+Every row receives a full assignment check. Rust recomputes the goal digest and genesis, validates the matrix pins and native Poseidon vectors, checks each explicit step, folds the complete derivation, and verifies its recursive and compressed endpoints. It tests every initial-state coordinate and two incorrect step counts against both proof verifiers. The observed total is 336 recursive and 336 compressed verifier rejections, with 42 malformed-step rejections. Every proof and verifier key passes a serialization round trip, and each unsealed prefix fails the admission policy.
 
-The committed Cargo.lock comes from the successful local Rust 1.90.0 compile and pins transitive dependencies for every hosted build. Each shard retains the generated matrix, full conformance receipt, complete proof receipts, proof payloads, verifier key, dependency lockfile, hashes and measured process times. `equality_receipts.cjs` verifies the downloaded artifact contents and exact corpus coverage. The final gate requires all four matrix hashes and all four serialized verifier-key hashes to match. This checks that the corpus uses one circuit and one shared verifier key across the partitioned run.
+The committed Cargo.lock comes from the successful local Rust 1.90.0 compile and pins transitive dependencies for every hosted build. Each shard retains the generated matrix, full conformance receipt, complete proof receipts, proof payloads, verifier key, dependency lockfile, hashes and measured process times. `equality_receipts.cjs` verifies the downloaded artifact contents and exact corpus coverage. The final gate requires all four matrix hashes and all four serialized verifier-key hashes to match. This gate passed for the complete corpus. All four matrix files, all four serialized verifier keys and all four dependency lockfiles are byte-identical.
 
 ```sh
 node integrations/zklean-nova/equality.cjs --fixtures
@@ -124,6 +124,63 @@ node integrations/zklean-nova/equality_frontier.cjs --full /tmp/equality-fixture
 cargo +1.90.0 run --release --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml \
   --bin equality_frontier -- /tmp/equality-fixture /tmp/equality-proof --shard 0/4
 ```
+
+## Hosted measurements and artifact audit
+
+| Check | Observed result |
+|---|---:|
+| Complete derivations / folded transitions | 21 / 7673 |
+| Full row assignments checked | 7673 |
+| Supplementary VL assignments checked | 4 |
+| Recursive / compressed verifier rejections | 336 / 336 |
+| Malformed step rejections | 42 |
+| Unsealed prefix refusals | 21 |
+| Proof and key serialization round trips | 21 |
+| Direct goal and assignment mutations rejected | 84 |
+| Regenerated input attacks rejected across shards | 268 |
+
+The partitioned full run repeats constant-signature and repeated-address controls per shard, which explains its 268 regenerated attacks compared with the single-process sample's 235. All eighteen malformed J equations and nine coordinated J-history attacks fail in both settings. Every concrete proof and goal also passed the hosted Lean check, whose output reports zero axiom dependencies for all 21 declarations.
+
+| Shard | Proofs | Rows | Generation seconds | Rust proof process seconds | Rust peak RSS MiB |
+|---|---:|---:|---:|---:|---:|
+| 0 | 6 | 2326 | 466.64 | 760.10 | 651.60 |
+| 1 | 5 | 1943 | 672.85 | 1033.19 | 640.98 |
+| 2 | 5 | 1405 | 386.70 | 603.77 | 640.45 |
+| 3 | 5 | 1999 | 416.58 | 646.13 | 641.14 |
+
+The final job completed 33 minutes 44 seconds after run creation. Every measured process exited successfully with zero swaps. The highest generation peak RSS was 952.98 MiB. Across all proofs, mean steady fold times span 0.1937 to 0.3889 seconds, compression spans 9.173 to 16.713 seconds, and compressed verification spans 0.1824 to 0.3428 seconds. These measurements come from separate hosted runners. Shard 1 took longer in generation and proving while producing the same matrix and key, so architectural speed comparisons require a controlled host.
+
+The aggregate artifact was downloaded and replayed through the source-owned `combine` command. Local output matches the hosted receipt byte for byte. All six artifact ZIP digests match GitHub's published digests, every per-case receipt agrees with its aggregate entry, and all compressed payload lengths and hashes were checked. The audit records source, run, job and artifact IDs plus archive hashes and expiry dates.
+
+| Retained item | SHA-256 |
+|---|---|
+| Matrix, 78,541,025 bytes | `c583f594c0757e1910ec667c13e27ca081778e4167fed58188d1ea9d1dc12c04` |
+| Shared verifier key, 58,504,816 bytes | `7e3b1dc3b54457d56ba6d63f973e5d7d3d90ac7fb542248b69f496338a02bf8b` |
+| Exact aggregate, 584,345 bytes | `70bcd9b89af1697706fc02a75da1ca80b425a55f52b7fa0027ce0a0ad9bec638` |
+
+## Why the serialized sizes changed
+
+| Measure | Stage 16 | Stage 17 |
+|---|---:|---:|
+| Primary augmented constraints | 49711 | 52819 |
+| Secondary constraints | 10349 | 10349 |
+| Verifier-key bytes | 55034496 | 58504816 |
+| Recursive-proof bytes | 4141592 | 4337912 |
+| Compressed-proof bytes | 11632 | 11632 |
+
+This build selects `spartan::snark::RelaxedR1CSSNARK` with IPA. That [backend retains the R1CS matrices in its verifier key](https://docs.rs/nova-snark/latest/nova_snark/spartan/snark/index.html). Inspection of the pinned Nova 0.76.0 source (`spartan/snark.rs` and `r1cs/sparse.rs`) shows that each extra nonzero contributes a 32-byte field coefficient and an 8-byte column index to the bincode encoding. The 86,758 added nonzeros therefore account exactly for the 3,470,320-byte key increase:
+
+```text
+40 × (1,021,954 − 935,196) = 3,470,320 bytes
+```
+
+The recursive proof retains error and witness vectors. Its 196,320-byte increase also matches the additional primary constraints and wires exactly:
+
+```text
+32 × ((41,406 − 38,298) + (40,263 − 37,236)) = 196,320 bytes
+```
+
+The primary and secondary padded dimensions remain 65,536 and 16,384. Their sumcheck and IPA round counts stay fixed, preserving the 11,632-byte compressed payload for every proof. All 21 payloads total 244,272 bytes, with the public statement and shared key supplied separately. This explains the measured storage sizes; the timing receipts remain the evidence for runtime.
 
 ## Scope and verifier trust
 

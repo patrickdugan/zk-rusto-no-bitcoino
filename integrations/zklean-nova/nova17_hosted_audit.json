@@ -1,0 +1,1264 @@
+{
+  "schema": "zkl-nova-17/hosted-artifact-audit-v1",
+  "passed": true,
+  "source_head": "2849ae1124ff53066e8d143cacee19dc308ccf82",
+  "run_id": 45608709882,
+  "scope": "GitHub artifact archive authentication, source-owned receipt gate replay, complete corpus and serialized payload integrity; proof verification is recorded by the hosted Rust jobs.",
+  "workflow": {
+    "id": 45608709882,
+    "name": "zkLean Nova equality and transport",
+    "html_url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882",
+    "head_sha": "2849ae1124ff53066e8d143cacee19dc308ccf82",
+    "head_branch": "research/zkl-nova-17-20261125",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-25T11:54:15Z",
+    "run_started_at": "2026-11-25T11:54:15Z",
+    "updated_at": "2026-11-25T12:28:00Z"
+  },
+  "source_blobs_checked_against_github_commit": [
+    {
+      "path": ".github/workflows/zklean-nova-equality.yml",
+      "git_blob_sha1": "10ad13101af61121649e0c82ba3402d9f9dc8d58",
+      "sha256": "6bfee3e3e626ceccfd7af521983cdbd0ce2fc98a2b87bb7bd5aaabccb4ffa1c8",
+      "bytes": 6992
+    },
+    {
+      "path": "integrations/zklean-nova/EqualityTransport.lean",
+      "git_blob_sha1": "042b2008a6e059bca9b451bdcc18a6b37be141ee",
+      "sha256": "322240c58926890d35069dbc909a42864da244ad6a2d8282c9547e3530b822a5",
+      "bytes": 11336
+    },
+    {
+      "path": "integrations/zklean-nova/equality_adversarial_results.json",
+      "git_blob_sha1": "a0f3d47d0dc4105b825fc849386a5158587cb294",
+      "sha256": "81ebf906351d6c2d503e804fbd63fa779bb9570a67573eae5353e5755aa92509",
+      "bytes": 7351
+    },
+    {
+      "path": "integrations/zklean-nova/equality_fixtures.json",
+      "git_blob_sha1": "51ebaefe8aa0a4e32bb6c29a8d119fdf55112ae5",
+      "sha256": "5fd802969004b844d93fe27c598189d79b99224d22084b00f1da75df9a2b558e",
+      "bytes": 674013
+    },
+    {
+      "path": "integrations/zklean-nova/equality_frontier.cjs",
+      "git_blob_sha1": "3f38707a58b01764db1f35f89a1e633d3ae7ca14",
+      "sha256": "2612b10cce2f337c24e6fe8b531328504f0b3c78993c9c95c9bdb2258eb82fc3",
+      "bytes": 32706
+    },
+    {
+      "path": "integrations/zklean-nova/equality_frontier_sample.json",
+      "git_blob_sha1": "765a2743477f065b142bfdeb4571b2b1875d1652",
+      "sha256": "fb7e2ef68dbf19ebb2d8be57ae14eb7c2e844bc4b5aa61208724b80bcd2a6dfc",
+      "bytes": 59805
+    },
+    {
+      "path": "integrations/zklean-nova/equality_receipts.cjs",
+      "git_blob_sha1": "1536868cbc02153e150c75ff26e743fb4ea4bdac",
+      "sha256": "7f51b10675a1e583ed7f1d70898d0ff1f8b616ebdc0b5e38f2c21fb23f348739",
+      "bytes": 24151
+    },
+    {
+      "path": "integrations/zklean-nova/equality_results.json",
+      "git_blob_sha1": "8ace50f2cdec33a397bc1430124a3e00b2f20fd7",
+      "sha256": "0744d79032a54faa496ae2f762dc1a83bfee3c950d683ce7e88fe4d830e40e6a",
+      "bytes": 26737
+    },
+    {
+      "path": "integrations/zklean-nova/nova-smoke/Cargo.lock",
+      "git_blob_sha1": "f3a3fd0b91258987908867ad6e7bd9e6a37b614d",
+      "sha256": "8c73f8e3ee7eef723e44027eef625ebad20d8025eb6aa3fe077148ac88577143",
+      "bytes": 30800
+    },
+    {
+      "path": "integrations/zklean-nova/nova-smoke/src/bin/equality_frontier.rs",
+      "git_blob_sha1": "775f2f8fe96e04e14f353a0532788d0235356d39",
+      "sha256": "8d5d6f97bba53a7e309e2a6ed4d3188e8a5d176de5b9db3d8f5b722ff2a48ffb",
+      "bytes": 20574
+    }
+  ],
+  "jobs": [
+    {
+      "id": 139204490160,
+      "name": "aggregate",
+      "html_url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882/job/139204490160",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-25T12:27:49Z",
+      "completed_at": "2026-11-25T12:27:59Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-25T12:27:49Z",
+          "completed_at": "2026-11-25T12:27:50Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-25T12:27:50Z",
+          "completed_at": "2026-11-25T12:27:52Z"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-25T12:27:52Z",
+          "completed_at": "2026-11-25T12:27:52Z"
+        },
+        {
+          "name": "Run actions/download-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-25T12:27:52Z",
+          "completed_at": "2026-11-25T12:27:54Z"
+        },
+        {
+          "name": "Verify full corpus coverage and identical matrices and verifier keys",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-25T12:27:54Z",
+          "completed_at": "2026-11-25T12:27:57Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-25T12:27:57Z",
+          "completed_at": "2026-11-25T12:27:57Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-25T12:27:57Z",
+          "completed_at": "2026-11-25T12:27:58Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-25T12:27:58Z",
+          "completed_at": "2026-11-25T12:27:58Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-25T12:27:58Z",
+          "completed_at": "2026-11-25T12:27:58Z"
+        }
+      ]
+    },
+    {
+      "id": 139186271972,
+      "name": "conformance",
+      "html_url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882/job/139186271972",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-25T11:54:29Z",
+      "completed_at": "2026-11-25T11:57:11Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-25T11:54:30Z",
+          "completed_at": "2026-11-25T11:54:30Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-25T11:54:30Z",
+          "completed_at": "2026-11-25T11:54:32Z"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-25T11:54:32Z",
+          "completed_at": "2026-11-25T11:54:32Z"
+        },
+        {
+          "name": "Reproduce native proofs and independent adversarial cases",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-25T11:54:32Z",
+          "completed_at": "2026-11-25T11:54:34Z"
+        },
+        {
+          "name": "Check all exported declarations with the pinned Lean kernel",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-25T11:54:34Z",
+          "completed_at": "2026-11-25T11:54:41Z"
+        },
+        {
+          "name": "Reproduce the authenticated sample across all thirty rules",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-25T11:54:41Z",
+          "completed_at": "2026-11-25T11:57:07Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-25T11:57:07Z",
+          "completed_at": "2026-11-25T11:57:08Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-25T11:57:08Z",
+          "completed_at": "2026-11-25T11:57:09Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-25T11:57:09Z",
+          "completed_at": "2026-11-25T11:57:09Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-25T11:57:09Z",
+          "completed_at": "2026-11-25T11:57:09Z"
+        }
+      ]
+    },
+    {
+      "id": 139187824384,
+      "name": "prove (0)",
+      "html_url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882/job/139187824384",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-25T11:57:24Z",
+      "completed_at": "2026-11-25T12:19:22Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-25T11:57:24Z",
+          "completed_at": "2026-11-25T11:57:25Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-25T11:57:25Z",
+          "completed_at": "2026-11-25T11:57:27Z"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-25T11:57:27Z",
+          "completed_at": "2026-11-25T11:57:27Z"
+        },
+        {
+          "name": "Generate and check every assignment in this shard",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-25T11:57:27Z",
+          "completed_at": "2026-11-25T12:05:16Z"
+        },
+        {
+          "name": "Compile pinned Nova and Spartan",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-25T12:05:16Z",
+          "completed_at": "2026-11-25T12:06:36Z"
+        },
+        {
+          "name": "Fold and compress each derivation with the shared circuit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-25T12:06:36Z",
+          "completed_at": "2026-11-25T12:19:17Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-25T12:19:17Z",
+          "completed_at": "2026-11-25T12:19:20Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-25T12:19:20Z",
+          "completed_at": "2026-11-25T12:19:20Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-25T12:19:20Z",
+          "completed_at": "2026-11-25T12:19:20Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-25T12:19:20Z",
+          "completed_at": "2026-11-25T12:19:20Z"
+        }
+      ]
+    },
+    {
+      "id": 139187824451,
+      "name": "prove (1)",
+      "html_url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882/job/139187824451",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-25T11:57:16Z",
+      "completed_at": "2026-11-25T12:27:47Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-25T11:57:17Z",
+          "completed_at": "2026-11-25T11:57:18Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-25T11:57:18Z",
+          "completed_at": "2026-11-25T11:57:19Z"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-25T11:57:19Z",
+          "completed_at": "2026-11-25T11:57:20Z"
+        },
+        {
+          "name": "Generate and check every assignment in this shard",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-25T11:57:20Z",
+          "completed_at": "2026-11-25T12:08:35Z"
+        },
+        {
+          "name": "Compile pinned Nova and Spartan",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-25T12:08:35Z",
+          "completed_at": "2026-11-25T12:10:28Z"
+        },
+        {
+          "name": "Fold and compress each derivation with the shared circuit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-25T12:10:28Z",
+          "completed_at": "2026-11-25T12:27:43Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-25T12:27:43Z",
+          "completed_at": "2026-11-25T12:27:45Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-25T12:27:45Z",
+          "completed_at": "2026-11-25T12:27:45Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-25T12:27:45Z",
+          "completed_at": "2026-11-25T12:27:46Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-25T12:27:46Z",
+          "completed_at": "2026-11-25T12:27:46Z"
+        }
+      ]
+    },
+    {
+      "id": 139187824282,
+      "name": "prove (2)",
+      "html_url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882/job/139187824282",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-25T11:57:40Z",
+      "completed_at": "2026-11-25T12:15:48Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-25T11:57:40Z",
+          "completed_at": "2026-11-25T11:57:41Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-25T11:57:41Z",
+          "completed_at": "2026-11-25T11:57:43Z"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-25T11:57:43Z",
+          "completed_at": "2026-11-25T11:57:43Z"
+        },
+        {
+          "name": "Generate and check every assignment in this shard",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-25T11:57:43Z",
+          "completed_at": "2026-11-25T12:04:11Z"
+        },
+        {
+          "name": "Compile pinned Nova and Spartan",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-25T12:04:11Z",
+          "completed_at": "2026-11-25T12:05:40Z"
+        },
+        {
+          "name": "Fold and compress each derivation with the shared circuit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-25T12:05:40Z",
+          "completed_at": "2026-11-25T12:15:45Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-25T12:15:45Z",
+          "completed_at": "2026-11-25T12:15:47Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-25T12:15:47Z",
+          "completed_at": "2026-11-25T12:15:47Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-25T12:15:47Z",
+          "completed_at": "2026-11-25T12:15:47Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-25T12:15:47Z",
+          "completed_at": "2026-11-25T12:15:47Z"
+        }
+      ]
+    },
+    {
+      "id": 139187824313,
+      "name": "prove (3)",
+      "html_url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882/job/139187824313",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-25T11:57:14Z",
+      "completed_at": "2026-11-25T12:16:32Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-25T11:57:15Z",
+          "completed_at": "2026-11-25T11:57:15Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-25T11:57:15Z",
+          "completed_at": "2026-11-25T11:57:17Z"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-25T11:57:17Z",
+          "completed_at": "2026-11-25T11:57:17Z"
+        },
+        {
+          "name": "Generate and check every assignment in this shard",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-25T11:57:17Z",
+          "completed_at": "2026-11-25T12:04:15Z"
+        },
+        {
+          "name": "Compile pinned Nova and Spartan",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-25T12:04:15Z",
+          "completed_at": "2026-11-25T12:05:40Z"
+        },
+        {
+          "name": "Fold and compress each derivation with the shared circuit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-25T12:05:40Z",
+          "completed_at": "2026-11-25T12:16:27Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-25T12:16:27Z",
+          "completed_at": "2026-11-25T12:16:29Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-25T12:16:29Z",
+          "completed_at": "2026-11-25T12:16:29Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-25T12:16:29Z",
+          "completed_at": "2026-11-25T12:16:30Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-25T12:16:30Z",
+          "completed_at": "2026-11-25T12:16:30Z"
+        }
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15019850696,
+      "name": "zklean-equality-native-2849ae1124ff53066e8d143cacee19dc308ccf82",
+      "url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882/artifacts/15019850696",
+      "created_at": "2026-11-25T11:57:08Z",
+      "expires_at": "2027-02-23T11:54:15Z",
+      "github_digest": "sha256:672a03ebddfefed25278b666f859c978fca463b34d9b25e5b878dfda18ee980f",
+      "archive": {
+        "sha256": "672a03ebddfefed25278b666f859c978fca463b34d9b25e5b878dfda18ee980f",
+        "bytes": 82902
+      },
+      "archive_digest_matches_github": true,
+      "files": [
+        {
+          "name": "adversarial.json",
+          "sha256": "81ebf906351d6c2d503e804fbd63fa779bb9570a67573eae5353e5755aa92509",
+          "bytes": 7351
+        },
+        {
+          "name": "lean-source.json",
+          "sha256": "daa553bfe556926af2fdcd838d759127205bb72c3d06368e4836bca28fbf0f75",
+          "bytes": 97
+        },
+        {
+          "name": "lean-time.txt",
+          "sha256": "79052d9d440d186c9655823fc7a69135bf88da8ad5953fe8f76261c60900ef9f",
+          "bytes": 786
+        },
+        {
+          "name": "lean-version.txt",
+          "sha256": "36c0bbaf090c97bc8217c6ff497ff9144fd83d9003f12cd505162b943aaaee77",
+          "bytes": 106
+        },
+        {
+          "name": "lean.txt",
+          "sha256": "499d3a5d3c2802ce71ec19aba9856e288c2955c6d66fda0b18f48fc347a5eabd",
+          "bytes": 4285
+        },
+        {
+          "name": "native.json",
+          "sha256": "873b6d56a1a5e14f20bf4d5ae1505cb06036d8b78c514e7bdef77084503658ee",
+          "bytes": 819827
+        },
+        {
+          "name": "sample-time.txt",
+          "sha256": "55fb4487a97f94f5343141e4febc942b0e7e35b356a67a72044f5541b93a83d8",
+          "bytes": 782
+        },
+        {
+          "name": "sample.json",
+          "sha256": "fb7e2ef68dbf19ebb2d8be57ae14eb7c2e844bc4b5aa61208724b80bcd2a6dfc",
+          "bytes": 59805
+        }
+      ]
+    },
+    {
+      "id": 15022001242,
+      "name": "zklean-equality-receipt-2849ae1124ff53066e8d143cacee19dc308ccf82",
+      "url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882/artifacts/15022001242",
+      "created_at": "2026-11-25T12:27:57Z",
+      "expires_at": "2027-02-23T11:54:15Z",
+      "github_digest": "sha256:09be6aeee93f0ad83f23b1b9a43eef657d9e273c1a99cbeaa06bf3eb154812cc",
+      "archive": {
+        "sha256": "09be6aeee93f0ad83f23b1b9a43eef657d9e273c1a99cbeaa06bf3eb154812cc",
+        "bytes": 109398
+      },
+      "archive_digest_matches_github": true,
+      "files": [
+        {
+          "name": "equality-hosted-receipt.json",
+          "sha256": "70bcd9b89af1697706fc02a75da1ca80b425a55f52b7fa0027ce0a0ad9bec638",
+          "bytes": 584345
+        }
+      ]
+    },
+    {
+      "id": 15020506539,
+      "name": "zklean-equality-shard0-2849ae1124ff53066e8d143cacee19dc308ccf82",
+      "url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882/artifacts/15020506539",
+      "created_at": "2026-11-25T12:19:19Z",
+      "expires_at": "2027-02-23T11:54:15Z",
+      "github_digest": "sha256:8d355b21bd255b6558f3714e0344cb5cb06d81974c40fa8bdeb0b1e930dfa4f6",
+      "archive": {
+        "sha256": "8d355b21bd255b6558f3714e0344cb5cb06d81974c40fa8bdeb0b1e930dfa4f6",
+        "bytes": 15479603
+      },
+      "archive_digest_matches_github": true,
+      "files": [
+        {
+          "name": "Cargo.lock",
+          "sha256": "8c73f8e3ee7eef723e44027eef625ebad20d8025eb6aa3fe077148ac88577143",
+          "bytes": 30800
+        },
+        {
+          "name": "dependencies.txt",
+          "sha256": "14e8269ef65802b20eea7e1d249c2c905eca9991ec6bfc8fccdd914c3c4694ac",
+          "bytes": 7523
+        },
+        {
+          "name": "dependent_nat_elimination.compressed.bin",
+          "sha256": "9c5b13d3a3845416314c05cd0b36122af1a4fee830f1446d15a85173a3a228a1",
+          "bytes": 11632
+        },
+        {
+          "name": "dependent_nat_elimination.receipt.json",
+          "sha256": "c0deb30c84fc17db861dcf97584bd8af4b6e60857550114b02ff0fe5fe5df29a",
+          "bytes": 12430
+        },
+        {
+          "name": "equality_iota_proof_index.compressed.bin",
+          "sha256": "ead007d82a62842f8297a50701ca989535a0214108d56600e07578d008589f44",
+          "bytes": 11632
+        },
+        {
+          "name": "equality_iota_proof_index.receipt.json",
+          "sha256": "5d1247e13320b52358cd7fdbb723a504dc0e4abeabbc57ac9541635e2f0ffac9",
+          "bytes": 14774
+        },
+        {
+          "name": "equality_transitivity.compressed.bin",
+          "sha256": "6d19cab3ac17c50aee73e36cb74b8554ba8aeef5432cf3a5aea15a75c0a47137",
+          "bytes": 11632
+        },
+        {
+          "name": "equality_transitivity.receipt.json",
+          "sha256": "372f896e352af03330e286867b1c1eda21c0eaef39fc784fb4ea91a0c3278e8d",
+          "bytes": 19074
+        },
+        {
+          "name": "fixtures.sha256",
+          "sha256": "2d68028b778ac2a2937617f7d8f67a73e898667608718a9eb4d116bcae481ed7",
+          "bytes": 280484
+        },
+        {
+          "name": "full.json",
+          "sha256": "32672eaf6747461fe23cacf7cd08c17aa945f149db800b1706e51bf97b4c0230",
+          "bytes": 24518
+        },
+        {
+          "name": "generation-time.txt",
+          "sha256": "7daf1a7175d75dbd780c147c56527f51f1668955726387e377c7df4f803ec436",
+          "bytes": 831
+        },
+        {
+          "name": "manifest.json",
+          "sha256": "bb1fc2a4a662be42c5dcad798c44b3b83f1121b616579ea8f07e3dc691bc9b9a",
+          "bytes": 6629
+        },
+        {
+          "name": "matrix.json",
+          "sha256": "c583f594c0757e1910ec667c13e27ca081778e4167fed58188d1ea9d1dc12c04",
+          "bytes": 78541025
+        },
+        {
+          "name": "nat_zero.compressed.bin",
+          "sha256": "20857c727abf0ad817f56a5170857b56d8adcd15524deb914a2d9bd4cacd048d",
+          "bytes": 11632
+        },
+        {
+          "name": "nat_zero.receipt.json",
+          "sha256": "3c182452c4a88f248ee62ce9d0d64743c10eb93a09a5586eb6fa31b5cba60801",
+          "bytes": 2693
+        },
+        {
+          "name": "payloads.sha256",
+          "sha256": "c944cb6f19ae5ac47c24e354e120ef7c55fdc12987403880eb6df6ad9ccc0372",
+          "bytes": 838
+        },
+        {
+          "name": "polymorphic_identity.compressed.bin",
+          "sha256": "8b965834bcf9cd35e57afaf4317880d588d7cae426370f75082041216eda7a72",
+          "bytes": 11632
+        },
+        {
+          "name": "polymorphic_identity.receipt.json",
+          "sha256": "81c56ef2360838e9481c17f7874c5722c2d5f90f124927d6093416ffd4e3fd73",
+          "bytes": 3324
+        },
+        {
+          "name": "proof_dependent_elimination.compressed.bin",
+          "sha256": "38c79ed5f39ee8f7952c07478bcec77a04a348ef339fa18e0dcea9fb4fbc1dfd",
+          "bytes": 11632
+        },
+        {
+          "name": "proof_dependent_elimination.receipt.json",
+          "sha256": "088d562d1f80ab5a4cd0ea9ec03dfb0e95d893ed4270d7979510f823dee39bae",
+          "bytes": 11099
+        },
+        {
+          "name": "receipt.json",
+          "sha256": "75eec70b62e6dbbc87f1720209eae7f1dcaf72657cd962bf1283eeea3daa10bd",
+          "bytes": 76563
+        },
+        {
+          "name": "rustc.txt",
+          "sha256": "3397f54a03033c1b027496d83acc64e8f3ceeb4017e0575150f78726edce8a1a",
+          "bytes": 36
+        },
+        {
+          "name": "shared.vk.bin",
+          "sha256": "7e3b1dc3b54457d56ba6d63f973e5d7d3d90ac7fb542248b69f496338a02bf8b",
+          "bytes": 58504816
+        },
+        {
+          "name": "time.txt",
+          "sha256": "2c70a8e61b366838417b3c9e0ab0f11b79ff0090df73c3222dc6fb00b0fd0345",
+          "bytes": 858
+        }
+      ]
+    },
+    {
+      "id": 15020134513,
+      "name": "zklean-equality-shard1-2849ae1124ff53066e8d143cacee19dc308ccf82",
+      "url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882/artifacts/15020134513",
+      "created_at": "2026-11-25T12:27:45Z",
+      "expires_at": "2027-02-23T11:54:15Z",
+      "github_digest": "sha256:bfea122362ad469ba5f9632d9118bbd918c480b8e7e39d2661370c8c68a4fcfe",
+      "archive": {
+        "sha256": "bfea122362ad469ba5f9632d9118bbd918c480b8e7e39d2661370c8c68a4fcfe",
+        "bytes": 15447690
+      },
+      "archive_digest_matches_github": true,
+      "files": [
+        {
+          "name": "Cargo.lock",
+          "sha256": "8c73f8e3ee7eef723e44027eef625ebad20d8025eb6aa3fe077148ac88577143",
+          "bytes": 30800
+        },
+        {
+          "name": "dependencies.txt",
+          "sha256": "14e8269ef65802b20eea7e1d249c2c905eca9991ec6bfc8fccdd914c3c4694ac",
+          "bytes": 7523
+        },
+        {
+          "name": "dependent_application.compressed.bin",
+          "sha256": "3bb9247a4d251ad98742415efed03263f752807595a77c28d64949b47f2c19fa",
+          "bytes": 11632
+        },
+        {
+          "name": "dependent_application.receipt.json",
+          "sha256": "51cf978beaa82721cddef926d319cb40eaf4e8d80fe9cc0ffd7cdcb31051b1d2",
+          "bytes": 5615
+        },
+        {
+          "name": "equality_iota_type.compressed.bin",
+          "sha256": "aa9900048d39b7af0219430709b5d4adb479c444d22f74dfb2926e66b416b061",
+          "bytes": 11632
+        },
+        {
+          "name": "equality_iota_type.receipt.json",
+          "sha256": "0e9d58b8547f7c9288e9f639ea164b0f04e98c7081608006522aceb3d04cb9a9",
+          "bytes": 9542
+        },
+        {
+          "name": "fixtures.sha256",
+          "sha256": "a40103aca43446618d1d2834ea8f61bf272960a1477bb96ca88e60ac0b71f30f",
+          "bytes": 227314
+        },
+        {
+          "name": "full.json",
+          "sha256": "8a3700f88f0f61e14ac95d355f5ad7758669af4f385c21211730393e106cce5b",
+          "bytes": 18650
+        },
+        {
+          "name": "generation-time.txt",
+          "sha256": "7397d5c33e2177cb741447d88f21e92991b2b28c4895136ed26ef84b9a6b24fd",
+          "bytes": 831
+        },
+        {
+          "name": "manifest.json",
+          "sha256": "e2bbf583abe245e1360f0c6a140471f3328baac06bd30d3601ae2af21fb664af",
+          "bytes": 6254
+        },
+        {
+          "name": "matrix.json",
+          "sha256": "c583f594c0757e1910ec667c13e27ca081778e4167fed58188d1ea9d1dc12c04",
+          "bytes": 78541025
+        },
+        {
+          "name": "nat_recursion.compressed.bin",
+          "sha256": "bd70b9ef8d2bf33050ea1b90d557f54921b598a2ca52a264ccde4f69844a3242",
+          "bytes": 11632
+        },
+        {
+          "name": "nat_recursion.receipt.json",
+          "sha256": "631d3926c66405384856eb288f43abaf86c54566af7b2a0f8cd52667f3694a67",
+          "bytes": 5888
+        },
+        {
+          "name": "payloads.sha256",
+          "sha256": "a813efc89e85f4b3e1a344575227bcd8313e1b7e6ae2418f2ac258ccba27339b",
+          "bytes": 705
+        },
+        {
+          "name": "prop_nat_elimination.compressed.bin",
+          "sha256": "e008704c9a0a8e6164ec235032994a047e3788aa5c7232b31ff6d417b9e97efe",
+          "bytes": 11632
+        },
+        {
+          "name": "prop_nat_elimination.receipt.json",
+          "sha256": "d02d0b6f3e27bca0f115967ff1d78f4fb5911b8d672569eba4762f2b5c51c13f",
+          "bytes": 12220
+        },
+        {
+          "name": "propositional_transport.compressed.bin",
+          "sha256": "6e84c7a18eac2cddacf806729de59904cc90c367049976c75eff45ea47bfe75e",
+          "bytes": 11632
+        },
+        {
+          "name": "propositional_transport.receipt.json",
+          "sha256": "b4e779ceb92d099f9268188e75b1381c854c904b0e2d83b4a9e3bd29b668e1c9",
+          "bytes": 16953
+        },
+        {
+          "name": "receipt.json",
+          "sha256": "fd26793ac215808f34e5cb487cd934d56d5a68a092b5f2dbc99e4b669905b565",
+          "bytes": 60794
+        },
+        {
+          "name": "rustc.txt",
+          "sha256": "3397f54a03033c1b027496d83acc64e8f3ceeb4017e0575150f78726edce8a1a",
+          "bytes": 36
+        },
+        {
+          "name": "shared.vk.bin",
+          "sha256": "7e3b1dc3b54457d56ba6d63f973e5d7d3d90ac7fb542248b69f496338a02bf8b",
+          "bytes": 58504816
+        },
+        {
+          "name": "time.txt",
+          "sha256": "549be6a97ea864dad2c2ed085147a0903a529e4a749247b07d0a3a1262e266be",
+          "bytes": 859
+        }
+      ]
+    },
+    {
+      "id": 15019649883,
+      "name": "zklean-equality-shard2-2849ae1124ff53066e8d143cacee19dc308ccf82",
+      "url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882/artifacts/15019649883",
+      "created_at": "2026-11-25T12:15:46Z",
+      "expires_at": "2027-02-23T11:54:15Z",
+      "github_digest": "sha256:5ff3d1eb223599023fe3f06d8a25dd90c98138a135ca2a1510fd5899e23b300d",
+      "archive": {
+        "sha256": "5ff3d1eb223599023fe3f06d8a25dd90c98138a135ca2a1510fd5899e23b300d",
+        "bytes": 15419032
+      },
+      "archive_digest_matches_github": true,
+      "files": [
+        {
+          "name": "Cargo.lock",
+          "sha256": "8c73f8e3ee7eef723e44027eef625ebad20d8025eb6aa3fe077148ac88577143",
+          "bytes": 30800
+        },
+        {
+          "name": "beta_conversion.compressed.bin",
+          "sha256": "6328fc9eb96bd80f072395a8e9b21c61e3ba3cdc2d84f22b7b53c3f2092140d8",
+          "bytes": 11632
+        },
+        {
+          "name": "beta_conversion.receipt.json",
+          "sha256": "f3410938fd25aadeeded631de5374b8732bfcf285c8a9fdcff3419799a4db8d6",
+          "bytes": 4447
+        },
+        {
+          "name": "dependencies.txt",
+          "sha256": "14e8269ef65802b20eea7e1d249c2c905eca9991ec6bfc8fccdd914c3c4694ac",
+          "bytes": 7523
+        },
+        {
+          "name": "dependent_transport.compressed.bin",
+          "sha256": "82d9e8777433e613afa1d98bfd69d5d44cd9f78553c67db82b2cb80ca3454e60",
+          "bytes": 11632
+        },
+        {
+          "name": "dependent_transport.receipt.json",
+          "sha256": "9026c5d7fecba3fd5d7c781ec6250d5d5fa35de5c832d1f847ee0c09efc73e47",
+          "bytes": 17106
+        },
+        {
+          "name": "equality_iota_value.compressed.bin",
+          "sha256": "0be364e20e6109e7b044134b0dbd4ae24c2ceb1d10f533163c109265f1354d52",
+          "bytes": 11632
+        },
+        {
+          "name": "equality_iota_value.receipt.json",
+          "sha256": "00d128b465c0a09319cf360e1cfc08dc2b10d5cf2b878b3e2c820c033b1fa6c3",
+          "bytes": 7883
+        },
+        {
+          "name": "equality_reflexivity.compressed.bin",
+          "sha256": "e9ee4c0c14df9ed5f5f92430e4d916921f9b11c97287c990e5c427e7036ab8d7",
+          "bytes": 11632
+        },
+        {
+          "name": "equality_reflexivity.receipt.json",
+          "sha256": "877c4882ece2bd4bf2fbc5bd0f91bf36ee7207edb391daf86adea768a9e4c1c2",
+          "bytes": 3528
+        },
+        {
+          "name": "fixtures.sha256",
+          "sha256": "cb4f1ae7b5e3ff62f886622a7bfd56127ac97875c1e62329e32efb27c20273ca",
+          "bytes": 161325
+        },
+        {
+          "name": "full.json",
+          "sha256": "34f724baa75d61aca3ebbfd8822212d64a7d7da719af34f21904b13baa70ce15",
+          "bytes": 15898
+        },
+        {
+          "name": "generation-time.txt",
+          "sha256": "52b78ca9ae18f102c4f0f6f07207c9543b15eec7ace77661ea5a05686d40e75d",
+          "bytes": 829
+        },
+        {
+          "name": "iota_zero_type.compressed.bin",
+          "sha256": "bda68dbc6eee9edb03a870c08355772978399b22eb099f05d913f7f088fc8b6b",
+          "bytes": 11632
+        },
+        {
+          "name": "iota_zero_type.receipt.json",
+          "sha256": "28d51fd5a2401ce5dbdbb12aecd8fa70c3f76527709e5c6d6c410b4d582c98c3",
+          "bytes": 6501
+        },
+        {
+          "name": "manifest.json",
+          "sha256": "6bd055ecb3a51b1414ad27eeb11d014d066ee0cc1d40c3673d92d88ad63d0db1",
+          "bytes": 6230
+        },
+        {
+          "name": "matrix.json",
+          "sha256": "c583f594c0757e1910ec667c13e27ca081778e4167fed58188d1ea9d1dc12c04",
+          "bytes": 78541025
+        },
+        {
+          "name": "payloads.sha256",
+          "sha256": "731f472e03989beff35103464a7dcf4a72ecca3704dd1ab72c7281cccff15847",
+          "bytes": 697
+        },
+        {
+          "name": "receipt.json",
+          "sha256": "1d0f69b1ede91c480e58184cfef14de5f658df61352eff3b5939a582ee471ab1",
+          "bytes": 47468
+        },
+        {
+          "name": "rustc.txt",
+          "sha256": "3397f54a03033c1b027496d83acc64e8f3ceeb4017e0575150f78726edce8a1a",
+          "bytes": 36
+        },
+        {
+          "name": "shared.vk.bin",
+          "sha256": "7e3b1dc3b54457d56ba6d63f973e5d7d3d90ac7fb542248b69f496338a02bf8b",
+          "bytes": 58504816
+        },
+        {
+          "name": "time.txt",
+          "sha256": "85ad2b05534a9d8adf5bf352dc96942da85300c618c0955e40c9011a06ef5db2",
+          "bytes": 857
+        }
+      ]
+    },
+    {
+      "id": 15021310399,
+      "name": "zklean-equality-shard3-2849ae1124ff53066e8d143cacee19dc308ccf82",
+      "url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45608709882/artifacts/15021310399",
+      "created_at": "2026-11-25T12:16:29Z",
+      "expires_at": "2027-02-23T11:54:15Z",
+      "github_digest": "sha256:d28e19f5221364f00bbca054f6a086b9353f4d5593d2dffda9351c298e183680",
+      "archive": {
+        "sha256": "d28e19f5221364f00bbca054f6a086b9353f4d5593d2dffda9351c298e183680",
+        "bytes": 15450888
+      },
+      "archive_digest_matches_github": true,
+      "files": [
+        {
+          "name": "Cargo.lock",
+          "sha256": "8c73f8e3ee7eef723e44027eef625ebad20d8025eb6aa3fe077148ac88577143",
+          "bytes": 30800
+        },
+        {
+          "name": "dependencies.txt",
+          "sha256": "14e8269ef65802b20eea7e1d249c2c905eca9991ec6bfc8fccdd914c3c4694ac",
+          "bytes": 7523
+        },
+        {
+          "name": "equality_congruence.compressed.bin",
+          "sha256": "fe1412d7ac912d5eea4855cfdd0d545c69b7de140a05606a9e33b174ec745def",
+          "bytes": 11632
+        },
+        {
+          "name": "equality_congruence.receipt.json",
+          "sha256": "387eb1ae9482ffe2206fb3dd6d2c96b499f31873996d407823d62fabcf15fab0",
+          "bytes": 15966
+        },
+        {
+          "name": "equality_iota_proposition.compressed.bin",
+          "sha256": "01a156cd976705d4db3c1099d1a769321b33ad08f187f398f97236615fcca42d",
+          "bytes": 11632
+        },
+        {
+          "name": "equality_iota_proposition.receipt.json",
+          "sha256": "85489e277eb287a29dfa4441acaea2dd7a02779767550365123fd4e81c45aab7",
+          "bytes": 10010
+        },
+        {
+          "name": "equality_symmetry.compressed.bin",
+          "sha256": "bdb9d8ad27e10a3c222cbb0529c9f897aa359747ff691b8bfaf5bc4f5a966a5d",
+          "bytes": 11632
+        },
+        {
+          "name": "equality_symmetry.receipt.json",
+          "sha256": "430ca97a984d4cc06df1ec819e7c8a2ed4f6ff599b238d15876d37e632be8a18",
+          "bytes": 14200
+        },
+        {
+          "name": "fixtures.sha256",
+          "sha256": "a9b9238de030403a363060932aff11157522bc26c24769a32dbdc16081402ab7",
+          "bytes": 232516
+        },
+        {
+          "name": "full.json",
+          "sha256": "195cce79a2c789cfc8c587d581ee8f6d3b53769c9bd4799ffdb7f2a4596ba01f",
+          "bytes": 20541
+        },
+        {
+          "name": "generation-time.txt",
+          "sha256": "3e138896f016dbc5ca05390bdfe739aba21f7b4a44f25374234ebd5662746fc6",
+          "bytes": 830
+        },
+        {
+          "name": "impredicative_predicate_identity.compressed.bin",
+          "sha256": "dd277284e443d34acc2e6cb3f76aa18ecaf109e930ff8a46800e91a0d7e4f8f5",
+          "bytes": 11632
+        },
+        {
+          "name": "impredicative_predicate_identity.receipt.json",
+          "sha256": "d235f3e6187a997bab44807f5b19782e7727aaa5a1db672ff95979d18782bce4",
+          "bytes": 5179
+        },
+        {
+          "name": "iota_succ_type.compressed.bin",
+          "sha256": "5bee9e47752c7509f04694b75a7a3abcea1f43e30f36615789c8341724e66eaa",
+          "bytes": 11632
+        },
+        {
+          "name": "iota_succ_type.receipt.json",
+          "sha256": "d1e75f324ce0367fbc7768380cf9267e960afdd895de14de428ebda2ff4bdc1d",
+          "bytes": 7235
+        },
+        {
+          "name": "manifest.json",
+          "sha256": "1d3020ece5000d5ca3f399ec5d99ae17bf44023cb5d805e8e646a3315c88ffd7",
+          "bytes": 6293
+        },
+        {
+          "name": "matrix.json",
+          "sha256": "c583f594c0757e1910ec667c13e27ca081778e4167fed58188d1ea9d1dc12c04",
+          "bytes": 78541025
+        },
+        {
+          "name": "payloads.sha256",
+          "sha256": "234f77524fab6fc816cdad99d48f9faf9c4b2ad51b38980ab748ac21cfce4f37",
+          "bytes": 717
+        },
+        {
+          "name": "receipt.json",
+          "sha256": "7b79a1e3aca223998b3c9b551aee6830a60b5b7629d003cfa6b5608b26c022fb",
+          "bytes": 63789
+        },
+        {
+          "name": "rustc.txt",
+          "sha256": "3397f54a03033c1b027496d83acc64e8f3ceeb4017e0575150f78726edce8a1a",
+          "bytes": 36
+        },
+        {
+          "name": "shared.vk.bin",
+          "sha256": "7e3b1dc3b54457d56ba6d63f973e5d7d3d90ac7fb542248b69f496338a02bf8b",
+          "bytes": 58504816
+        },
+        {
+          "name": "time.txt",
+          "sha256": "f3115ce1dad1f9e85012c3b07b797d37ceeffbf87f2c390269a9e206e79afcd8",
+          "bytes": 858
+        }
+      ]
+    }
+  ],
+  "native_conformance": {
+    "fixtures_equal_source": true,
+    "native_result_equal_source": true,
+    "adversarial_result_equal_source": true,
+    "sample_bytes_equal_source": true,
+    "lean_axiom_free_declarations": 21,
+    "lean_version": "Lean (version 4.24.0, x86_64-unknown-linux-gnu, commit 797c613eb9b6d4ec95db23e3e00af9ac6657f24b, Release)",
+    "lean_timer": {
+      "wall_seconds": 0.23,
+      "user_seconds": 0.18,
+      "system_seconds": 0.07,
+      "peak_rss_kib": 376688,
+      "swaps": 0,
+      "exit_status": 0
+    },
+    "sample_timer": {
+      "wall_seconds": 145.91,
+      "user_seconds": 144.64,
+      "system_seconds": 2.31,
+      "peak_rss_kib": 939996,
+      "swaps": 0,
+      "exit_status": 0
+    }
+  },
+  "aggregate": {
+    "artifact_id": 15022001242,
+    "payload": {
+      "sha256": "70bcd9b89af1697706fc02a75da1ca80b425a55f52b7fa0027ce0a0ad9bec638",
+      "bytes": 584345
+    },
+    "local_combine_exact_bytes_match": true,
+    "per_case_receipts_equal_aggregate": true,
+    "compressed_proof_lengths_and_hashes_checked": true,
+    "all_four_matrix_hashes_equal": true,
+    "all_four_verifier_key_hashes_equal": true,
+    "cargo_lock_matches_source": true,
+    "source_inputs": {
+      "fixtures": {
+        "sha256": "5fd802969004b844d93fe27c598189d79b99224d22084b00f1da75df9a2b558e",
+        "bytes": 674013
+      },
+      "sample": {
+        "sha256": "fb7e2ef68dbf19ebb2d8be57ae14eb7c2e844bc4b5aa61208724b80bcd2a6dfc",
+        "bytes": 59805
+      },
+      "gate": {
+        "sha256": "7f51b10675a1e583ed7f1d70898d0ff1f8b616ebdc0b5e38f2c21fb23f348739",
+        "bytes": 24151
+      },
+      "cargo_lock": {
+        "sha256": "8c73f8e3ee7eef723e44027eef625ebad20d8025eb6aa3fe077148ac88577143",
+        "bytes": 30800
+      }
+    }
+  }
+}
