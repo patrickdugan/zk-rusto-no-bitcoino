@@ -14,7 +14,7 @@
   "hashes": 95,
   "constraints": 36671,
   "wires": 35736,
-  "nonzeros": 897096,
+  "nonzeros": 897078,
   "hash_constraints": 29640,
   "node_domain": "6506377860829105743",
   "leaf_domain": "6506377860829105222",

@@ -37,7 +37,7 @@ Soundness sketch: sorting preserves all requests; dedup removes only equal addre
 | Other equations | 3797 | 7031 |
 | Total R1CS equations | 41237 | 36671 |
 | Wires incl. ONE | 40448 | 35736 |
-| Sparse matrix terms | 1019955 | 897096 |
+| Sparse matrix terms | 1019955 | 897078 |
 
 Net reduction 4,566 equations, 11.07%, including the cost of sorting/deduplication/compaction. Expected explicit Rust StepCircuit size 36,679 after eight recursive state bindings. This is measured sparse-matrix synthesis; Nova augmented sizes, timing, key and proof bytes for the new matrix remain unmeasured.
 
@@ -58,3 +58,7 @@ The Node CLI pins the full Poseidon parameter fixture hash. Sandbox execution fe
 ## Next
 
 If the shared-path gate passes, compare actual prover time, memory and verifier key size with 12 rather than extrapolating from constraint counts. Retain the independent-path circuit as a conformance reference. Apply the append frontier optimization separately, with proof of equality of prior/new roots and a fixed shape; then add public constants and checked inductive recursors. Full Lean coverage, proof privacy, formal soundness, and BitVM settlement remain open. Fixture salts are deterministic. No GPU expenditure.
+
+## Canonical sparse export repair (2026-11-25)
+
+Initial hosted run 45595770231 completed sample reproduction, all 957 assignment checks and Rust compilation. It stopped before Nova setup at the strict Rust loader's nonzero-coefficient assertion. The JavaScript constraint emitter had retained explicit zero coefficients in otherwise valid linear combinations. Canonicalize each linear combination at emission (merge equal wire indices, reduce mod p, drop zeros, sort). This preserves the matrix relation and wire numbering; the local sample receipt reproduces every field except the sparse term count, which changes from 897096 to 897078. The Rust loader retains strict canonical checks. Rerun the complete hosted proof gate; no optimized cryptographic performance result is available from the failed run.

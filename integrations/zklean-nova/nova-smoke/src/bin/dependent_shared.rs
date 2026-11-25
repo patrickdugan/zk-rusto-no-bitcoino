@@ -156,7 +156,7 @@ fn main(){
  let f:Fixture=serde_json::from_slice(&bytes).unwrap();drop(bytes);
  assert_eq!(f.schema,"zkl-nova-13/shared-auth-v1");
  let q=&f.summary;
- for(k,v)in[("depth",D),("constraints",MATRIX_ROWS),("wires",MATRIX_WIRES),("nonzeros",897096),("hashes",95),("hash_constraints",29640)]{assert_eq!(q[k].as_u64().unwrap(),v as u64);}
+ for(k,v)in[("depth",D),("constraints",MATRIX_ROWS),("wires",MATRIX_WIRES),("nonzeros",897078),("hashes",95),("hash_constraints",29640)]{assert_eq!(q[k].as_u64().unwrap(),v as u64);}
  assert_eq!(q["state_ids"],json!(PUB));
  for(k,v)in[("node_domain",NODE),("leaf_domain",LEAF),("term_domain",TERM)]{assert_eq!(scalar(q[k].as_str().unwrap()),F::from(v));}
  assert_eq!(q["node_vector"],NODE_VECTOR);assert_eq!(q["leaf_vector"],LEAF_VECTOR);
@@ -168,7 +168,7 @@ fn main(){
    assert!(i<MATRIX_WIRES&&prev.map_or(true,|j|j<i));prev=Some(i);
    let v=scalar(&v);assert_ne!(v,F::ZERO);nnz+=1;(i,v)
   }).collect()
- })).collect());assert_eq!(nnz,897096);
+ })).collect());assert_eq!(nnz,897078);
  let first=read_step(dir,CASES[0].0,0,&matrix);
  let t=Instant::now();let pp=Pp::setup(&first,&*S1::ck_floor(),&*S2::ck_floor()).unwrap();let setup=t.elapsed().as_secs_f64();
  let(primary,secondary)=pp.num_constraints();
