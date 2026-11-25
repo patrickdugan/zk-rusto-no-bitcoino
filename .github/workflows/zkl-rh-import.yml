@@ -65,7 +65,7 @@ jobs:
             results/
             integrations/zkl-nova-calibration/Cargo.lock
   rh-inventory:
-    if: github.event_name == 'workflow_dispatch' && inputs.rh_inventory
+    if: github.event_name == 'pull_request' || inputs.rh_inventory
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:

@@ -90,6 +90,15 @@ async function inventory(lines,{roots=[],terms=false,rh=false,maxRows=25000000}=
   const report={schema:"zkl-lean-export-inventory-v1",meta,records:nr,names:ns.length-1,levels:ls.length-1,expressions:ne,
     declarations:ds.size,expression_kinds:kinds,level_kinds:levelKinds,declaration_kinds:declKinds,axioms:ax,targets,
     syntactic_references_closed:true,kernel_verified:false};
+  const universeCounts={};
+  for(const d of ds.values())add(universeCounts,String(d.params.length));
+  report.declaration_universe_parameter_counts=universeCounts;
+  report.distinct_explicit_constant_or_projection_references=refs.size;
+  report.explicit_noncore_expression_counts=Object.fromEntries(Object.entries(kinds).filter(([k])=>!["bvar","sort","forallE","lam","app"].includes(k)));
+  if(rh)report.declaration_manifest=[...ds].map(([i,d])=>({
+    name:path(i),kind:d.kind,universe_parameters:d.params.map(path),type_expr:d.type,
+    ...(d.value!==undefined?{value_expr:d.value}:{})
+  }));
   if(terms){
     report.admission=[];
     for(const d of targets)for(const instance of [0,1]){
