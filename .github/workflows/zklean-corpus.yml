@@ -1,0 +1,73 @@
+name: zkLean pinned mathematical corpus import
+on:
+  push:
+    branches:
+      - research/zkl-nova-18-20261125
+    paths:
+      - 'integrations/zklean-nova/corpus*.cjs'
+      - 'integrations/zklean-nova/corpus_export.lean'
+      - 'integrations/zklean-nova/corpus/solved_conjectures_manifest.json'
+      - 'integrations/zklean-nova/solved_corpus_collect.py'
+      - 'integrations/zklean-nova/equality.cjs'
+      - 'integrations/zklean-nova/equality_environment.cjs'
+      - '.github/workflows/zklean-corpus.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zklean-corpus-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  solved-source-cohorts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      LEAN_NUM_THREADS: '1'
+      UV_USE_IO_URING: '0'
+      NODE_OPTIONS: '--max-old-space-size=4096'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Freeze every selected theorem before setup
+        run: |
+          python3 integrations/zklean-nova/solved_corpus_collect.py --self-test
+          node integrations/zklean-nova/corpus_import_test.cjs
+          python3 integrations/zklean-nova/solved_corpus_collect.py --phase initialize --output /tmp/zklean-solved-corpus
+      - uses: actions/checkout@v4
+        with:
+          repository: 1337isnot1337/solved-conjectures
+          ref: e1cf80b80c2fe9d22d83f1dc3673410a2ac1bf2e
+          path: solved-source
+          persist-credentials: false
+      - name: Check source and verifier pins before execution
+        run: python3 integrations/zklean-nova/solved_corpus_collect.py --phase check-pins --source solved-source
+      - uses: leanprover/lean-action@ba3fdfe5c4476c925da13bf11a005ddb47e47aee
+        timeout-minutes: 5
+        with:
+          lake-package-directory: solved-source/lean
+          auto-config: false
+          use-mathlib-cache: true
+          use-github-cache: true
+          build: false
+          test: false
+          lint: false
+      - name: Compile both pinned families and measure every selected theorem
+        working-directory: solved-source/lean
+        run: |
+          set -o pipefail
+          lake env python3 ../../integrations/zklean-nova/solved_corpus_collect.py --source .. --output /tmp/zklean-solved-corpus --budget-seconds 1200 | tee /tmp/zklean-solved-corpus/collector.log
+      - name: Account for blocked names and aggregate both cohorts
+        if: always()
+        run: python3 integrations/zklean-nova/solved_corpus_collect.py --phase finalize --output /tmp/zklean-solved-corpus
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zklean-solved-corpus-${{ github.sha }}
+          path: /tmp/zklean-solved-corpus/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
