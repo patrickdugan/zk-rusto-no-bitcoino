@@ -37,6 +37,14 @@ jobs:
         run: |
           set -euo pipefail
           /usr/bin/time -v timeout 240s integrations/zkl-nova-calibration/target/release/zkl-nova-calibration --compress | tee zkl-compressed.json
+      - name: Calibrate affine dependent predicate instantiation
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v timeout 120s integrations/zkl-nova-calibration/target/release/indexed --calibrate | tee zkl-indexed-shapes.json
+      - name: Fold and compress affine dependent derivation
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v timeout 240s integrations/zkl-nova-calibration/target/release/indexed --compress | tee zkl-indexed-proof.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -45,4 +53,6 @@ jobs:
             zkl-shapes.json
             zkl-fold.json
             zkl-compressed.json
+            zkl-indexed-shapes.json
+            zkl-indexed-proof.json
             integrations/zkl-nova-calibration/Cargo.lock
