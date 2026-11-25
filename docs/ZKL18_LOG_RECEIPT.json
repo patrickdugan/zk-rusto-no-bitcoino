@@ -1,0 +1,97 @@
+[
+  {
+    "constraint_negatives": 4,
+    "covered_rules": 8,
+    "fixture_sha256": "267f96336aaa3e582a353296137e816741d2ef5ae1fbdcd3ac123294a087586f",
+    "honest_rows": 92,
+    "native_compiler_in_tcb": true,
+    "public_compiler_negatives": 9,
+    "raw_aux_including_state": 11214,
+    "raw_step_constraints": 11197,
+    "scope": "compiled_public_dependent_pi"
+  },
+  {
+    "augmented_constraints": [
+      22575,
+      10349
+    ],
+    "augmented_variables": [
+      22589,
+      10331
+    ],
+    "cases": [
+      {
+        "compressed_verify_seconds": 0.18945307,
+        "compression_prove_seconds": 8.421200994,
+        "contexts": 3,
+        "fold_seconds": 2.617567408,
+        "name": "identity",
+        "proof_bytes": 11096,
+        "public_rules": 13,
+        "statement_sha256": "20a9fb39fa96005f2b9181df1090618719fe7a168c11d3cd5ebee5301bae1383",
+        "steps": 11,
+        "terms": 8,
+        "verified": true
+      },
+      {
+        "compressed_verify_seconds": 0.18903246,
+        "compression_prove_seconds": 8.412827669,
+        "contexts": 7,
+        "fold_seconds": 6.153909371,
+        "name": "dependent_app",
+        "proof_bytes": 11096,
+        "public_rules": 37,
+        "statement_sha256": "11e9e6fa9700b7a1cabb31688f4d1604cb6c2d901974111400f8b2fe59aa4bd6",
+        "steps": 30,
+        "terms": 23,
+        "verified": true
+      },
+      {
+        "compressed_verify_seconds": 0.188849819,
+        "compression_prove_seconds": 8.407756009,
+        "contexts": 5,
+        "fold_seconds": 3.893282971,
+        "name": "weakening",
+        "proof_bytes": 11096,
+        "public_rules": 22,
+        "statement_sha256": "d282609f7ccd020270e024e79fcbdb40785766cb9420b59c1a21095bba540adf",
+        "steps": 19,
+        "terms": 12,
+        "verified": true
+      },
+      {
+        "compressed_verify_seconds": 0.189598322,
+        "compression_prove_seconds": 8.414240016,
+        "contexts": 4,
+        "fold_seconds": 4.294727574,
+        "name": "conversion",
+        "proof_bytes": 11096,
+        "public_rules": 22,
+        "statement_sha256": "8a0ba2e7ebee287c7130a92a6b20cb4b224b2db15eca08821982d0b4b514bfda",
+        "steps": 21,
+        "terms": 13,
+        "verified": true
+      },
+      {
+        "compressed_verify_seconds": 0.188564868,
+        "compression_prove_seconds": 8.75396532,
+        "contexts": 4,
+        "fold_seconds": 2.196877753,
+        "name": "impredicative_pi",
+        "proof_bytes": 11096,
+        "public_rules": 13,
+        "statement_sha256": "5333b58b486e66fd12d44779ba3eeb7bb7688338442f9fb0f71204da002cf16b",
+        "steps": 11,
+        "terms": 7,
+        "verified": true
+      }
+    ],
+    "compression_setup_seconds": 0.222952586,
+    "native_compiler_in_tcb": true,
+    "nova": "0.76.0",
+    "scope": "nova_compiled_public_dependent_pi",
+    "setup_seconds": 3.724590268,
+    "verification_key_bytes": 27235968,
+    "witness_privacy_claimed": false
+  }
+]
