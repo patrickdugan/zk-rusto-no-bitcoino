@@ -1,0 +1,27 @@
+name: zkLean dependent calculus conformance
+on:
+  push:
+    branches:
+      - research/zkl-nova-10-20261125
+    paths:
+      - 'integrations/zklean-nova/dependent*'
+      - 'integrations/zklean-nova/ZKL_NOVA_10.md'
+      - '.github/workflows/zklean-nova-dependent.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dependent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce certificate and corruption receipts
+        run: |
+          node integrations/zklean-nova/dependent.cjs > /tmp/dependent.json
+          diff -u integrations/zklean-nova/dependent_results.json /tmp/dependent.json
+          node integrations/zklean-nova/dependent.cjs --fixtures > /tmp/dependent-fixtures.json
+          node -e 'const fs=require("fs"),assert=require("assert");const actual=JSON.parse(fs.readFileSync("/tmp/dependent-fixtures.json"));assert.deepStrictEqual(actual.fixtures,JSON.parse(fs.readFileSync("integrations/zklean-nova/dependent_fixtures.json")));assert.deepStrictEqual(actual.result,JSON.parse(fs.readFileSync("integrations/zklean-nova/dependent_results.json")));'

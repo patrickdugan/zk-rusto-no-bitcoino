@@ -1,0 +1,107 @@
+{
+  "targeted_rejections": 26,
+  "cases": {
+    "polymorphic_identity": {
+      "rows": 52,
+      "tags": {
+        "E": 1,
+        "S": 2,
+        "B": 2,
+        "L": 3,
+        "P": 3,
+        "JS": 2,
+        "X": 5,
+        "F": 2,
+        "I0": 10,
+        "I2": 3,
+        "Q0": 6,
+        "JV": 6,
+        "Q1": 2,
+        "JP": 3,
+        "JL": 2
+      }
+    },
+    "dependent_application": {
+      "rows": 340,
+      "tags": {
+        "E": 1,
+        "S": 2,
+        "B": 3,
+        "P": 13,
+        "A": 7,
+        "L": 9,
+        "JS": 5,
+        "X": 21,
+        "F": 4,
+        "I0": 96,
+        "I2": 62,
+        "Q0": 30,
+        "JV": 30,
+        "JP": 17,
+        "Q1": 27,
+        "JA": 9,
+        "JL": 4
+      }
+    },
+    "beta_conversion": {
+      "rows": 276,
+      "tags": {
+        "E": 1,
+        "S": 2,
+        "B": 2,
+        "L": 4,
+        "A": 3,
+        "P": 10,
+        "JS": 21,
+        "X": 19,
+        "F": 3,
+        "I0": 84,
+        "I2": 34,
+        "Q0": 14,
+        "JV": 14,
+        "JP": 11,
+        "JL": 8,
+        "JA": 6,
+        "Q1": 3,
+        "VR": 15,
+        "VL": 3,
+        "VA": 3,
+        "VB": 3,
+        "VT": 7,
+        "VP": 4,
+        "VS": 1,
+        "JC": 1
+      }
+    },
+    "impredicative_predicate_identity": {
+      "rows": 289,
+      "tags": {
+        "E": 1,
+        "S": 3,
+        "B": 3,
+        "P": 11,
+        "A": 5,
+        "L": 9,
+        "JS": 5,
+        "X": 17,
+        "F": 4,
+        "I0": 81,
+        "I2": 51,
+        "Q0": 26,
+        "JV": 26,
+        "JP": 13,
+        "Q1": 21,
+        "JA": 9,
+        "JL": 4
+      }
+    }
+  },
+  "total_rows": 957,
+  "valid_cases": 4,
+  "negative_cases": 6,
+  "wrong_statement_rejections": 4,
+  "mutations": 2000,
+  "mutations_accepted": 32,
+  "mutations_rejected": 1968,
+  "accepted_mutations_reference_valid": 32
+}
