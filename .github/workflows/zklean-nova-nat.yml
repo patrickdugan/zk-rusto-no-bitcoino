@@ -1,0 +1,27 @@
+name: zkLean Nat inductive conformance
+on:
+  push:
+    branches:
+      - research/zkl-nova-15-20261125
+    paths:
+      - 'integrations/zklean-nova/nat_inductive*'
+      - 'integrations/zklean-nova/ZKL_NOVA_15.md'
+      - '.github/workflows/zklean-nova-nat.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  nat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce Nat signature, certificate and corruption receipts
+        run: |
+          node integrations/zklean-nova/nat_inductive.cjs > /tmp/nat.json
+          diff -u integrations/zklean-nova/nat_inductive_results.json /tmp/nat.json
+          node integrations/zklean-nova/nat_inductive.cjs --fixtures > /tmp/nat-fixtures.json
+          node -e 'const fs=require("fs"),assert=require("assert");const a=JSON.parse(fs.readFileSync("/tmp/nat-fixtures.json"));assert.deepStrictEqual(a.fixtures,JSON.parse(fs.readFileSync("integrations/zklean-nova/nat_inductive_fixtures.json")));assert.deepStrictEqual(a.result,JSON.parse(fs.readFileSync("integrations/zklean-nova/nat_inductive_results.json")));'
