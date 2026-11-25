@@ -1,0 +1,42 @@
+name: ZKL de Bruijn conversion
+on:
+  pull_request:
+    paths:
+      - 'integrations/zkl-nova-calibration/src/bin/term.rs'
+      - 'integrations/zkl-nova-calibration/term-fixtures.json'
+      - '.github/workflows/zkl-term-conversion.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'integrations/zkl-nova-calibration/src/bin/term.rs'
+      - 'integrations/zkl-nova-calibration/term-fixtures.json'
+      - '.github/workflows/zkl-term-conversion.yml'
+permissions:
+  contents: read
+jobs:
+  term-conversion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build isolated Nova term checker
+        run: |
+          cargo generate-lockfile --manifest-path integrations/zkl-nova-calibration/Cargo.toml
+          cargo build --locked --release --manifest-path integrations/zkl-nova-calibration/Cargo.toml --bin term
+      - name: Synthesize, attack and compress conversion certificates
+        run: |
+          set -euo pipefail
+          test "$(sha256sum integrations/zkl-nova-calibration/term-fixtures.json | cut -d' ' -f1)" = e31a5c06617e5e01bde3d301e6ca719fc76a1e2c7e2d59cb9fc4df549cf674b3
+          /usr/bin/time -v timeout 600s integrations/zkl-nova-calibration/target/release/term integrations/zkl-nova-calibration/term-fixtures.json --compress | tee zkl-term-results.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl-term-evidence
+          path: |
+            zkl-term-results.jsonl
+            integrations/zkl-nova-calibration/Cargo.lock
