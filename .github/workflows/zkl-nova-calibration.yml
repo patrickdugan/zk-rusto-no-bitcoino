@@ -33,6 +33,10 @@ jobs:
         run: |
           set -euo pipefail
           /usr/bin/time -v timeout 240s integrations/zkl-nova-calibration/target/release/zkl-nova-calibration --fold | tee zkl-fold.json
+      - name: Verify compressed Nova proof with Spartan IPA
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v timeout 240s integrations/zkl-nova-calibration/target/release/zkl-nova-calibration --compress | tee zkl-compressed.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -40,4 +44,5 @@ jobs:
           path: |
             zkl-shapes.json
             zkl-fold.json
+            zkl-compressed.json
             integrations/zkl-nova-calibration/Cargo.lock
