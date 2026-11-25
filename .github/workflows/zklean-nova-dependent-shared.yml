@@ -1,0 +1,57 @@
+name: zkLean Nova dependent shared paths
+on:
+  push:
+    branches:
+      - research/zkl-nova-13-20261125
+    paths:
+      - 'integrations/zklean-nova/**'
+      - '.github/workflows/zklean-nova-dependent-shared.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zklean-dependent-shared-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  dependent-shared:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      NODE_OPTIONS: '--max-old-space-size=4096'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce authenticated sample and compare baseline endpoints
+        run: |
+          mkdir -p /tmp/dependent-shared-proof
+          node integrations/zklean-nova/dependent_shared.cjs > /tmp/dependent-shared-proof/sample.json
+          diff -u integrations/zklean-nova/dependent_shared_sample.json /tmp/dependent-shared-proof/sample.json
+          node -e 'const fs=require("fs"),assert=require("assert");const a=JSON.parse(fs.readFileSync("integrations/zklean-nova/dependent_scale_sample.json"));const b=JSON.parse(fs.readFileSync("/tmp/dependent-shared-proof/sample.json"));assert.deepStrictEqual(a.cases.map(x=>[x.name,x.initial,x.terminal]),b.cases.map(x=>[x.name,x.initial,x.terminal]));'
+      - name: Generate and check all 957 assignments
+        run: |
+          /usr/bin/time -v -o /tmp/dependent-shared-proof/generation-time.txt node integrations/zklean-nova/dependent_shared.cjs --full /tmp/dependent-shared-fixture > /tmp/dependent-shared-proof/full.json
+          sha256sum /tmp/dependent-shared-fixture/matrix.json /tmp/dependent-shared-fixture/*.bin > /tmp/dependent-shared-proof/fixtures.sha256
+      - name: Compile pinned Nova and Spartan
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version > /tmp/dependent-shared-proof/rustc.txt
+          cargo +1.90.0 generate-lockfile --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml
+          cargo +1.90.0 tree --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml > /tmp/dependent-shared-proof/dependencies.txt
+          cargo +1.90.0 build --release --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml --bin dependent_shared
+      - name: Fold and compress all four shared-path derivations
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o /tmp/dependent-shared-proof/time.txt integrations/zklean-nova/nova-smoke/target/release/dependent_shared /tmp/dependent-shared-fixture /tmp/dependent-shared-proof | tee /tmp/dependent-shared-proof/receipt.json
+          sha256sum /tmp/dependent-shared-proof/*.bin > /tmp/dependent-shared-proof/payloads.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zklean-dependent-shared-${{ github.sha }}
+          path: |
+            /tmp/dependent-shared-proof/
+            integrations/zklean-nova/nova-smoke/Cargo.lock
