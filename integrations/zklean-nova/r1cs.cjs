@@ -1,9 +1,10 @@
 // ZKL-NOVA-05: real sparse R1CS matrices, no recursive proof.
 // Node >=18; exact pinned repo parameter file checked before use.
 const fs=require('node:fs');const crypto=require('node:crypto');const path=require('node:path');
-const file=process.argv[2]||path.join(__dirname,'../bitvm2-nova/fixtures/nht4-genesis-0-2020-k5.poseidon.json');
+const args=process.argv.slice(2);const emit=args[0]==='--nova-fixture';if(emit)args.shift();
+const file=args[0]||path.join(__dirname,'../bitvm2-nova/fixtures/nht4-genesis-0-2020-k5.poseidon.json');
 const bytes=fs.readFileSync(file);if(crypto.createHash('sha256').update(bytes).digest('hex')!=='b55fa125133315243cb299ee7603c5f0508d68abf64f0dab43ecba4a0d09fa67')throw Error('parameter pin');
-function experiment(profile){
+function experiment(profile,exportFixture){
 "use strict";
 const P=28948022309329048855892746252171976963363056481941647379679742748393362948097n;
 const mod=x=>((x%P)+P)%P, req=x=>{if(!x)throw Error("check failed")};
@@ -107,6 +108,23 @@ function build(D,K,n,ids,shared,tree){
 function tree(D,n){let x=Array.from({length:2**D},(_,i)=>i<n?BigInt(i+1):0n),t=[x];for(let l=0;l<D;l++){x=Array.from({length:x.length/2},(_,i)=>native(x[2*i],x[2*i+1]));t.push(x)}return t}
 function summary(c){return {constraints:c.rows.length,wires:c.w.length,hashes:c.hashes,hash_constraints:c.labels.filter(x=>x==="poseidon").length,non_hash:c.labels.filter(x=>x!=="poseidon").length,nonzeros:c.rows.reduce((n,r)=>n+r.reduce((s,l)=>s+l.length,0),0)}}
 function sameShape(a,b){if(a.rows.length!==b.rows.length||a.w.length!==b.w.length)return false;for(let i=0;i<a.rows.length;i++)for(let j=0;j<3;j++){let x=a.rows[i][j],y=b.rows[i][j];if(x.length!==y.length||x.some((z,k)=>z[0]!==y[k][0]||z[1]!==y[k][1]))return false}return true}
+if(exportFixture){
+ const D=4,K=5,n=11,t=tree(D,n);
+ const requests=[[0,1,10,1],[2,4,6,8,10],[]];
+ const cs=requests.map(ids=>build(D,K,n,ids,true,t));
+ const c=cs[0];
+ for(const a of cs){req(sameShape(c,a));req(verify(c.rows,a.w,c.public,a.public.map(i=>a.w[i])))}
+ const publicValues=cs.map(a=>a.public.map(i=>a.w[i].toString()));
+ // Wires retain exact generator numbering; matrices are trusted build-time
+ // artifacts, never supplied by a prover as private witness data.
+ return {schema:"zkl-nova-06/matrix-v1",D,K,n,domain:domain.toString(),
+   hash_vector:native(19n,42n).toString(),root:t[D][0].toString(),
+   public_ids:c.public,public_values:publicValues,
+   rows:c.rows.map(row=>row.map(l=>l.map(([i,v])=>[i,v.toString()]))),
+   assignments:cs.map(a=>a.w.map(x=>x.toString())),
+   corrupt_wire:c.names.indexOf("sbox-square"),
+   summary:summary(c)};
+}
 let h=new R1CS();let a=h.input(19,"a"),b=h.input(42,"b"),out=h.input(native(19n,42n),"out");h.eq(h.hash(a,b),out);
 let check=c=>verify(c.rows,c.w,c.public,c.public.map(i=>c.w[i]));req(check(h));req(h.hashes===1&&summary(h).hash_constraints===312);
 let hv=h.w.slice();hv[3]=mod(hv[3]+1n);req(!verify(h.rows,hv,h.public,h.public.map(i=>hv[i])));
@@ -127,4 +145,4 @@ for(let [D,K,n] of [[4,5,11],[5,10,23]]){
 }
 return {profile:"vesta_base/narrow",domain:domain.toString(),hash_vector:{a:"19",b:"42",out:native(19n,42n).toString()},hash:summary(h),matrix_shape_checks:shapes,mutations_rejected:muts+1,results}
 }
-console.log(JSON.stringify(experiment(JSON.parse(bytes).secondary.narrow),null,2));
+console.log(JSON.stringify(experiment(JSON.parse(bytes).secondary.narrow,emit),null,emit?0:2));
