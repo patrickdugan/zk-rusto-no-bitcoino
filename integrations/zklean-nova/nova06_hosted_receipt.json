@@ -1,0 +1,29 @@
+{
+  "source_head": "80ee5f18903a20702104b5f68f3a52c734d65de6",
+  "run_id": 45583238619,
+  "job_id": 139099460277,
+  "active_reads": 9,
+  "depth": 4,
+  "fold_seconds": [
+    7.1e-8,
+    0.137120502
+  ],
+  "init_seconds": 0.07450904,
+  "malformed_steps_rejected": 9,
+  "matrix_constraints": 4470,
+  "matrix_wires": 4368,
+  "native_poseidon_parity": true,
+  "nova_primary_constraints": 19033,
+  "nova_secondary_constraints": 10349,
+  "passed": true,
+  "read_capacity": 5,
+  "recursive_proof_bytes_bincode": 2211224,
+  "scope": "two pinned Merkle membership batches only; no theoremhood or zero-knowledge wrapper",
+  "serialization_roundtrip": true,
+  "setup_seconds": 3.338418514,
+  "state_arity": 33,
+  "step_constraints": 4521,
+  "steps": 2,
+  "verifier_rejections": 6,
+  "verify_seconds": 0.147133331
+}

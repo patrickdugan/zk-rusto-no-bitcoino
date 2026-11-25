@@ -1,8 +1,9 @@
 // ZKL-NOVA-07: actual one-row admission R1CS; trusted synthetic fixtures.
 const fs=require('node:fs'),crypto=require('node:crypto'),path=require('node:path');
-const file=process.argv[2]||path.join(__dirname,'../bitvm2-nova/fixtures/nht4-genesis-0-2020-k5.poseidon.json');
+const args=process.argv.slice(2),emit=args[0]==='--nova-fixture';if(emit)args.shift();
+const file=args[0]||path.join(__dirname,'../bitvm2-nova/fixtures/nht4-genesis-0-2020-k5.poseidon.json');
 const bytes=fs.readFileSync(file);if(crypto.createHash('sha256').update(bytes).digest('hex')!=='b55fa125133315243cb299ee7603c5f0508d68abf64f0dab43ecba4a0d09fa67')throw Error('parameter pin');
-function admission(profile){
+function admission(profile,exportFixture){
 "use strict";
 const P=28948022309329048855892746252171976963363056481941647379679742748393362948097n;
 const mod=x=>((x%P)+P)%P, req=x=>{if(!x)throw Error("check failed")};
@@ -162,6 +163,40 @@ function build(history,r,seal,opts={}){
 const check=c=>verify(c.rows,c.w,c.public,c.public.map(i=>c.w[i]));
 const summary=c=>({constraints:c.rows.length,wires:c.w.length,hashes:c.hashes,hash_constraints:c.labels.filter(x=>x==="poseidon").length,nonzeros:c.rows.reduce((n,r)=>n+r.reduce((s,l)=>s+l.length,0),0)});
 function sameShape(a,b){if(a.rows.length!==b.rows.length||a.w.length!==b.w.length)return false;for(let i=0;i<a.rows.length;i++)for(let j=0;j<3;j++){let x=a.rows[i][j],y=b.rows[i][j];if(x.length!==y.length||x.some((z,k)=>z[0]!==y[k][0]||z[1]!==y[k][1]))return false}return true}
+if(exportFixture){
+ let history=history0(),first=null,assignments=[],states=[],controls=[];
+ const state=(c,j)=>c.public.slice(j,j+5).map(i=>c.w[i].toString());
+ const capture=c=>c.w.map(x=>x.toString());
+ const addStep=c=>{
+  req(check(c));if(first)req(sameShape(first,c));else{first=c;states.push(state(c,0))}
+  req(JSON.stringify(states.at(-1))===JSON.stringify(state(c,0)));
+  states.push(state(c,5));assignments.push(capture(c));
+ };
+ for(let i=0;i<chain.length;i++){
+  const r=chain[i],seal=+(i===chain.length-1);
+  req(direct(history,r,seal));
+  if(seal){
+   const unsealed=build(history,r,0);
+   req(check(unsealed)&&sameShape(first,unsealed));
+   controls.push({name:"unsealed_terminal",step:i,assignment:capture(unsealed),valid_relation:true});
+   const wrong=build(history,r,1,{state:{2:0n},out:{2:0n}});
+   req(!check(wrong)&&sameShape(first,wrong));
+   controls.push({name:"wrong_goal",step:i,assignment:capture(wrong),valid_relation:false});
+   const bad=build(history,r,1,{out:{0:123n}});
+   req(!check(bad)&&sameShape(first,bad));
+   controls.push({name:"wrong_append_root",step:i,assignment:capture(bad),valid_relation:false});
+  }
+  addStep(build(history,r,seal));history.push(rec(r,history.length));
+ }
+ req(history.length===16&&states.length===13&&states.at(-1)[4]==="1");
+ const leafVector=leaf(genesis[0],0,101n);
+ return {schema:"zkl-nova-08/admission-matrix-v1",D,goal:1,empty:3,
+   node_domain:domain.toString(),leaf_domain:LEAF.toString(),
+   node_vector:native(19n,42n).toString(),leaf_vector:leafVector.toString(),
+   public_ids:first.public,states,summary:summary(first),
+   rows:first.rows.map(r=>r.map(l=>l.map(([i,v])=>[i,v.toString()]))),
+   assignments,controls,corrupt_wire:first.names.indexOf("sbox-square")};
+}
 let history=history0(),base=null,counts={},valid=0,shape=0,attacks=0,mutations=0,trace=[];
 function accept(r,seal,advance=false){
  req(direct(history,r,seal));let c=build(history,r,seal);req(check(c));let s=summary(c);
@@ -193,4 +228,4 @@ req(history.length===16);
 return {profile:"vesta_base/narrow",D,history_capacity:16,genesis_root:tree(history0())[D][0].toString(),terminal_root:tree(history)[D][0].toString(),constraints:counts,accepted:valid,shape_equal:shape,malformed_steps_rejected:attacks,mutated_assignments_rejected:mutations,trace};
 }
 
-console.log(JSON.stringify(admission(JSON.parse(bytes).secondary.narrow),null,2));
+console.log(JSON.stringify(admission(JSON.parse(bytes).secondary.narrow,emit),null,emit?0:2));

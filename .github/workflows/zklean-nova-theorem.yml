@@ -1,0 +1,52 @@
+name: zkLean Nova theorem admission
+on:
+  push:
+    branches:
+      - research/zkl-nova-07-20261125
+    paths:
+      - 'integrations/zklean-nova/**'
+      - '.github/workflows/zklean-nova-theorem.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zklean-theorem-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  theorem:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce admission matrix receipt and export fixture
+        run: |
+          mkdir -p /tmp/zklean-theorem-results
+          node integrations/zklean-nova/admission.cjs > /tmp/zklean-theorem-results/admission.json
+          diff -u integrations/zklean-nova/admission_results.json /tmp/zklean-theorem-results/admission.json
+          node integrations/zklean-nova/admission.cjs --nova-fixture > /tmp/admission-fixture.json
+          sha256sum /tmp/admission-fixture.json > /tmp/zklean-theorem-results/fixture.sha256
+      - name: Compile pinned Nova backend
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version > /tmp/zklean-theorem-results/rustc.txt
+          cargo +1.90.0 generate-lockfile --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml
+          cargo +1.90.0 tree --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml > /tmp/zklean-theorem-results/dependencies.txt
+          cargo +1.90.0 build --release --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml --bin theorem
+      - name: Fold and verify sealed theorem admission
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o /tmp/zklean-theorem-results/time.txt integrations/zklean-nova/nova-smoke/target/release/theorem /tmp/admission-fixture.json | tee /tmp/zklean-theorem-results/receipt.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zklean-theorem-${{ github.sha }}
+          path: |
+            /tmp/zklean-theorem-results/
+            integrations/zklean-nova/nova-smoke/Cargo.lock
