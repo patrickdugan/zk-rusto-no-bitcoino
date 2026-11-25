@@ -1,0 +1,163 @@
+{
+  "admission_rejections": 2,
+  "compression": {
+    "admitted_theorem_proofs": 3,
+    "cases": [
+      {
+        "admitted": true,
+        "compressed_bytes_bincode": 11032,
+        "compression_ratio": 219.81073241479334,
+        "compression_seconds": 9.288235884,
+        "cryptographic_verify": true,
+        "goal": 1,
+        "initial_state_le_hex": [
+          "fdd50f3d746ec40c2955e03509da42b23caddde1a9e552ed9ced4ea6cf805512",
+          "0400000000000000000000000000000000000000000000000000000000000000",
+          "0100000000000000000000000000000000000000000000000000000000000000",
+          "0300000000000000000000000000000000000000000000000000000000000000",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "name": "long_identity",
+        "proof_and_vk_serialization_roundtrip": true,
+        "recursive_bytes_bincode": 2424952,
+        "steps": 12,
+        "terminal_state_le_hex": [
+          "7d3ed9d6e92402176624d8a7d3217ab9a70a35f9c4f99170761ce7ba75872803",
+          "1000000000000000000000000000000000000000000000000000000000000000",
+          "0100000000000000000000000000000000000000000000000000000000000000",
+          "0300000000000000000000000000000000000000000000000000000000000000",
+          "0100000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "verifier_rejections": 7,
+        "verify_seconds": 0.188541435
+      },
+      {
+        "admitted": false,
+        "compressed_bytes_bincode": 11032,
+        "compression_ratio": 219.81073241479334,
+        "compression_seconds": 9.093839732,
+        "cryptographic_verify": true,
+        "goal": 1,
+        "initial_state_le_hex": [
+          "fdd50f3d746ec40c2955e03509da42b23caddde1a9e552ed9ced4ea6cf805512",
+          "0400000000000000000000000000000000000000000000000000000000000000",
+          "0100000000000000000000000000000000000000000000000000000000000000",
+          "0300000000000000000000000000000000000000000000000000000000000000",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "name": "unsealed_prefix",
+        "proof_and_vk_serialization_roundtrip": true,
+        "recursive_bytes_bincode": 2424952,
+        "steps": 11,
+        "terminal_state_le_hex": [
+          "533dfe0271c828554209a6244d1e5e380897dbd84f10f0c93447eb8233857f2a",
+          "0f00000000000000000000000000000000000000000000000000000000000000",
+          "0100000000000000000000000000000000000000000000000000000000000000",
+          "0300000000000000000000000000000000000000000000000000000000000000",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "verifier_rejections": 7,
+        "verify_seconds": 0.187897458
+      },
+      {
+        "admitted": true,
+        "compressed_bytes_bincode": 11032,
+        "compression_ratio": 219.81073241479334,
+        "compression_seconds": 9.024271153,
+        "cryptographic_verify": true,
+        "goal": 1,
+        "initial_state_le_hex": [
+          "fdd50f3d746ec40c2955e03509da42b23caddde1a9e552ed9ced4ea6cf805512",
+          "0400000000000000000000000000000000000000000000000000000000000000",
+          "0100000000000000000000000000000000000000000000000000000000000000",
+          "0300000000000000000000000000000000000000000000000000000000000000",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "name": "short_identity",
+        "proof_and_vk_serialization_roundtrip": true,
+        "recursive_bytes_bincode": 2424952,
+        "steps": 4,
+        "terminal_state_le_hex": [
+          "4c8443117683fdb15518880964cff36789d4ac5ca94fe9a9f107875474376c2f",
+          "0800000000000000000000000000000000000000000000000000000000000000",
+          "0100000000000000000000000000000000000000000000000000000000000000",
+          "0300000000000000000000000000000000000000000000000000000000000000",
+          "0100000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "variant_fold_including_init_seconds": 0.688842266,
+        "verifier_rejections": 7,
+        "verify_seconds": 0.188318835
+      },
+      {
+        "admitted": true,
+        "compressed_bytes_bincode": 11032,
+        "compression_ratio": 219.81073241479334,
+        "compression_seconds": 9.068942341,
+        "cryptographic_verify": true,
+        "goal": 2,
+        "initial_state_le_hex": [
+          "fdd50f3d746ec40c2955e03509da42b23caddde1a9e552ed9ced4ea6cf805512",
+          "0400000000000000000000000000000000000000000000000000000000000000",
+          "0200000000000000000000000000000000000000000000000000000000000000",
+          "0300000000000000000000000000000000000000000000000000000000000000",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "name": "higher_identity",
+        "proof_and_vk_serialization_roundtrip": true,
+        "recursive_bytes_bincode": 2424952,
+        "steps": 4,
+        "terminal_state_le_hex": [
+          "faf4afe080267b6fe706f6c267e8355995f7f748ea45d41cc3695900f57f4a08",
+          "0800000000000000000000000000000000000000000000000000000000000000",
+          "0200000000000000000000000000000000000000000000000000000000000000",
+          "0300000000000000000000000000000000000000000000000000000000000000",
+          "0100000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "variant_fold_including_init_seconds": 0.681781663,
+        "verifier_rejections": 7,
+        "verify_seconds": 0.189258419
+      }
+    ],
+    "changed_statement_or_count_rejections": 28,
+    "compressed_vk_bytes_bincode": 27222208,
+    "compression_setup_seconds": 0.225881035,
+    "cryptographically_valid_unsealed_prefix_refused": 1,
+    "passed": true,
+    "scheme": "Nova 0.76 Spartan/IPA on Pallas/Vesta",
+    "scope": "restricted implicational calculus; no privacy claim",
+    "shared_vk": true
+  },
+  "fold_seconds": [
+    2.4e-7,
+    0.180136329,
+    0.204425427,
+    0.221783098,
+    0.225366229,
+    0.218953424,
+    0.21937789,
+    0.218782555,
+    0.229767586,
+    0.20736868,
+    0.207427561,
+    0.2124791
+  ],
+  "init_seconds": 0.098923789,
+  "malformed_steps_rejected": 11,
+  "matrix_constraints": 11023,
+  "native_node_leaf_and_genesis_parity": true,
+  "nova_primary_constraints": 22409,
+  "nova_secondary_constraints": 10349,
+  "passed": true,
+  "recursive_proof_bytes_bincode": 2424952,
+  "scope": "recursive admission in restricted implicational logic; no hiding wrapper",
+  "serialization_roundtrip": true,
+  "setup_seconds": 3.984912779,
+  "state_arity": 5,
+  "step_constraints": 11033,
+  "steps": 12,
+  "verifier_rejections": 7,
+  "verify_seconds": 0.231978747,
+  "source_head": "a3d186f037ce09a25fa554fbab4f1c61e8af3e2c",
+  "run_id": 45585771216,
+  "job_id": 139106855539
+}

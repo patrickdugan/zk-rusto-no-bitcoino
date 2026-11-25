@@ -1,0 +1,58 @@
+name: zkLean Nova dependent theorem
+on:
+  push:
+    branches:
+      - research/zkl-nova-11-20261125
+    paths:
+      - 'integrations/zklean-nova/**'
+      - '.github/workflows/zklean-nova-dependent-fold.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zklean-dependent-fold-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  dependent-fold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      NODE_OPTIONS: '--max-old-space-size=4096'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check local matrix and authenticated samples
+        run: |
+          mkdir -p /tmp/dependent-proof
+          node integrations/zklean-nova/dependent_arithmetic.cjs > /tmp/dependent-proof/arithmetic.json
+          diff -u integrations/zklean-nova/dependent_arithmetic_results.json /tmp/dependent-proof/arithmetic.json
+          node integrations/zklean-nova/dependent_arithmetic.cjs --auth-sample > /tmp/dependent-proof/auth_sample.json
+          diff -u integrations/zklean-nova/dependent_auth_sample.json /tmp/dependent-proof/auth_sample.json
+      - name: Generate and verify all 52 authenticated row assignments
+        run: |
+          node integrations/zklean-nova/dependent_arithmetic.cjs --auth-fixture /tmp/dependent-fixture > /tmp/dependent-proof/auth_full.json
+          sha256sum /tmp/dependent-fixture/*.json > /tmp/dependent-proof/fixtures.sha256
+      - name: Compile pinned Nova and Spartan
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version > /tmp/dependent-proof/rustc.txt
+          cargo +1.90.0 generate-lockfile --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml
+          cargo +1.90.0 tree --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml > /tmp/dependent-proof/dependencies.txt
+          cargo +1.90.0 build --release --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml --bin dependent
+      - name: Fold and compress the sealed dependent theorem
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o /tmp/dependent-proof/time.txt integrations/zklean-nova/nova-smoke/target/release/dependent /tmp/dependent-fixture /tmp/dependent-proof | tee /tmp/dependent-proof/receipt.json
+          sha256sum /tmp/dependent-proof/*.bin > /tmp/dependent-proof/payloads.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zklean-dependent-fold-${{ github.sha }}
+          path: |
+            /tmp/dependent-proof/
+            integrations/zklean-nova/nova-smoke/Cargo.lock
