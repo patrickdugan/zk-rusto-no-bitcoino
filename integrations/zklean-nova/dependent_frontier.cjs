@@ -17,7 +17,7 @@ class CS{
  constructor(){this.ops=[null];this.rows=[];this.names=["ONE"];this.inputIds=[];this.phase="";this.labels=[]}
  alloc(fn,name){let i=this.ops.length;this.ops.push(fn);this.names.push(name||"");return [[i,1n]]}
  input(name){let i=this.ops.length;this.inputIds.push(i);return this.alloc(null,name)}
- enforce(a,b,c){this.rows.push([a,b,c]);this.labels.push(this.phase)}
+ enforce(a,b,c){this.rows.push([add(a),add(b),add(c)]);this.labels.push(this.phase)}
  eq(a,b=constant(0)){this.enforce(sub(a,b),constant(1),[])}
  mul(a,b,name){let z=this.alloc(w=>val(w,a)*val(w,b),name);this.enforce(a,b,z);return z}
  bit(a){this.enforce(a,sub(a,constant(1)),[])}

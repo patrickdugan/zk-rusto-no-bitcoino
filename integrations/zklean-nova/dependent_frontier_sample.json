@@ -32,7 +32,7 @@
   "hashes": 86,
   "constraints": 33907,
   "wires": 32964,
-  "nonzeros": 822094,
+  "nonzeros": 822076,
   "hash_constraints": 26832,
   "node_domain": "6506377860829105743",
   "leaf_domain": "6506377860829105222",

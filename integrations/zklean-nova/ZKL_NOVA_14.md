@@ -34,7 +34,7 @@ Proof sketch: at level l, h_l commits to the subtree of height l containing the 
 | Hash equations | 37440 | 29640 | 26832 |
 | Total R1CS equations | 41237 | 36671 | 33907 |
 | Wires incl. ONE | 40448 | 35736 | 32964 |
-| Sparse matrix terms | 1019955 | 897096 | 822094 |
+| Sparse matrix terms | 1019955 | 897096 | 822076 |
 
 The nine removed hashes save 2808 multiplication equations, with 44 extra non-hash equations for a net 2764-row reduction (7.54% relative to 13). Combined with shared paths, the reduction relative to 12 is 7330 equations (17.78%). The Rust bridge adds 26 state bindings, for an expected 33933 explicit constraints before Nova recursion overhead. The larger state arity will add overhead in the augmented circuit. Net prover speed, peak memory, key size and compressed proof size must be measured rather than inferred from raw R1CS counts.
 
@@ -53,3 +53,7 @@ cargo +1.90.0 run --release --manifest-path integrations/zklean-nova/nova-smoke/
 The Node runner verifies the pinned Poseidon parameter file SHA-256. Local synthesis used the pinned repository fixture and checked profile identity. The hosted exporter streams and checks all 957 assignments. The Rust verifier independently recomputes the public goal and empty root, pins the zero frontier genesis, and binds every one of the 13 input and output state coordinates. It folds and compresses all four cases with one shared VK, verifies the unfinished prefix and rejects its admission, checks all 13 initial-state coordinate substitutions (including all nine frontier coordinates), and rejects two altered step counts for each recursive and compressed proof. Thus the proposed gate has 30 verifier mutation checks per case, 120 total, in addition to local malformed-step controls. Full hosted results are pending. Retain proof payloads, VK, receipts, lockfile and RSS. The 45-minute CPU-only job uses two build/Rayon threads.
 
 The additional frontier coordinates are part of the recursive state; revealing them at the endpoint is another consideration for a future hiding wrapper. Deterministic fixture salts do not establish privacy. No Lean kernel compatibility, proof privacy, formal soundness, or Bitcoin settlement claim. The next kernel extension after the optimization gates is public constants and checked inductive recursor reduction; preserve the independent-path and shared-path versions as conformance references. No GPU allocation.
+
+## Canonical sparse export repair (2026-11-25)
+
+Initial hosted run 45597515328 completed sample reproduction, all 957 assignment checks and Rust compilation. It stopped before Nova setup at the strict Rust loader's nonzero-coefficient assertion. The JavaScript constraint emitter had retained explicit zero coefficients in otherwise valid linear combinations. Canonicalize each linear combination at emission (merge equal wire indices, reduce mod p, drop zeros, sort). This preserves the matrix relation and wire numbering; the local sample receipt reproduces every field except the sparse term count, which changes from 822094 to 822076. The Rust loader retains strict canonical checks. Rerun the complete hosted proof gate; no optimized cryptographic performance result is available from the failed run.
