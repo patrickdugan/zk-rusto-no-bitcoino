@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import posixpath
 import shutil
 import signal
 import subprocess
@@ -54,6 +55,18 @@ def require(condition: bool, reason: str) -> None:
         raise ValueError(reason)
 
 
+def control_paths(controls: dict) -> dict:
+    normalized = {}
+    for name, digest in controls.items():
+        require(isinstance(name, str) and "\\" not in name and not name.startswith("/"),
+                "control path must be repository-relative")
+        path = posixpath.normpath(name)
+        require(path not in {".", ".."} and not path.startswith("../"), "control path escapes repository")
+        require(path not in normalized, "duplicate control path alias")
+        normalized[path] = digest
+    return normalized
+
+
 def manifest_check(manifest: dict) -> None:
     require(manifest.get("schema") == SCHEMA, "unexpected cohort schema")
     lanes = manifest["lanes"]
@@ -75,6 +88,7 @@ def manifest_check(manifest: dict) -> None:
                 "unexpected verifier output")
         for field in ["verification_script", "verification_artifact_directory"]:
             require(".." not in Path(lane[field]).parts, "unsafe verifier path")
+        control_paths(lane["upstream"]["control_sha256"])
         total += len(names)
     require(total == manifest["selection"]["cohort_theorem_constants"], "wrong cohort denominator")
 
@@ -241,7 +255,8 @@ def validate_build(source: Path, lane: dict, manifest: dict, evidence: Path) -> 
     require(set(receipt["exact_kernel_replay_set"]) == set(lane["modules"]), "incomplete stock-kernel replay")
     expected = {f["path"].removeprefix("lean/"): f["sha256"] for f in lane["source_files"]}
     require(receipt["source_sha256"] == expected, "build receipt source mismatch")
-    require(receipt["control_sha256"] == lane["upstream"]["control_sha256"], "build controls changed")
+    require(control_paths(receipt["control_sha256"]) == control_paths(lane["upstream"]["control_sha256"]),
+            "build controls changed")
     require(receipt["lean_sha256"] == manifest["source"]["lean_sha256"], "compiler hash mismatch")
     require(receipt["leanchecker_sha256"] == manifest["source"]["leanchecker_sha256"], "checker hash mismatch")
     require(all(x["exit_code"] == 0 for x in receipt["steps"]), "failed verification command")
@@ -334,6 +349,10 @@ def collect(args, manifest: dict, report: dict) -> int:
                          stock_kernel_replay_modules=receipt["exact_kernel_replay_set"],
                          upstream_verification_receipt_sha256=sha(evidence / "receipt.json"),
                          object_files=receipt["object_sha256"],
+                         control_path_comparison={
+                             "normalization": "POSIX repository-relative paths; escapes and duplicate aliases rejected",
+                             "expected": control_paths(lane["upstream"]["control_sha256"]),
+                             "observed": control_paths(receipt["control_sha256"])},
                          dependencies=manifest["source"]["dependencies"],
                          external_dependency_objects_independently_rebuilt=False)
             write(directory / "build-receipt.json", build)
@@ -421,6 +440,20 @@ def finalize(args, manifest: dict, report: dict) -> int:
 
 
 def self_test() -> None:
+    digest = "ab" * 32
+    controls = {"scripts/verify_example.py": digest}
+    require(control_paths(controls) == controls, "canonical control path changed")
+    require(control_paths({"lean/../scripts/verify_example.py": digest}) == controls,
+            "equivalent upstream invocation path rejected")
+    for bad in [{"../escape.py": digest}, {"lean/../../escape.py": digest},
+                {"/absolute.py": digest},
+                {"scripts/verify_example.py": digest, "lean/../scripts/verify_example.py": digest}]:
+        try:
+            control_paths(bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("unsafe or duplicate control path accepted")
     lane = {"id": "toy", "modules": ["Toy"], "names": ["Toy.a", "Toy.b"]}
     with tempfile.TemporaryDirectory() as temporary:
         directory = Path(temporary)
@@ -463,7 +496,7 @@ def self_test() -> None:
                 raise AssertionError("new-session child survived command timeout cleanup")
         finally:
             stop(process)
-    print("PASS: complete export accepted; missing, duplicate, foreign and non-theorem targets rejected; nested-session timeout cleanup passed")
+    print("PASS: exact control hashes accept both invocation paths and reject escapes/aliases; complete export accepted; missing, duplicate, foreign and non-theorem targets rejected; nested-session timeout cleanup passed")
 
 
 def main() -> int:
