@@ -1,0 +1,20 @@
+name: ZKL native certificate reference
+on:
+  push:
+    paths:
+      - 'integrations/zklean-row-reference/**'
+      - '.github/workflows/zklean-row-reference.yml'
+  pull_request:
+    paths:
+      - 'integrations/zklean-row-reference/**'
+      - '.github/workflows/zklean-row-reference.yml'
+permissions:
+  contents: read
+jobs:
+  native-row-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --manifest-path integrations/zklean-row-reference/Cargo.toml
