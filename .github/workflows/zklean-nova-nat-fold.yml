@@ -1,0 +1,58 @@
+name: zkLean Nova Nat arithmetic
+on:
+  push:
+    branches:
+      - research/zkl-nova-16-20261125
+    paths:
+      - 'integrations/zklean-nova/**'
+      - '.github/workflows/zklean-nova-nat-fold.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zklean-nat-fold-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  nat-fold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      NODE_OPTIONS: '--max-old-space-size=4096'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce optimized certificates and authenticated all-tag sample
+        run: |
+          mkdir -p /tmp/nat-frontier-proof
+          node integrations/zklean-nova/nat_optimize.cjs --fixtures > /tmp/nat-opt.json
+          node -e 'const fs=require("fs"),assert=require("assert");const a=JSON.parse(fs.readFileSync("/tmp/nat-opt.json"));assert.deepStrictEqual(a.fixtures,JSON.parse(fs.readFileSync("integrations/zklean-nova/nat_optimized_fixtures.json")));assert.deepStrictEqual(a.result,JSON.parse(fs.readFileSync("integrations/zklean-nova/nat_optimized_results.json")));'
+          node integrations/zklean-nova/nat_frontier.cjs > /tmp/nat-frontier-proof/sample.json
+          diff -u integrations/zklean-nova/nat_frontier_sample.json /tmp/nat-frontier-proof/sample.json
+      - name: Generate and verify all 2047 authenticated row assignments
+        run: |
+          /usr/bin/time -v -o /tmp/nat-frontier-proof/generation-time.txt node integrations/zklean-nova/nat_frontier.cjs --full /tmp/nat-frontier-fixture > /tmp/nat-frontier-proof/full.json
+          sha256sum /tmp/nat-frontier-fixture/matrix.json /tmp/nat-frontier-fixture/*.bin > /tmp/nat-frontier-proof/fixtures.sha256
+      - name: Compile pinned Nova and Spartan
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version > /tmp/nat-frontier-proof/rustc.txt
+          cargo +1.90.0 generate-lockfile --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml
+          cargo +1.90.0 tree --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml > /tmp/nat-frontier-proof/dependencies.txt
+          cargo +1.90.0 build --release --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml --bin nat_frontier
+      - name: Fold and compress ten derivations with one verifier key
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o /tmp/nat-frontier-proof/time.txt integrations/zklean-nova/nova-smoke/target/release/nat_frontier /tmp/nat-frontier-fixture /tmp/nat-frontier-proof | tee /tmp/nat-frontier-proof/receipt.json
+          sha256sum /tmp/nat-frontier-proof/*.bin > /tmp/nat-frontier-proof/payloads.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zklean-nat-fold-${{ github.sha }}
+          path: |
+            /tmp/nat-frontier-proof/
+            integrations/zklean-nova/nova-smoke/Cargo.lock

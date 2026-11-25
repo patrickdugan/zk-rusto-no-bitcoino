@@ -1,0 +1,75 @@
+{
+  "optimization": {
+    "polymorphic_identity": {
+      "original": 52,
+      "exact": 33,
+      "semantic": 33,
+      "pruned": 33
+    },
+    "dependent_application": {
+      "original": 340,
+      "exact": 133,
+      "semantic": 133,
+      "pruned": 133
+    },
+    "beta_conversion": {
+      "original": 276,
+      "exact": 92,
+      "semantic": 90,
+      "pruned": 88
+    },
+    "impredicative_predicate_identity": {
+      "original": 289,
+      "exact": 113,
+      "semantic": 113,
+      "pruned": 113
+    },
+    "nat_zero": {
+      "original": 4,
+      "exact": 4,
+      "semantic": 4,
+      "pruned": 4
+    },
+    "nat_recursion": {
+      "original": 350,
+      "exact": 218,
+      "semantic": 206,
+      "pruned": 193
+    },
+    "iota_zero_type": {
+      "original": 376,
+      "exact": 224,
+      "semantic": 211,
+      "pruned": 193
+    },
+    "iota_succ_type": {
+      "original": 528,
+      "exact": 275,
+      "semantic": 252,
+      "pruned": 227
+    },
+    "dependent_nat_elimination": {
+      "original": 1865,
+      "exact": 556,
+      "semantic": 549,
+      "pruned": 538
+    },
+    "prop_nat_elimination": {
+      "original": 1863,
+      "exact": 543,
+      "semantic": 536,
+      "pruned": 525
+    }
+  },
+  "totals": {
+    "original": 5943,
+    "exact": 2191,
+    "semantic": 2127,
+    "pruned": 2047
+  },
+  "max_original": 1865,
+  "max_pruned": 538,
+  "proof_ast_parity": 10,
+  "wrong_goals_rejected": 10,
+  "self_references_rejected": 1931
+}
