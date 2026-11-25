@@ -1,0 +1,59 @@
+name: ZKL unified dependent Pi
+on:
+  pull_request:
+    paths:
+      - 'integrations/zkl-nova-calibration/src/bin/unified.rs'
+      - 'integrations/zkl-nova-calibration/unified*'
+      - 'integrations/zkl-nova-calibration/rule_spec.py'
+      - 'integrations/zkl-nova-calibration/typing_reference.py'
+      - '.github/workflows/zkl-unified-pi.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'integrations/zkl-nova-calibration/src/bin/unified.rs'
+      - 'integrations/zkl-nova-calibration/unified*'
+      - 'integrations/zkl-nova-calibration/rule_spec.py'
+      - '.github/workflows/zkl-unified-pi.yml'
+permissions:
+  contents: read
+jobs:
+  unified-nova:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reproduce frozen equations and fixtures
+        run: |
+          set -euo pipefail
+          cd integrations/zkl-nova-calibration
+          python rule_spec.py
+          test "$(sha256sum unified-rules.json | cut -d' ' -f1)" = 7e98eaf808b2a80179b203d02f912d814dc939f3802ee6d672b14d473553febf
+          git diff --exit-code -- unified-rules.json
+          python unified_reference.py
+          test "$(sha256sum unified-fixtures.json | cut -d' ' -f1)" = 3f859e7cb9808fe04208497f296e26b73ccd0387eb9b307327d200011eccb100
+          python unified_audit.py
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build pinned Nova circuit
+        run: |
+          cargo generate-lockfile --manifest-path integrations/zkl-nova-calibration/Cargo.toml
+          cargo build --locked --release --manifest-path integrations/zkl-nova-calibration/Cargo.toml --bin unified
+      - name: Synthesize, attack and verify six closed typing proofs
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v timeout 720s integrations/zkl-nova-calibration/target/release/unified integrations/zkl-nova-calibration/unified-fixtures.json --compress | tee zkl-unified-results.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl-unified-evidence
+          path: |
+            zkl-unified-results.jsonl
+            integrations/zkl-nova-calibration/unified-fixtures.json
+            integrations/zkl-nova-calibration/unified-rules.json
+            integrations/zkl-nova-calibration/Cargo.lock
