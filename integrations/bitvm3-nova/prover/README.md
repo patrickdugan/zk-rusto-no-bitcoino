@@ -14,9 +14,9 @@ It is SP1's own prover (controller, executor, shard provers, recursion), assembl
 - **Memoized tasks.** Every finished shard task and recursion task is recorded under a key derived
   from what it proves ([`memo.rs`](src/memo.rs)). Rerunning the same command after a crash, a
   reboot or a kill replays the finished tasks and proves only the rest.
-- **One task at a time.** SP1's worker pools default to several shards in flight. The tool sets
-  each pool to one (unless the environment already sets it, or `--sp1-worker-defaults` is given),
-  and `--permits` bounds concurrent provers (default 1).
+- **Bounded scheduling.** The tool defaults each SP1 pool and queue to one unless the environment
+  sets it or `--sp1-worker-defaults` is given. `--core-workers` and `--core-queue` override the
+  Core pool and queue at startup. `--permits` bounds concurrent provers and defaults to one.
 - **Shard size is a parameter.** `--element-threshold` and `--height-threshold` set SP1's shard
   size, and with it the peak memory per shard.
 
@@ -34,6 +34,7 @@ resumed with either.
 nb3-prove prove --elf ELF --input FILE [--input FILE ...] --run-dir DIR --out PROOF.bin \
     [--element-threshold N] [--height-threshold N] [--shard-size N] \
     [--trace-chunk-threshold N] [--trace-chunk-slots N] [--permits N] \
+    [--core-workers N] [--core-queue N] \
     [--expect-public-sha256 HEX] [--sp1-worker-defaults]
 nb3-prove status --run-dir DIR
 ```
@@ -43,7 +44,8 @@ nb3-prove status --run-dir DIR
   and commits public values with that SHA-256.
 - `DIR/run.json` pins the run: ELF and input digests, every sharding option, and the proof nonce.
   A later run in the same directory must present the same ELF, inputs and options, or it is
-  refused.
+  refused. Core worker count, queue depth, and prover permits are scheduling settings and can
+  change on resume. `--trace-chunk-slots` remains pinned.
 - `DIR/memo/` holds the finished tasks, `DIR/progress.jsonl` one line per task (proved or
   replayed, with its proving time), `DIR/result.json` the summary once the proof is verified.
 - `status` summarizes a run directory, finished or not.

@@ -149,12 +149,15 @@ impl ShardedNode {
                     tokio::select! {
                         Some((id, request)) = rx.recv() => {
                             let proof_id = request.context.proof_id.clone();
+                            let memo_started = Instant::now();
                             let key = match memo.key_shard(&store, &request).await {
                                 Ok(k) => Some(k),
                                 Err(e) => { tracing::warn!("shard memo key: {e:#}"); None }
                             };
                             let hit = key.as_ref().and_then(|k| memo.get(Kind::Shard, k))
                                 .filter(|e| e.out1.is_some() == (request.outputs.len() == 2));
+                            tracing::debug!(task_id = ?id, hit = hit.is_some(),
+                                elapsed_ms = memo_started.elapsed().as_millis() as u64, "shard memo lookup");
                             let tx = tx.clone();
                             match (key, hit) {
                                 (Some(key), Some(entry)) => {
@@ -171,17 +174,27 @@ impl ShardedNode {
                                     let token = store.task_started();
                                     match worker.prover_engine().submit_prove_core_shard(request.clone()).await {
                                         Ok(handle) => {
+                                            let submitted = Instant::now();
+                                            tracing::debug!(task_id = ?id,
+                                                elapsed_ms = (submitted - t0).as_millis() as u64, "shard queued");
                                             let (store, memo) = (store.clone(), memo.clone());
                                             set.spawn(async move {
                                                 let r = match handle.await {
                                                     Ok(r) => Ok(request.recover_if_complete(r, &store).await),
                                                     Err(e) => Err(e),
                                                 };
+                                                let finished = Instant::now();
+                                                tracing::debug!(task_id = ?id,
+                                                    elapsed_ms = (finished - submitted).as_millis() as u64,
+                                                    "shard worker finished");
                                                 if let (Ok(Ok(_)), Some(key)) = (&r, key) {
                                                     match capture_shard(&store, &request).await.and_then(|e| memo.put(Kind::Shard, &key, &e)) {
                                                         Ok(()) => memo.record(Kind::Shard, &key, false, t0.elapsed().as_millis() as u64),
                                                         Err(e) => tracing::warn!("shard memo capture: {e:#}"),
                                                     }
+                                                    tracing::debug!(task_id = ?id,
+                                                        elapsed_ms = finished.elapsed().as_millis() as u64,
+                                                        "shard checkpoint capture finished");
                                                 }
                                                 store.task_finished(token);
                                                 TaskOutput::send(r, &tx, proof_id, id, request, TaskType::ProveShard);

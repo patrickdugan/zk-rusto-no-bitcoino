@@ -27,6 +27,27 @@ SP1_DIR=/path/to/sp1 CUDA_ARCHS=120 nova-bitvm3/prover-gpu/scripts/build-with-lo
 rewrites the git entries to paths in the checkout and builds. Requirements: CUDA Toolkit 12.8 or
 newer, cmake, clang; under WSL2 the driver's `libcuda` is in `/usr/lib/wsl/lib`.
 
+## Overlap CPU preparation and CUDA
+
+An SP1 Core worker loads and prepares a shard on the host, then submits its
+proof. Try `--core-workers 2 --core-queue 1 --permits 1 --trace-buffers 1` to let
+one worker prepare a shard while another uses the GPU. The two workers can
+retain preparation data at the same time, so measure peak host RAM with your
+guest and sharding settings. The environment settings
+`SP1_WORKER_NUM_CORE_WORKERS=2` and `SP1_WORKER_CORE_BUFFER_SIZE=1` also work.
+
+For concurrent CUDA proof requests, try `--core-workers 2 --core-queue 1
+--permits 2 --trace-buffers 2` with measured memory headroom. Additional trace
+buffers consume pinned host memory. Concurrent proofs may raise device usage.
+
+Compare profiles on the same guest and input, with separate run directories
+and identical sharding settings. Report fresh completed shards per second and
+exclude memo replays and setup. Record peak host RAM, device usage and swap.
+Verify each completed proof separately before switching a production run.
+Set `RUST_LOG=info,nb3_prover::node=debug` to record per-shard memo lookup,
+queue admission, worker turnaround and checkpoint capture. Worker turnaround
+includes queue time, host preparation and CUDA work.
+
 ## Measured (RTX 5080 Laptop GPU, 16 GB; WSL2, 20 GB)
 
 | Guest | Shard size | Result |

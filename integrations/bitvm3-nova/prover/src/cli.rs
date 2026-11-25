@@ -4,6 +4,7 @@
 //!   nb3-prove prove --elf ELF --input FILE [--input FILE ...] --run-dir DIR --out PROOF.bin
 //!                   [--element-threshold N] [--height-threshold N] [--shard-size N]
 //!                   [--trace-chunk-threshold N] [--trace-chunk-slots N] [--permits N]
+//!                   [--core-workers N] [--core-queue N]
 //!                   [--expect-public-sha256 HEX] [--sp1-worker-defaults]
 //!       Each --input is written to the guest's stdin with `write_vec`, in order. Rerunning the
 //!       same command after an interruption replays every finished shard and recursion task from
@@ -25,6 +26,7 @@ use anyhow::{bail, ensure, Context, Result};
 use crate::{
     backend::Backend,
     config::{fresh_nonce, RunConfig, SP1_VERSION},
+    core_pool::{CorePool, CORE_QUEUE, CORE_WORKERS},
     memo::{Kind, Memo},
     node::ShardedNode,
 };
@@ -40,14 +42,14 @@ fn sha_hex(b: &[u8]) -> String {
 /// SP1 worker-pool settings for a single machine with limited RAM: one task of each kind in
 /// flight. Applied only where the environment does not already set them.
 const LOW_MEMORY_WORKERS: &[(&str, &str)] = &[
-    ("SP1_WORKER_NUM_CORE_WORKERS", "1"),
+    (CORE_WORKERS, "1"),
     ("SP1_WORKER_NUM_RECURSION_PROVER_WORKERS", "1"),
     ("SP1_WORKER_NUM_RECURSION_EXECUTOR_WORKERS", "1"),
     ("SP1_WORKER_NUM_PREPARE_REDUCE_WORKERS", "1"),
     ("SP1_WORKER_NUM_SETUP_WORKERS", "1"),
     ("SP1_WORKER_NUM_SPLICING_WORKERS", "1"),
     ("SP1_WORKER_NUM_DEFERRED_WORKERS", "1"),
-    ("SP1_WORKER_CORE_BUFFER_SIZE", "1"),
+    (CORE_QUEUE, "1"),
     ("SP1_WORKER_RECURSION_EXECUTOR_BUFFER_SIZE", "1"),
     ("SP1_WORKER_RECURSION_PROVER_BUFFER_SIZE", "1"),
     ("SP1_WORKER_SETUP_BUFFER_SIZE", "1"),
@@ -94,6 +96,9 @@ pub async fn main_with<B: Backend>(backend: B) -> Result<()> {
 }
 
 async fn prove<B: Backend>(args: &Args, backend: B) -> Result<()> {
+    let core_pool = CorePool::parse(&args.0).map_err(anyhow::Error::msg)?;
+    let permits: usize = args.num("--permits", 1)?;
+    ensure!(permits > 0, "--permits must be positive");
     if !args.has("--sp1-worker-defaults") {
         for (k, v) in LOW_MEMORY_WORKERS {
             if std::env::var_os(k).is_none() {
@@ -101,14 +106,19 @@ async fn prove<B: Backend>(args: &Args, backend: B) -> Result<()> {
             }
         }
     }
+    for (name, value) in core_pool.overrides() {
+        std::env::set_var(name, value.to_string());
+    }
     sp1_sdk::utils::setup_logger();
+    let core_workers = std::env::var(CORE_WORKERS).ok();
+    let core_queue = std::env::var(CORE_QUEUE).ok();
+    tracing::info!(?core_workers, ?core_queue, permits, "Core shard scheduling overrides");
 
     let elf = std::fs::read(args.need("--elf")?).context("reading --elf")?;
     let inputs: Vec<Vec<u8>> =
         args.all("--input").iter().map(|p| std::fs::read(p).with_context(|| format!("reading {p}"))).collect::<Result<_>>()?;
     let run_dir = PathBuf::from(args.need("--run-dir")?);
     let out = args.need("--out")?;
-    let permits: usize = args.num("--permits", 1)?;
 
     let fresh = RunConfig {
         sp1_version: SP1_VERSION.into(),
@@ -200,6 +210,7 @@ async fn prove<B: Backend>(args: &Args, backend: B) -> Result<()> {
         "committed_values_sha256": committed,
         "instructions": instructions,
         "prove_seconds": prove_s,
+        "core_scheduling": { "workers_override": core_workers, "queue_override": core_queue, "prover_permits": permits },
         "shard_tasks": { "proved": c.shard_proved.load(Ordering::Relaxed), "replayed": c.shard_replayed.load(Ordering::Relaxed) },
         "recursion_tasks": { "proved": c.reduce_proved.load(Ordering::Relaxed), "replayed": c.reduce_replayed.load(Ordering::Relaxed) },
         "proof_path": out, "proof_file_bytes": std::fs::metadata(&out)?.len(),

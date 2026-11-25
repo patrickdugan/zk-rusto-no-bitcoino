@@ -14,7 +14,7 @@
 //! started ([`DiskArtifactClient::task_started`]), and at least a grace period ago.
 use std::{
     collections::BTreeMap,
-    fs::OpenOptions,
+    fs::{File, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
     sync::{
@@ -120,6 +120,20 @@ impl DiskArtifactClient {
 
     fn trash_path(&self, id: &str) -> PathBuf {
         self.inner.trash.join(Self::file_name(id))
+    }
+
+    pub(crate) async fn read_live_with<T: Send + 'static>(
+        &self,
+        id: &str,
+        read: impl FnOnce(File) -> Result<T> + Send + 'static,
+    ) -> Result<T> {
+        let path = self.live_path(id);
+        let id = id.to_owned();
+        tokio::task::spawn_blocking(move || {
+            let file = File::open(path).with_context(|| format!("opening live artifact {id}"))?;
+            read(file).with_context(|| format!("reading live artifact {id}"))
+        })
+        .await?
     }
 
     /// Reads an artifact that may already have been deleted (within the trash grace period).

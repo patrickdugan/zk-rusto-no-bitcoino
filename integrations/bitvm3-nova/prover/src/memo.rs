@@ -21,7 +21,7 @@
 use std::{
     collections::HashMap,
     fs::OpenOptions,
-    io::Write,
+    io::{Read, Write},
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -29,7 +29,7 @@ use std::{
     },
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sp1_prover::worker::{DeferredEvents, RawTaskRequest, TraceData};
@@ -113,6 +113,54 @@ fn sha(b: &[u8]) -> Key {
     Sha256::digest(b).into()
 }
 
+const CORE_TRACE_TAG: u32 = 0;
+const PRECOMPILE_TRACE_TAG: u32 = 1;
+const MEMORY_TRACE_TAG: u32 = 2;
+const CORE_TRACE_HEADER_BYTES: u64 = 12;
+const TRACE_HASH_BUFFER_BYTES: usize = 64 * 1024;
+
+enum ShardRecord {
+    CoreDigest(Key),
+    Encoded(Vec<u8>),
+}
+
+fn read_shard_record(mut record: impl Read, file_len: u64) -> Result<ShardRecord> {
+    // SP1 6.9 uploads TraceData with bincode::serialize. The fixed-width Core
+    // variant contains its u32 tag, a u64 vector length and the opaque bytes.
+    let mut tag = [0; 4];
+    record.read_exact(&mut tag).context("reading the shard record tag")?;
+    match u32::from_le_bytes(tag) {
+        CORE_TRACE_TAG => {}
+        PRECOMPILE_TRACE_TAG | MEMORY_TRACE_TAG => {
+            let mut encoded = Vec::new();
+            encoded.try_reserve_exact(usize::try_from(file_len)?)?;
+            encoded.extend_from_slice(&tag);
+            record.read_to_end(&mut encoded)?;
+            return Ok(ShardRecord::Encoded(encoded));
+        }
+        unknown => bail!("unknown shard record tag {unknown}"),
+    }
+
+    let mut length = [0; 8];
+    record.read_exact(&mut length).context("reading the Core trace length")?;
+    let mut remaining = u64::from_le_bytes(length);
+    ensure!(
+        file_len.checked_sub(CORE_TRACE_HEADER_BYTES) == Some(remaining),
+        "Core trace length differs from the artifact size",
+    );
+
+    let mut digest = Sha256::new();
+    let mut buffer = [0; TRACE_HASH_BUFFER_BYTES];
+    while remaining > 0 {
+        let count = remaining.min(buffer.len() as u64) as usize;
+        record.read_exact(&mut buffer[..count]).context("reading the Core trace payload")?;
+        digest.update(&buffer[..count]);
+        remaining -= count as u64;
+    }
+    ensure!(record.read(&mut buffer[..1])? == 0, "Core trace has trailing bytes");
+    Ok(ShardRecord::CoreDigest(digest.finalize().into()))
+}
+
 fn now_secs() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
@@ -141,17 +189,29 @@ impl Memo {
     /// The key of a `ProveShard` request: inputs are [elf, common input, record, marker task].
     /// The ELF and common input are fixed by the run digest; the marker task id is random.
     pub async fn key_shard(&self, store: &DiskArtifactClient, request: &RawTaskRequest) -> Result<Key> {
-        let record = store.download_raw(&request.inputs[2], ArtifactType::UnspecifiedArtifactType).await?;
+        let record = request.inputs.get(2).context("shard request is missing its record")?;
+        let record = store
+            .read_live_with(record.id(), |file| {
+                let metadata = file.metadata()?;
+                ensure!(metadata.is_file(), "shard record must be a regular file");
+                read_shard_record(file, metadata.len())
+            })
+            .await?;
         let mut h = Sha256::new();
         h.update(b"nb3-memo/v1/shard");
         h.update(self.run_digest);
         h.update((request.outputs.len() as u64).to_le_bytes());
+        let record = match record {
+            ShardRecord::CoreDigest(digest) => {
+                h.update(b"core");
+                h.update(digest);
+                return Ok(h.finalize().into());
+            }
+            ShardRecord::Encoded(record) => record,
+        };
         let td: TraceData = bincode::deserialize(&record).context("decoding the shard record")?;
         match td {
-            TraceData::Core(bytes) => {
-                h.update(b"core");
-                h.update(sha(&bytes));
-            }
+            TraceData::Core(_) => bail!("unexpected Core trace outside its fixed-width envelope"),
             TraceData::Memory(_) => {
                 h.update(b"memory");
                 h.update(sha(&record));
@@ -361,4 +421,96 @@ pub fn rebind_deferred_chunks(
     }
     if !ids.is_empty() { bail!("memo is missing a referenced deferred chunk"); }
     Ok((bincode::serialize(&events)?, result))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sp1_prover::worker::{ProofId, RequesterId, TaskContext};
+    use sp1_prover_types::ProofArtifacts;
+
+    #[tokio::test]
+    async fn streamed_core_keys_match_v1() {
+        let dir = std::env::temp_dir().join(format!("nb3-prover-streamed-core-{}", std::process::id()));
+        let store = DiskArtifactClient::open(&dir.join("artifacts"), ProofArtifacts::default()).unwrap();
+        let run_digest = [17; 32];
+        let memo = Memo::open(&dir, run_digest).unwrap();
+        let artifact = |id: &str| Artifact::from(id.to_owned());
+        let artifact_type = ArtifactType::UnspecifiedArtifactType;
+        for size in [0, TRACE_HASH_BUFFER_BYTES + 17] {
+            let record_id = format!("record-{size}");
+            let request = RawTaskRequest {
+                inputs: ["elf", "common", record_id.as_str(), "marker"].into_iter().map(artifact).collect(),
+                outputs: ["proof", "deferred"].into_iter().map(artifact).collect(),
+                context: TaskContext {
+                    proof_id: ProofId::new("p"),
+                    parent_id: None,
+                    parent_context: None,
+                    requester_id: RequesterId::new("t"),
+                },
+            };
+            let body: Vec<u8> = (0..size).map(|index| (index % 251) as u8).collect();
+            let encoded = bincode::serialize(&TraceData::Core(body)).unwrap();
+            store.upload_raw(&request.inputs[2], artifact_type, encoded).await.unwrap();
+
+            let raw = store.download_raw(&request.inputs[2], artifact_type).await.unwrap();
+            let TraceData::Core(bytes) = bincode::deserialize(&raw).unwrap() else {
+                panic!("expected a Core trace record");
+            };
+            let mut legacy = Sha256::new();
+            legacy.update(b"nb3-memo/v1/shard");
+            legacy.update(run_digest);
+            legacy.update((request.outputs.len() as u64).to_le_bytes());
+            legacy.update(b"core");
+            legacy.update(sha(&bytes));
+            let expected: Key = legacy.finalize().into();
+            assert_eq!(memo.key_shard(&store, &request).await.unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn malformed_core_envelopes_fail() {
+        let valid = bincode::serialize(&TraceData::Core(vec![1, 2, 3])).unwrap();
+        assert_eq!(&valid[..4], &0u32.to_le_bytes());
+        assert_eq!(&valid[4..12], &3u64.to_le_bytes());
+
+        let mut trailing = valid.clone();
+        trailing.push(4);
+        let mut bogus_length = valid.clone();
+        bogus_length[4..12].copy_from_slice(&u64::MAX.to_le_bytes());
+        let unknown_tag = 3u32.to_le_bytes();
+        for bytes in [&valid[..3], &valid[..11], &valid[..14], &trailing, &bogus_length, &unknown_tag] {
+            assert!(read_shard_record(bytes, bytes.len() as u64).is_err());
+        }
+
+        let original_len = valid.len() as u64;
+        assert!(read_shard_record(&valid[..14], original_len).is_err());
+        assert!(read_shard_record(trailing.as_slice(), original_len).is_err());
+    }
+
+    #[test]
+    fn fallback_passes_bincode_records_through_unchanged() {
+        let mut ordinary = bincode::serialize(&TraceData::Precompile(
+            Vec::new(),
+            sp1_core_executor::SyscallCode::SHA_COMPRESS,
+        ))
+        .unwrap();
+        ordinary.extend([7, 8, 9]);
+        let record = read_shard_record(ordinary.as_slice(), ordinary.len() as u64).unwrap();
+        let ShardRecord::Encoded(encoded) = record else {
+            panic!("expected Precompile fallback");
+        };
+        assert_eq!(encoded, ordinary);
+        assert!(matches!(bincode::deserialize::<TraceData>(&encoded), Ok(TraceData::Precompile(..))));
+
+        for tag in [PRECOMPILE_TRACE_TAG, MEMORY_TRACE_TAG] {
+            let incomplete = tag.to_le_bytes();
+            let record = read_shard_record(incomplete.as_slice(), incomplete.len() as u64).unwrap();
+            let ShardRecord::Encoded(encoded) = record else {
+                panic!("expected fallback for tag {tag}");
+            };
+            assert_eq!(encoded, incomplete);
+            assert!(bincode::deserialize::<TraceData>(&encoded).is_err());
+        }
+    }
 }

@@ -8,6 +8,7 @@
 pub mod backend;
 pub mod cli;
 pub mod config;
+mod core_pool;
 pub mod memo;
 pub mod node;
 pub mod store;
