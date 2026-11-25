@@ -1,11 +1,11 @@
 //! ZKL-NOVA-08: fixed-matrix recursive admission for a small implicational calculus.
 //! The matrix is generated from verifier-owned source. No privacy or Lean compatibility claim.
-use ff::Field;
+use ff::{Field,PrimeField};
 use generic_array::typenum::U5;
 use nova_snark::{
  frontend::{gadgets::poseidon::{IOPattern,PoseidonConstants,Simplex,Sponge,SpongeAPI,SpongeOp,SpongeTrait,Strength},
  num::AllocatedNum,ConstraintSystem,Index,LinearCombination,SynthesisError,Variable},
- nova::{PublicParams,RecursiveSNARK},provider::{ipa_pc::EvaluationEngine,PallasEngine,VestaEngine},
+ nova::{PublicParams,RecursiveSNARK,CompressedSNARK},provider::{ipa_pc::EvaluationEngine,PallasEngine,VestaEngine},
  spartan::snark::RelaxedR1CSSNARK,traits::{circuit::StepCircuit,snark::RelaxedR1CSSNARKTrait,Engine},
 };
 use serde::Deserialize;
@@ -132,10 +132,106 @@ fn checked_step(step:&TheoremStep,z:&[F])->(bool,Vec<F>,usize){
 
 
 fn endpoint(w:&[F],start:usize)->Vec<F>{PUB[start..start+ARITY].iter().map(|&i|w[i]).collect()}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Variant { name:String,goal:usize,states:Vec<Vec<String>>,assignments:Vec<Vec<String>> }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Variants { schema:String,public_ids:Vec<usize>,summary:Summary,variants:Vec<Variant>,atom_goal_rejected:bool }
+
+type Cs=CompressedSNARK<E1,E2,TheoremStep,S1,S2>;
+type Cvk=nova_snark::nova::VerifierKey<E1,E2,TheoremStep,S1,S2>;
+
+fn state_le_hex(z:&[F])->Vec<String>{
+ z.iter().map(|x|x.to_repr().as_ref().iter().map(|b|format!("{b:02x}")).collect::<String>()).collect()
+}
+fn admitted_for(z:&[F],steps:usize,goal:usize)->bool{
+ (goal==1||goal==2)&&z.len()==ARITY&&steps>0&&steps<=STEPS&&
+ z[1]==F::from((4+steps) as u64)&&z[2]==F::from(goal as u64)&&z[3]==F::from(3)&&z[4]==F::ONE
+}
+fn compression(pp:&Pp,long:&Rs,z0:&[F],zn:&[F],prefix_bytes:&[u8],matrix:Arc<Vec<Row>>,variants_path:&str,output:&str)->serde_json::Value{
+ let raw=std::fs::read(variants_path).unwrap();assert!(raw.len()<16<<20);
+ let f:Variants=serde_json::from_slice(&raw).unwrap();assert_eq!(f.schema,"zkl-nova-09/variants-v1");
+ assert_eq!(f.public_ids.as_slice(),&PUB);assert!(f.atom_goal_rejected);
+ assert_eq!((f.summary.constraints,f.summary.wires,f.summary.hashes,f.summary.hash_constraints,f.summary.nonzeros),(MATRIX_ROWS,MATRIX_WIRES,34,10608,285971));
+ assert_eq!(f.variants.len(),2);
+ std::fs::create_dir_all(output).unwrap();
+ let t=Instant::now();let(pk,vk)=Cs::setup(pp).unwrap();let setup=t.elapsed().as_secs_f64();
+ let vk_bytes=bincode::serialize(&vk).unwrap();
+ let decoded_vk:Cvk=bincode::deserialize(&vk_bytes).unwrap();
+ std::fs::write(format!("{output}/compressed_vk.bin"),&vk_bytes).unwrap();
+ eprintln!("Spartan setup: {setup:.3}s, VK {} bytes",vk_bytes.len());
+ let compress_one=|name:&str,rs:&Rs,initial:&[F],expected:&[F],steps:usize,goal:usize,accept:bool|{
+  assert_eq!(admitted_for(expected,steps,goal),accept);
+  let t=Instant::now();let proof=Cs::prove(pp,&pk,rs).unwrap();let prove=t.elapsed().as_secs_f64();
+  let t=Instant::now();let end=proof.verify(&vk,steps,initial).unwrap();let verify=t.elapsed().as_secs_f64();
+  assert_eq!(end.as_slice(),expected);assert_eq!(admitted_for(&end,steps,goal),accept);
+  let bytes=bincode::serialize(&proof).unwrap();let decoded:Cs=bincode::deserialize(&bytes).unwrap();
+  assert_eq!(decoded.verify(&decoded_vk,steps,initial).unwrap(),end);
+  let mut rejections=0;
+  for i in 0..ARITY {
+   let mut z=initial.to_vec();
+   // At the goal coordinate, substitute the other valid theorem statement.
+   if i==2{z[i]=F::from(if goal==1{2}else{1});}else{z[i]+=F::ONE;}
+   assert!(decoded.verify(&decoded_vk,steps,&z).is_err(),"changed initial statement accepted: {name}/{i}");
+   rejections+=1;
+  }
+  for count in [steps-1,steps+1] {
+   assert!(decoded.verify(&decoded_vk,count,initial).is_err(),"changed step count accepted");
+   rejections+=1;
+  }
+  std::fs::write(format!("{output}/{name}.compressed.bin"),&bytes).unwrap();
+  let recursive_bytes=bincode::serialized_size(rs).unwrap();
+  eprintln!("{name}: {steps} steps, {} bytes, compress {prove:.3}s, verify {verify:.3}s, admitted {accept}",bytes.len());
+  json!({"name":name,"goal":goal,"steps":steps,"cryptographic_verify":true,"admitted":accept,
+   "initial_state_le_hex":state_le_hex(initial),"terminal_state_le_hex":state_le_hex(&end),
+   "compression_seconds":prove,"verify_seconds":verify,"recursive_bytes_bincode":recursive_bytes,
+   "compressed_bytes_bincode":bytes.len(),"compression_ratio":recursive_bytes as f64 / bytes.len() as f64,
+   "verifier_rejections":rejections,"proof_and_vk_serialization_roundtrip":true})
+ };
+ let mut rows=vec![compress_one("long_identity",long,z0,zn,STEPS,1,true)];
+ // A genuine cryptographically valid compressed prefix must still fail theorem admission.
+ let prefix:Rs=bincode::deserialize(prefix_bytes).unwrap();
+ let prefix_end=prefix.verify(pp,STEPS-1,z0).unwrap();
+ assert!(!admitted_for(&prefix_end,STEPS-1,1));
+ rows.push(compress_one("unsealed_prefix",&prefix,z0,&prefix_end,STEPS-1,1,false));
+ for (j,v) in f.variants.into_iter().enumerate() {
+  let goal=j+1;
+  assert_eq!(v.goal,goal);assert_eq!(v.name,["short_identity","higher_identity"][j]);
+  let states:Vec<Vec<F>>=v.states.iter().map(|z|z.iter().map(|s|scalar(s)).collect()).collect();
+  assert_eq!(states.len(),5);assert_eq!(v.assignments.len(),4);
+  let mut initial=genesis();initial[2]=F::from(goal as u64);assert_eq!(states[0],initial);
+  let steps:Vec<TheoremStep>=v.assignments.into_iter().map(|w|{
+   let w:Vec<_>=w.iter().map(|s|scalar(s)).collect();assert_eq!(w.len(),MATRIX_WIRES);assert_eq!(w[0],F::ONE);
+   TheoremStep{matrix:matrix.clone(),assignment:Arc::new(w)}
+  }).collect();
+  for i in 0..4{
+   assert_eq!(endpoint(&steps[i].assignment,0),states[i]);assert_eq!(endpoint(&steps[i].assignment,5),states[i+1]);
+   assert_eq!(checked_step(&steps[i],&states[i]),(true,states[i+1].clone(),STEP_ROWS));
+   assert!(!admitted_for(&states[i],i,goal));
+  }
+  let t=Instant::now();let mut rs=Rs::new(pp,&steps[0],&initial).unwrap();
+  for step in &steps{rs.prove_step(pp,step).unwrap();}
+  let fold=t.elapsed().as_secs_f64();
+  let end=rs.verify(pp,4,&initial).unwrap();assert_eq!(end,states[4]);assert!(admitted_for(&end,4,goal));
+  let mut row=compress_one(&v.name,&rs,&initial,&end,4,goal,true);
+  row["variant_fold_including_init_seconds"]=json!(fold);rows.push(row);
+ }
+ json!({"passed":true,"scheme":"Nova 0.76 Spartan/IPA on Pallas/Vesta",
+ "scope":"restricted implicational calculus; no privacy claim","compression_setup_seconds":setup,
+ "compressed_vk_bytes_bincode":vk_bytes.len(),"shared_vk":true,"cases":rows,
+ "admitted_theorem_proofs":3,"cryptographically_valid_unsealed_prefix_refused":1,
+ "changed_statement_or_count_rejections":28})
+}
+
 fn main(){
  // Trust boundary: this file must come from the verifier's pinned generator,
  // never a remote prover. Matrix contents define the statement being proved.
- let path=std::env::args().nth(1).expect("usage: theorem trusted-admission-fixture.json");
+ let args:Vec<String>=std::env::args().collect();
+ assert!(args.len()==2||args.len()==4,"usage: theorem trusted-admission-fixture.json [variants.json output-dir]");
+ let path=&args[1];
+ let compress=args.len()==4;
  let raw=std::fs::read(path).unwrap();assert!(raw.len()<64<<20);
  let f:Fixture=serde_json::from_slice(&raw).unwrap();
  assert_eq!(f.schema,"zkl-nova-08/admission-matrix-v1");assert_eq!((f.d,f.goal,f.empty),(D,1,3));
@@ -188,13 +284,14 @@ fn main(){
  let t=Instant::now();let pp=Pp::setup(&steps[0],&*S1::ck_floor(),&*S2::ck_floor()).unwrap();
  let setup=t.elapsed().as_secs_f64();let (primary,secondary)=pp.num_constraints();
  let t=Instant::now();let mut rs=Rs::new(&pp,&steps[0],&z0).unwrap();
- let init=t.elapsed().as_secs_f64();let mut times=vec![];
+ let init=t.elapsed().as_secs_f64();let mut times=vec![];let mut prefix_bytes=Vec::new();
  for (i,s) in steps.iter().enumerate(){
   let t=Instant::now();rs.prove_step(&pp,s).unwrap();times.push(t.elapsed().as_secs_f64());
   eprintln!("fold {}/{}: {:.3}s",i+1,STEPS,times[i]);
   if i==STEPS-2 {
    let prefix=rs.verify(&pp,i+1,&z0).unwrap();
    assert_eq!(prefix,states[i+1]);assert!(!admitted(&prefix,i+1));admission_rejections+=1;
+   if compress {prefix_bytes=bincode::serialize(&rs).unwrap();}
   }
  }
  let t=Instant::now();let zn=rs.verify(&pp,STEPS,&z0).unwrap();let verify=t.elapsed().as_secs_f64();
@@ -206,7 +303,9 @@ fn main(){
  for count in [STEPS-1,STEPS+1]{assert!(rs.verify(&pp,count,&z0).is_err());verifier_rejections+=1;}
  let bytes=bincode::serialize(&rs).unwrap();let restored:Rs=bincode::deserialize(&bytes).unwrap();
  let end=restored.verify(&pp,STEPS,&z0).unwrap();assert!(admitted(&end,STEPS));assert_eq!(end,zn);
+ let compression_receipt=if compress{Some(compression(&pp,&rs,&z0,&zn,&prefix_bytes,matrix.clone(),&args[2],&args[3]))}else{None};
  println!("{}",serde_json::to_string_pretty(&json!({
+ "compression":compression_receipt,
  "passed":true,"scope":"recursive admission in restricted implicational logic; no hiding wrapper",
  "steps":STEPS,"state_arity":ARITY,"matrix_constraints":MATRIX_ROWS,"step_constraints":STEP_ROWS,
  "nova_primary_constraints":primary,"nova_secondary_constraints":secondary,

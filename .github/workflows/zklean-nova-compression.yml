@@ -1,0 +1,54 @@
+name: zkLean Nova Spartan compression
+on:
+  push:
+    branches:
+      - research/zkl-nova-09-20261125
+    paths:
+      - 'integrations/zklean-nova/**'
+      - '.github/workflows/zklean-nova-compression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zklean-compression-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  compress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce and export fixed matrix and variant assignments
+        run: |
+          mkdir -p /tmp/zklean-compression
+          node integrations/zklean-nova/admission.cjs > /tmp/zklean-compression/admission.json
+          diff -u integrations/zklean-nova/admission_results.json /tmp/zklean-compression/admission.json
+          node integrations/zklean-nova/admission.cjs --nova-fixture > /tmp/admission-fixture.json
+          node integrations/zklean-nova/admission.cjs --variants > /tmp/admission-variants.json
+          sha256sum /tmp/admission-fixture.json /tmp/admission-variants.json > /tmp/zklean-compression/fixtures.sha256
+      - name: Compile pinned Nova and Spartan
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version > /tmp/zklean-compression/rustc.txt
+          cargo +1.90.0 generate-lockfile --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml
+          cargo +1.90.0 tree --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml > /tmp/zklean-compression/dependencies.txt
+          cargo +1.90.0 build --release --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml --bin theorem
+      - name: Verify compressed theorem variants and refuse unsealed prefix
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o /tmp/zklean-compression/time.txt integrations/zklean-nova/nova-smoke/target/release/theorem /tmp/admission-fixture.json /tmp/admission-variants.json /tmp/zklean-compression | tee /tmp/zklean-compression/receipt.json
+          sha256sum /tmp/zklean-compression/*.bin > /tmp/zklean-compression/payloads.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zklean-compression-${{ github.sha }}
+          path: |
+            /tmp/zklean-compression/
+            integrations/zklean-nova/nova-smoke/Cargo.lock

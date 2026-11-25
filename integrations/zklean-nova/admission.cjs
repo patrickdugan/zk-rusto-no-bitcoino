@@ -1,6 +1,6 @@
 // ZKL-NOVA-07: actual one-row admission R1CS; trusted synthetic fixtures.
 const fs=require('node:fs'),crypto=require('node:crypto'),path=require('node:path');
-const args=process.argv.slice(2),emit=args[0]==='--nova-fixture';if(emit)args.shift();
+const args=process.argv.slice(2);const emit=args[0]==='--nova-fixture'?true:args[0]==='--variants'?"variants":false;if(emit)args.shift();
 const file=args[0]||path.join(__dirname,'../bitvm2-nova/fixtures/nht4-genesis-0-2020-k5.poseidon.json');
 const bytes=fs.readFileSync(file);if(crypto.createHash('sha256').update(bytes).digest('hex')!=='b55fa125133315243cb299ee7603c5f0508d68abf64f0dab43ecba4a0d09fa67')throw Error('parameter pin');
 function admission(profile,exportFixture){
@@ -163,6 +163,32 @@ function build(history,r,seal,opts={}){
 const check=c=>verify(c.rows,c.w,c.public,c.public.map(i=>c.w[i]));
 const summary=c=>({constraints:c.rows.length,wires:c.w.length,hashes:c.hashes,hash_constraints:c.labels.filter(x=>x==="poseidon").length,nonzeros:c.rows.reduce((n,r)=>n+r.reduce((s,l)=>s+l.length,0),0)});
 function sameShape(a,b){if(a.rows.length!==b.rows.length||a.w.length!==b.w.length)return false;for(let i=0;i<a.rows.length;i++)for(let j=0;j<3;j++){let x=a.rows[i][j],y=b.rows[i][j];if(x.length!==y.length||x.some((z,k)=>z[0]!==y[k][0]||z[1]!==y[k][1]))return false}return true}
+if(exportFixture==="variants"){
+ const base=build(history0(),chain[0],0);
+ const variants=[];
+ for(const goal of [1,2]){
+  const inputType=goal-1;
+  const proof=[[EXT,3,inputType,0,0],[HERE,4,inputType,0,0],[VAR,4,inputType,5,0],[LAM,3,goal,6,0]];
+  let hist=history0(),states=[],assignments=[];
+  for(let j=0;j<proof.length;j++){
+   const r=proof[j],seal=+(j===proof.length-1);
+   req(direct(hist,r,seal,goal,3));
+   const c=build(hist,r,seal,{state:{2:BigInt(goal)},out:{2:BigInt(goal)}});
+   req(check(c)&&sameShape(base,c));
+   const a=c.public.slice(0,5).map(i=>c.w[i].toString()),b=c.public.slice(5,10).map(i=>c.w[i].toString());
+   if(j===0)states.push(a);else req(JSON.stringify(states.at(-1))===JSON.stringify(a));
+   states.push(b);assignments.push(c.w.map(x=>x.toString()));hist.push(rec(r,hist.length));
+  }
+  req(states.at(-1)[4]==="1");variants.push({name:goal===1?"short_identity":"higher_identity",goal,states,assignments});
+ }
+ // A proof of P->P cannot seal the atom P, even with the same valid
+ // derivation and the public goal changed consistently in both states.
+ const hist=history0();
+ for(const r of [[EXT,3,0,0,0],[HERE,4,0,0,0],[VAR,4,0,5,0]])hist.push(rec(r,hist.length));
+ const bad=build(hist,[LAM,3,1,6,0],1,{state:{2:0n},out:{2:0n}});
+ req(!check(bad)&&sameShape(base,bad));
+ return {schema:"zkl-nova-09/variants-v1",public_ids:base.public,summary:summary(base),variants,atom_goal_rejected:true};
+}
 if(exportFixture){
  let history=history0(),first=null,assignments=[],states=[],controls=[];
  const state=(c,j)=>c.public.slice(j,j+5).map(i=>c.w[i].toString());
