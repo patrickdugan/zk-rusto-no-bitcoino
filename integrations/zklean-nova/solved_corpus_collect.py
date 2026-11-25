@@ -129,7 +129,8 @@ def initialize(args, manifest: dict) -> dict:
         "full_corpus_support_inference": False,
         "limits": {"collector_wall_seconds": args.budget_seconds,
                    "lane_build_wall_seconds": 300, "lane_export_wall_seconds": 240,
-                   "lane_import_wall_seconds": 60, "lane_output_bytes": args.max_output_bytes},
+                   "lane_import_wall_seconds": 60, "lane_output_bytes": args.max_output_bytes,
+                   "exporter_memory_mb": 10000},
         "lanes": [{"id": lane["id"], "selected_names": lane["names"],
                    "status": "not_attempted", "commands": []} for lane in manifest["lanes"]],
     }
@@ -212,17 +213,19 @@ def command(args, record: dict, label: str, argv: list[str], cwd: Path,
     directory = args.output / record["id"]
     directory.mkdir(parents=True, exist_ok=True)
     log = directory / (label + ".log")
+    timing = directory / (label + ".time.txt")
     start = time.monotonic()
     available = min(seconds, max(0, deadline - start))
     item = {"label": label, "command": argv, "started_at": utc(), "exit_code": None,
-            "timed_out": False, "output_limit": False}
+            "timed_out": False, "output_limit": False, "lean_resource_error": None}
     print(f"{utc()} {record['id']} {label}", flush=True)
     if available < 1:
         log.write_text("Collector deadline exhausted before command.\n")
         item.update(exit_code=124, timed_out=True)
     else:
         with log.open("w") as output:
-            process = subprocess.Popen(argv, cwd=cwd, env=env, stdout=output,
+            timed_argv = ["/usr/bin/time", "-v", "-o", str(timing), *argv]
+            process = subprocess.Popen(timed_argv, cwd=cwd, env=env, stdout=output,
                                        stderr=subprocess.STDOUT, start_new_session=True)
             try:
                 while process.poll() is None:
@@ -243,6 +246,18 @@ def command(args, record: dict, label: str, argv: list[str], cwd: Path,
             finally:
                 stop(process)
     item.update(seconds=round(time.monotonic() - start, 6), finished_at=utc(), log_sha256=sha(log))
+    if timing.is_file():
+        item["time_file_sha256"] = sha(timing)
+        for line in timing.read_text().splitlines():
+            name, _, value = line.strip().partition(":")
+            if name == "Maximum resident set size (kbytes)":
+                item["peak_resident_kib"] = int(value.strip())
+            elif name == "User time (seconds)":
+                item["user_cpu_seconds"] = float(value.strip())
+            elif name == "System time (seconds)":
+                item["system_cpu_seconds"] = float(value.strip())
+    if item["exit_code"] and "excessive memory consumption detected" in log.read_text():
+        item["lean_resource_error"] = "lean_memory_threshold"
     record["commands"].append(item)
     return item
 
@@ -327,6 +342,11 @@ def collect(args, manifest: dict, report: dict) -> int:
     report["collector_sha256"] = sha(Path(__file__))
     report["exporter_sha256"] = sha(HERE / "corpus_export.lean")
     report["importer_sha256"] = sha(HERE / "corpus_import.cjs")
+    report["runner_memory_kib"] = {
+        name: int(value.split()[0])
+        for name, value in (line.split(":", 1) for line in Path("/proc/meminfo").read_text().splitlines())
+        if name in {"MemTotal", "MemAvailable", "SwapTotal"}
+    }
     write(args.output / "collection.json", report)
     for lane, record in zip(manifest["lanes"], report["lanes"]):
         directory = args.output / lane["id"]
@@ -339,7 +359,7 @@ def collect(args, manifest: dict, report: dict) -> int:
                            [sys.executable, str(args.source / lane["verification_script"])],
                            args.source / "lean", os.environ.copy(), 300, deadline)
             build.update(exit_code=item["exit_code"], command=item,
-                         status="resource_limit" if item["timed_out"] or item["output_limit"] else "failed")
+                         status="resource_limit" if item["timed_out"] or item["output_limit"] or item["lean_resource_error"] else "failed")
             if evidence.exists():
                 shutil.copytree(evidence, directory / "source-build")
             require(item["exit_code"] == 0, "source build failed or exceeded its budget")
@@ -357,7 +377,7 @@ def collect(args, manifest: dict, report: dict) -> int:
                          external_dependency_objects_independently_rebuilt=False)
             write(directory / "build-receipt.json", build)
             record["build_status"] = "passed"
-            argv = [lean, "-j1", "-M4500", "--run", str(HERE / "corpus_export.lean"),
+            argv = [lean, "-j1", "-M10000", "--run", str(HERE / "corpus_export.lean"),
                     "--search-path", str(evidence / "lib/lean"),
                     "--out", str(directory / "targets.jsonl"),
                     "--dependency-out", str(directory / "dependencies.jsonl"),
@@ -379,8 +399,9 @@ def collect(args, manifest: dict, report: dict) -> int:
                 previous = directory / "export-summary.json"
                 if previous.is_file():
                     shutil.copyfile(previous, directory / "partial-export-summary.json")
-                write(previous, failed_export(lane, "export command failed or reached its budget",
-                      "resource_limit" if item["timed_out"] or item["output_limit"] else "export_error"))
+                reason = item["lean_resource_error"] or "export command failed or reached its budget"
+                write(previous, failed_export(lane, reason,
+                      "resource_limit" if item["timed_out"] or item["output_limit"] or item["lean_resource_error"] else "export_error"))
             require(item["exit_code"] == 0, "export command failed or reached its budget")
             validate_export(lane, directory, evidence / "lib/lean", receipt["object_sha256"])
             source_check(args.source, manifest)

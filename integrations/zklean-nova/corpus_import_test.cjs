@@ -83,7 +83,38 @@ const passed=[];async function test(name,fn){await fn();passed.push(name);}
    const cohort={schema:'synthetic-unit-cohort',source:{classification:'unit test only'},lanes:[{id:'a',names:Array.from({length:161},(_,i)=>'A.t'+i)},{id:'b',names:Array.from({length:350},(_,i)=>'B.t'+i)}]};
    const cohortFile=path.join(dir,'cohort.json');fs.writeFileSync(cohortFile,JSON.stringify(cohort));const dirs=[];
    for(const lane of cohort.lanes){const receipt=path.join(dir,lane.id+'.json');fs.writeFileSync(receipt,JSON.stringify({status:'failed',exit_code:1,selected_names:lane.names}));const out=path.join(dir,lane.id);dirs.push(out);await I.importCorpus({output:out,cohort:cohortFile,buildReceipt:receipt,lane:lane.id,limits});}
-   const agg=I.aggregate({cohort:cohortFile,inputs:dirs,output:path.join(dir,'aggregate.json')});assert.equal(agg.denominators.selected_inventory_candidates,511);assert.equal(agg.denominators.unclassified_candidates,511);assert.equal(agg.counts.native_certificate_accepted,0);assert.equal(agg.missing_candidates.length,511);
+   const agg=await I.aggregate({cohort:cohortFile,inputs:dirs,output:path.join(dir,'aggregate.json')});assert.equal(agg.denominators.selected_inventory_candidates,511);assert.equal(agg.denominators.unclassified_candidates,511);assert.equal(agg.counts.native_certificate_accepted,0);assert.equal(agg.missing_candidates.length,511);
+  }finally{fs.rmSync(dir,{recursive:true,force:true});}
+ });
+ await test('compact aggregate records preserve every summary field',()=>{
+  const accepted=analyze(record('Synthetic.aggregate',G,['mdata',P]));
+  const denied=structuredClone(accepted);denied.name='Synthetic.denied';denied.eligibility.axioms=['Classical.choice'];denied.eligibility.axiom_eligible=false;denied.eligible_native_accepted=false;
+  const full=[accepted,denied,{schema:accepted.schema,lane:accepted.lane,name:'Synthetic.unknown',kind:'theorem',is_proof:null,status:'not_exported',remaining_blockers:['not_exported']},
+   {...structuredClone(accepted),name:'Synthetic.nonproof',is_proof:false,original:{raw_proof:null}},
+   {...structuredClone(accepted),name:'Synthetic.nobody',original:{raw_proof:null}}];
+  for(const r of full){r.source={repeated_file_details:'x'.repeat(131072)};r.lowered_proof=['ignored'];r.lowered_goal=['ignored'];
+   if(r.original)r.original.raw_goal={snapshot:'x'.repeat(131072)};
+   if(r.lowering){r.lowering.details=[{ignored:'x'.repeat(131072)}];for(const e of r.lowering.events)e.ignored='x'.repeat(131072);}}
+  const compact=full.map(I.aggregateRecord),details={limits,expected_names:full.map(r=>r.name)};
+  assert.deepEqual(I.summarize(compact,details),I.summarize(full,details));
+  assert.ok(JSON.stringify(compact).length<JSON.stringify(full).length/100);
+  assert.ok(compact.every(r=>!Object.hasOwn(r,'source')&&!Object.hasOwn(r,'lowered_proof')));
+ });
+ await test('streamed aggregate pins result hashes and exact ordered lane names',async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'corpus-aggregate-unit-')),crypto=require('node:crypto');
+  try{
+   const lane='aggregate_unit',names=['Synthetic.a','Synthetic.b'],cohortFile=path.join(dir,'cohort.json'),laneDir=path.join(dir,'lane');fs.mkdirSync(laneDir);
+   fs.writeFileSync(cohortFile,JSON.stringify({lanes:[{id:lane,names}]}));
+   const full=names.map(name=>({schema:'zkl-nova-18/corpus-import-result-v1',lane,name,is_proof:null,status:'not_exported',remaining_blockers:['not_exported']}));
+   const resultFile=path.join(laneDir,'results.jsonl'),summaryFile=path.join(laneDir,'summary.json');
+   function write(records){const bytes=records.map(r=>JSON.stringify(r)).join('\n')+'\n';fs.writeFileSync(resultFile,bytes);fs.writeFileSync(summaryFile,JSON.stringify({schema:'zkl-nova-18/corpus-import-summary-v1',lane,scan_complete:true,results_file:{path:resultFile,bytes:Buffer.byteLength(bytes),sha256:crypto.createHash('sha256').update(bytes).digest('hex')}}));}
+   const opts={cohort:cohortFile,inputs:[laneDir],output:path.join(dir,'aggregate.json')};
+   write(full);const summary=await I.aggregate(opts);assert.equal(summary.denominators.observed_result_records,2);assert.deepEqual(summary.missing_candidates,names);
+   write([...full].reverse());await assert.rejects(I.aggregate(opts),/fixed lane candidate coverage/);
+   write(full.slice(0,1));await assert.rejects(I.aggregate(opts),/fixed lane candidate coverage/);
+   write([...full,{...full[0],name:'Synthetic.extra'}]);await assert.rejects(I.aggregate(opts),/fixed lane candidate coverage/);
+   write([{...full[0],lane:'other'},full[1]]);await assert.rejects(I.aggregate(opts),/fixed lane candidate coverage/);
+   write(full);fs.appendFileSync(resultFile,'\n');await assert.rejects(I.aggregate(opts),/lane results hash/);
   }finally{fs.rmSync(dir,{recursive:true,force:true});}
  });
  console.log(JSON.stringify({schema:'zkl-nova-18/importer-unit-tests-v1',passed:true,tests:passed.length,test_names:passed,corpus_observations:0,fixture_scope:'synthetic implementation tests only'},null,2));

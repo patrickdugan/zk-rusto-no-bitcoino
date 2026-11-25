@@ -65,6 +65,8 @@ def main():
     parser.add_argument("--lean", required=True)
     parser.add_argument("--budget-seconds", type=int, default=1200)
     parser.add_argument("--batch-seconds", type=int, default=120)
+    parser.add_argument("--batch-plan", type=Path,
+                        help="Reuse an earlier complete module partition after validating the same source/build hashes")
     args = parser.parse_args()
     args.output = args.output.resolve()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -101,6 +103,34 @@ def main():
               "selection": "All value-bearing declarations owned by successfully compiled and exported modules; source files were selected before compilation.",
               "lanes": []}
     queue = [sorted(items, key=lambda x: x["module"]) for _, items in sorted(groups.items())]
+    if args.batch_plan is not None:
+        previous_bytes = args.batch_plan.read_bytes()
+        previous = json.loads(previous_bytes)
+        if previous["source_manifest_sha256"] != digest(manifest_bytes) or previous["build_receipt_sha256"] != digest(build_bytes):
+            raise ValueError("batch plan uses a different source inventory or build")
+        expected = {(x["repository"], x["path"]): x for items in queue for x in items}
+        seen, refined = set(), []
+        for batch in previous["batches"]:
+            if batch["status"] == "split_retry":
+                continue
+            items = []
+            for selected in batch["source_files"]:
+                key = (selected["repository"], selected["path"])
+                if key not in expected or key in seen:
+                    raise ValueError("batch plan contains an extra or duplicate source")
+                item = expected[key]
+                if any(selected[field] != item[field] for field in ("commit", "module", "sha256", "git_blob_sha1", "olean_sha256")):
+                    raise ValueError("batch plan source/object pin mismatch")
+                seen.add(key)
+                items.append(item)
+            if items:
+                refined.append(items)
+        if seen != set(expected):
+            raise ValueError("batch plan omits compiled source modules")
+        queue = refined
+        report["reused_batch_plan_sha256"] = digest(previous_bytes)
+        report["reused_batch_count"] = len(queue)
+        report["reused_batch_module_count"] = len(seen)
     imports = []
     while queue:
         items = queue.pop(0)

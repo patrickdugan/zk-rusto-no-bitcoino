@@ -59,6 +59,7 @@ jobs:
         working-directory: solved-source/lean
         run: |
           set -o pipefail
+          lake env lean --run ../../integrations/zklean-nova/corpus_export.lean --self-test-heartbeats | tee /tmp/zklean-solved-corpus/heartbeat-regression.json
           lake env python3 ../../integrations/zklean-nova/solved_corpus_collect.py --source .. --output /tmp/zklean-solved-corpus --budget-seconds 1200 | tee /tmp/zklean-solved-corpus/collector.log
       - name: Account for blocked names and aggregate both cohorts
         if: always()

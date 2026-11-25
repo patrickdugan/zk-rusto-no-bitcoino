@@ -152,7 +152,10 @@
       "cold_setup_duration_measured": false
     },
     "object_reuse_policy": "Historical objects and hashes establish provenance. Fresh hosted collection recompiles the pinned source and records new object hashes.",
-    "local_lean_4_35_install_performed": false
+    "local_lean_4_35_install_performed": false,
+    "exporter_memory_mb": 10000,
+    "exporter_resource_evidence": "GNU time peak resident size and CPU times recorded per command; runner MemTotal/MemAvailable recorded.",
+    "kernel_recheck_heartbeat_policy": "Each declaration is checked on a fresh dedicated thread with a 2,000,000 kernel-heartbeat limit; allocation-heartbeat and elapsed-time observations are separate counters."
   },
   "lanes": [
     {

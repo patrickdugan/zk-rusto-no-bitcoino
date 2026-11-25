@@ -433,14 +433,48 @@ async function importCorpus(opts) {
     results_file:fileInfo(resultFile)});
   fs.writeFileSync(path.join(output,'summary.json'),JSON.stringify(summary,null,2)+'\n');return summary;
 }
-function aggregate(opts) {
+// Aggregation needs the measured fields, while the authenticated lane file keeps
+// the full source snapshots and lowering evidence. Retain no AST/event payloads.
+function aggregateRecord(record) {
+  const pick=(value,keys)=>Object.fromEntries(keys.filter(k=>Object.hasOwn(value,k)).map(k=>[k,value[k]]));
+  const out=pick(record,['schema','lane','name','is_proof','kind','status','representable',
+    'native_certificate_accepted','eligible_native_accepted','strict_whole_declaration_accepted',
+    'transparent_lowering_accepted','original_blockers','remaining_blockers','eligibility_blockers']);
+  if(record.eligibility)out.eligibility=pick(record.eligibility,['fresh_source_build','kernel_rechecked',
+    'safe_declaration','axiom_audit_complete','axioms','contains_sorry_ax','axiom_eligible']);
+  if(record.node_counts)out.node_counts=pick(record.node_counts,['expression_nodes','level_nodes',
+    'goal_expression_nodes','proof_expression_nodes','expression_tags','level_tags','constant_occurrences']);
+  if(record.native)out.native=pick(record.native,['reference_accepted','certificate_replay_accepted',
+    'rows_le_1024','current_arithmetic_capacity']);
+  if(record.lowering)out.lowering={events:(record.lowering.events||[]).map(e=>pick(e,['kind','occurrences']))};
+  if(record.original)out.original={raw_proof:record.original.raw_proof==null?record.original.raw_proof:true};
+  return out;
+}
+async function aggregate(opts) {
   ensure(opts.cohort&&opts.inputs.length,'aggregate requires --cohort and --inputs');const cohort=readJson(opts.cohort),results=[],lanes=[];
   ensure(Array.isArray(cohort.lanes)&&unique(cohort.lanes.map(l=>l.id)).length===cohort.lanes.length,'cohort lanes');
+  for(const lane of cohort.lanes)ensure(typeof lane.id==='string'&&Array.isArray(lane.names)&&
+    lane.names.every(n=>typeof n==='string')&&unique(lane.names).length===lane.names.length,'cohort lane names');
+  const supplied=new Map();
   for(const directory of opts.inputs){const summary=readJson(path.join(directory,'summary.json'));ensure(summary.schema===SUMMARY,'lane summary schema');
-    const file=path.join(directory,'results.jsonl');ensure(same({...fileInfo(file),path:summary.results_file.path},summary.results_file),'lane results hash');
-    ensure(!lanes.some(l=>l.lane===summary.lane),'duplicate lane');lanes.push(summary);
-    const found=fs.readFileSync(file,'utf8').split('\n').filter(Boolean).map(x=>JSON.parse(x));
-    const lane=cohort.lanes.find(l=>l.id===summary.lane);ensure(lane,'unexpected lane');ensure(same(found.map(r=>r.name),lane.names),'fixed lane candidate coverage');results.push(...found);
+    ensure(cohort.lanes.some(l=>l.id===summary.lane),'unexpected lane');ensure(!supplied.has(summary.lane),'duplicate lane');
+    supplied.set(summary.lane,{directory,summary});
+  }
+  for(const lane of cohort.lanes){const suppliedLane=supplied.get(lane.id);if(!suppliedLane)continue;
+    const {directory,summary}=suppliedLane,file=path.join(directory,'results.jsonl'),info=fileInfo(file);
+    ensure(same({...info,path:summary.results_file.path},summary.results_file),'lane results hash');
+    const input=fs.createReadStream(file),hash=crypto.createHash('sha256');let bytes=0,index=0;
+    input.on('data',chunk=>{hash.update(chunk);bytes+=chunk.length;});
+    const lines=readline.createInterface({input,crlfDelay:Infinity});
+    try{for await(const line of lines){if(line==='')continue;
+      ensure(Buffer.byteLength(line)<=DEFAULTS.recordBytes,'aggregate record bytes limit');
+      const record=JSON.parse(line);ensure(record&&typeof record==='object'&&!Array.isArray(record)&&record.schema===RESULT,'lane result schema');
+      ensure(record.lane===lane.id&&index<lane.names.length&&record.name===lane.names[index],'fixed lane candidate coverage');
+      results.push(aggregateRecord(record));index++;
+    }}finally{lines.close();input.destroy();}
+    ensure(index===lane.names.length,'fixed lane candidate coverage');
+    ensure(bytes===info.bytes&&hash.digest('hex')===info.sha256,'lane results changed while streaming');
+    lanes.push(summary);
   }
   for(const lane of cohort.lanes)if(!lanes.some(x=>x.lane===lane.id))for(const name of lane.names)results.push({schema:RESULT,lane:lane.id,name,is_proof:null,status:'not_exported',original_blockers:[],remaining_blockers:['not_exported']});
   const expected=cohort.lanes.flatMap(l=>l.names),summary=summarize(results,{lane:'aggregate',expected_names:expected,cohort_source:cohort.source,
@@ -459,4 +493,4 @@ if(require.main===module){
       .catch(e=>{process.stderr.write('corpus importer: '+e.message+'\n');process.exitCode=1;});
   }
 }
-module.exports={DEFAULTS,FIXED,assertDag,scan,lower,analyze,nativeWorker,runNative,eligibility,bindBuild,summarize,importCorpus,aggregate};
+module.exports={DEFAULTS,FIXED,assertDag,scan,lower,analyze,nativeWorker,runNative,eligibility,bindBuild,summarize,importCorpus,aggregateRecord,aggregate};

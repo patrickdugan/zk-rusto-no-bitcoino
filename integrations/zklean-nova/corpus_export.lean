@@ -262,7 +262,7 @@ def kernelAddChecked (env : Kernel.Environment) (heartbeats _recursion : USize)
   | exact Kernel.Environment.addDeclCore env heartbeats _recursion decl none
   | exact Kernel.Environment.addDeclCore env heartbeats decl none
 
-def recheck (env : Environment) (c : Config) (ci : ConstantInfo) : Json := Id.run do
+def recheck (env : Environment) (c : Config) (ci : ConstantInfo) : IO Json := do
   if !c.recheck then return obj [("status", str "not_requested")]
   let fresh := Name.str (Name.str .anonymous "_zkl_export_kernel_check") ci.name.toString
   if env.contains fresh then return obj [("status", str "error"), ("error", str "check_name_collision")]
@@ -272,9 +272,68 @@ def recheck (env : Environment) (c : Config) (ci : ConstantInfo) : Json := Id.ru
     | .opaqueInfo v => some <| Declaration.opaqueDecl { v with name := fresh, all := [] }
     | _ => none
   let some decl := decl? | return obj [("status", str "signature_only")]
-  match kernelAddChecked env.checked.get c.maxHeartbeats.toUSize c.maxDepth.toUSize decl with
-  | .ok _ => return obj [("status", str "passed"), ("max_heartbeats", num c.maxHeartbeats)]
-  | .error e => return obj [("status", str "error"), ("error", str (exceptionKind e))]
+  -- The kernel's thread-local counter differs from IO.getNumHeartbeats's
+  -- allocation counter. A fresh dedicated thread starts the kernel counter
+  -- at zero. Checks are awaited sequentially and retain the same
+  -- per-declaration kernel budget.
+  let task ← IO.asTask (do
+    let before ← IO.getNumHeartbeats
+    let started ← IO.monoNanosNow
+    let result := kernelAddChecked env.checked.get c.maxHeartbeats.toUSize c.maxDepth.toUSize decl
+    let fields ← match result with
+      | .ok _ => pure [("status", str "passed")]
+      | .error e => pure [("status", str "error"), ("error", str (exceptionKind e))]
+    let after ← IO.getNumHeartbeats
+    let finished ← IO.monoNanosNow
+    pure <| obj (fields ++ [("max_heartbeats", num c.maxHeartbeats),
+      ("kernel_heartbeat_scope", str "fresh_dedicated_thread"),
+      ("observed_allocation_heartbeats", num (after - before)),
+      ("elapsed_nanoseconds", num (finished - started))])) Task.Priority.dedicated
+  match ← IO.wait task with
+  | .ok value => return value
+  | .error error => throw error
+
+def heartbeatRegression : IO UInt32 := do
+  let env ← mkEmptyEnvironment
+  let mut goal := mkForall `P .default (mkSort .zero)
+    (mkForall `h .default (mkBVar 0) (mkBVar 1))
+  let mut proof := mkLambda `P .default (mkSort .zero)
+    (mkLambda `h .default (mkBVar 0) (mkBVar 0))
+  -- Force enough kernel work to cross its periodic heartbeat-check boundary.
+  for _ in [:256] do
+    goal := mkForall `unused .default (mkSort .zero) goal
+    proof := mkLambda `unused .default (mkSort .zero) proof
+  let value : TheoremVal := {
+    name := `HeartbeatRegression.identity
+    levelParams := []
+    type := goal
+    value := proof }
+  let ci := ConstantInfo.thmInfo value
+  let c : Config := {}
+  let first ← recheck env c ci
+  -- Spend the main thread's actual kernel counter until the previous shared
+  -- counter implementation rejects. Fresh isolated checks must still pass.
+  let mut priorChecks := 0
+  let mut oldLimitRejected := false
+  for i in [:4096] do
+    let d := Declaration.thmDecl { value with name := Name.num `HeartbeatRegression.work i }
+    match kernelAddChecked env.checked.get c.maxHeartbeats.toUSize c.maxDepth.toUSize d with
+    | .ok _ => priorChecks := priorChecks + 1
+    | .error (.deterministicTimeout) =>
+      oldLimitRejected := true
+      break
+    | .error e => throw <| IO.userError (exceptionKind e)
+  let second ← recheck env c ci
+  let tiny ← recheck env { c with maxHeartbeats := 1 } ci
+  let passed := (first.getObjValAs? String "status").toOption == some "passed" &&
+    (second.getObjValAs? String "status").toOption == some "passed" && oldLimitRejected &&
+    (tiny.getObjValAs? String "error").toOption == some "resource_limit: kernel_heartbeats"
+  (← IO.getStdout).putStrLn (obj [("schema", str "zkl-nova-18/exporter-heartbeat-regression-v1"),
+    ("passed", toJson passed), ("first", first), ("second_after_prior_work", second),
+    ("old_absolute_limit_rejected", toJson oldLimitRejected), ("prior_kernel_checks", num priorChecks),
+    ("tiny_budget", tiny),
+    ("corpus_observations", num 0)]).compress
+  return if passed then 0 else 1
 
 -- This follows Lean.collectAxioms: declaration types and values are traversed,
 -- including constructor types of inductives. The explicit declaration bound
@@ -325,7 +384,7 @@ def referenceInfo (env : Environment) (r : Name × Array Nat) : Json :=
     ("unsafe", ci.map (toJson ∘ ConstantInfo.isUnsafe) |>.getD Json.null),
     ("partial", ci.map (toJson ∘ ConstantInfo.isPartial) |>.getD Json.null)])
 
-def encodeDeclaration (env : Environment) (c : Config) (role : String) (ci : ConstantInfo) : Json × Array Name := Id.run do
+def encodeDeclaration (env : Environment) (c : Config) (role : String) (ci : ConstantInfo) : IO (Json × Array Name) := do
   let includeValue := role == "target" || kind ci == "definition"
   let encode : EncodeM (Nat × Option Nat) := do
     let t ← encodeExpr ci.type
@@ -340,6 +399,8 @@ def encodeDeclaration (env : Environment) (c : Config) (role : String) (ci : Con
     | .error error =>
       (if "resource_limit:".isPrefixOf error then "resource_limit" else "error",
         Json.null, Json.null, #[error])
+  let checked ← if role == "dependency" then pure <| obj [("status", str "imported_compiled_declaration")]
+    else if status == "ok" then recheck env c ci else pure <| obj [("status", str "not_attempted")]
   let record := obj ([("schema", str "zkl-nova-18/lean-expr-v1"), ("role", str role)] ++
     named "name" ci.name ++ [
     ("kind", str (kind ci)), ("safety", str (safety ci)), ("level_params", names ci.levelParams.toArray),
@@ -357,8 +418,7 @@ def encodeDeclaration (env : Environment) (c : Config) (role : String) (ci : Con
       ("dag_node_bytes", num dag.nodeBytes)]),
     ("provenance", obj [("module", moduleJson env ci.name), ("lean_version", str Lean.versionString),
       ("unsafe", toJson ci.isUnsafe), ("partial", toJson ci.isPartial),
-      ("kernel_check", if role == "dependency" then obj [("status", str "imported_compiled_declaration")]
-        else if status == "ok" then recheck env c ci else obj [("status", str "not_attempted")]),
+      ("kernel_check", checked),
       ("axiom_dependencies", if role == "target" then axiomDependencies env ci.name c.maxAxiomDecls
         else obj [("status", str "covered_by_target_audit")]),
       ("source_compilation_evidence", str (if role == "dependency" then "imported_compiled_declaration"
@@ -376,7 +436,7 @@ def resourceRecord (env : Environment) (role : String) (ci : ConstantInfo) (reas
 
 def writeDeclaration (handle : IO.FS.Handle) (env : Environment) (c : Config)
     (role : String) (ci : ConstantInfo) : IO (Array Name × String) := do
-  let (record, references) := encodeDeclaration env c role ci
+  let (record, references) ← encodeDeclaration env c role ci
   let text := record.compress
   if text.utf8ByteSize > c.maxBytes then
     handle.putStrLn (resourceRecord env role ci "resource_limit: JSON record bytes").compress
@@ -390,6 +450,16 @@ structure Progress where
   loadedModules : Array Name := #[]
   targetRecords : Nat := 0
 
+def checkpoint (c : Config) (progress : IO.Ref Progress) : IO Unit := do
+  let p ← progress.get
+  IO.FS.writeFile c.summaryPath ((obj [
+    ("schema", str "zkl-nova-18/lean-expr-summary-v1"), ("status", str "running"),
+    ("phase", str p.phase), ("lean_version", str Lean.versionString),
+    ("requested_modules", names c.modules), ("module_files", toJson p.moduleFiles),
+    ("loaded_module_count", num p.loadedModules.size),
+    ("target_records_written", num p.targetRecords),
+    ("source_compilation_evidence", str "external_module_build_receipt_required")]).pretty ++ "\n")
+
 def run (c : Config) (progress : IO.Ref Progress) : IO UInt32 := do
   -- --run may use an absolute Lean binary absent from PATH.
   initSearchPath (← findSysroot (← IO.appPath).toString) c.searchPaths
@@ -399,8 +469,10 @@ def run (c : Config) (progress : IO.Ref Progress) : IO UInt32 := do
     moduleFiles := moduleFiles.push <| obj [("module", str m.toString), ("olean_path", str p.toString)]
     progress.modify fun s => { s with moduleFiles := moduleFiles }
   progress.modify fun s => { s with phase := "import_modules" }
+  checkpoint c progress
   let env ← importModules (c.modules.map fun m => { module := m }) {} (trustLevel := 0)
   progress.modify fun s => { s with phase := "export_targets", loadedModules := c.modules }
+  checkpoint c progress
   let mut targets : Array ConstantInfo := #[]
   for (n, ci) in env.constants do
     let owned := (moduleFor env n).any (fun m => c.modules.contains m)
@@ -417,8 +489,12 @@ def run (c : Config) (progress : IO.Ref Progress) : IO UInt32 := do
       dependencies := dependencies ++ refs
       targetStatus := targetStatus.push status
       progress.modify fun s => { s with targetRecords := s.targetRecords + 1 }
+      if targetStatus.size % 16 == 0 then
+        h.flush
+        checkpoint c progress
     pure (dependencies, targetStatus)
   progress.modify fun s => { s with phase := "export_dependencies" }
+  checkpoint c progress
   let (dependencyCount, dependencyPending, dependencyBounded) ← match c.dependencyOutput with
     | none => pure (0, 0, 0)
     | some file => IO.FS.withFile file .write fun h => do
@@ -470,6 +546,7 @@ def run (c : Config) (progress : IO.Ref Progress) : IO UInt32 := do
 end CorpusExport
 
 def main (args : List String) : IO UInt32 := do
+  if args == ["--self-test-heartbeats"] then return ← CorpusExport.heartbeatRegression
   match CorpusExport.parseArgs {} args with
   | .error e =>
     (← IO.getStderr).putStrLn e
