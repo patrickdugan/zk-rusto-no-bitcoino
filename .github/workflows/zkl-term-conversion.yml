@@ -4,12 +4,18 @@ on:
     paths:
       - 'integrations/zkl-nova-calibration/src/bin/term.rs'
       - 'integrations/zkl-nova-calibration/term-fixtures.json'
+      - 'integrations/zkl-nova-calibration/term_reference.py'
+      - 'integrations/zkl-nova-calibration/audit.py'
+      - 'integrations/zkl-nova-calibration/term_sharing.py'
       - '.github/workflows/zkl-term-conversion.yml'
   push:
     branches: [main]
     paths:
       - 'integrations/zkl-nova-calibration/src/bin/term.rs'
       - 'integrations/zkl-nova-calibration/term-fixtures.json'
+      - 'integrations/zkl-nova-calibration/term_reference.py'
+      - 'integrations/zkl-nova-calibration/audit.py'
+      - 'integrations/zkl-nova-calibration/term_sharing.py'
       - '.github/workflows/zkl-term-conversion.yml'
 permissions:
   contents: read
@@ -23,6 +29,13 @@ jobs:
       CARGO_PROFILE_RELEASE_DEBUG: '0'
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Differential reference and pinned fixture replay
+        run: |
+          python integrations/zkl-nova-calibration/audit.py
+          python integrations/zkl-nova-calibration/term_sharing.py
       - uses: dtolnay/rust-toolchain@stable
       - name: Build isolated Nova term checker
         run: |
