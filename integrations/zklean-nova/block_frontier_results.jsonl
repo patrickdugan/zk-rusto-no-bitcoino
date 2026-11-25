@@ -1,0 +1,7 @@
+{"cases": 185, "fixed_steps": 1411, "sealed_rejections": 185, "targeted_rejections": 12}
+{"workload": "chain", "rows": 100000, "genesis": 4, "batch": 16, "steps": 6251, "historical_reads": 31250, "fixed_write_hashes": 256291, "hashes_per_step": 41, "total_hashes": 787541, "seconds": 2.619}
+{"workload": "chain", "rows": 100000, "genesis": 4, "batch": 64, "steps": 1563, "historical_reads": 7810, "fixed_write_hashes": 132855, "hashes_per_step": 85, "total_hashes": 265625, "seconds": 1.972}
+{"workload": "chain", "rows": 100000, "genesis": 4, "batch": 256, "steps": 391, "historical_reads": 1950, "fixed_write_hashes": 106743, "hashes_per_step": 273, "total_hashes": 139893, "seconds": 2.036}
+{"workload": "scatter", "rows": 100000, "genesis": 4, "batch": 16, "steps": 6251, "historical_reads": 81139, "fixed_write_hashes": 256291, "hashes_per_step": 41, "total_hashes": 1635654, "seconds": 3.454}
+{"workload": "scatter", "rows": 100000, "genesis": 4, "batch": 64, "steps": 1563, "historical_reads": 57556, "fixed_write_hashes": 132855, "hashes_per_step": 85, "total_hashes": 1111307, "seconds": 3.04}
+{"workload": "scatter", "rows": 100000, "genesis": 4, "batch": 256, "steps": 391, "historical_reads": 51229, "fixed_write_hashes": 106743, "hashes_per_step": 273, "total_hashes": 977636, "seconds": 2.78}

@@ -1,0 +1,7 @@
+{"random_transitions": 132, "full_capacity_rejections": 10, "targeted_rejections": 12}
+{"workload": "chain", "rows": 100000, "batch": 16, "steps": 6250, "historical_reads": 31249, "merges": 99994, "boundary_hashes": 106250, "old_write": 3400000, "new_write": 206244, "old_total": 3931233, "new_total": 737477, "seconds": 2.519}
+{"workload": "chain", "rows": 100000, "batch": 64, "steps": 1563, "historical_reads": 7814, "merges": 99994, "boundary_hashes": 26571, "old_write": 3400000, "new_write": 126565, "old_total": 3532838, "new_total": 259403, "seconds": 2.022}
+{"workload": "chain", "rows": 100000, "batch": 256, "steps": 391, "historical_reads": 1954, "merges": 99994, "boundary_hashes": 6647, "old_write": 3400000, "new_write": 106641, "old_total": 3433218, "new_total": 139859, "seconds": 1.9}
+{"workload": "scatter", "rows": 100000, "batch": 16, "steps": 6250, "historical_reads": 81129, "merges": 99994, "boundary_hashes": 106250, "old_write": 3400000, "new_write": 206244, "old_total": 4779193, "new_total": 1585437, "seconds": 3.653}
+{"workload": "scatter", "rows": 100000, "batch": 64, "steps": 1563, "historical_reads": 57546, "merges": 99994, "boundary_hashes": 26571, "old_write": 3400000, "new_write": 126565, "old_total": 4378282, "new_total": 1104847, "seconds": 3.013}
+{"workload": "scatter", "rows": 100000, "batch": 256, "steps": 391, "historical_reads": 51229, "merges": 99994, "boundary_hashes": 6647, "old_write": 3400000, "new_write": 106641, "old_total": 4270893, "new_total": 977534, "seconds": 2.806}
