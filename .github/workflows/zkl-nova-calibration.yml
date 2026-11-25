@@ -1,0 +1,43 @@
+name: ZKL Nova circuit calibration
+on:
+  pull_request:
+    paths:
+      - 'integrations/zkl-nova-calibration/**'
+      - '.github/workflows/zkl-nova-calibration.yml'
+  push:
+    paths:
+      - 'integrations/zkl-nova-calibration/**'
+      - '.github/workflows/zkl-nova-calibration.yml'
+permissions:
+  contents: read
+jobs:
+  synthesize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Pin and build actual Nova crate
+        run: |
+          cargo generate-lockfile --manifest-path integrations/zkl-nova-calibration/Cargo.toml
+          cargo build --locked --release --manifest-path integrations/zkl-nova-calibration/Cargo.toml
+      - name: Measure R1CS and attack witnesses
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v timeout 120s integrations/zkl-nova-calibration/target/release/zkl-nova-calibration --calibrate | tee zkl-shapes.json
+      - name: Prove and verify three actual Nova steps
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v timeout 240s integrations/zkl-nova-calibration/target/release/zkl-nova-calibration --fold | tee zkl-fold.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl-nova-calibration
+          path: |
+            zkl-shapes.json
+            zkl-fold.json
+            integrations/zkl-nova-calibration/Cargo.lock
