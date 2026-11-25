@@ -1,0 +1,56 @@
+name: zkLean Nova dependent scale
+on:
+  push:
+    branches:
+      - research/zkl-nova-12-20261125
+    paths:
+      - 'integrations/zklean-nova/**'
+      - '.github/workflows/zklean-nova-dependent-scale.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zklean-dependent-scale-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  dependent-scale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+      NODE_OPTIONS: '--max-old-space-size=4096'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce all-tag authenticated sample
+        run: |
+          mkdir -p /tmp/dependent-scale-proof
+          node integrations/zklean-nova/dependent_scale.cjs > /tmp/dependent-scale-proof/sample.json
+          diff -u integrations/zklean-nova/dependent_scale_sample.json /tmp/dependent-scale-proof/sample.json
+      - name: Generate and check all 957 binary assignments
+        run: |
+          /usr/bin/time -v -o /tmp/dependent-scale-proof/generation-time.txt node integrations/zklean-nova/dependent_scale.cjs --full /tmp/dependent-scale-fixture > /tmp/dependent-scale-proof/full.json
+          sha256sum /tmp/dependent-scale-fixture/matrix.json /tmp/dependent-scale-fixture/*.bin > /tmp/dependent-scale-proof/fixtures.sha256
+      - name: Compile pinned Nova and Spartan
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version > /tmp/dependent-scale-proof/rustc.txt
+          cargo +1.90.0 generate-lockfile --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml
+          cargo +1.90.0 tree --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml > /tmp/dependent-scale-proof/dependencies.txt
+          cargo +1.90.0 build --release --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml --bin dependent_scale
+      - name: Fold and compress all four dependent derivations with one key
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o /tmp/dependent-scale-proof/time.txt integrations/zklean-nova/nova-smoke/target/release/dependent_scale /tmp/dependent-scale-fixture /tmp/dependent-scale-proof | tee /tmp/dependent-scale-proof/receipt.json
+          sha256sum /tmp/dependent-scale-proof/*.bin > /tmp/dependent-scale-proof/payloads.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zklean-dependent-scale-${{ github.sha }}
+          path: |
+            /tmp/dependent-scale-proof/
+            integrations/zklean-nova/nova-smoke/Cargo.lock
