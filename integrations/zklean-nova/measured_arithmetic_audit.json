@@ -1,0 +1,430 @@
+{
+  "schema": "zkl-nova-18/measured-arithmetic-audit-v1",
+  "passed": true,
+  "scope": "The four preregistered actual source-bound certificates only. Corpus eligibility totals are the observed invocation snapshot.",
+  "receipt": {
+    "path": "/workspace/scratch/920672a6a32d/work/zk-rusto-no-bitcoino/integrations/zklean-nova/measured_arithmetic_results.json",
+    "bytes": 207087,
+    "sha256": "14162b220956f44f2fa452a1d82337037148042a204028c27766b3f478fefc7c"
+  },
+  "selection": {
+    "path": "/workspace/scratch/920672a6a32d/work/zk-rusto-no-bitcoino/integrations/zklean-nova/measured_arithmetic_selection.json",
+    "bytes": 2921,
+    "sha256": "53aa93a42b7748b8c19eb2f23b6841fb193d4c16fbf36c6860764adc92ff7fc0"
+  },
+  "sources": {
+    "frontier": {
+      "path": "/workspace/scratch/920672a6a32d/work/zk-rusto-no-bitcoino/integrations/zklean-nova/equality_frontier.cjs",
+      "bytes": 32706,
+      "sha256": "2612b10cce2f337c24e6fe8b531328504f0b3c78993c9c95c9bdb2258eb82fc3"
+    },
+    "environment": {
+      "path": "/workspace/scratch/920672a6a32d/work/zk-rusto-no-bitcoino/integrations/zklean-nova/equality_environment.cjs",
+      "bytes": 1232,
+      "sha256": "0958bdf88979960e47d4b872cddfe698735822554603f5c3a2037dc8fcaa2253"
+    },
+    "kernel": {
+      "path": "/workspace/scratch/920672a6a32d/work/zk-rusto-no-bitcoino/integrations/zklean-nova/equality.cjs",
+      "bytes": 28570,
+      "sha256": "484237e893bb6357737e30fb5354f72dadb8f67186a78835604bc64993b833b1"
+    },
+    "sample": {
+      "path": "/workspace/scratch/920672a6a32d/work/zk-rusto-no-bitcoino/integrations/zklean-nova/equality_frontier_sample.json",
+      "bytes": 59805,
+      "sha256": "fb7e2ef68dbf19ebb2d8be57ae14eb7c2e844bc4b5aa61208724b80bcd2a6dfc"
+    },
+    "poseidon": {
+      "path": "/workspace/scratch/920672a6a32d/work/zk-rusto-no-bitcoino/integrations/bitvm2-nova/fixtures/nht4-genesis-0-2020-k5.poseidon.json",
+      "bytes": 702325,
+      "sha256": "b55fa125133315243cb299ee7603c5f0508d68abf64f0dab43ecba4a0d09fa67"
+    },
+    "importer": {
+      "path": "/workspace/scratch/920672a6a32d/work/zk-rusto-no-bitcoino/integrations/zklean-nova/corpus_import.cjs",
+      "bytes": 45546,
+      "sha256": "7920138721e652c9569c7edc00f437bf405188558fb54dc3f12c32112dd8434b"
+    },
+    "helper": {
+      "path": "/workspace/scratch/920672a6a32d/work/zk-rusto-no-bitcoino/integrations/zklean-nova/measured_arithmetic.cjs",
+      "bytes": 17894,
+      "sha256": "f48b3e936004659bf3266794a4dd85743fd677cae82525a45e8ff269fc145701"
+    }
+  },
+  "reviewed_initial_importer": {
+    "sha256": "67e66923693ed0f6a390eba27a34b13a7903b7f2330449c58d29a31a024c6bcd",
+    "bytes": 42962,
+    "source": "https://raw.githubusercontent.com/patrickdugan/zk-rusto-no-bitcoino/8c9d7ae/integrations/zklean-nova/corpus_import.cjs"
+  },
+  "source_preservation": {
+    "directory": "/workspace/scratch/920672a6a32d/corpus-owned-18/arithmetic-original-inputs",
+    "original_manifest": {
+      "path": "/workspace/scratch/920672a6a32d/corpus-owned-18/arithmetic-original-inputs/manifest.json",
+      "bytes": 11627,
+      "sha256": "86a60482e5c52801ce88704ab00bc35b0cbee56801c5a3176fbd946fcdb58d6d"
+    },
+    "verified_files": 26,
+    "verified_bytes": 24314581,
+    "all_manifest_files_rehashed": true,
+    "raw_exports_retained_before_heartbeat_refresh": true
+  },
+  "execution_budget": {
+    "limit_seconds": 1200,
+    "selection_registered_at_utc": "2026-11-25T15:07:18.106864+00:00",
+    "external_stop_deadline_utc": "2026-11-25T15:26:52+00:00",
+    "completion_timing_receipt_mtime_utc": "2026-11-25T15:26:50.360021+00:00",
+    "completion_clock_basis": "Filesystem mtime of raw timing receipt written immediately after subprocess.run returned.",
+    "external_deadline_margin_seconds": 1.639979,
+    "accounting": "Initial failed process wall time plus all elapsed wall time after selection registration.",
+    "conservative_consumption_seconds": 1197.446893153,
+    "within_budget": true,
+    "enforcement": "External polling with interruption planned at the declared stop deadline. The process completed before intervention.",
+    "helper_has_automatic_wall_timeout": false,
+    "interruption_required": false
+  },
+  "attempts": [
+    {
+      "label": "initial_unstreamed_attempt",
+      "raw_timing_file": {
+        "path": "/workspace/scratch/920672a6a32d/corpus-owned-18/arithmetic-time.json",
+        "bytes": 484,
+        "sha256": "7b6d743c4b3ac3d1c60536280eb59b73ca7433707ee34712a5a55126aa92ddbe"
+      },
+      "timing": {
+        "command": [
+          "node",
+          "--max-old-space-size=4096",
+          "integrations/zklean-nova/corpus_arithmetic.cjs",
+          "--imports",
+          "/workspace/scratch/920672a6a32d/corpus-owned-18/export",
+          "--output",
+          "/workspace/scratch/920672a6a32d/work/zk-rusto-no-bitcoino/integrations/zklean-nova/corpus_owned_arithmetic_results.json"
+        ],
+        "exit_code": -9,
+        "wall_seconds": 25.193736152999918,
+        "user_seconds": 24.245196,
+        "system_seconds": 3.87772,
+        "max_rss_kib": 1748152
+      },
+      "observed_termination_signal": "SIGKILL",
+      "termination_cause": "Operating-system kill reason unavailable.",
+      "completed_actual_row_receipts": 0
+    },
+    {
+      "label": "streamed_bounded_heap_retry",
+      "raw_timing_file": {
+        "path": "/workspace/scratch/920672a6a32d/corpus-owned-18/arithmetic-retry-time.json",
+        "bytes": 626,
+        "sha256": "d37ce8472bb65812f44197bd89d11635f81dcb254933189cd55d07de4228c9eb"
+      },
+      "timing": {
+        "command": [
+          "node",
+          "--max-old-space-size=1024",
+          "integrations/zklean-nova/measured_arithmetic.cjs",
+          "--imports",
+          "/workspace/scratch/920672a6a32d/corpus-owned-18/export",
+          "--selection",
+          "/workspace/scratch/920672a6a32d/work/zk-rusto-no-bitcoino/integrations/zklean-nova/measured_arithmetic_selection.json",
+          "--output",
+          "/workspace/scratch/920672a6a32d/work/zk-rusto-no-bitcoino/integrations/zklean-nova/measured_arithmetic_results.json"
+        ],
+        "exit_code": 0,
+        "wall_seconds": 990.3172490160014,
+        "user_seconds": 993.665928,
+        "system_seconds": 10.452486,
+        "max_rss_kib": 775216
+      },
+      "completed_actual_row_receipts": 1712
+    }
+  ],
+  "cost": {
+    "process_wall_seconds_all_attempts": 1015.5109851690013,
+    "retry_process_wall_seconds": 990.3172490160014,
+    "arithmetic_batch_wall_seconds": 983.067670353,
+    "actual_rows": 1712,
+    "batch_seconds_per_actual_row": 0.5742217700660047,
+    "retry_process_seconds_per_actual_row": 0.5784563370420569,
+    "all_attempt_process_seconds_per_actual_row": 0.5931723044211457,
+    "timing_scope": "Batch time includes matrix construction, full row evaluations and rejection checks. Per-row values are amortized batch costs.",
+    "per_case_timing_measured": false,
+    "peak_rss_kib_retry": 775216,
+    "peak_rss_kib_failed_attempt": 1748152
+  },
+  "matrix": {
+    "sha256": "c583f594c0757e1910ec667c13e27ca081778e4167fed58188d1ea9d1dc12c04",
+    "bytes": 78541025,
+    "depth": 10,
+    "rule_read_counts": {
+      "S": 0,
+      "B": 0,
+      "F": 0,
+      "P": 2,
+      "L": 2,
+      "A": 2,
+      "E": 0,
+      "X": 4,
+      "Q0": 2,
+      "Q1": 3,
+      "I0": 3,
+      "I2": 5,
+      "VR": 2,
+      "VS": 3,
+      "VT": 4,
+      "VB": 4,
+      "VA": 4,
+      "VP": 7,
+      "VL": 7,
+      "JS": 3,
+      "JV": 4,
+      "JP": 10,
+      "JL": 10,
+      "JA": 7,
+      "JC": 7,
+      "C": 0,
+      "JK": 3,
+      "VZ": 7,
+      "VN": 10,
+      "VJ": 11
+    },
+    "state_ids": [
+      3385,
+      1,
+      3386,
+      3387,
+      3392,
+      3393,
+      3394,
+      3395,
+      3396,
+      3397,
+      3398,
+      3399,
+      3400,
+      3401,
+      3388,
+      3389,
+      3390,
+      3391,
+      3402,
+      3403,
+      3404,
+      3405,
+      3406,
+      3407,
+      3408,
+      3409,
+      3410,
+      3411
+    ],
+    "signature_digests": [
+      "11744945454684709409840233834068694984761004767929927690673025765931392701316",
+      "2131699465519179874298395116881163507796213039041400918042287812696098857990",
+      "24682387846042949178808349232108593837429220335935934819367972564214485384808",
+      "12971374747806736807752100279453475156028469037219918527100907205897492814547",
+      "9240949561636189543199227489674770712281985252428144324196440366096580108169",
+      "21998721336651083910303786340431442239218613105527351010611278519431023187900",
+      "12172626766070270915474979511897464970695746401554075296828020632263132520334",
+      "16882464821207688215258827998780509732411012485346965854172914053479320801843",
+      "26544374555860767392337169615945042457071396500474982723324304382795226511515",
+      "20304360191539419313802246369472869559263987885435613599520657884824646158035",
+      "13022783820851244443692514178323336015565184476041137438748061723889274261861"
+    ],
+    "record_field_bits": 11,
+    "record_fields": 14,
+    "read_capacity": 11,
+    "hashes": 104,
+    "constraints": 41406,
+    "wires": 40263,
+    "nonzeros": 1021954,
+    "hash_constraints": 32448,
+    "node_domain": "6506377860829105743",
+    "leaf_domain": "6506377860929768518",
+    "term_domain": "6506377860829107200",
+    "node_vector": "14114214179916697404878619261192913361145130603274328369933284479456013695164",
+    "leaf_vector": "17951052172570235289640561087067241965389690421865429463444082721087184125804"
+  },
+  "checks": {
+    "mode": "full",
+    "actual_cases": 4,
+    "actual_row_checks": 1712,
+    "constraints_per_row": 41406,
+    "wires": 40263,
+    "nonzeros": 1021954,
+    "direct_mutations_rejected": 16,
+    "regenerated_rejections": {
+      "empty_dirty_sibling": 4,
+      "terminal_payload": 20,
+      "conflicting_duplicate": 4,
+      "frontier_inactive": 4,
+      "frontier_output": 4,
+      "frontier_active": 4,
+      "constant_signature": 0,
+      "iota_result": 0,
+      "equality_rule": 0,
+      "equality_auth": 0
+    },
+    "regenerated_rejections_total": 40,
+    "boundary_checks": 1024,
+    "distinct_rule_tags_checked": [
+      "A",
+      "B",
+      "E",
+      "F",
+      "I0",
+      "I2",
+      "JA",
+      "JL",
+      "JP",
+      "JS",
+      "JV",
+      "L",
+      "P",
+      "Q0",
+      "Q1",
+      "S",
+      "X"
+    ],
+    "distinct_rule_tags_count": 17,
+    "fixed_kernel_rule_tags": 30,
+    "repeat_coverage_extra_rows_checked": 0,
+    "nova_proofs_generated": 0
+  },
+  "observed_corpus_snapshot": {
+    "export_sweep_complete": false,
+    "all_observed_in_capacity_cases_checked": false,
+    "observed_completed_import_groups": 47,
+    "incomplete_import_groups": 26,
+    "totals": {
+      "eligible_native_certificates": 49,
+      "in_capacity_certificates": 39,
+      "actually_arithmetic_checked": 4,
+      "actual_arithmetic_row_checks": 1712,
+      "selected_arithmetic_candidates": 4,
+      "capacity_only_not_selected": 35,
+      "capacity_excluded": 10,
+      "pending_arithmetic_checks": 35
+    },
+    "capacity_policy": {
+      "nominal_rows_le": 1024,
+      "current_generator_rows_strictly_less_than": 1024
+    },
+    "arithmetic_claim_applies_to_selected_cases_only": true
+  },
+  "cases": [
+    {
+      "name": "thm_bpd2_exact_d1_r0_pos",
+      "lane": "owned_3e2c6dcee967e4ca",
+      "rows": 372,
+      "matrices_checked": 372,
+      "passed": true,
+      "native_rechecked_for_arithmetic": true,
+      "strict_whole_declaration_accepted": true,
+      "lowerings": [],
+      "source": {
+        "target_export": {
+          "path": "/workspace/scratch/920672a6a32d/corpus-owned-18/export/owned_3e2c6dcee967e4ca/targets.jsonl",
+          "bytes": 3620265,
+          "sha256": "b153fe0e46e2fbc2d79f64c85d8c4a8e68816185e27d7adbe199f35dac903e18"
+        },
+        "line": 225,
+        "line_sha256": "25881a450e1439051a5232e08b5c88e68b3d9780c1ddd38a4354e8a19b16f53c",
+        "raw_goal_sha256": "c59cd663f847a201396e323e30d3a13b40de6d31a943d6fbd4d204e8ed1156ff",
+        "raw_proof_sha256": "ae740573704cb9d0e45dbe221e50a09a21932796061257ddf0904299cfaf1dbc",
+        "lowered_goal_sha256": "1c1b84159dac23195c1e85cf163446bc70893235adef9d7539b5985a4dd5c253",
+        "lowered_proof_sha256": "7d68ac0915347767fb05191bd06ec1f153ea6718869a8195b8eb31e257f8ac90"
+      },
+      "certificate": {
+        "path": "/workspace/scratch/920672a6a32d/corpus-owned-18/export/owned_3e2c6dcee967e4ca/import/certificates/4f3c79b179522e190ab82721874d3a44824c52705771f87d260b192886b66ae1.json",
+        "bytes": 8243,
+        "sha256": "73ea457ed58e7f7d5bc15a2713f50ae125a02f08e1b7efc60bb854b89e1e0762"
+      },
+      "public_state_sequence_sha256": "c61659f8a6b14388ceccb5bce0bdc057b8bf039a1fac998e9839ed1d80783407"
+    },
+    {
+      "name": "thm_bpd2_exact_d2_r0_pos",
+      "lane": "owned_3e2c6dcee967e4ca",
+      "rows": 549,
+      "matrices_checked": 549,
+      "passed": true,
+      "native_rechecked_for_arithmetic": true,
+      "strict_whole_declaration_accepted": true,
+      "lowerings": [],
+      "source": {
+        "target_export": {
+          "path": "/workspace/scratch/920672a6a32d/corpus-owned-18/export/owned_3e2c6dcee967e4ca/targets.jsonl",
+          "bytes": 3620265,
+          "sha256": "b153fe0e46e2fbc2d79f64c85d8c4a8e68816185e27d7adbe199f35dac903e18"
+        },
+        "line": 231,
+        "line_sha256": "6858cc5d29c2407422a91478ecfd4827039ebdda52e91f61282523fcee700a19",
+        "raw_goal_sha256": "095356eaffd766f3398e211c1fc46f92019a446e8571114f5bbe0821dcb7e832",
+        "raw_proof_sha256": "2afa2928bbd5caa17457bf7626a7107ee2313f9ad1959c1934c92534b5cb61b4",
+        "lowered_goal_sha256": "9e61c75c34131b1d0b019270766856b18c94e7cef4de0b0e28e8d7609bd8dfc3",
+        "lowered_proof_sha256": "ddf81e41edb3d761c1c53d2b6e09905ce25ddf7b16138da86c8474268565d51d"
+      },
+      "certificate": {
+        "path": "/workspace/scratch/920672a6a32d/corpus-owned-18/export/owned_3e2c6dcee967e4ca/import/certificates/6bb2769a499e10e06d2840c5d77038c5a107c082dc0337b7bcfd5e35ee64ad03.json",
+        "bytes": 12174,
+        "sha256": "18c7a3e1749f52db24aac3d48e853a08ca6a15dd1343867092382f6face91e9f"
+      },
+      "public_state_sequence_sha256": "3bb167d3ccf4d6ff58233d61720005e21a55302044df0e6fed1fc9e42da9dfd4"
+    },
+    {
+      "name": "thm_bpd2_exact_d3_r0_pos",
+      "lane": "owned_3e2c6dcee967e4ca",
+      "rows": 758,
+      "matrices_checked": 758,
+      "passed": true,
+      "native_rechecked_for_arithmetic": true,
+      "strict_whole_declaration_accepted": true,
+      "lowerings": [],
+      "source": {
+        "target_export": {
+          "path": "/workspace/scratch/920672a6a32d/corpus-owned-18/export/owned_3e2c6dcee967e4ca/targets.jsonl",
+          "bytes": 3620265,
+          "sha256": "b153fe0e46e2fbc2d79f64c85d8c4a8e68816185e27d7adbe199f35dac903e18"
+        },
+        "line": 237,
+        "line_sha256": "10760f5af9d3a7d62951af818f03e898ca84204ae5c6788ec1344177153dd13f",
+        "raw_goal_sha256": "66ac83b89e3566f41fddc543f68fa4f8c97cd119f4d8f7cdc75e057451b7cc3a",
+        "raw_proof_sha256": "d7f69fefc938fe7c675be0b5db0f9fdd8660549015eeb80d75d960e3b9fbf870",
+        "lowered_goal_sha256": "1ee29d5d5c3b86f5fc0b5e83a62ab8f5e42ed3f05bb9f7abad81ec1ec5265bb4",
+        "lowered_proof_sha256": "e08adb737b195888c16c631d184b4e116771b8551d03cee3c065f8447cf11732"
+      },
+      "certificate": {
+        "path": "/workspace/scratch/920672a6a32d/corpus-owned-18/export/owned_3e2c6dcee967e4ca/import/certificates/ba3347234b48f2edef2b9bd17aa7c2b08cf9604c459e0982c256f1510288a94f.json",
+        "bytes": 16798,
+        "sha256": "109cc629cfde16f53ba231f95e9110b6bcc78d1c866fbd22a173d4ab63ed46d7"
+      },
+      "public_state_sequence_sha256": "ba2e8625e390b54fa3e8c8c5c91b847597d4787ccea2224de4bddff145e75cac"
+    },
+    {
+      "name": "fc11_native_prop",
+      "lane": "owned_5554a43b26b10dc3",
+      "rows": 33,
+      "matrices_checked": 33,
+      "passed": true,
+      "native_rechecked_for_arithmetic": true,
+      "strict_whole_declaration_accepted": true,
+      "lowerings": [],
+      "source": {
+        "target_export": {
+          "path": "/workspace/scratch/920672a6a32d/corpus-owned-18/export/owned_5554a43b26b10dc3/targets.jsonl",
+          "bytes": 181059,
+          "sha256": "0449ab4a73b50ad6764b38fe66d7ec31456e9822d6ae65c0addca7112d8b3ae3"
+        },
+        "line": 10,
+        "line_sha256": "e33c064a0b575d7a6d17bae8c4cc2d61d3ddeb63163c0c01fcd68aab7bec422d",
+        "raw_goal_sha256": "71ec0a47f629bcb417e69d953ce05f55c30e84b17cee169506cef20b9ee1e009",
+        "raw_proof_sha256": "321bccbe37e490be6aa292717440270bc836613231b21469adea27182cbfe777",
+        "lowered_goal_sha256": "8278d503e84c849d06d86c94a5abccc7c984f8fe7a27983d125bc67a3eaf8fef",
+        "lowered_proof_sha256": "78066b7f8f9df0303d2044d220ad580767939c9eb5742ce89b030d93848c2917"
+      },
+      "certificate": {
+        "path": "/workspace/scratch/920672a6a32d/corpus-owned-18/export/owned_5554a43b26b10dc3/import/certificates/d3a11fa0b5d9e8d2874f75df04f3db8b792d1fc3375408b05e2432e8204d331f.json",
+        "bytes": 1185,
+        "sha256": "1b91ef5657ce7ca8e692b4f677293a1460bc87dddd535827d5904e109d2ea9c7"
+      },
+      "public_state_sequence_sha256": "8f80d781d5a080ed285dffb36547147c99f145225b04e38f3bf7ebbccb5e1aa0"
+    }
+  ]
+}

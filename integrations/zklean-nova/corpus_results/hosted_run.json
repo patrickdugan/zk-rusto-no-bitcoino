@@ -1,0 +1,254 @@
+{
+  "schema": "zkl-nova-18/hosted-corpus-run-v1",
+  "repository": "patrickdugan/zk-rusto-no-bitcoino",
+  "workflow": ".github/workflows/zklean-corpus.yml",
+  "run": {
+    "id": 45645867110,
+    "url": "https://github.com/patrickdugan/zk-rusto-no-bitcoino/actions/runs/45645867110",
+    "name": "zkLean pinned mathematical corpus import",
+    "event": "push",
+    "number": 3,
+    "attempt": 1,
+    "head_branch": "research/zkl-nova-18-20261125",
+    "head_sha": "6dcffba13f360d04ae494f86407f397c445e036e",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-25T15:30:11Z",
+    "run_started_at": "2026-11-25T15:30:11Z",
+    "updated_at": "2026-11-25T15:37:28Z"
+  },
+  "job": {
+    "id": 139316594309,
+    "name": "solved-source-cohorts",
+    "status": "completed",
+    "conclusion": "success",
+    "all_reported_steps_succeeded": true
+  },
+  "artifact": {
+    "id": 15039100491,
+    "name": "zklean-solved-corpus-6dcffba13f360d04ae494f86407f397c445e036e",
+    "size_bytes": 20430324,
+    "sha256": "dc6dce044d536dff326a89bb888c6610b6a11aa0778bb6f54605287d2ebfbd81",
+    "api_url": "https://api.github.com/repos/patrickdugan/zk-rusto-no-bitcoino/actions/artifacts/15039100491",
+    "created_at": "2026-11-25T15:37:24Z",
+    "expires_at": "2026-12-25T15:37:20Z",
+    "downloaded_zip_sha256_verified": true,
+    "collection_artifact_hashes_verified": 118
+  },
+  "source": {
+    "repo": "1337isnot1337/solved-conjectures",
+    "revision": "e1cf80b80c2fe9d22d83f1dc3673410a2ac1bf2e",
+    "tree": "820e408af56584901ee105f696a9f9aa2a140e3b",
+    "toolchain": "leanprover/lean4:v4.35.0",
+    "lean_version": "4.35.0",
+    "lean_commit": "eb6cafb7290e8bd5f2937522d8d804f58f02bafc",
+    "lean_sha256": "bf8d54e4714cc4b03d3f6bb34c83b7202b87e49c8bfcbff6895c085bb90ceb38",
+    "leanchecker_sha256": "12c38901cdbfab178f1bf6145dd30012e9a3b2c11ca695292a5884fa3cbaddb6"
+  },
+  "mathlib_revision": "56a005855ea17e0b0958f73ec801ae140b0a1679",
+  "evidence_sha256": {
+    "collection.json": "9893864c7c7b4ee1ee53d7abd5a60ab78785677a6579813a2546ed02b410a60f",
+    "cohort.json": "bf63f196d9d61fa749c70795a61ffacced9898cbf87055f2c3be9d6381ed8f37",
+    "aggregate.json": "9b0da87d89e6960c1f36893c79188cf15eaa17f50bb07b39a39ccc10b25983be",
+    "heartbeat-regression.json": "3eb997cf583201f2b208c9f51134d04f0964658f35f8b0516c6bd8ec50a26dff"
+  },
+  "pipeline_sha256": {
+    "collector": "f6550e870d8b3eb2ebe257b4f98d8d9e23fcc1c807545d3d5bba94813c4d29ce",
+    "exporter": "e174a50e846423ee9e3d80c012de0b319d8f7f3e4793690e709cfdefadad6578",
+    "importer": "7920138721e652c9569c7edc00f437bf405188558fb54dc3f12c32112dd8434b"
+  },
+  "limits": {
+    "job_wall_minutes": 30,
+    "collector_wall_seconds": 1200,
+    "lane_build_wall_seconds": 300,
+    "lane_export_wall_seconds": 240,
+    "lane_import_wall_seconds": 60,
+    "lane_output_bytes": 536870912,
+    "exporter_memory_mb": 10000
+  },
+  "runner_memory_kib": {
+    "MemTotal": 16365620,
+    "MemAvailable": 14728696,
+    "SwapTotal": 3145724
+  },
+  "resource_measurement": {
+    "wall_seconds": "Python monotonic timer around each command, including GNU time wrapper.",
+    "cpu_seconds": "GNU time user and system measurements for each command and its waited-for descendants.",
+    "peak_resident_kib": "GNU time maximum resident set size; per-command observation, without summing concurrent resident memory.",
+    "scope": "The seven listed commands cover family build/export/import and final aggregation. Setup, cache downloads and heartbeat regression are outside these process measurements."
+  },
+  "collection_started_at": "2026-11-25T15:30:19.029455+00:00",
+  "collection_finished_at": "2026-11-25T15:37:16.984759+00:00",
+  "finalized_at": "2026-11-25T15:37:19.802920+00:00",
+  "lanes": [
+    {
+      "id": "feldheim161",
+      "status": "exported",
+      "build_status": "passed",
+      "import_status": "completed",
+      "selected_theorem_constants": 161,
+      "exported_proof_bodies": 161,
+      "kernel_rechecks_passed": 161,
+      "eligible_native_accepted": 0,
+      "commands": [
+        {
+          "label": "source-build",
+          "started_at": "2026-11-25T15:32:21.763567+00:00",
+          "finished_at": "2026-11-25T15:33:43.193389+00:00",
+          "seconds": 81.429814,
+          "user_cpu_seconds": 59.09,
+          "system_cpu_seconds": 25.48,
+          "peak_resident_kib": 3817460,
+          "exit_code": 0,
+          "timed_out": false,
+          "output_limit": false,
+          "lean_resource_error": null,
+          "log_sha256": "1ef499332b497b740a47c64ac197e15bf57fdfa0d27b1ae9601e697e0f5884b5",
+          "time_file_sha256": "8e78e910a12c281b963d4d881578fec1ed91616efb49a3878a018745e67cf44c"
+        },
+        {
+          "label": "export",
+          "started_at": "2026-11-25T15:33:43.210514+00:00",
+          "finished_at": "2026-11-25T15:35:40.655579+00:00",
+          "seconds": 117.445057,
+          "user_cpu_seconds": 115.62,
+          "system_cpu_seconds": 1.8,
+          "peak_resident_kib": 5474344,
+          "exit_code": 0,
+          "timed_out": false,
+          "output_limit": false,
+          "lean_resource_error": null,
+          "log_sha256": "c4751a3285a0c07740c21de993a5b34a36630987db2a0a5084f1a54946f64d70",
+          "time_file_sha256": "2591537382bb6bfe813820917fabfa7b35ce9d227fbd719ef4f9ae7ca83f8ffd"
+        },
+        {
+          "label": "import",
+          "started_at": "2026-11-25T15:35:40.903635+00:00",
+          "finished_at": "2026-11-25T15:35:47.871407+00:00",
+          "seconds": 6.967765,
+          "user_cpu_seconds": 7.12,
+          "system_cpu_seconds": 1.18,
+          "peak_resident_kib": 1992788,
+          "exit_code": 0,
+          "timed_out": false,
+          "output_limit": false,
+          "lean_resource_error": null,
+          "log_sha256": "aeeebc4c9d9a49c4d1f69312e28f1b99d74afbe502d56943b9a073f7f45117c6",
+          "time_file_sha256": "b8a3f74b36448814d58163b8f726814d679b67f11bfd31c515c3118203a10c17"
+        }
+      ]
+    },
+    {
+      "id": "fan350",
+      "status": "exported",
+      "build_status": "passed",
+      "import_status": "completed",
+      "selected_theorem_constants": 350,
+      "exported_proof_bodies": 350,
+      "kernel_rechecks_passed": 350,
+      "eligible_native_accepted": 0,
+      "commands": [
+        {
+          "label": "source-build",
+          "started_at": "2026-11-25T15:35:47.872773+00:00",
+          "finished_at": "2026-11-25T15:36:33.192052+00:00",
+          "seconds": 45.31927,
+          "user_cpu_seconds": 38.36,
+          "system_cpu_seconds": 12.31,
+          "peak_resident_kib": 2050648,
+          "exit_code": 0,
+          "timed_out": false,
+          "output_limit": false,
+          "lean_resource_error": null,
+          "log_sha256": "3003db74e5341425a94e6dcd95016bbfb2f8be35014d976ae1d40efeaa19d575",
+          "time_file_sha256": "fd362475b3988db00a34746f8c793214073fc32a486629b677bfe409f513bf23"
+        },
+        {
+          "label": "export",
+          "started_at": "2026-11-25T15:36:33.208388+00:00",
+          "finished_at": "2026-11-25T15:37:13.735528+00:00",
+          "seconds": 40.527132,
+          "user_cpu_seconds": 39.09,
+          "system_cpu_seconds": 1.42,
+          "peak_resident_kib": 3778252,
+          "exit_code": 0,
+          "timed_out": false,
+          "output_limit": false,
+          "lean_resource_error": null,
+          "log_sha256": "f473a2f741756f7258a4d52e28729cbeb4ab72ff432df2e0e13c1b6f74d151e7",
+          "time_file_sha256": "a35786f9577157fdd90d6cfbf246cd780f70324eced0af18b0787f84a99301c2"
+        },
+        {
+          "label": "import",
+          "started_at": "2026-11-25T15:37:14.007564+00:00",
+          "finished_at": "2026-11-25T15:37:16.983533+00:00",
+          "seconds": 2.975961,
+          "user_cpu_seconds": 3.15,
+          "system_cpu_seconds": 0.44,
+          "peak_resident_kib": 680484,
+          "exit_code": 0,
+          "timed_out": false,
+          "output_limit": false,
+          "lean_resource_error": null,
+          "log_sha256": "48d6cca191b38f0d25730528a2fc4f25d6d3f8b569d85bfc6ca1db181e704f6c",
+          "time_file_sha256": "bae03271b14a743985d09b7e92af49bcc2c957a029f57644e1972e282c640760"
+        }
+      ]
+    }
+  ],
+  "aggregate_command": {
+    "label": "aggregate",
+    "started_at": "2026-11-25T15:37:17.081554+00:00",
+    "finished_at": "2026-11-25T15:37:19.802703+00:00",
+    "seconds": 2.72114,
+    "user_cpu_seconds": 2.61,
+    "system_cpu_seconds": 0.47,
+    "peak_resident_kib": 218316,
+    "exit_code": 0,
+    "timed_out": false,
+    "output_limit": false,
+    "lean_resource_error": null,
+    "log_sha256": "e53a5c0d9b611af1ae9cd9d5df6d4440064f399cc36529bed2acc03e2ef2c78e",
+    "time_file_sha256": "3ea222188ca1e85a8235550e1f2731707f43a5ccb655dde24399fc4d8b71a51c"
+  },
+  "heartbeat_regression": {
+    "corpus_observations": 0,
+    "first": {
+      "elapsed_nanoseconds": 484330,
+      "kernel_heartbeat_scope": "fresh_dedicated_thread",
+      "max_heartbeats": 2000000,
+      "observed_allocation_heartbeats": 6541,
+      "status": "passed"
+    },
+    "old_absolute_limit_rejected": true,
+    "passed": true,
+    "prior_kernel_checks": 2560,
+    "schema": "zkl-nova-18/exporter-heartbeat-regression-v1",
+    "second_after_prior_work": {
+      "elapsed_nanoseconds": 528074,
+      "kernel_heartbeat_scope": "fresh_dedicated_thread",
+      "max_heartbeats": 2000000,
+      "observed_allocation_heartbeats": 6495,
+      "status": "passed"
+    },
+    "tiny_budget": {
+      "elapsed_nanoseconds": 206123,
+      "error": "resource_limit: kernel_heartbeats",
+      "kernel_heartbeat_scope": "fresh_dedicated_thread",
+      "max_heartbeats": 1,
+      "observed_allocation_heartbeats": 596,
+      "status": "error"
+    }
+  },
+  "interpretation": {
+    "proof_denominator": 511,
+    "freshly_compiled_source_modules": 38,
+    "exported_proof_bodies": 511,
+    "kernel_rechecks_passed": 511,
+    "eligible_native_accepted": 0,
+    "full_corpus_support_inference": false,
+    "selection": "Two fixed family cohorts of theorem constants, including generated helpers.",
+    "dependency_build": "Pinned external dependency cache objects were used; external dependency objects were not independently rebuilt.",
+    "proof_stage": "Fresh source compilation, Lean kernel rechecks and bounded native importer measurements. This run generated zero Nova proofs."
+  }
+}

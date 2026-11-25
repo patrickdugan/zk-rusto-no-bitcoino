@@ -1,0 +1,54 @@
+{
+  "schema": "zkl-nova-18/arithmetic-selection-v1",
+  "registered_at_utc": "2026-11-25T15:07:18.106864+00:00",
+  "selection_policy": "The four capacity-compliant certificates in the first observed set of seven eligible native acceptances. Selection was fixed before any successful arithmetic row checks. Later eligible exports remain capacity-only outside this sample.",
+  "initial_attempt": {
+    "exit_signal": "SIGKILL",
+    "wall_seconds": 25.193736152999918,
+    "max_rss_kib": 1748152,
+    "actual_row_receipts": 0
+  },
+  "certificates": [
+    {
+      "name": "fc11_native_prop",
+      "lane": "owned_5554a43b26b10dc3",
+      "steps": 33,
+      "sha256": "1b91ef5657ce7ca8e692b4f677293a1460bc87dddd535827d5904e109d2ea9c7",
+      "certificate_file": "d3a11fa0b5d9e8d2874f75df04f3db8b792d1fc3375408b05e2432e8204d331f.json",
+      "source_line_sha256": "e33c064a0b575d7a6d17bae8c4cc2d61d3ddeb63163c0c01fcd68aab7bec422d",
+      "source_export_sha256": "0449ab4a73b50ad6764b38fe66d7ec31456e9822d6ae65c0addca7112d8b3ae3",
+      "original_goal_sha256": "71ec0a47f629bcb417e69d953ce05f55c30e84b17cee169506cef20b9ee1e009"
+    },
+    {
+      "name": "thm_bpd2_exact_d1_r0_pos",
+      "lane": "owned_3e2c6dcee967e4ca",
+      "steps": 372,
+      "sha256": "73ea457ed58e7f7d5bc15a2713f50ae125a02f08e1b7efc60bb854b89e1e0762",
+      "certificate_file": "4f3c79b179522e190ab82721874d3a44824c52705771f87d260b192886b66ae1.json",
+      "source_line_sha256": "25881a450e1439051a5232e08b5c88e68b3d9780c1ddd38a4354e8a19b16f53c",
+      "source_export_sha256": "b153fe0e46e2fbc2d79f64c85d8c4a8e68816185e27d7adbe199f35dac903e18",
+      "original_goal_sha256": "c59cd663f847a201396e323e30d3a13b40de6d31a943d6fbd4d204e8ed1156ff"
+    },
+    {
+      "name": "thm_bpd2_exact_d2_r0_pos",
+      "lane": "owned_3e2c6dcee967e4ca",
+      "steps": 549,
+      "sha256": "18c7a3e1749f52db24aac3d48e853a08ca6a15dd1343867092382f6face91e9f",
+      "certificate_file": "6bb2769a499e10e06d2840c5d77038c5a107c082dc0337b7bcfd5e35ee64ad03.json",
+      "source_line_sha256": "6858cc5d29c2407422a91478ecfd4827039ebdda52e91f61282523fcee700a19",
+      "source_export_sha256": "b153fe0e46e2fbc2d79f64c85d8c4a8e68816185e27d7adbe199f35dac903e18",
+      "original_goal_sha256": "095356eaffd766f3398e211c1fc46f92019a446e8571114f5bbe0821dcb7e832"
+    },
+    {
+      "name": "thm_bpd2_exact_d3_r0_pos",
+      "lane": "owned_3e2c6dcee967e4ca",
+      "steps": 758,
+      "sha256": "109cc629cfde16f53ba231f95e9110b6bcc78d1c866fbd22a173d4ab63ed46d7",
+      "certificate_file": "ba3347234b48f2edef2b9bd17aa7c2b08cf9604c459e0982c256f1510288a94f.json",
+      "source_line_sha256": "10760f5af9d3a7d62951af818f03e898ca84204ae5c6788ec1344177153dd13f",
+      "source_export_sha256": "b153fe0e46e2fbc2d79f64c85d8c4a8e68816185e27d7adbe199f35dac903e18",
+      "original_goal_sha256": "66ac83b89e3566f41fddc543f68fa4f8c97cd119f4d8f7cdc75e057451b7cc3a"
+    }
+  ],
+  "total_rows": 1712
+}
