@@ -1,0 +1,62 @@
+name: zkLean Nova sparse R1CS conformance
+on:
+  pull_request:
+    paths:
+      - 'integrations/zklean-nova/**'
+      - 'integrations/bitvm2-nova/fixtures/nht4-genesis-0-2020-k5.poseidon.json'
+      - '.github/workflows/zklean-nova-r1cs.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zklean-r1cs-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  sparse-r1cs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check pinned parameter fixture and synthesize matrices
+        run: |
+          node integrations/zklean-nova/r1cs.cjs > /tmp/zklean-r1cs-receipt.json
+          diff -u integrations/zklean-nova/r1cs_results.json /tmp/zklean-r1cs-receipt.json
+  nova-smoke:
+    needs: sparse-r1cs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RUSTFLAGS: '-C debuginfo=0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate verifier-owned fixed matrices
+        run: |
+          mkdir -p /tmp/zklean-nova-results
+          node integrations/zklean-nova/r1cs.cjs --nova-fixture > /tmp/zklean-nova-results/fixture.json
+          sha256sum /tmp/zklean-nova-results/fixture.json > /tmp/zklean-nova-results/fixture.sha256
+      - name: Prepare pinned Nova
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustc +1.90.0 --version > /tmp/zklean-nova-results/rustc.txt
+          cargo +1.90.0 generate-lockfile --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml
+          cargo +1.90.0 tree --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml > /tmp/zklean-nova-results/dependencies.txt
+          cargo +1.90.0 build --release --locked --manifest-path integrations/zklean-nova/nova-smoke/Cargo.toml
+      - name: Fold and verify two nonempty membership steps
+        run: |
+          set -o pipefail
+          /usr/bin/time -v -o /tmp/zklean-nova-results/time.txt integrations/zklean-nova/nova-smoke/target/release/zklean-nova-smoke /tmp/zklean-nova-results/fixture.json | tee /tmp/zklean-nova-results/receipt.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zklean-nova-smoke-${{ github.sha }}
+          path: |
+            /tmp/zklean-nova-results/
+            integrations/zklean-nova/nova-smoke/Cargo.lock
