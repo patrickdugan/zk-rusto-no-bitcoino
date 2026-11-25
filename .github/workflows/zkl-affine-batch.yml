@@ -1,0 +1,52 @@
+name: ZKL end-to-end affine Nova pilot
+on:
+  pull_request:
+    paths:
+      - 'integrations/zkl-nova-calibration/**'
+      - '.github/workflows/zkl-affine-batch.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'integrations/zkl-nova-calibration/**'
+      - '.github/workflows/zkl-affine-batch.yml'
+permissions:
+  contents: read
+jobs:
+  paired-batch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Generate and replay pinned public source proofs
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          git clone --no-checkout --filter=blob:none https://github.com/MoralityLabAI/DataGoblin.git "$RUNNER_TEMP/zkl-source"
+          git -C "$RUNNER_TEMP/zkl-source" checkout --detach e7394fced457c059f20ef54128dbc80b0cc747a5
+          test "$(git -C "$RUNNER_TEMP/zkl-source" rev-parse HEAD)" = e7394fced457c059f20ef54128dbc80b0cc747a5
+          git -C "$RUNNER_TEMP/zkl-source" rev-parse HEAD > results/source-commit.txt
+          python -m pip install 'numpy==2.2.6'
+          timeout 120s python "$RUNNER_TEMP/zkl-source/training/zklean_certificate_pilot/indexed/export_nova_batch.py" --out "$PWD/results/batch.json"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build pinned Nova frontend
+        run: |
+          cargo generate-lockfile --manifest-path integrations/zkl-nova-calibration/Cargo.toml
+          cargo build --locked --release --manifest-path integrations/zkl-nova-calibration/Cargo.toml --bin indexed
+      - name: Fold and compress all paired certificates
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v timeout 300s integrations/zkl-nova-calibration/target/release/indexed --batch results/batch.json results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl-affine-batch-evidence
+          path: |
+            results/
+            integrations/zkl-nova-calibration/Cargo.lock

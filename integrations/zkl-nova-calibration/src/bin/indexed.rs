@@ -12,6 +12,9 @@ use nova_snark::{
              ROCircuitTrait, ROTrait, ROMode},
 };
 use serde_json::json;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::{fs, io::Read, path::Path};
 use std::{collections::HashMap, error::Error, sync::OnceLock, time::Instant};
 
 type E1 = PallasEngine;
@@ -102,6 +105,7 @@ impl Tree {
 #[derive(Clone,Debug)]
 struct RowStep {
     depth: usize,
+    rule_depth: usize,
     slots: usize, // circuit shape parameter: maximum active premises
     cursor: u64,
     rid: u64,
@@ -185,7 +189,8 @@ impl StepCircuit<F> for RowStep {
     fn synthesize<CS:ConstraintSystem<F>>(&self,cs:&mut CS,z:&[Num])->Result<Vec<Num>,SE> {
         assert!((1..=12).contains(&self.depth) && self.slots<=2);
         assert_eq!(self.append.len(),self.depth);
-        assert_eq!(self.rule_path.len(),RULE_DEPTH);
+        assert!((1..=5).contains(&self.rule_depth));
+        assert_eq!(self.rule_path.len(),self.rule_depth);
         let zero=const_num(cs.namespace(||"zero"),F::ZERO)?;
         let row_tag=const_num(cs.namespace(||"row tag"),f(ROW))?;
         let rule_tag=const_num(cs.namespace(||"rule tag"),f(RULE))?;
@@ -194,7 +199,7 @@ impl StepCircuit<F> for RowStep {
         let empty=const_num(cs.namespace(||"empty"),empty())?;
         let cur_bits=range(cs.namespace(||"cursor"),&z[3],self.cursor,self.depth)?;
         let rid=alloc(cs.namespace(||"rule index"),f(self.rid))?;
-        let rid_bits=range(cs.namespace(||"rule index bits"),&rid,self.rid,RULE_DEPTH)?;
+        let rid_bits=range(cs.namespace(||"rule index bits"),&rid,self.rid,self.rule_depth)?;
         let head_base=alloc(cs.namespace(||"head base"),f(self.rule.head))?;
         range(cs.namespace(||"head base bits"),&head_base,self.rule.head,ATOM_BITS)?;
         let bound=bool_num(cs.namespace(||"universal rule"),self.rule.bound)?;
@@ -267,7 +272,7 @@ fn fixture(depth:usize,slots:usize)->(Vec<RowStep>,Vec<Vec<F>>) {
         let cursor=rid as u64;
         let binder=if rid==0 {0} else {3};
         let head=rs[rid].instantiate(rs[rid].head,binder);
-        steps.push(RowStep {depth,slots,cursor,rid:cursor,binder,rule:rs[rid],
+        steps.push(RowStep {depth,rule_depth:RULE_DEPTH,slots,cursor,rid:cursor,binder,rule:rs[rid],
             rule_path:env.path(cursor),refs:[0,1],read_paths:[mem.path(0),mem.path(1)],
             append:mem.path(cursor)});
         mem.set(cursor,row(cursor,head));
@@ -392,8 +397,188 @@ fn fold(compress:bool)->Result<(),Box<dyn Error>> {
     }
     println!("{report}");Ok(())
 }
+
+const BATCH_RULE_DEPTH: usize = 5;
+const BATCH_MEMORY_DEPTH: usize = 6;
+const ATOM_MAX: u64 = 65535;
+const BINDER_MAX: u64 = 32767;
+const MAX_INPUT: u64 = 262144;
+
+#[derive(Clone,Debug,Deserialize,Serialize,PartialEq,Eq)]
+#[serde(deny_unknown_fields)]
+struct WireRule { bound: bool, head: u64, premises: Vec<u64> }
+#[derive(Clone,Debug,Deserialize,Serialize)]
+#[serde(deny_unknown_fields)]
+struct WireStep { rule: usize, binder: u64, refs: Vec<usize> }
+#[derive(Clone,Debug,Deserialize,Serialize)]
+#[serde(deny_unknown_fields)]
+struct WireCase {
+    root: String,
+    arm: String,
+    goal: u64,
+    exact_rows: usize,
+    environment_id: String,
+    rules: Vec<WireRule>,
+    steps: Vec<WireStep>,
+}
+#[derive(Clone,Debug,Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WireBatch { schema: String, rule_depth: usize, memory_depth: usize, cases: Vec<WireCase> }
+fn require(ok:bool,msg:&str)->Result<(),Box<dyn Error>> {
+    if ok { Ok(()) } else { Err(msg.into()) }
+}
+fn digest(bytes:&[u8])->String { format!("{:x}",Sha256::digest(bytes)) }
+fn env_id(c:&WireCase)->Result<String,Box<dyn Error>> {
+    // JSON Value objects use sorted keys (serde_json's default map).
+    Ok(digest(&serde_json::to_vec(&json!({"grammar":"zkl-affine-v1","goal":c.goal,"schemas":c.rules}))?))
+}
+fn wire_rule(r:&WireRule)->Result<Rule,Box<dyn Error>> {
+    require(r.head<=ATOM_MAX && r.premises.len()<=2 &&
+        r.premises.iter().all(|p|*p<=ATOM_MAX),"invalid rule")?;
+    let mut p=[0;2];
+    p[..r.premises.len()].copy_from_slice(&r.premises);
+    Ok(Rule { head:r.head,bound:r.bound,active:[!r.premises.is_empty(),r.premises.len()==2],premises:p })
+}
+fn materialize(c:&WireCase)->Result<(Vec<RowStep>,Vec<Vec<F>>),Box<dyn Error>> {
+    require(c.goal<=ATOM_MAX && !c.rules.is_empty() && c.rules.len()<=1<<BATCH_RULE_DEPTH &&
+        !c.steps.is_empty() && c.steps.len()<=1<<BATCH_MEMORY_DEPTH,"capacity")?;
+    require(c.exact_rows>0 && c.exact_rows<=c.steps.len(),"invalid reference cost")?;
+    require(c.environment_id==env_id(c)?,"environment digest mismatch")?;
+    let rs=c.rules.iter().map(wire_rule).collect::<Result<Vec<_>,_>>()?;
+    let mut env=Tree::new(BATCH_RULE_DEPTH,RULE_NODE);
+    for (i,r) in rs.iter().enumerate(){env.set(i as u64,r.leaf(i as u64));}
+    let mut mem=Tree::new(BATCH_MEMORY_DEPTH,MEM_NODE);
+    let mut states=vec![vec![env.root(),f(c.goal),mem.root(),F::ZERO,F::ZERO]];
+    let mut steps=vec![];
+    let mut atoms:Vec<u64>=vec![];
+    for (i,w) in c.steps.iter().enumerate() {
+        let r=*rs.get(w.rule).ok_or("unknown schema")?;
+        require(w.binder<=BINDER_MAX && (r.bound || w.binder==0),"binder")?;
+        let arity=c.rules[w.rule].premises.len();
+        require(w.refs.len()==arity,"arity")?;
+        let head=r.instantiate(r.head,w.binder);
+        require(head<=ATOM_MAX,"head overflow")?;
+        let mut refs=[0u64;2];
+        for (j,&ridx) in w.refs.iter().enumerate() {
+            let want=r.instantiate(r.premises[j],w.binder);
+            require(want<=ATOM_MAX && ridx<i && atoms.get(ridx)==Some(&want),"premise")?;
+            refs[j]=ridx as u64;
+        }
+        let cursor=i as u64;
+        steps.push(RowStep {depth:BATCH_MEMORY_DEPTH,rule_depth:BATCH_RULE_DEPTH,slots:2,
+            cursor,rid:w.rule as u64,binder:w.binder,rule:r,rule_path:env.path(w.rule as u64),
+            refs,read_paths:[mem.path(refs[0]),mem.path(refs[1])],append:mem.path(cursor)});
+        mem.set(cursor,row(cursor,head));
+        atoms.push(head);
+        states.push(vec![env.root(),f(c.goal),mem.root(),f(cursor+1),f(head)]);
+    }
+    require(atoms.last()==Some(&c.goal),"terminal goal")?;
+    Ok((steps,states))
+}
+fn batch(input:&Path,out:&Path)->Result<(),Box<dyn Error>> {
+    let mut bytes=Vec::new();
+    fs::File::open(input)?.take(MAX_INPUT+1).read_to_end(&mut bytes)?;
+    require(bytes.len() as u64<=MAX_INPUT,"input byte cap")?;
+    let b:WireBatch=serde_json::from_slice(&bytes)?;
+    require(b.schema=="zkl-affine-batch-v1" && b.rule_depth==BATCH_RULE_DEPTH &&
+        b.memory_depth==BATCH_MEMORY_DEPTH && b.cases.len()==8,"batch contract")?;
+    let roots=["same-93000","same-93001","shift-94000","shift-94001"];
+    let mut prepared=Vec::new();
+    for (pair,root) in b.cases.chunks_exact(2).zip(roots) {
+        let a=&pair[0];let t=&pair[1];
+        require(a.root==root && t.root==root && a.arm=="astar" && t.arm=="weighted_tree_shared" &&
+            a.goal==t.goal && a.rules==t.rules && a.environment_id==t.environment_id &&
+            a.exact_rows==t.exact_rows && a.steps.len()==a.exact_rows &&
+            a.steps.len()<=t.steps.len(),"paired source contract")?;
+        prepared.push(materialize(a)?);
+        prepared.push(materialize(t)?);
+    }
+    // Check malformed transport independently of any Merkle witness construction.
+    let mut invalid=b.cases[0].clone();invalid.environment_id="00".repeat(32);
+    require(materialize(&invalid).is_err(),"environment mutation accepted")?;
+    let mut invalid=b.cases[0].clone();invalid.steps[0].rule=32;
+    require(materialize(&invalid).is_err(),"schema mutation accepted")?;
+    let mut invalid=b.cases[0].clone();invalid.steps[0].binder=BINDER_MAX+1;
+    require(materialize(&invalid).is_err(),"binder mutation accepted")?;
+    let mut invalid=b.cases[0].clone();invalid.goal^=1;invalid.environment_id=env_id(&invalid)?;
+    require(materialize(&invalid).is_err(),"coherent wrong goal accepted")?;
+    let mut invalid=b.cases[0].clone();invalid.steps[0].refs=vec![0];
+    require(materialize(&invalid).is_err(),"first-row reference accepted")?;
+    fs::create_dir_all(out)?;
+    let first=&prepared[0].0[0];
+    let raw=shape(first)?;
+    let start=Instant::now();
+    let pp=PublicParams::<E1,E2,RowStep>::setup(first,&*S1::ck_floor(),&*S2::ck_floor())?;
+    let pp_seconds=start.elapsed().as_secs_f64();
+    let start=Instant::now();
+    let (pk,vk)=Proof::setup(&pp)?;
+    let compression_setup_seconds=start.elapsed().as_secs_f64();
+    let vk_bytes=bincode::serialize(&vk)?;
+    fs::write(out.join("vk.bin"),&vk_bytes)?;
+    let mut reports=vec![];
+    for (i,(c,(steps,states))) in b.cases.iter().zip(prepared.iter()).enumerate() {
+        for (j,s) in steps.iter().enumerate(){
+            require(shape(s)?==raw,"inconsistent fixed step shape")?;
+            require(check(s,&states[j],Some(&states[j+1]))?.0,"constraint replay failed")?;
+        }
+        let mut forged=steps[0].clone();
+        forged.rule_path[0]+=F::ONE;
+        require(!check(&forged,&states[0],None)?.0,"forged rule path accepted")?;
+        let start=Instant::now();
+        let mut rec=RecursiveSNARK::<E1,E2,RowStep>::new(&pp,&steps[0],&states[0])?;
+        for step in steps {rec.prove_step(&pp,step)?;}
+        let fold_seconds=start.elapsed().as_secs_f64();
+        let start=Instant::now();
+        let result=rec.verify(&pp,steps.len(),&states[0])?;
+        let recursive_verify_seconds=start.elapsed().as_secs_f64();
+        require(result==*states.last().unwrap() && terminal(&result,&states[0],steps.len()),"recursive terminal")?;
+        let start=Instant::now();
+        let compressed=Proof::prove(&pp,&pk,&rec)?;
+        let compression_prove_seconds=start.elapsed().as_secs_f64();
+        let proof_bytes=bincode::serialize(&compressed)?;
+        // Verify a deserialized proof, rather than relying on the in-memory object.
+        let received:Proof=bincode::deserialize(&proof_bytes)?;
+        let start=Instant::now();
+        let result=received.verify(&vk,steps.len(),&states[0])?;
+        let compressed_verify_seconds=start.elapsed().as_secs_f64();
+        require(result==*states.last().unwrap() && terminal(&result,&states[0],steps.len()),"compressed terminal")?;
+        require(received.verify(&vk,steps.len()+1,&states[0]).is_err(),"wrong count accepted")?;
+        for k in [0,1,2] {
+            let mut wrong=states[0].clone();wrong[k]+=F::ONE;
+            require(received.verify(&vk,steps.len(),&wrong).is_err(),"wrong initial state accepted")?;
+        }
+        let filename=format!("proof-{i}.bin");
+        fs::write(out.join(&filename),&proof_bytes)?;
+        reports.push(json!({"root":c.root,"arm":c.arm,"environment_id":c.environment_id,
+            "goal":c.goal,"rule_count":c.rules.len(),"steps":steps.len(),"exact_rows":c.exact_rows,
+            "raw_step_constraint_sum":raw.0*steps.len(),"fold_seconds":fold_seconds,
+            "recursive_verify_seconds":recursive_verify_seconds,
+            "compression_prove_seconds":compression_prove_seconds,
+            "compressed_verify_seconds":compressed_verify_seconds,"proof_bytes":proof_bytes.len(),
+            "proof_sha256":digest(&proof_bytes),"proof_file":filename,
+            "verified":true,"wrong_count_and_initial_rejected":true}));
+    }
+    let report=json!({"schema":"zkl-nova-batch-receipt-v1","nova":"0.76.0",
+        "scope":"fixed-shape affine indexed rule derivation",
+        "transport_sha256":digest(&bytes),"rule_depth":BATCH_RULE_DEPTH,"memory_depth":BATCH_MEMORY_DEPTH,
+        "max_arity":2,"raw_step_constraints":raw.0,"raw_aux_including_state":raw.1,
+        "augmented_constraints":pp.num_constraints(),"augmented_variables":pp.num_variables(),
+        "pp_setup_seconds":pp_seconds,"compression_setup_seconds":compression_setup_seconds,
+        "verification_key_bytes":vk_bytes.len(),"verification_key_sha256":digest(&vk_bytes),
+        "transport_negatives":5,"constraint_negatives":reports.len(),"cases":reports,
+        "witness_privacy_claimed":false});
+    fs::write(out.join("receipt.json"),serde_json::to_vec_pretty(&report)?)?;
+    println!("{report}");
+    Ok(())
+}
+
 fn main()->Result<(),Box<dyn Error>> {
     match std::env::args().nth(1).as_deref() {
+        Some("--batch")=>{
+            let input=std::env::args().nth(2).ok_or("missing batch input")?;
+            let output=std::env::args().nth(3).ok_or("missing batch output")?;
+            batch(Path::new(&input),Path::new(&output))
+        },
         Some("--fold")=>fold(false),
         Some("--compress")=>fold(true),
         None|Some("--calibrate")=>calibrate(),
