@@ -133,7 +133,7 @@ const ProofEta = (() => {
   const cashuTrustMilestones = [
     {id:'backing',label:'Prove live backing and mint liabilities',
       status:'Nova fixture verified · no ETA',
-      detail:'Stock Nova verification accepted the protected ledger fixture. Its journal binds reserves, issuance intents, live claims and spent claims. Production needs canonical Bitcoin observation, available witnesses and independent handling of bearer notes issued outside that ledger.'},
+      detail:'The fresh V3 run verified the CDK batch and Nova proof, then reconciled the mined holder payout against live Core. Production needs available ledger witnesses and independent handling of bearer notes issued outside that ledger.'},
     {id:'issuance',label:'Enforce proof-bound Cashu issuance',
       status:'Protected batch verified · no ETA',
       detail:'The V3 CDK fixture bound six notes to a frozen blinded batch and confirmed reserve. Offline verification checked DLEQ and reblinding under independent pins. A mint can still issue bearer notes outside the protected profile.'},
@@ -142,7 +142,7 @@ const ProofEta = (() => {
       detail:'The V3 protected claim had a funded reserve at issuance. Ordinary protected melt and timed holder recovery compete for the same Bitcoin outpoint. The separate historical 23,750-sat fixture required a cooperative melt to fund its reserve.'},
     {id:'adversarial',label:'Verify the end-to-end trust claim',
       status:'Full settlement composition open · no ETA',
-      detail:'Regtest and Nova controls cover conflicting spends, replay, changed beneficiaries, reorg handling and protected admission. The complete SP1 settlement proof and BitVM3 verifier composition remain open.'},
+      detail:'M13 accepted four reference wraps and rejected a valid wrap for another program under the Cashu statement. M14 refused six malformed claims before garbling. The exact Cashu wrap and funded proof-level dispute remain open.'},
   ];
   function cashuRoadmap(ark, records) {
     const shinigami = [
@@ -175,12 +175,18 @@ const ProofEta = (() => {
       {id:'nova-protected',label:'PG-ZK-02 · Verify protected reserve accounting',
         status:'Verified Nova fixture',done:true,
         detail:'The fixture journal and compressed proof exercise reserve registration, issuance, split, swap and redemption. Replay and accounting mutations are covered. Production reserve completeness and external bearer liabilities remain open.'},
+      {id:'v3-live-accounting',label:'PG-ZK-02 · Reconcile fresh CDK issuance on live Core',
+        status:'Live V3 accounting verified',done:true,
+        detail:'A separate verifier checked the six-note CDK batch and three-step Nova proof. The live observer found zero reserve and liabilities after payout, rejected the stale tip and matched the restored chain.'},
       {id:'protected-holder',label:'PG-ZK-03 · Exercise a funded holder exit',
         status:'Verified protected regtest exit',done:true,
         detail:'Bitcoin Core confirmed the holder-only payout after six blocks on a reserve tied to the V3 issuance. Cooperative melt and emergency exit spend the same outpoint, so they can settle only once on the active chain.'},
       {id:'cashu-bitvm',label:'PG-ZK-04 · Bind Cashu settlement to BitVM3',
         status:'Sized fixture · full composition open',done:false,
         detail:'The fixed Cashu record circuit measured 71,477 non-free gates. A funded one-byte dispute paid both challenge and reclaim paths on regtest. Full SP1 proof verification and Bitcoin-enforced settlement composition remain open.'},
+      {id:'cashu-sp1-wrap',label:'PG-ZK-04 · Verify the exact Cashu SP1 wrap',
+        status:'Recursion reduction blocked · no ETA',done:false,
+        detail:'The CUDA resume produced 787 new core shards at 2.079 per second and zero complete proofs. The four captured reduction children verified individually. Remaining core and recursion work is unknown.'},
       {id:'ark-proof',label:'Ark Nova → SP1 → M13 → BitVM3 off-chain proof',
         status:'Suspended · checkpoints preserved',done:false,
         detail:ark.checksPassed?
