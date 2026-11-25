@@ -189,7 +189,7 @@ impl StepCircuit<F> for RowStep {
     fn synthesize<CS:ConstraintSystem<F>>(&self,cs:&mut CS,z:&[Num])->Result<Vec<Num>,SE> {
         assert!((1..=12).contains(&self.depth) && self.slots<=2);
         assert_eq!(self.append.len(),self.depth);
-        assert!((1..=5).contains(&self.rule_depth));
+        assert!((1..=6).contains(&self.rule_depth));
         assert_eq!(self.rule_path.len(),self.rule_depth);
         let zero=const_num(cs.namespace(||"zero"),F::ZERO)?;
         let row_tag=const_num(cs.namespace(||"row tag"),f(ROW))?;
@@ -572,8 +572,15 @@ fn batch(input:&Path,out:&Path)->Result<(),Box<dyn Error>> {
     Ok(())
 }
 
+#[path = "typed_core/mod.rs"]
+mod typed_core;
+
 fn main()->Result<(),Box<dyn Error>> {
     match std::env::args().nth(1).as_deref() {
+        Some("--typed")=>{
+            let input=std::env::args().nth(2).ok_or("missing typed input")?;
+            typed_core::run(Path::new(&input))
+        },
         Some("--batch")=>{
             let input=std::env::args().nth(2).ok_or("missing batch input")?;
             let output=std::env::args().nth(3).ok_or("missing batch output")?;
