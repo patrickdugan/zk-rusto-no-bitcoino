@@ -1,0 +1,74 @@
+name: ZKL public context jumps
+on:
+  pull_request:
+    paths:
+      - 'integrations/zkl-nova-calibration/src/bin/skip.rs'
+      - 'integrations/zkl-nova-calibration/skip*'
+      - '.github/workflows/zkl-skip-pi.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'integrations/zkl-nova-calibration/src/bin/skip.rs'
+      - 'integrations/zkl-nova-calibration/skip*'
+      - '.github/workflows/zkl-skip-pi.yml'
+permissions:
+  contents: read
+concurrency:
+  group: zkl-skip-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  skip-nova:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - depth: 6
+            fixture: skip-fixtures.json
+            digest: 0388ef2eb54bca3c09f1d5a8a062f426f95eb7ec797af286c515c6a98e5a8d23
+          - depth: 9
+            fixture: skip-stress.json
+            digest: ff5f48e0e18178eb504d2f18435e0d659b960a12b2456c692db075a96cf850d8
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+      DEPTH: ${{ matrix.depth }}
+      FIXTURE: ${{ matrix.fixture }}
+      FIXTURE_DIGEST: ${{ matrix.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Regenerate pinned public diagnostics and jump rules
+        run: |
+          set -euo pipefail
+          cd integrations/zkl-nova-calibration
+          python unified_reference.py
+          python bulk_reference.py
+          python skip_lookup.py
+          test "$(sha256sum skip-rules.json | cut -d' ' -f1)" = e35991046d6ddbb9c4b338f1f28a9daa0dcdad872ce2a4d673798f450246b663
+          git diff --exit-code -- skip-rules.json
+          test "$(sha256sum skip-results.json | cut -d' ' -f1)" = 5f8cf4756df65fe2608b1ac038700a02312efe621013ebe0fcff5433beb938bf
+          test "$(sha256sum "$FIXTURE" | cut -d' ' -f1)" = "$FIXTURE_DIGEST"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build pinned Nova skip circuit
+        run: |
+          cargo generate-lockfile --manifest-path integrations/zkl-nova-calibration/Cargo.toml
+          cargo build --locked --release --manifest-path integrations/zkl-nova-calibration/Cargo.toml --bin skip
+      - name: Verify bounded binary jumps in Nova
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v timeout 1000s integrations/zkl-nova-calibration/target/release/skip "integrations/zkl-nova-calibration/$FIXTURE" --compress "$DEPTH" | tee zkl-skip-results.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl-skip-d${{ matrix.depth }}
+          path: |
+            zkl-skip-results.jsonl
+            integrations/zkl-nova-calibration/skip-fixtures.json
+            integrations/zkl-nova-calibration/skip-stress.json
+            integrations/zkl-nova-calibration/skip-results.json
+            integrations/zkl-nova-calibration/Cargo.lock
