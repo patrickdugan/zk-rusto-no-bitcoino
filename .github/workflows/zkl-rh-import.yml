@@ -1,0 +1,120 @@
+name: ZKL real Lean declaration import
+on:
+  pull_request:
+    paths:
+      - 'integrations/zkl-nova-calibration/rh_import/**'
+      - 'integrations/zkl-nova-calibration/src/bin/imported.rs'
+      - '.github/workflows/zkl-rh-import.yml'
+  workflow_dispatch:
+    inputs:
+      rh_inventory:
+        description: 'Attempt bounded full RH export from unverified cached build'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  core-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Diagnostic parser tests
+        run: node integrations/zkl-nova-calibration/rh_import/inventory.mjs --self-test
+      - name: Install exact Lean release
+        run: |
+          set -euo pipefail
+          curl -fL --retry 2 --max-time 180 https://github.com/leanprover/lean4/releases/download/v4.35.0/lean-4.35.0-linux.tar.zst -o "$RUNNER_TEMP/lean.tar.zst"
+          echo '7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d  '${RUNNER_TEMP}'/lean.tar.zst' | sha256sum -c -
+          tar --zstd -xf "$RUNNER_TEMP/lean.tar.zst" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/lean-4.35.0-linux/bin" >> "$GITHUB_PATH"
+      - name: Actual Lean export and independent monomorphic replay
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          lean --version
+          timeout 120s leanexport Init -- id Function.const Function.comp > results/core.ndjson
+          node integrations/zkl-nova-calibration/rh_import/inventory.mjs results/core.ndjson --terms id Function.const Function.comp > results/core-inventory.json
+          python integrations/zkl-nova-calibration/rh_import/admit.py results/core-inventory.json --out results
+          timeout 60s lean results/Imported.lean | tee results/lean-replay.txt
+          test "$(grep -c 'does not depend on any axioms' results/lean-replay.txt)" = 6
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Check all six source imports in actual Nova
+        run: |
+          set -euo pipefail
+          cargo generate-lockfile --manifest-path integrations/zkl-nova-calibration/Cargo.toml
+          cargo build --locked --release --manifest-path integrations/zkl-nova-calibration/Cargo.toml --bin imported
+          /usr/bin/time -v timeout 600s integrations/zkl-nova-calibration/target/release/imported results/core-bulk.json --compress 9 | tee results/nova.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl-real-lean-core
+          path: |
+            results/
+            integrations/zkl-nova-calibration/Cargo.lock
+  rh-inventory:
+    if: github.event_name == 'pull_request' || inputs.rh_inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install exact Lean release
+        run: |
+          set -euo pipefail
+          curl -fL --retry 2 --max-time 180 https://github.com/leanprover/lean4/releases/download/v4.35.0/lean-4.35.0-linux.tar.zst -o "$RUNNER_TEMP/lean.tar.zst"
+          echo '7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d  '${RUNNER_TEMP}'/lean.tar.zst' | sha256sum -c -
+          tar --zstd -xf "$RUNNER_TEMP/lean.tar.zst" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/lean-4.35.0-linux/bin" >> "$GITHUB_PATH"
+      - name: Check out pinned source
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          git clone --no-checkout --filter=blob:none https://github.com/leanprover-community/riemann-hypothesis.git "$RUNNER_TEMP/rh"
+          git -C "$RUNNER_TEMP/rh" checkout --detach 686902ae1da717a63faf52d2dc6a50e5722942cd
+          test "$(git -C "$RUNNER_TEMP/rh" rev-parse HEAD)" = 686902ae1da717a63faf52d2dc6a50e5722942cd
+          git -C "$RUNNER_TEMP/rh" rev-parse HEAD > results/source-commit.txt
+          df -h > results/disk-before.txt
+          free -h > results/memory-before.txt
+      - name: Fetch exact cached build only (untrusted for proof verification)
+        working-directory: ${{ runner.temp }}/rh
+        run: |
+          set -euo pipefail
+          timeout 480s lake exe cache get
+          timeout 120s lake build --no-build
+      - name: Inventory dependency-closed export
+        working-directory: ${{ runner.temp }}/rh
+        run: |
+          set -euo pipefail
+          # Cap the export at 2 GiB. Failure is retained as incomplete evidence.
+          ulimit -f 2097152
+          /usr/bin/time -v timeout 300s lake env leanexport Main -- riemannHypothesis riemannZeta_eq_zero_re LFunction_ne_zero_of_half_lt_re LFunction_eq_zero_re LFunction_eq_zero_re_of_isPrimitive > "$GITHUB_WORKSPACE/results/rh.ndjson"
+          node --max-old-space-size=4096 "$GITHUB_WORKSPACE/integrations/zkl-nova-calibration/rh_import/inventory.mjs" "$GITHUB_WORKSPACE/results/rh.ndjson" --rh riemannHypothesis riemannZeta_eq_zero_re LFunction_ne_zero_of_half_lt_re LFunction_eq_zero_re LFunction_eq_zero_re_of_isPrimitive > "$GITHUB_WORKSPACE/results/rh-inventory.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl-rh-inventory-only
+          path: |
+            results/source-commit.txt
+            results/disk-before.txt
+            results/memory-before.txt
+            results/rh-inventory.json

@@ -1,0 +1,76 @@
+name: ZKL dependent Pi public compiler
+on:
+  pull_request:
+    paths:
+      - 'integrations/zkl-nova-calibration/src/bin/typed_core/**'
+      - 'integrations/zkl-nova-calibration/src/bin/indexed.rs'
+      - 'integrations/zkl-nova-calibration/typing-fixtures.json'
+      - 'integrations/zkl-nova-calibration/typing_*.py'
+      - 'integrations/zkl-nova-calibration/typing_examples.lean'
+      - '.github/workflows/zkl-typed-pi.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'integrations/zkl-nova-calibration/src/bin/typed_core/**'
+      - 'integrations/zkl-nova-calibration/typing-fixtures.json'
+      - 'integrations/zkl-nova-calibration/typing_*.py'
+      - '.github/workflows/zkl-typed-pi.yml'
+permissions:
+  contents: read
+jobs:
+  typed-nova:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Regenerate frozen fixtures and native controls
+        run: |
+          set -euo pipefail
+          python integrations/zkl-nova-calibration/typing_reference.py --out "$RUNNER_TEMP/typing-fixtures.json"
+          cmp "$RUNNER_TEMP/typing-fixtures.json" integrations/zkl-nova-calibration/typing-fixtures.json
+          python integrations/zkl-nova-calibration/typing_audit.py
+          python integrations/zkl-nova-calibration/typing_lean.py "$RUNNER_TEMP/typing-fixtures.json" --out "$RUNNER_TEMP/typing_examples.lean"
+          cmp "$RUNNER_TEMP/typing_examples.lean" integrations/zkl-nova-calibration/typing_examples.lean
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build Nova with typed public compiler
+        run: |
+          cargo generate-lockfile --manifest-path integrations/zkl-nova-calibration/Cargo.toml
+          cargo build --locked --release --manifest-path integrations/zkl-nova-calibration/Cargo.toml --bin indexed
+      - name: Verify closed typing judgments
+        run: |
+          set -euo pipefail
+          test "$(sha256sum integrations/zkl-nova-calibration/typing-fixtures.json | cut -d' ' -f1)" = 267f96336aaa3e582a353296137e816741d2ef5ae1fbdcd3ac123294a087586f
+          /usr/bin/time -v timeout 600s integrations/zkl-nova-calibration/target/release/indexed --typed integrations/zkl-nova-calibration/typing-fixtures.json | tee zkl-typed-results.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl-typed-pi-evidence
+          path: |
+            zkl-typed-results.jsonl
+            integrations/zkl-nova-calibration/Cargo.lock
+  typed-lean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lean 4.19.0
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/zkl-lean"
+          curl --fail --location --retry 2 --max-time 180 https://github.com/leanprover/lean4/releases/download/v4.19.0/lean-4.19.0-linux.tar.zst -o "$RUNNER_TEMP/zkl-lean/lean.tar.zst"
+          tar --zstd -xf "$RUNNER_TEMP/zkl-lean/lean.tar.zst" -C "$RUNNER_TEMP/zkl-lean"
+          echo "$RUNNER_TEMP/zkl-lean/lean-4.19.0-linux/bin" >> "$GITHUB_PATH"
+      - name: Replay five closed typed terms
+        run: |
+          set -euo pipefail
+          lean --version
+          test "$(sha256sum integrations/zkl-nova-calibration/typing_examples.lean | cut -d' ' -f1)" = b4c80fd858dfc3c6fd27d8ea1abb3cb4a8ef1a6aff1986400ef16686d2036067
+          timeout 45s lean integrations/zkl-nova-calibration/typing_examples.lean | tee lean-result.txt
+          test "$(grep -c 'does not depend on any axioms' lean-result.txt)" = 5
